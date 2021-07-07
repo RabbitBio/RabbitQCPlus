@@ -13,4 +13,8 @@ CmdInfo::CmdInfo() {
     out_file_name2_ = "";
     no_adapter_detect_ = true;
     thread_number_ = 1;
+    n_number_limit_ = 5;
+    low_qual_perc_limit_ = 40;
+    base_len_limit_ = 15;
+    write_data_ = false;
 }

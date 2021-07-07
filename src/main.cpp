@@ -36,11 +36,16 @@ int main(int argc, char **argv) {
     else std::cout << "now detect adapter" << std::endl;
     std::cout << "now use " << cmd_info.thread_number_ << " thread" << (cmd_info.thread_number_ > 1 ? "s" : "")
               << std::endl;
+
     double t1 = GetTime();
     if (cmd_info.in_file_name2_.length()) {
         PeQc pe_qc(&cmd_info);
         pe_qc.ProcessPeFastq();
     } else {
+        if (cmd_info.out_file_name1_.length() > 0) {
+            cmd_info.write_data_ = true;
+            printf("auto set write_data_ 1\n");
+        }
         SeQc se_qc(&cmd_info);
         se_qc.ProcessSeFastq();
     }

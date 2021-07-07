@@ -5,10 +5,15 @@
 #ifndef RABBITQCPLUS_SEQC_H
 #define RABBITQCPLUS_SEQC_H
 
+#include <atomic>
+#include <fstream>
 #include "FastxChunk.h"
 #include "FastxStream.h"
 #include "Formater.h"
 #include "cmdinfo.h"
+#include "threadinfo.h"
+#include "filter.h"
+#include "concurrentqueue.h"
 
 class SeQc {
 public:
@@ -17,25 +22,36 @@ public:
     SeQc();
 
     ~SeQc();
+
     void ProcessSeFastq();
 
 
 private:
-    void StateInfo(neoReference &ref);
+    void StateInfo(ThreadInfo *thread_info, neoReference &ref);
 
     void PrintRead(neoReference &ref);
 
-    void ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fastqPool,
-                            rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
+    std::string Read2String(neoReference &ref);
 
-    void ConsumerSeFastqTask(rabbit::fq::FastqDataPool *fastqPool,
+    void ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
 
+    void ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastq_data_pool,
+                             rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
+
+    void WriteSeFastqTask();
 
 private:
-    CmdInfo *cmd_info;
-    int64_t q20bases;
-    int64_t q30bases;
+    CmdInfo *cmd_info_;
+    int64_t q20bases_;
+    int64_t q30bases_;
+    int64_t lines_;
+    int64_t pass_lines_;
+    Filter *filter_;
+    moodycamel::ConcurrentQueue<pair<char *, int>> out_queue_;
+    atomic_int done_thread_number_;
+    fstream out_stream_;
+
 
 };
 

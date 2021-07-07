@@ -193,3 +193,64 @@ c库、c++库、其他库、本地文件
 
 ## 0707
 
+
+
+根据那天和大师兄的讨论结果，基本确定每个功能一个类，暂时这几这几个类：
+
+- Filter
+- Trimer：包含front tail trim和adapter trim
+- Umi
+- PolyX
+- Overrepresented
+- Duplicate
+
+| Version              | Se    | Pe   |
+| -------------------- | ----- | ---- |
+| count lines          | 5.60  |      |
+| count bases thread 1 | 12.66 |      |
+| count bases thread 4 | 3.42  |      |
+
+
+
+👆是简单的se数据的简单信息统计，👇加一点fliter，方便做输出。
+
+afterQC中是这样做的：
+
+```
+quality filters->count the number of low quality bases or N, calculate the mean quality of each read, and then determine whether to keep or discard this read.
+```
+
+fastp中是：
+
+```
+static const int PASS_FILTER = 0;
+static const int FAIL_POLY_X = 4;
+static const int FAIL_OVERLAP = 8;
+static const int FAIL_N_BASE = 12;
+static const int FAIL_LENGTH = 16;
+static const int FAIL_TOO_LONG = 17;
+static const int FAIL_QUALITY = 20;
+static const int FAIL_COMPLEXITY = 24;
+```
+
+这里先实现其中的 0 12 16 17 20
+
+|                            | Se    |      |
+| -------------------------- | ----- | ---- |
+| add sample filter thread 1 | 13.69 |      |
+| add sample filter thread 4 | 3.67  |      |
+|                            |       |      |
+
+有了简单的过滤之后就有输出过滤后read的必要的，下面先简单实现一版output。
+
+才想neoReference的空间使用不会太多，所以直接存应该内存也是够的，不用分批处理。
+
+这一版写的似乎并不巧妙，在统计信息和过滤的同时对pass_data进行拷贝，拷贝到连续的内存中，每64M做成一个string，然后用无锁队列维护，与此同时开一个写线程检测队列是否为空并进行输出。
+
+|                            | Se    |      |
+| -------------------------- | ----- | ---- |
+| add simple output thread 1 | 38.42 |      |
+| add simple output thread 4 | 11.94 |      |
+|                            |       |      |
+
+现在单线程慢是一次多余的拷贝，多线程加速比一般大概率是因为无锁队列，可以考虑换成原子操作。

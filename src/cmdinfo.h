@@ -20,6 +20,10 @@ public:
     string out_file_name2_;
     bool no_adapter_detect_;
     int thread_number_;
+    int n_number_limit_;
+    int low_qual_perc_limit_;
+    int base_len_limit_;
+    bool write_data_;
 
 };
 
