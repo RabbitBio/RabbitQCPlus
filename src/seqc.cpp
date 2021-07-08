@@ -77,40 +77,60 @@ std::string SeQc::Read2String(neoReference &ref) {
            std::string((char *) ref.base + ref.pqual, ref.lqual) + "\n";
 }
 
+void SeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
+    memcpy(out_data + pos, ref.base + ref.pname, ref.lname);
+    pos += ref.lname;
+    out_data[pos++] = '\n';
+    memcpy(out_data + pos, ref.base + ref.pseq, ref.lseq);
+    pos += ref.lseq;
+    out_data[pos++] = '\n';
+    memcpy(out_data + pos, ref.base + ref.pstrand, ref.lstrand);
+    pos += ref.lstrand;
+    out_data[pos++] = '\n';
+    memcpy(out_data + pos, ref.base + ref.pqual, ref.lqual);
+    pos += ref.lqual;
+    out_data[pos++] = '\n';
+}
+
 void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastq_data_pool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
     long line_sum = 0;
     long pass_line_sum = 0;
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;// = new rabbit::fq::FastqDataChunk;
-    std::string out_data;
     while (dq.Pop(id, fqdatachunk)) {
         std::vector<neoReference> data;
+        std::vector<neoReference> pass_data;
         int res = rabbit::fq::chunkFormat(fqdatachunk, data, true);
         line_sum += res;
+        int out_len = 0;
         for (auto item:data) {
             StateInfo(thread_info, item);
             int filter_res = filter_->ReadFiltering(item);
             if (filter_res == 0) {
-                out_data += Read2String(item);
                 pass_line_sum++;
-                if (out_data.size() >= cmd_info_->out_block_size_) {
-                    char *ldata = new char[out_data.size()];
-                    memcpy(ldata, out_data.c_str(), out_data.size());
-                    out_queue_->enqueue({ldata, out_data.size()});
-                    out_data.clear();
+                if (cmd_info_->write_data_) {
+                    pass_data.push_back(item);
+                    out_len += item.lname + item.lseq + item.lstrand + item.lqual + 4;
                 }
+            }
+        }
+
+        if (cmd_info_->write_data_) {
+            if (pass_data.size() > 0) {
+                char *out_data = new char[out_len];
+                int pos = 0;
+                for (auto item:pass_data) {
+                    Read2Chars(item, out_data, pos);
+                }
+                ASSERT(pos == out_len);
+                out_queue_->enqueue({out_data, out_len});
             }
         }
 
         fastq_data_pool->Release(fqdatachunk);
     }
-    if (out_data.size() > 0) {
-        char *ldata = new char[out_data.size()];
-        memcpy(ldata, out_data.c_str(), out_data.size());
-        out_queue_->enqueue({ldata, out_data.size()});
-        out_data.clear();
-    }
+
     thread_info->lines_ = line_sum;
     thread_info->pass_lines_ = pass_line_sum;
     done_thread_number_++;
@@ -118,6 +138,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 }
 
 void SeQc::WriteSeFastqTask() {
+    int cnt = 0;
     while (true) {
         if (out_queue_->size_approx() == 0 && done_thread_number_ == cmd_info_->thread_number_) {
             break;
@@ -128,7 +149,7 @@ void SeQc::WriteSeFastqTask() {
         pair<char *, int> now;
         while (out_queue_->size_approx()) {
             out_queue_->try_dequeue(now);
-//            printf("write thread working, write %d\n", now.second);
+//            printf("write thread working, write %d %d\n", now.second, cnt++);
             out_stream_.write(now.first, now.second);
             delete now.first;
         }

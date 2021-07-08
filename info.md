@@ -253,6 +253,19 @@ static const int FAIL_COMPLEXITY = 24;
 | add simple output thread 4（concurrentqueue.h）              | 11.94 |      |
 | adjust output block size and optimize queue(reserve) thread 1 | 36.74 |      |
 | adjust output block size and optimize queue(reserve) thread 4 | 10.84 |      |
+| adjust output block size and optimize queue(reserve) thread 1 just no write | 36.79 |      |
+| adjust output block size and optimize queue(reserve) thread 4 just no write | 9.95  |      |
 
 现在单线程慢是一次多余的拷贝，多线程加速比一般大概率是因为无锁队列，可以考虑换成原子操作。
 
+👆考虑到队列操作并不多(fileSize/4M)，问题不大，重点还是优化那一次拷贝。
+
+|                                             | Se    |      |
+| ------------------------------------------- | ----- | ---- |
+| One less memory copy thread 1               | 15.13 |      |
+| One less memory copy thread 4               | 15.33 |      |
+| One less memory copy thread 1 just no write | 15.03 |      |
+| One less memory copy thread 4 just no write | 3.85  |      |
+|                                             |       |      |
+
+基本符合预期，减少拷贝之后快了一倍左右，但是多线程的时候卡在写的过程，把write注释就加速比很好了。

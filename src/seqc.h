@@ -33,6 +33,8 @@ private:
 
     std::string Read2String(neoReference &ref);
 
+    void Read2Chars(neoReference &ref, char *out_data,int &pos);
+
     void ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
 

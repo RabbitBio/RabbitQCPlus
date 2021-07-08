@@ -20,5 +20,5 @@ CmdInfo::CmdInfo() {
     in_file_size1_ = 0;
     in_file_size2_ = 0;
     //TODO change
-    out_block_size_ = 1 << 22;
+    out_block_size_ = 1 << 21;
 }
