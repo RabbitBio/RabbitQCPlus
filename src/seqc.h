@@ -48,7 +48,11 @@ private:
     int64_t lines_;
     int64_t pass_lines_;
     Filter *filter_;
-    moodycamel::ConcurrentQueue<pair<char *, int>> out_queue_;
+    moodycamel::ConcurrentQueue<pair<char *, int>> *out_queue_;
+//replace concurrentqueue with char*[]
+//    char **out_queue_;
+    atomic_int queue_head_;
+    atomic_int queue_tail_;
     atomic_int done_thread_number_;
     fstream out_stream_;
 

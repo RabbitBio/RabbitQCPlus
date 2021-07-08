@@ -17,4 +17,8 @@ CmdInfo::CmdInfo() {
     low_qual_perc_limit_ = 40;
     base_len_limit_ = 15;
     write_data_ = false;
+    in_file_size1_ = 0;
+    in_file_size2_ = 0;
+    //TODO change
+    out_block_size_ = 1 << 22;
 }

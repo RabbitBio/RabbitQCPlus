@@ -247,10 +247,12 @@ static const int FAIL_COMPLEXITY = 24;
 
 这一版写的似乎并不巧妙，在统计信息和过滤的同时对pass_data进行拷贝，拷贝到连续的内存中，每64M做成一个string，然后用无锁队列维护，与此同时开一个写线程检测队列是否为空并进行输出。
 
-|                            | Se    |      |
-| -------------------------- | ----- | ---- |
-| add simple output thread 1 | 38.42 |      |
-| add simple output thread 4 | 11.94 |      |
-|                            |       |      |
+|                                                              | Se    |      |
+| ------------------------------------------------------------ | ----- | ---- |
+| add simple output thread 1（concurrentqueue.h）              | 38.42 |      |
+| add simple output thread 4（concurrentqueue.h）              | 11.94 |      |
+| adjust output block size and optimize queue(reserve) thread 1 | 36.74 |      |
+| adjust output block size and optimize queue(reserve) thread 4 | 10.84 |      |
 
 现在单线程慢是一次多余的拷贝，多线程加速比一般大概率是因为无锁队列，可以考虑换成原子操作。
+

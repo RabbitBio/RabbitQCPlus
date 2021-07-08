@@ -15,6 +15,9 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     pass_lines_ = 0;
     filter_ = new Filter(cmd_info1);
     done_thread_number_ = 0;
+    int out_block_nums = int(1.0 * cmd_info1->in_file_size1_ / cmd_info1->out_block_size_);
+    printf("out_block_nums %d\n", out_block_nums);
+    out_queue_ = new moodycamel::ConcurrentQueue<pair<char *, int>>(out_block_nums + 1000);
     if (cmd_info1->write_data_) {
         printf("open stream %s\n", cmd_info1->out_file_name1_.c_str());
         out_stream_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
@@ -91,20 +94,21 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             if (filter_res == 0) {
                 out_data += Read2String(item);
                 pass_line_sum++;
+                if (out_data.size() >= cmd_info_->out_block_size_) {
+                    char *ldata = new char[out_data.size()];
+                    memcpy(ldata, out_data.c_str(), out_data.size());
+                    out_queue_->enqueue({ldata, out_data.size()});
+                    out_data.clear();
+                }
             }
         }
-        if (out_data.size() > (1 << 26)) {
-            char *ldata = new char[out_data.size()];
-            memcpy(ldata, out_data.c_str(), out_data.size());
-            out_queue_.enqueue({ldata, out_data.size()});
-            out_data.clear();
-        }
+
         fastq_data_pool->Release(fqdatachunk);
     }
     if (out_data.size() > 0) {
         char *ldata = new char[out_data.size()];
         memcpy(ldata, out_data.c_str(), out_data.size());
-        out_queue_.enqueue({ldata, out_data.size()});
+        out_queue_->enqueue({ldata, out_data.size()});
         out_data.clear();
     }
     thread_info->lines_ = line_sum;
@@ -115,15 +119,15 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 
 void SeQc::WriteSeFastqTask() {
     while (true) {
-        if (out_queue_.size_approx() == 0 && done_thread_number_ == cmd_info_->thread_number_) {
+        if (out_queue_->size_approx() == 0 && done_thread_number_ == cmd_info_->thread_number_) {
             break;
         }
-        if (out_queue_.size_approx() == 0) {
+        if (out_queue_->size_approx() == 0) {
             usleep(100);
         }
         pair<char *, int> now;
-        while (out_queue_.size_approx()) {
-            out_queue_.try_dequeue(now);
+        while (out_queue_->size_approx()) {
+            out_queue_->try_dequeue(now);
 //            printf("write thread working, write %d\n", now.second);
             out_stream_.write(now.first, now.second);
             delete now.first;
@@ -176,7 +180,6 @@ void SeQc::ProcessSeFastq() {
     printf("q20bases %lld\n", q20bases_);
     printf("q30bases %lld\n", q30bases_);
 
-    printf("out data queue size is %zu\n", out_queue_.size_approx());
 
     delete fastqPool;
     delete[] threads;

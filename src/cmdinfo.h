@@ -24,6 +24,10 @@ public:
     int low_qual_perc_limit_;
     int base_len_limit_;
     bool write_data_;
+    int64_t out_block_size_;
+    int64_t in_file_size1_;
+    int64_t in_file_size2_;
+
 
 };
 

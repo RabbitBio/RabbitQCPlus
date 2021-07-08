@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.18)
+set(CMAKE_C_COMPILER "/usr/local/Cellar/gcc@8/8.4.0_1/bin/gcc-8")
+set(CMAKE_CXX_COMPILER "/usr/local/Cellar/gcc@8/8.4.0_1/bin/g++-8")
+
 project(RabbitQCPlus)
-#set(CMAKE_CXX_COMPILER "/usr/local/Cellar/gcc@8/8.4.0_1/bin/gcc-8")
 
 set(CMAKE_CXX_STANDARD 11)
 
