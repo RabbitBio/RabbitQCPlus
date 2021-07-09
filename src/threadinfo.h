@@ -6,16 +6,21 @@
 #define RABBITQCPLUS_THREADINFO_H
 
 #include "Globals.h"
+#include "state.h"
+#include "cmdinfo.h"
 
 class ThreadInfo {
 public:
-    ThreadInfo();
+
+    ThreadInfo(CmdInfo *cmd_info);
 
 public:
-    int64_t q20bases_;
-    int64_t q30bases_;
-    int64_t lines_;
-    int64_t pass_lines_;
+    CmdInfo *cmd_info_;
+    State *pre_state1_;
+    State *pre_state2_;
+    State *aft_state1_;
+    State *aft_state2_;
+
 
 };
 

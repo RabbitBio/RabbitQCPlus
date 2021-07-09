@@ -4,9 +4,11 @@
 
 #include "threadinfo.h"
 
-ThreadInfo::ThreadInfo() {
-    q30bases_ = 0;
-    q20bases_ = 0;
-    lines_ = 0;
-    pass_lines_ = 0;
+ThreadInfo::ThreadInfo(CmdInfo *cmd_info) {
+    cmd_info_ = cmd_info;
+    pre_state1_ = new State(cmd_info->seq_len_, cmd_info->qul_range_);
+    pre_state2_ = new State(cmd_info->seq_len_, cmd_info->qul_range_);
+    aft_state1_ = new State(cmd_info->seq_len_, cmd_info->qul_range_);
+    aft_state2_ = new State(cmd_info->seq_len_, cmd_info->qul_range_);
+
 }

@@ -1,3 +1,25 @@
+- [x] Filter
+
+- [ ] Stats
+
+- [ ] Trimer->front tail trim
+
+- [ ] Trimer->adapter trim
+
+- [ ] Umi
+
+- [ ] PolyX
+
+- [ ] Overrepresented
+
+- [ ] Duplicate
+
+- [ ] Draw
+
+- [ ] 内存泄漏
+
+  
+
 ## AfterQC
 
 - Different from most tools, AfterQC analyses the overlapping of paired sequences for pair-end sequencing data. Based on overlapping analysis, AfterQC can detect and cut adapters, and furthermore it gives a novel function to correct wrong bases in the overlapping regions. 
@@ -228,7 +250,7 @@ static const int FAIL_POLY_X = 4;
 static const int FAIL_OVERLAP = 8;
 static const int FAIL_N_BASE = 12;
 static const int FAIL_LENGTH = 16;
-static const int FAIL_TOO_LONG = 17;
+static const int FAIL_TOO_int64_t = 17;
 static const int FAIL_QUALITY = 20;
 static const int FAIL_COMPLEXITY = 24;
 ```
@@ -246,6 +268,8 @@ static const int FAIL_COMPLEXITY = 24;
 才想neoReference的空间使用不会太多，所以直接存应该内存也是够的，不用分批处理。
 
 这一版写的似乎并不巧妙，在统计信息和过滤的同时对pass_data进行拷贝，拷贝到连续的内存中，每64M做成一个string，然后用无锁队列维护，与此同时开一个写线程检测队列是否为空并进行输出。
+
+## 0708
 
 |                                                              | Se    |      |
 | ------------------------------------------------------------ | ----- | ---- |
@@ -269,3 +293,43 @@ static const int FAIL_COMPLEXITY = 24;
 |                                             |       |      |
 
 基本符合预期，减少拷贝之后快了一倍左右，但是多线程的时候卡在写的过程，把write注释就加速比很好了。
+
+下面实现其他部分的信息统计功能，暂时先写一个类似fastqc的版本：
+
+- Basic Statistics
+  - filename
+  - file type
+  - reads number
+  - read length
+  - GC%
+- Per Base Sequence Quality
+  - 每个位置的平均质量分：位置-平均质量
+- Per Sequence Quality Scores
+  - 平均值质量分个数：read平均质量分-read条数
+- Per Base Sequence Content
+  - 碱基类型占比随位置分布图：位置-碱基占比
+- Per Base GC Content
+  - GC占比随位置分布图：位置-GC占比
+- Per Sequence GC Content
+  - 
+- Per Base N Content
+  - 
+- Sequence Length Distribution
+- Duplicate Sequences
+- Overrepresented Sequences
+- Adapter Content
+- Kmer Content
+- Per Tile Sequence Quality
+
+
+
+## 0709
+
+把简单的stateInfo从seqc中拿了出来，重写了一个完整的State类作为信息统计的功能模块，然后添加了几个统计功能，现在基本的统计功能大概都有了。
+
+|                                                     | Se    |      |
+| --------------------------------------------------- | ----- | ---- |
+| Add some statistics for draw pic thread 1 no output | 23.49 |      |
+| Add some statistics for draw pic thread 4 no output | 6.05  |      |
+|                                                     |       |      |
+

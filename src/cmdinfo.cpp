@@ -21,4 +21,7 @@ CmdInfo::CmdInfo() {
     in_file_size2_ = 0;
     //TODO change
     out_block_size_ = 1 << 21;
+    //TODO change
+    seq_len_ = 200;
+    qul_range_ = 50;
 }

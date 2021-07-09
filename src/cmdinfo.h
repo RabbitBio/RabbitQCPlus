@@ -5,19 +5,17 @@
 #ifndef RABBITQCPLUS_CMDINFO_H
 #define RABBITQCPLUS_CMDINFO_H
 
-#include <iostream>
-
-using namespace std;
+#include "Globals.h"
 
 class CmdInfo {
 public:
     CmdInfo();
 
 public:
-    string in_file_name1_;
-    string in_file_name2_;
-    string out_file_name1_;
-    string out_file_name2_;
+    std::string in_file_name1_;
+    std::string in_file_name2_;
+    std::string out_file_name1_;
+    std::string out_file_name2_;
     bool no_adapter_detect_;
     int thread_number_;
     int n_number_limit_;
@@ -27,6 +25,8 @@ public:
     int64_t out_block_size_;
     int64_t in_file_size1_;
     int64_t in_file_size2_;
+    int seq_len_;
+    int qul_range_;
 
 
 };

@@ -5,8 +5,8 @@
 #ifndef RABBITQCPLUS_PEQC_H
 #define RABBITQCPLUS_PEQC_H
 
-#include "FastxChunk.h"
-#include "FastxStream.h"
+#include <functional>
+#include "Globals.h"
 #include "Formater.h"
 #include "cmdinfo.h"
 

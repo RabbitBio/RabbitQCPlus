@@ -1,23 +1,20 @@
 //
 // Created by ylf9811 on 2021/7/6.
 //
-#include <functional>
-#include <cassert>
-#include <cstring>
 #include "seqc.h"
 
-
+/**
+ * @brief Construct function
+ * @param cmd_info1 : cmd information
+ */
 SeQc::SeQc(CmdInfo *cmd_info1) {
     cmd_info_ = cmd_info1;
-    q20bases_ = 0;
-    q30bases_ = 0;
-    lines_ = 0;
-    pass_lines_ = 0;
     filter_ = new Filter(cmd_info1);
     done_thread_number_ = 0;
     int out_block_nums = int(1.0 * cmd_info1->in_file_size1_ / cmd_info1->out_block_size_);
     printf("out_block_nums %d\n", out_block_nums);
-    out_queue_ = new moodycamel::ConcurrentQueue<pair<char *, int>>(out_block_nums + 1000);
+    out_queue_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>
+            (out_block_nums + 1000);
     if (cmd_info1->write_data_) {
         printf("open stream %s\n", cmd_info1->out_file_name1_.c_str());
         out_stream_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
@@ -26,25 +23,20 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
 
 SeQc::~SeQc() {}
 
-void SeQc::StateInfo(ThreadInfo *thread_info, neoReference &ref) {
-    int slen = ref.lseq;
-    int qlen = ref.lqual;
-    ASSERT(slen == qlen);
-    char *bases = reinterpret_cast<char *>(ref.base + ref.pseq);
-    char *quals = reinterpret_cast<char *>(ref.base + ref.pqual);
-    const char q20 = '5';
-    const char q30 = '?';
-    for (int i = 0; i < slen; i++) {
-        char base = bases[i];
-        char qual = quals[i];
-        if (qual >= q30) {
-            thread_info->q20bases_++;
-            thread_info->q30bases_++;
-        } else if (qual >= q20) {
-            thread_info->q20bases_++;
-        }
-    }
-}
+/**
+ * @brief sample state ref info
+ * @param thread_info : thread information
+ * @param ref : reference to state
+ */
+
+
+
+/**
+ * @brief get fastq data chunk from fastq_data_pool and put it into data queue
+ * @param file : fastq file name, which is also the input file
+ * @param fastq_data_pool : fastq data pool
+ * @param dq : a data queue
+ */
 
 void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
@@ -92,23 +84,26 @@ void SeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
     out_data[pos++] = '\n';
 }
 
+/**
+ * @brief get fastq data chunks from the data queue and do QC for them
+ * @param thread_info : thread information
+ * @param fastq_data_pool :a fastq data pool, it will be used to release data chunk
+ * @param dq : data queue
+ */
 void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastq_data_pool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
-    long line_sum = 0;
-    long pass_line_sum = 0;
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;// = new rabbit::fq::FastqDataChunk;
     while (dq.Pop(id, fqdatachunk)) {
         std::vector<neoReference> data;
         std::vector<neoReference> pass_data;
         int res = rabbit::fq::chunkFormat(fqdatachunk, data, true);
-        line_sum += res;
         int out_len = 0;
         for (auto item:data) {
-            StateInfo(thread_info, item);
+            thread_info->pre_state1_->StateInfo(item);
             int filter_res = filter_->ReadFiltering(item);
             if (filter_res == 0) {
-                pass_line_sum++;
+                thread_info->aft_state1_->StateInfo(item);
                 if (cmd_info_->write_data_) {
                     pass_data.push_back(item);
                     out_len += item.lname + item.lseq + item.lstrand + item.lqual + 4;
@@ -130,13 +125,13 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 
         fastq_data_pool->Release(fqdatachunk);
     }
-
-    thread_info->lines_ = line_sum;
-    thread_info->pass_lines_ = pass_line_sum;
     done_thread_number_++;
 
 }
 
+/**
+ * @brief a function to write data from out_data queue to file
+ */
 void SeQc::WriteSeFastqTask() {
     int cnt = 0;
     while (true) {
@@ -146,7 +141,7 @@ void SeQc::WriteSeFastqTask() {
         if (out_queue_->size_approx() == 0) {
             usleep(100);
         }
-        pair<char *, int> now;
+        std::pair<char *, int> now;
         while (out_queue_->size_approx()) {
             out_queue_->try_dequeue(now);
 //            printf("write thread working, write %d %d\n", now.second, cnt++);
@@ -157,14 +152,18 @@ void SeQc::WriteSeFastqTask() {
     out_stream_.close();
 }
 
+/**
+ * @brief do QC for single-end data
+ */
+
 void SeQc::ProcessSeFastq() {
-    rabbit::fq::FastqDataPool *fastqPool = new rabbit::fq::FastqDataPool(32, 1 << 22);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(32, 1 << 22);
     //TODO replace this queue
     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(64, 1);
 
-    ThreadInfo **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
+    auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
-        p_thread_info[t] = new ThreadInfo();
+        p_thread_info[t] = new ThreadInfo(cmd_info_);
     }
     std::thread *write_thread;
     if (cmd_info_->write_data_) {
@@ -188,18 +187,22 @@ void SeQc::ProcessSeFastq() {
 
     printf("all thrad done\n");
     printf("now merge thread info\n");
+
+    std::vector<State *> pre_vec_state;
+    std::vector<State *> aft_vec_state;
+
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
-        q20bases_ += p_thread_info[t]->q20bases_;
-        q30bases_ += p_thread_info[t]->q30bases_;
-        lines_ += p_thread_info[t]->lines_;
-        pass_lines_ += p_thread_info[t]->pass_lines_;
+        pre_vec_state.push_back(p_thread_info[t]->pre_state1_);
+        aft_vec_state.push_back(p_thread_info[t]->aft_state1_);
     }
+    auto pre_state = State::MergeStates(pre_vec_state);
+    auto aft_state = State::MergeStates(aft_vec_state);
 
     printf("merge done\n");
-    printf("read lines %lld\n", lines_);
-    printf("pass lines %lld\n", pass_lines_);
-    printf("q20bases %lld\n", q20bases_);
-    printf("q30bases %lld\n", q30bases_);
+    printf("print pre state info :\n");
+    State::PrintStates(pre_state);
+    printf("print aft state info :\n");
+    State::PrintStates(aft_state);
 
 
     delete fastqPool;

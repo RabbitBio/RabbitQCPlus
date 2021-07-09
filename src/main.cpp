@@ -1,7 +1,6 @@
 #include <sys/time.h>
 #include <string>
 #include <iostream>
-#include "FastxStream.h"
 #include "CLI11.hpp"
 #include "seqc.h"
 #include "peqc.h"
@@ -47,26 +46,13 @@ int main(int argc, char **argv) {
             printf("auto set write_data_ 1\n");
         }
 
-        FILE *fp1;
-        const char *fname1 = cmd_info.in_file_name1_.c_str();
-        fp1 = fopen(fname1, "r");
-        fseek(fp1, 0, SEEK_END);
-        long fsize1 = ftell(fp1);
-        long totSize = fsize1;
-        cmd_info.in_file_size1_ = totSize;
-        printf("in file total size is %ld\n", totSize);
-        printf("my evaluate readNum is %ld\n", long(totSize / 200.0));
-        //totSize -> bytes
-        //readNum = totSize / 2 / 100
-        //maxVal = readNum / 4 * 40
-        long maxVal = long(totSize / 800.0 * 40);
-        printf("max value is %ld\n", maxVal);
-//        if (maxVal > (1ll << 31)) {
-//            cout << "uint is not available because input fastq file is so big, please add -DUseLong in Makefile."
-//                 << endl;
-//            exit(0);
-//        }
-
+        FILE *p_file;
+        p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
+        fseek(p_file, 0, SEEK_END);
+        int64_t total_size = ftell(p_file);
+        cmd_info.in_file_size1_ = total_size;
+        printf("in file total size is %lld\n", total_size);
+        printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
         SeQc se_qc(&cmd_info);
         se_qc.ProcessSeFastq();
     }

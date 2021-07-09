@@ -1,7 +1,6 @@
 //
 // Created by ylf9811 on 2021/7/6.
 //
-#include <functional>
 
 #include "peqc.h"
 
