@@ -108,29 +108,29 @@ void State::PrintStates(const State *state) {
     printf("q20bases %lld\n", state->q20bases_);
     printf("q30bases %lld\n", state->q30bases_);
     printf("lines %lld\n", state->lines_);
-    int now_seq_len = state->real_seq_len_;
-    printf("position--quality :\n");
-    for (int i = 0; i < now_seq_len; i++) {
-        int64_t tot_cnt = 0;
-        int64_t tot_qul = 0;
-        for (int j = 0; j < 8; j++) {
-            tot_cnt += state->pos_cnt_[i * 8 + j];
-            tot_qul += state->pos_qul_[i * 8 + j];
-        }
-        printf("pos %d, quality %.5f\n", i, 1.0 * tot_qul / tot_cnt);
-    }
-    printf("mean_quality--ref_number :\n");
-    for (int i = 0; i < state->qul_range_; i++) {
-        printf("quality %d, ref_number %lld\n", i, state->qul_cnt_[i]);
-    }
-    printf("gc%%--ref_number :\n");
-    for (int i = 0; i <= 100; i++) {
-        printf("gc%% %d, ref_number %lld\n", i, state->gc_cnt_[i]);
-    }
-    printf("seq_len--ref_number :\n");
-    for (int i = 0; i < state->real_seq_len_; i++) {
-        printf("seq_len %d, ref_number %lld\n", i + 1, state->len_cnt_[i]);
-    }
+//    int now_seq_len = state->real_seq_len_;
+//    printf("position--quality :\n");
+//    for (int i = 0; i < now_seq_len; i++) {
+//        int64_t tot_cnt = 0;
+//        int64_t tot_qul = 0;
+//        for (int j = 0; j < 8; j++) {
+//            tot_cnt += state->pos_cnt_[i * 8 + j];
+//            tot_qul += state->pos_qul_[i * 8 + j];
+//        }
+//        printf("pos %d, quality %.5f\n", i, 1.0 * tot_qul / tot_cnt);
+//    }
+//    printf("mean_quality--ref_number :\n");
+//    for (int i = 0; i < state->qul_range_; i++) {
+//        printf("quality %d, ref_number %lld\n", i, state->qul_cnt_[i]);
+//    }
+//    printf("gc%%--ref_number :\n");
+//    for (int i = 0; i <= 100; i++) {
+//        printf("gc%% %d, ref_number %lld\n", i, state->gc_cnt_[i]);
+//    }
+//    printf("seq_len--ref_number :\n");
+//    for (int i = 0; i < state->real_seq_len_; i++) {
+//        printf("seq_len %d, ref_number %lld\n", i + 1, state->len_cnt_[i]);
+//    }
 
 
 }

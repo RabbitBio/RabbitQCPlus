@@ -23,13 +23,6 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
 
 SeQc::~SeQc() {}
 
-/**
- * @brief sample state ref info
- * @param thread_info : thread information
- * @param ref : reference to state
- */
-
-
 
 /**
  * @brief get fastq data chunk from fastq_data_pool and put it into data queue
@@ -97,7 +90,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
     while (dq.Pop(id, fqdatachunk)) {
         std::vector<neoReference> data;
         std::vector<neoReference> pass_data;
-        int res = rabbit::fq::chunkFormat(fqdatachunk, data, true);
+        rabbit::fq::chunkFormat(fqdatachunk, data, true);
         int out_len = 0;
         for (auto item:data) {
             thread_info->pre_state1_->StateInfo(item);
@@ -172,7 +165,7 @@ void SeQc::ProcessSeFastq() {
     //TODO bind ?
     std::thread producer(
             std::bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, std::ref(queue1)));
-    std::thread **threads = new std::thread *[cmd_info_->thread_number_];
+    auto **threads = new std::thread *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         threads[t] = new std::thread(
                 std::bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info[t], fastqPool, std::ref(queue1)));
@@ -206,6 +199,9 @@ void SeQc::ProcessSeFastq() {
 
 
     delete fastqPool;
+    for (int t = 0; t < cmd_info_->thread_number_; t++) {
+        delete threads[t];
+    }
     delete[] threads;
     delete[] p_thread_info;
 }

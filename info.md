@@ -333,3 +333,16 @@ static const int FAIL_COMPLEXITY = 24;
 | Add some statistics for draw pic thread 4 no output | 6.05  |      |
 |                                                     |       |      |
 
+## 0710
+
+今天把上面功能们的对应Pe版本写了。
+
+|                                                       | Se    | Pe    |
+| ----------------------------------------------------- | ----- | ----- |
+| Add some statistics for draw pic thread 1 no output   | 23.49 | 29.45 |
+| Add some statistics for draw pic thread 4 no output   | 6.05  | 8.06  |
+| Add some statistics for draw pic thread 1 with output | 25.02 | 31.46 |
+| Add some statistics for draw pic thread 4 with output | 8.26  | 11.81 |
+|                                                       |       |       |
+
+一开始的版本有个bug是双端数据分开考虑质量分，然后分开过滤，这样可能导致过滤之后的p1.fq和p2.fq条数不一样，这肯定不合理。解决方法就是当r1 r2都pass filter的时候才输出。

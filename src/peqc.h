@@ -5,10 +5,18 @@
 #ifndef RABBITQCPLUS_PEQC_H
 #define RABBITQCPLUS_PEQC_H
 
+#include <atomic>
+#include <fstream>
 #include <functional>
+#include <cstring>
+
 #include "Globals.h"
 #include "Formater.h"
 #include "cmdinfo.h"
+#include "threadinfo.h"
+#include "filter.h"
+#include "concurrentqueue.h"
+#include "state.h"
 
 
 class PeQc {
@@ -23,20 +31,34 @@ public:
 
 
 private:
-    void StateInfo(neoReference &ref);
 
     void PrintRead(neoReference &ref);
+
+    std::string Read2String(neoReference &ref);
+
+    void Read2Chars(neoReference &ref, char *out_data, int &pos);
+
 
     void ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
 
-    void ConsumerPeFastqTask(rabbit::fq::FastqDataPool *fastqPool,
+    void ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
+
+    void WriteSeFastqTask1();
+
+    void WriteSeFastqTask2();
 
 
 private:
-    CmdInfo *cmd_info;
-
+    CmdInfo *cmd_info_;
+    Filter *filter_;
+    moodycamel::ConcurrentQueue<std::pair<char *, int>> *out_queue1_;
+    moodycamel::ConcurrentQueue<std::pair<char *, int>> *out_queue2_;
+//TODO replace concurrentqueue with char*[]
+    std::atomic_int done_thread_number_;
+    std::fstream out_stream1_;
+    std::fstream out_stream2_;
 };
 
 

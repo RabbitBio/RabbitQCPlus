@@ -38,6 +38,17 @@ int main(int argc, char **argv) {
 
     double t1 = GetTime();
     if (cmd_info.in_file_name2_.length()) {
+        if (cmd_info.out_file_name1_.length() > 0 && cmd_info.out_file_name2_.length() > 0) {
+            cmd_info.write_data_ = true;
+            printf("auto set write_data_ 1\n");
+        }
+        FILE *p_file;
+        p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
+        fseek(p_file, 0, SEEK_END);
+        int64_t total_size = ftell(p_file);
+        cmd_info.in_file_size1_ = total_size;
+        printf("in file total size is %lld\n", total_size);
+        printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
         PeQc pe_qc(&cmd_info);
         pe_qc.ProcessPeFastq();
     } else {
