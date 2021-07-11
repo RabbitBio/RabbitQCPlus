@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
     app.add_option("-I,--inFile2", cmd_info.in_file_name2_, "input fastq name 2, can be '' when single data");
     app.add_option("-o,--outFile1", cmd_info.out_file_name1_, "output fastq name 1");
     app.add_option("-O,--outFile2", cmd_info.out_file_name2_, "output fastq name 2");
-    app.add_flag("-a,--noAda", cmd_info.no_adapter_detect_, "do not detect adapter");
+    app.add_flag("-a,--decAda", cmd_info.auto_detect_adapter_, "detect adapter");
     app.add_option("-w,--threadNum", cmd_info.thread_number_, "number thread used to solve fastq data");
 
     CLI11_PARSE(app, argc, argv);
@@ -31,8 +31,8 @@ int main(int argc, char **argv) {
     if (cmd_info.in_file_name2_.length())std::cout << "in2 is " << cmd_info.in_file_name2_ << std::endl;
     if (cmd_info.out_file_name1_.length())std::cout << "out1 is " << cmd_info.out_file_name1_ << std::endl;
     if (cmd_info.out_file_name2_.length())std::cout << "out2 is " << cmd_info.out_file_name2_ << std::endl;
-    if (cmd_info.no_adapter_detect_)std::cout << "now don't detect adapter" << std::endl;
-    else std::cout << "now detect adapter" << std::endl;
+    if (cmd_info.auto_detect_adapter_)std::cout << "now detect adapter" << std::endl;
+    else std::cout << "now don't detect adapter" << std::endl;
     std::cout << "now use " << cmd_info.thread_number_ << " thread" << (cmd_info.thread_number_ > 1 ? "s" : "")
               << std::endl;
 

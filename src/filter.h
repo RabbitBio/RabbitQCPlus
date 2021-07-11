@@ -5,6 +5,8 @@
 #ifndef RABBITQCPLUS_FILTER_H
 #define RABBITQCPLUS_FILTER_H
 
+#include <cstring>
+
 #include "Globals.h"
 #include "Reference.h"
 #include "cmdinfo.h"
@@ -17,8 +19,13 @@ public:
 
     int ReadFiltering(neoReference &ref);
 
+    //TODO
+    void PrintResult();
+
 private:
     CmdInfo *cmd_info;
+    //TODO
+    int64_t filter_res_cnt_[16];
 };
 
 

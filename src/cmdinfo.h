@@ -16,7 +16,6 @@ public:
     std::string in_file_name2_;
     std::string out_file_name1_;
     std::string out_file_name2_;
-    bool no_adapter_detect_;
     int thread_number_;
     int n_number_limit_;
     int low_qual_perc_limit_;
@@ -28,6 +27,17 @@ public:
     int seq_len_;
     int qul_range_;
 
+
+    //param for adapter
+    bool trim_adapter_;
+    bool auto_detect_adapter_;
+    bool detect_adapter1_;
+    bool detect_adapter2_;
+    std::string adapter_seq1_;
+    std::string adapter_seq2_;
+    int overlap_diff_limit_;
+    int overlap_require_;
+    bool correct_data_;
 
 };
 

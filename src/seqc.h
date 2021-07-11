@@ -31,7 +31,7 @@ public:
 
 private:
 
-    void PrintRead(neoReference &ref);
+//    void PrintRead(neoReference &ref);
 
     std::string Read2String(neoReference &ref);
 

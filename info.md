@@ -18,6 +18,8 @@
 
 - [ ] 内存泄漏
 
+- [ ] check 正确性
+
   
 
 ## AfterQC
@@ -346,3 +348,22 @@ static const int FAIL_COMPLEXITY = 24;
 |                                                       |       |       |
 
 一开始的版本有个bug是双端数据分开考虑质量分，然后分开过滤，这样可能导致过滤之后的p1.fq和p2.fq条数不一样，这肯定不合理。解决方法就是当r1 r2都pass filter的时候才输出。
+
+## 0711
+
+今天写一下adater的检测和cut。
+
+对于功能是默认开启还是关闭的，采取的策略是默认开启，cmd中的trim_adapter_是总的控制开关，默认是打开的，对于单端的数据，只要trim_adapter_是true，就是在开始自动检测adapter，然后处理的时候进行trim；对于双端的数据，默认是不做自动检测adapter的，只要trim_adapter打开了就会做AnalyzeOverlap，依据这个的结果进行接头的去除，如果这个过程失败了，会再进行类似于se的过程。
+
+首先是双端的数据，按照afterQC和fastp中的假设，双端数据除了中间overlap的地方，其他都是adapter，暂时订下只写一个类Adapter，里面有计算重复部分的函数，与此同时依据计算结果，把adapter找出来并trim。
+
+|                                                              |      | Pe    |
+| ------------------------------------------------------------ | ---- | ----- |
+| Add Pe adapter trim by overlap analyze information and correction of data thread 1 no output |      | 40.67 |
+| Add Pe adapter trim by overlap analyze information and correction of data thread 4 no output |      | 11.55 |
+| Add Pe adapter trim by overlap analyze information and correction of data thread 4 with output |      | 42.60 |
+| Add Pe adapter trim by overlap analyze information and correction of data thread 4 with output |      | 14.82 |
+
+现在check正确性就是简单的和fastp的结果做比较，包括trim adapter之后的read数目，q20bases q30bases，输出文件大小等。
+
+//TOOD 更完备的check正确性，add filter result too some data struct that can do some report.

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <algorithm>
 #include "Globals.h"
 
 /**
@@ -50,5 +51,7 @@ inline void cutseq_neoref(neoReference &ref, uint64_t from, uint64_t to) {
     ref.pqual += from;
     ref.lseq += (to - from + 1);
 }
+
+
 
 #endif

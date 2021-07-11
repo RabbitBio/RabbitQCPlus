@@ -47,13 +47,13 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
     dq.SetCompleted();
     std::cout << "file " << file << " has " << n_chunks << " chunks" << std::endl;
 }
-
-void SeQc::PrintRead(neoReference &ref) {
-    std::cout << std::string((char *) ref.base + ref.pname, ref.lname) << std::endl;
-    std::cout << std::string((char *) ref.base + ref.pseq, ref.lseq) << std::endl;
-    std::cout << std::string((char *) ref.base + ref.pstrand, ref.lstrand) << std::endl;
-    std::cout << std::string((char *) ref.base + ref.pqual, ref.lqual) << std::endl;
-}
+//
+//void SeQc::PrintRead(neoReference &ref) {
+//    std::cout << std::string((char *) ref.base + ref.pname, ref.lname) << std::endl;
+//    std::cout << std::string((char *) ref.base + ref.pseq, ref.lseq) << std::endl;
+//    std::cout << std::string((char *) ref.base + ref.pstrand, ref.lstrand) << std::endl;
+//    std::cout << std::string((char *) ref.base + ref.pqual, ref.lqual) << std::endl;
+//}
 
 std::string SeQc::Read2String(neoReference &ref) {
     return std::string((char *) ref.base + ref.pname, ref.lname) + "\n" +

@@ -28,13 +28,13 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
 
 PeQc::~PeQc() {}
 
-
-void PeQc::PrintRead(neoReference &ref) {
-    std::cout << std::string((char *) ref.base + ref.pname, ref.lname) << std::endl;
-    std::cout << std::string((char *) ref.base + ref.pseq, ref.lseq) << std::endl;
-    std::cout << std::string((char *) ref.base + ref.pstrand, ref.lstrand) << std::endl;
-    std::cout << std::string((char *) ref.base + ref.pqual, ref.lqual) << std::endl;
-}
+//
+//void PeQc::PrintRead(neoReference &ref) {
+//    std::cout << std::string((char *) ref.base + ref.pname, ref.lname) << std::endl;
+//    std::cout << std::string((char *) ref.base + ref.pseq, ref.lseq) << std::endl;
+//    std::cout << std::string((char *) ref.base + ref.pstrand, ref.lstrand) << std::endl;
+//    std::cout << std::string((char *) ref.base + ref.pqual, ref.lqual) << std::endl;
+//}
 
 std::string PeQc::Read2String(neoReference &ref) {
     return std::string((char *) ref.base + ref.pname, ref.lname) + "\n" +
@@ -101,6 +101,33 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             thread_info->pre_state1_->StateInfo(item1);
             thread_info->pre_state2_->StateInfo(item2);
 
+            //do pe overlap analyze
+            //TODO copy from fastp(RabbitQC)
+            if (cmd_info_->trim_adapter_ || cmd_info_->correct_data_) {
+                OverlapRes overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
+                                                                 cmd_info_->overlap_require_);
+
+                //TODO what is that
+//                if (config->getThreadId() == 0) {
+//                    statInsertSize(r1, r2, ov);
+//                    isizeEvaluated = true;
+//                }
+                if (cmd_info_->correct_data_) {
+                    Adapter::CorrectData(item1, item2, overlap_res);
+                }
+                if (cmd_info_->trim_adapter_) {
+                    bool trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
+                    if (!trimmed) {
+                        if (cmd_info_->detect_adapter1_)
+                            Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, false);
+                        if (cmd_info_->detect_adapter2_)
+                            Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, true);
+                    }
+                }
+            }
+
+
+            //do filer in refs
             int filter_res1 = filter_->ReadFiltering(item1);
             int filter_res2 = filter_->ReadFiltering(item2);
 

@@ -7,6 +7,7 @@ project(RabbitQCPlus)
 set(CMAKE_CXX_STANDARD 11)
 
 set(CMAKE_CXX_FLAGS "-O3 -g -ffast-math -lz ${CMAKE_CXX_FLAGS}")
+#set(CMAKE_CXX_FLAGS " -g  -lz ${CMAKE_CXX_FLAGS}")
 
 aux_source_directory(./src/ DIR_SRCS)
 add_executable(RabbitQCPlus ${DIR_SRCS})

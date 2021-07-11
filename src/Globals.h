@@ -27,7 +27,9 @@
 // assertions
 //
 #if defined(DEBUG) || defined(_DEBUG)
+
 #include "assert.h"
+
 #define ASSERT(x) assert(x)
 #else
 #define ASSERT(x) (void)(x)
@@ -40,32 +42,41 @@ namespace rabbit {
 
 // basic types
 //
-typedef char int8;
-typedef unsigned char uchar, byte, uint8;
-typedef short int int16;
-typedef unsigned short int uint16;
-typedef int int32;
-typedef unsigned int uint32;
-typedef long long int64;
-typedef unsigned long long uint64;
+    typedef char int8;
+    typedef unsigned char uchar, byte, uint8;
+    typedef short int int16;
+    typedef unsigned short int uint16;
+    typedef int int32;
+    typedef unsigned int uint32;
+    typedef long long int64;
+    typedef unsigned long long uint64;
+
+
+    static char reMap[123] = {'0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0',
+                              '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0',
+                              '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0',
+                              '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', 'T', 'B', 'G', 'D', 'E', 'F', 'C',
+                              'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'A', 'U', 'V', 'W', 'X', 'Y',
+                              'Z', '0', '0', '0', '0', '0', '0', 'T', 'b', 'G', 'd', 'e', 'f', 'C', 'h', 'i', 'j', 'k',
+                              'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 'A', 'u', 'v', 'w', 'x', 'y', 'z'};
 
 // exception class
 //
-class RioException : public std::exception {
-  std::string message;
+    class RioException : public std::exception {
+        std::string message;
 
- public:
-  RioException(const char *msg_) : message(msg_) {}
+    public:
+        RioException(const char *msg_) : message(msg_) {}
 
-  RioException(const std::string &msg_) : message(msg_) {}
+        RioException(const std::string &msg_) : message(msg_) {}
 
-  ~RioException() throw() {}
+        ~RioException() throw() {}
 
-  const char *what() const throw()  // for std::exception interface
-  {
-    return message.c_str();
-  }
-};
+        const char *what() const throw()  // for std::exception interface
+        {
+            return message.c_str();
+        }
+    };
 
 }  // namespace rabbit
 

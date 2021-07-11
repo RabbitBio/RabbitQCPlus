@@ -17,6 +17,7 @@
 #include "filter.h"
 #include "concurrentqueue.h"
 #include "state.h"
+#include "adapter.h"
 
 
 class PeQc {
@@ -32,7 +33,7 @@ public:
 
 private:
 
-    void PrintRead(neoReference &ref);
+//    void PrintRead(neoReference &ref);
 
     std::string Read2String(neoReference &ref);
 

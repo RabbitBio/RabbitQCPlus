@@ -6,6 +6,7 @@
 
 Filter::Filter(CmdInfo *cmd_info1) {
     cmd_info = cmd_info1;
+    memset(filter_res_cnt_, 0, 16 * sizeof(int64_t));
 }
 
 /**
@@ -44,3 +45,10 @@ int Filter::ReadFiltering(neoReference &ref) {
 
 }
 
+//TODO
+/**
+ * @brief Print filtering result, for example xx refs because too short......
+ */
+void Filter::PrintResult() {
+
+}
