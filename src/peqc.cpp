@@ -58,6 +58,8 @@ void PeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
     out_data[pos++] = '\n';
 }
 
+
+
 void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
     rabbit::fq::FastqFileReader *fqFileReader;
@@ -106,6 +108,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             if (cmd_info_->trim_adapter_ || cmd_info_->correct_data_) {
                 OverlapRes overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
                                                                  cmd_info_->overlap_require_);
+//                printf("ov %d %d %d\n", overlap_res.offset, overlap_res.overlap_len, overlap_res.diff_num);
 
                 //TODO what is that
 //                if (config->getThreadId() == 0) {
@@ -113,7 +116,21 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 //                    isizeEvaluated = true;
 //                }
                 if (cmd_info_->correct_data_) {
-                    Adapter::CorrectData(item1, item2, overlap_res);
+//                    static int cnt = 0;
+//                    cnt++;
+//                    if (cnt > 100) {
+//                        exit(0);
+//                    }
+//                    printf("reference before correct : \n");
+//                    Repoter::PrintRef(item1);
+//                    Repoter::PrintRef(item2);
+//                    printf("===================================================\n");
+                    int res = Adapter::CorrectData(item1, item2, overlap_res);
+//                    printf("ov %d %d %d %d\n", overlap_res.offset, overlap_res.overlap_len, overlap_res.diff_num, res);
+//                    printf("reference after correct : \n");
+//                    Repoter::PrintRef(item1);
+//                    Repoter::PrintRef(item2);
+//                    printf("===================================================\n");
                 }
                 if (cmd_info_->trim_adapter_) {
                     bool trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
@@ -125,7 +142,6 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     }
                 }
             }
-
 
             //do filer in refs
             int filter_res1 = filter_->ReadFiltering(item1);

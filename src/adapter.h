@@ -6,6 +6,9 @@
 #define RABBITQCPLUS_ADAPTER_H
 
 #include "Reference.h"
+#include "repoter.h"
+
+
 
 struct OverlapRes {
     bool overlaped;

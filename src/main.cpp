@@ -23,6 +23,8 @@ int main(int argc, char **argv) {
     app.add_option("-o,--outFile1", cmd_info.out_file_name1_, "output fastq name 1");
     app.add_option("-O,--outFile2", cmd_info.out_file_name2_, "output fastq name 2");
     app.add_flag("-a,--decAda", cmd_info.auto_detect_adapter_, "detect adapter");
+    app.add_flag("-c,--correctData", cmd_info.correct_data_, "correct data");
+
     app.add_option("-w,--threadNum", cmd_info.thread_number_, "number thread used to solve fastq data");
 
     CLI11_PARSE(app, argc, argv);
@@ -33,6 +35,9 @@ int main(int argc, char **argv) {
     if (cmd_info.out_file_name2_.length())std::cout << "out2 is " << cmd_info.out_file_name2_ << std::endl;
     if (cmd_info.auto_detect_adapter_)std::cout << "now detect adapter" << std::endl;
     else std::cout << "now don't detect adapter" << std::endl;
+    if (cmd_info.correct_data_)std::cout << "now correct data" << std::endl;
+    else std::cout << "now don't correct data" << std::endl;
+
     std::cout << "now use " << cmd_info.thread_number_ << " thread" << (cmd_info.thread_number_ > 1 ? "s" : "")
               << std::endl;
 
@@ -73,3 +78,50 @@ int main(int argc, char **argv) {
 
 
 }
+/*
+@SRR2496709.17 17 length=100
+CCTTCCCCTCAAGCTCAGGGCCAAGCTGTCCGCCAACCTCGGCTCCTCCGGGCAGCCCTCGCCCGGGGTGCGCCCCGGGGCAGGACCCCCAGCCCACGCC
++SRR2496709.17 17 length=100
+18+8?=>?>?==>?>?:>?1>,<<?)>><@@8>@>=>@?@8/?>@=?>=;;@A?BA>+>?8>,=;=?=01>;>>=(8->-8=9-2=>==;19>>A?.7>=
+@SRR2496709.17 17 length=100
+GGAGGGCAGGGGCGGGCCCTGGGCGTGGGCTGGGGGTCCTGCCCCGGGGCGCACCCCGGGCGAGGGCAGCCCGGAGGAGCCGAGGCTTGCGGACAGCTGG
++SRR2496709.17 17 length=100
+819190-<>/;/:<//:===219-*<09.>0?>....891:8=@@;?><-6:1-=>############################################
+===================================================
+ov 21 79 4 2
+reference before correct :
+@SRR2496709.17 17 length=100
+CCTTCCCCTCAAGCTCAGGGCCAAGCTGTCCGCCAACCTCGGCTCCTCCGGGCAGCCCTCGCCCGGGGTGCGCCCCGGGGCAGGACCCCCAGCCCACGCC
++SRR2496709.17 17 length=100
+18+8?=>?>?==>?>?:>?1>,<<?)>><@@8>@>=>@?@8/?>@=?>=;;@A?BA>+>?8>,=;=?=01>;>>=(8->-8=9-2=>==;19>>A?.7>=
+@SRR2496709.17 17 length=100
+GGAGGGCAGGGGCGGGCCCTGGGCGTGGGCTGGGGGTCCTGCCCCGGGGCGCACCCCGGGCGAGGGCTGCCCGGAGGAGCCGAGGCTGGCGGACAGCTGG
++SRR2496709.17 17 length=100
+819190-<>/;/:<//:===219-*<09.>0?>....891:8=@@;?><-6:1-=>###########?###################@############
+===================================================
+
+
+
+
+@SRR2496709.17 17 length=100
+CCTTCCCCTCAAGCTCAGGGCCAAGCTGTCCGCCAACCTCGGCTCCTCCGGGCAGCCCTCGCCCGGGGTGCGCCCCGGGGCAGGACCCCCAGCCCACGCC
++SRR2496709.17 17 length=100
+18+8?=>?>?==>?>?:>?1>,<<?)>><@@8>@>=>@?@8/?>@=?>=;;@A?BA>+>?8>,=;=?=01>;>>=(8->-8=9-2=>==;19>>A?.7>=
+@SRR2496709.17 17 length=100
+GGAGGGCAGGGGCGGGCCCTGGGCGTGGGCTGGGGGTCCTGCCCCGGGGCGCACCCCGGGCGAGGGCAGCCCGGAGGAGCCGAGGCTTGCGGACAGCTGG
++SRR2496709.17 17 length=100
+819190-<>/;/:<//:===219-*<09.>0?>....891:8=@@;?><-6:1-=>############################################
+===================================================
+ov 21 79 4 2
+reference after correct :
+@SRR2496709.17 17 length=100
+CCTTCCCCTCAAGCTCAGGGCCAAGCTGTCCGCCAACCTCGGCTCCTCCGGGCAGCCCTCGCCCGGGGTGCGCCCCGGGGCAGGACCCCCAGCCCACGCC
++SRR2496709.17 17 length=100
+18+8?=>?>?==>?>?:>?1>,<<?)>><@@8>@>=>@?@8/?>@=?>=;;@A?BA>+>?8>,=;=?=01>;>>=(8->-8=9-2=>==;19>>A?.7>=
+@SRR2496709.17 17 length=100
+GGAGGGCAGGGGCGGGCCCTGGGCGTGGGCTGGGGGTCCTGCCCCGGGGCGCACCCCGGGCGAGGGCTGCCCGGAGGAGCCGAGGCTGGCGGACAGCTGG
++SRR2496709.17 17 length=100
+819190-<>/;/:<//:===219-*<09.>0?>@...891:8=@@;?><-6:1?=>############################################
+===================================================
+
+ */

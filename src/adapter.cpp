@@ -41,7 +41,7 @@ Reference GetRevRef(neoReference &ref) {
  * @param r2
  * @param overlap_diff_limit : the max number of different bases in overlap part
  * @param overlap_require : the min length of overlap part
- * @return {{bool,offset}{overlap_len,diff_num}}
+ * @return bool overlaped;int offset;int overlap_len;int diff_num;
  */
 OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require) {
 
@@ -59,16 +59,21 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
     while (offset < len1 - overlap_require) {
         // the overlap length of r1 & r2 when r2 is move right for offset
         overlap_len = std::min(len1 - offset, len2);
-        int len_cal = std::min(complete_compare_require, overlap_len);
+
         diff_num = 0;
-        for (int i = 0; i < len_cal; i++) {
-            diff_num += str1[offset + i] != rabbit::reMap[str2[len2 - 1 - i]];
-            if (diff_num > overlap_diff_limit)
-                break;
+        int i = 0;
+        for (i = 0; i < overlap_len; i++) {
+            if (str1[offset + i] != rabbit::reMap[str2[len2 - 1 - i]]) {
+                diff_num += 1;
+                if (diff_num > overlap_diff_limit && i < complete_compare_require)
+                    break;
+            }
         }
-        if (diff_num <= overlap_diff_limit) {
+
+        if (diff_num <= overlap_diff_limit || (diff_num > overlap_diff_limit && i > complete_compare_require)) {
             return {true, offset, overlap_len, diff_num};
         }
+
         offset += 1;
     }
 
@@ -82,16 +87,21 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
     while (offset > -(len2 - overlap_require)) {
         // the overlap length of r1 & r2 when r2 is move right for offset
         overlap_len = std::min(len1, len2 - abs(offset));
-        int len_cal = std::min(complete_compare_require, overlap_len);
+
         diff_num = 0;
-        for (int i = 0; i < len_cal; i++) {
-            diff_num += str1[i] != rabbit::reMap[str2[len2 - 1 + offset - i]];
-            if (diff_num > overlap_diff_limit)
-                break;
+        int i = 0;
+        for (i = 0; i < overlap_len; i++) {
+            if (str1[i] != rabbit::reMap[str2[len2 - 1 + offset - i]]) {
+                diff_num += 1;
+                if (diff_num > overlap_diff_limit && i < complete_compare_require)
+                    break;
+            }
         }
-        if (diff_num <= overlap_diff_limit) {
+
+        if (diff_num <= overlap_diff_limit || (diff_num > overlap_diff_limit && i > complete_compare_require)) {
             return {true, offset, overlap_len, diff_num};
         }
+
         offset -= 1;
     }
     return {false, 0, 0, 0};
@@ -213,8 +223,9 @@ int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap
         return 0;
 
     int ol = overlap_res.overlap_len;
-    int start1 = std::max(0, overlap_res.offset);
     //TODO check right ?
+
+    int start1 = std::max(0, overlap_res.offset);
     int start2 = r2.lseq - std::max(0, -overlap_res.offset) - 1;
 
     char *seq1 = reinterpret_cast< char *>(r1.base + r1.pseq);
@@ -225,8 +236,8 @@ int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap
     const char GOOD_QUAL = '?';//30 + 33
     const char BAD_QUAL = '/';//14 + 33
 
-    printf("GOOD_QUAL %d\n", GOOD_QUAL);
-    printf("BAD_QUAL %d\n", BAD_QUAL);
+//    printf("GOOD_QUAL %d\n", GOOD_QUAL);
+//    printf("BAD_QUAL %d\n", BAD_QUAL);
 
 
     int corrected = 0;
@@ -241,7 +252,7 @@ int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap
             if (qual1[p1] >= GOOD_QUAL && qual2[p2] <= BAD_QUAL) {
                 // use R1
                 seq2[p2] = rabbit::reMap[seq1[p1]];
-                qual2[p1] = qual1[p1];
+                qual2[p2] = qual1[p1];
                 corrected++;
                 r2Corrected = true;
                 //TODO add to filter result

@@ -1,6 +1,6 @@
 - [x] Filter
 
-- [ ] Stats
+- [x] Stats
 
 - [ ] Trimer->front tail trim
 
@@ -367,3 +367,21 @@ static const int FAIL_COMPLEXITY = 24;
 现在check正确性就是简单的和fastp的结果做比较，包括trim adapter之后的read数目，q20bases q30bases，输出文件大小等。
 
 //TOOD 更完备的check正确性，add filter result too some data struct that can do some report.
+
+## 0712
+
+上午先把se的auto-detect-adapter弄好，两种模式，一是自己指定adapter，二是自动检测adapter。前者比较容易实现，只需要做比较简单的寻找和修剪就行了（这里可以采用ktrim的思路进行加速）；后者暂时想到的思路只有使用fastp的字典树进行统计。
+
+上午遇到了一些问题，在测试correct函数的时候发现之前优化版本的diff统计值有点问题，和fastp的输出结果有出入，暂时回退会之前没有优化的版本。
+
+淦！一个地方p2写成了p1找了2小时！
+
+|                                                              |      | Pe    |
+| ------------------------------------------------------------ | ---- | ----- |
+| Add Pe adapter trim by overlap analyze information and correction of data thread 1 no output |      | 45.33 |
+| Add Pe adapter trim by overlap analyze information and correction of data thread 4 no output |      | 12.38 |
+| Add Pe adapter trim by overlap analyze information and correction of data thread 1 no output -c |      | 45.39 |
+| Add Pe adapter trim by overlap analyze information and correction of data thread 4 no output -c |      | 12.31 |
+| Add Pe adapter trim by overlap analyze information and correction of data thread 1 with output -c |      | 48.46 |
+| Add Pe adapter trim by overlap analyze information and correction of data thread 4 with output -c |      | 14.73 |
+
