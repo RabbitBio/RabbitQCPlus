@@ -30,7 +30,9 @@ public:
 
     //param for adapter
     bool trim_adapter_;
-    bool auto_detect_adapter_;
+    bool no_trim_adapter_;
+    bool se_auto_detect_adapter_;
+    bool pe_auto_detect_adapter_;
     bool detect_adapter1_;
     bool detect_adapter2_;
     std::string adapter_seq1_;
@@ -38,6 +40,7 @@ public:
     int overlap_diff_limit_;
     int overlap_require_;
     bool correct_data_;
+    bool analyze_overlap_;
 
 };
 

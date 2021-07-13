@@ -94,6 +94,10 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
         int out_len = 0;
         for (auto item:data) {
             thread_info->pre_state1_->StateInfo(item);
+            if (cmd_info_->trim_adapter_ && cmd_info_->detect_adapter1_) {
+//                printf("Adapter::TrimAdapter ...\n");
+                Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);
+            }
             int filter_res = filter_->ReadFiltering(item);
             if (filter_res == 0) {
                 thread_info->aft_state1_->StateInfo(item);

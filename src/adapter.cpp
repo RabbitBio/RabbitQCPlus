@@ -107,7 +107,13 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
     return {false, 0, 0, 0};
 
 }
-
+/**
+ * @brief Trim adapter by giving adapter sequence
+ * @param ref
+ * @param adapter_seq
+ * @param isR2
+ * @return
+ */
 
 bool Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2) {
     const int matchReq = 4;

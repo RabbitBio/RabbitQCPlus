@@ -29,7 +29,9 @@ CmdInfo::CmdInfo() {
 
     //TODO add this function and set value true
     trim_adapter_ = true;
-    auto_detect_adapter_ = true;
+    no_trim_adapter_ = false;
+    se_auto_detect_adapter_ = true;
+    pe_auto_detect_adapter_ = false;
     correct_data_ = false;
     overlap_diff_limit_ = 5;
     overlap_require_ = 30;
@@ -37,4 +39,5 @@ CmdInfo::CmdInfo() {
     detect_adapter2_ = false;
     adapter_seq1_ = "";
     adapter_seq2_ = "";
+    analyze_overlap_ = false;
 }

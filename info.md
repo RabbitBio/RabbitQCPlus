@@ -385,3 +385,26 @@ static const int FAIL_COMPLEXITY = 24;
 | Add Pe adapter trim by overlap analyze information and correction of data thread 1 with output -c |      | 48.46 |
 | Add Pe adapter trim by overlap analyze information and correction of data thread 4 with output -c |      | 14.73 |
 
+先实现简单的版本--输入adapter只负责修剪掉
+
+## 0713
+
+👆
+
+对于se数据基本的选项：不检测不修剪adapter、自动检测adapter并修剪、输入adapter并修剪
+
+对于pe数据基本的选项：不检测不修剪adapter、自动检测adapter并修剪、输入adapter并修剪（r1 r2都要输入，如果只输入了一个就赋值给另一个）、根据overlap寻找adapter并修剪
+
+cmdInfo中的trim_adapter就相当于总的开关，只要这个是false，所有关于adapter的操作都不进行了
+
+se_auto_detect_adapter_是se自动检测adapter的开关，默认值是true，如果输入了adapter，这个值就置成false
+
+pe_auto_detect_adapter_是pe自动检测的开关，默认是false，因为pe数据默认是利用overlap的数据进行adapter的处理
+
+main函数中基本的逻辑判断大体是这样的：
+
+|                                                            | SeAdapter | Pe    |
+| ---------------------------------------------------------- | --------- | ----- |
+| Add adapter trim for giving sequence no output -c thread 1 | 22.43     | 62.27 |
+| Add adapter trim for giving sequence no output -c thread 4 | 6.00      | 18.54 |
+

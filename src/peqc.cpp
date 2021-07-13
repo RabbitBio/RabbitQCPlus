@@ -59,7 +59,6 @@ void PeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
 }
 
 
-
 void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
     rabbit::fq::FastqFileReader *fqFileReader;
@@ -105,43 +104,30 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 
             //do pe overlap analyze
             //TODO copy from fastp(RabbitQC)
-            if (cmd_info_->trim_adapter_ || cmd_info_->correct_data_) {
-                OverlapRes overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
-                                                                 cmd_info_->overlap_require_);
+            OverlapRes overlap_res;
+            if (cmd_info_->analyze_overlap_) {
+                overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
+                                                      cmd_info_->overlap_require_);
 //                printf("ov %d %d %d\n", overlap_res.offset, overlap_res.overlap_len, overlap_res.diff_num);
-
-                //TODO what is that
+            }
+            //TODO what is that
 //                if (config->getThreadId() == 0) {
 //                    statInsertSize(r1, r2, ov);
 //                    isizeEvaluated = true;
 //                }
-                if (cmd_info_->correct_data_) {
-//                    static int cnt = 0;
-//                    cnt++;
-//                    if (cnt > 100) {
-//                        exit(0);
-//                    }
-//                    printf("reference before correct : \n");
-//                    Repoter::PrintRef(item1);
-//                    Repoter::PrintRef(item2);
-//                    printf("===================================================\n");
-                    int res = Adapter::CorrectData(item1, item2, overlap_res);
-//                    printf("ov %d %d %d %d\n", overlap_res.offset, overlap_res.overlap_len, overlap_res.diff_num, res);
-//                    printf("reference after correct : \n");
-//                    Repoter::PrintRef(item1);
-//                    Repoter::PrintRef(item2);
-//                    printf("===================================================\n");
-                }
-                if (cmd_info_->trim_adapter_) {
-                    bool trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
-                    if (!trimmed) {
-                        if (cmd_info_->detect_adapter1_)
-                            Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, false);
-                        if (cmd_info_->detect_adapter2_)
-                            Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, true);
-                    }
+            if (cmd_info_->correct_data_) {
+                Adapter::CorrectData(item1, item2, overlap_res);
+            }
+            if (cmd_info_->trim_adapter_) {
+                bool trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
+                if (!trimmed) {
+                    if (cmd_info_->detect_adapter1_)
+                        Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, false);
+                    if (cmd_info_->detect_adapter2_)
+                        Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, true);
                 }
             }
+
 
             //do filer in refs
             int filter_res1 = filter_->ReadFiltering(item1);

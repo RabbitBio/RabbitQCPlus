@@ -22,24 +22,33 @@ int main(int argc, char **argv) {
     app.add_option("-I,--inFile2", cmd_info.in_file_name2_, "input fastq name 2, can be '' when single data");
     app.add_option("-o,--outFile1", cmd_info.out_file_name1_, "output fastq name 1");
     app.add_option("-O,--outFile2", cmd_info.out_file_name2_, "output fastq name 2");
-    app.add_flag("-a,--decAda", cmd_info.auto_detect_adapter_, "detect adapter");
+
+    app.add_flag("-a,--noTrimAdapter", cmd_info.no_trim_adapter_, "no trim adapter");
+    app.add_flag("--decAdaForSe", cmd_info.se_auto_detect_adapter_, "detect adapter for se data");
+    app.add_flag("--decAdaForPe", cmd_info.pe_auto_detect_adapter_, "detect adapter for pe data");
+    app.add_option("--adapter_seq1", cmd_info.adapter_seq1_, "input adapter sequence1");
+    app.add_option("--adapter_seq2", cmd_info.adapter_seq2_, "input adapter sequence2");
+
     app.add_flag("-c,--correctData", cmd_info.correct_data_, "correct data");
 
     app.add_option("-w,--threadNum", cmd_info.thread_number_, "number thread used to solve fastq data");
 
     CLI11_PARSE(app, argc, argv);
+    printf("in1 is %s\n", cmd_info.in_file_name1_.c_str());
+    if (cmd_info.in_file_name2_.length())printf("in2 is %s\n", cmd_info.in_file_name2_.c_str());
+    if (cmd_info.out_file_name1_.length())printf("out1 is %s\n", cmd_info.out_file_name1_.c_str());
+    if (cmd_info.out_file_name2_.length())printf("out2 is %s\n", cmd_info.out_file_name2_.c_str());
 
-    std::cout << "in1 is " << cmd_info.in_file_name1_ << std::endl;
-    if (cmd_info.in_file_name2_.length())std::cout << "in2 is " << cmd_info.in_file_name2_ << std::endl;
-    if (cmd_info.out_file_name1_.length())std::cout << "out1 is " << cmd_info.out_file_name1_ << std::endl;
-    if (cmd_info.out_file_name2_.length())std::cout << "out2 is " << cmd_info.out_file_name2_ << std::endl;
-    if (cmd_info.auto_detect_adapter_)std::cout << "now detect adapter" << std::endl;
-    else std::cout << "now don't detect adapter" << std::endl;
-    if (cmd_info.correct_data_)std::cout << "now correct data" << std::endl;
-    else std::cout << "now don't correct data" << std::endl;
-
-    std::cout << "now use " << cmd_info.thread_number_ << " thread" << (cmd_info.thread_number_ > 1 ? "s" : "")
-              << std::endl;
+    if (cmd_info.no_trim_adapter_)cmd_info.trim_adapter_ = false;
+    ASSERT(cmd_info.no_trim_adapter_ != cmd_info.trim_adapter_);
+    if (!cmd_info.trim_adapter_) {
+        cmd_info.se_auto_detect_adapter_ = false;
+        cmd_info.pe_auto_detect_adapter_ = false;
+        cmd_info.adapter_seq1_ = "";
+        cmd_info.adapter_seq2_ = "";
+        printf("no adapter trim!\n");
+    }
+    printf("now use %d thread\n", cmd_info.thread_number_);
 
     double t1 = GetTime();
     if (cmd_info.in_file_name2_.length()) {
@@ -47,6 +56,7 @@ int main(int argc, char **argv) {
             cmd_info.write_data_ = true;
             printf("auto set write_data_ 1\n");
         }
+        //calculate file size and estimate reads number
         FILE *p_file;
         p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
         fseek(p_file, 0, SEEK_END);
@@ -54,6 +64,29 @@ int main(int argc, char **argv) {
         cmd_info.in_file_size1_ = total_size;
         printf("in file total size is %lld\n", total_size);
         printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
+
+        //adapter
+        if (cmd_info.adapter_seq1_.length()) {
+            printf("input adapter1 is %s\n", cmd_info.adapter_seq1_.c_str());
+            if (cmd_info.adapter_seq2_.length() == 0) {
+                cmd_info.adapter_seq2_ = cmd_info.adapter_seq1_;
+            }
+            printf("input adapter2 is %s\n", cmd_info.adapter_seq2_.c_str());
+            cmd_info.pe_auto_detect_adapter_ = false;
+            cmd_info.detect_adapter1_ = true;
+            cmd_info.detect_adapter2_ = true;
+        }
+        if (cmd_info.pe_auto_detect_adapter_) {
+            printf("now auto detect adapter\n");
+        }
+        if (cmd_info.correct_data_) {
+            printf("now correct data\n");
+        }
+        if (cmd_info.trim_adapter_ || cmd_info.correct_data_) {
+            cmd_info.analyze_overlap_ = true;
+            printf("now do overlap analyze\n");
+        }
+
         PeQc pe_qc(&cmd_info);
         pe_qc.ProcessPeFastq();
     } else {
@@ -61,7 +94,7 @@ int main(int argc, char **argv) {
             cmd_info.write_data_ = true;
             printf("auto set write_data_ 1\n");
         }
-
+        //calculate file size and estimate reads number
         FILE *p_file;
         p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
         fseek(p_file, 0, SEEK_END);
@@ -69,6 +102,18 @@ int main(int argc, char **argv) {
         cmd_info.in_file_size1_ = total_size;
         printf("in file total size is %lld\n", total_size);
         printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
+
+        //adapter
+        if (cmd_info.adapter_seq1_.length()) {
+            printf("input adapter is %s\n", cmd_info.adapter_seq1_.c_str());
+            cmd_info.se_auto_detect_adapter_ = false;
+            cmd_info.detect_adapter1_ = true;
+        }
+        if (cmd_info.se_auto_detect_adapter_) {
+            printf("now auto detect adapter\n");
+        }
+
+
         SeQc se_qc(&cmd_info);
         se_qc.ProcessSeFastq();
     }

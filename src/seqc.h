@@ -17,6 +17,7 @@
 #include "filter.h"
 #include "concurrentqueue.h"
 #include "state.h"
+#include "adapter.h"
 
 class SeQc {
 public:
