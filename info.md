@@ -14,6 +14,10 @@
 
 - [ ] Duplicate
 
+- [ ] new Duplicate
+
+- [ ] Deduplicate
+
 - [ ] Draw
 
 - [ ] 内存泄漏
@@ -412,8 +416,24 @@ main函数中基本的逻辑判断大体是这样的：
 
 除了对adapter的trim还有质量trim，包括两个方面，一是直接输入front和tail，二是从5‘或者3’端进行滑动窗口质量trim。这个功能模块基本上参考了fastp的代码，做了一点点的改动，测试如下：
 
-|                                                              | Se    | Pe    |
-| ------------------------------------------------------------ | ----- | ----- |
-| -5 -3 --trimFront1 3 --trimTail1 5  --adapter_seq1 [--adapter_seq2 -c] -w 1 | 21.03 | 61.10 |
-| -5 -3 --trimFront1 3 --trimTail1 5  --adapter_seq1 [--adapter_seq2 -c] -w 4 | 5.89  | 16.26 |
+|                                                              | SeAdapter | Pe    |
+| ------------------------------------------------------------ | --------- | ----- |
+| -5 -3 --trimFront1 3 --trimTail1 5  --adapter_seq1 [--adapter_seq2 -c] -w 1 | 21.03     | 61.10 |
+| -5 -3 --trimFront1 3 --trimTail1 5  --adapter_seq1 [--adapter_seq2 -c] -w 4 | 5.89      | 16.26 |
+
+
+
+下面实现Deduplicate的模块。
+
+fastqc中的处理过程是取前1000000的read来分析以代表整个文件的情况，并且把长度>75的砍成了50，并且每个read使用hash密钥进行统计，此外对于双端的数据它是分开进行的重复统计，这样会导致结果偏高。
+
+fastp相对于fastqc进行了改进，它统计的整个文件的所有read，对于一条read，前12位（如果有N就不统计这一条）hash成key，后32位hash成kmer32（除去最后5位），两个数组A[1<<24] B[1<<24]，只有当B[key]==kmer32的时候才有A[key]++；对于双端的数据，把r1前12位做key，r2后32位做kmer32，这样可以结合pe数据的特性取得更准确的结果，之前在毕业论文里也统计过这种记录方式的碰撞问题，确实存在问题，但问题不大。此外，fastp中明确说明了se啥的数据重复率可能被高估，pe则把握比较大。//TODO ？ 
+
+暂时还没有读到相关的其他方法的论文，先把fastp的模块加进来。
+
+|                                                              | SeAdapter | Pe    |
+| ------------------------------------------------------------ | --------- | ----- |
+| -5 -3 --trimFront1 3 --trimTail1 5  --adapter_seq1 [--adapter_seq2 -c] -w 1 | 22.81     | 61.60 |
+| -5 -3 --trimFront1 3 --trimTail1 5  --adapter_seq1 [--adapter_seq2 -c] -w 4 | 6.24      | 16.73 |
+|                                                              |           |       |
 

@@ -53,6 +53,9 @@ public:
     bool correct_data_;
     bool analyze_overlap_;
 
+    //duplicate
+    bool state_duplicate_;
+
 };
 
 

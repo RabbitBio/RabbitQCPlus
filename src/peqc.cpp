@@ -24,6 +24,10 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
         out_stream1_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
         out_stream2_ = std::fstream(cmd_info1->out_file_name2_, std::ios::out | std::ios::binary);
     }
+    duplicate_ = NULL;
+    if (cmd_info1->state_duplicate_) {
+        duplicate_ = new Duplicate(cmd_info1);
+    }
 }
 
 PeQc::~PeQc() {}
@@ -101,7 +105,9 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             auto item2 = data2[i];
             thread_info->pre_state1_->StateInfo(item1);
             thread_info->pre_state2_->StateInfo(item2);
-
+            if (cmd_info_->state_duplicate_) {
+                duplicate_->statPair(item1, item2);
+            }
             //do pe sequence trim
             bool trim_res1 = filter_->TrimSeq(item1, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
             bool trim_res2 = filter_->TrimSeq(item2, cmd_info_->trim_front2_, cmd_info_->trim_tail2_);
@@ -285,6 +291,23 @@ void PeQc::ProcessPeFastq() {
     State::PrintStates(aft_state1);
     printf("print aft state2 info :\n");
     State::PrintStates(aft_state2);
+
+    int *dupHist = NULL;
+    double *dupMeanGC = NULL;
+    double dupRate = 0.0;
+    int histSize = 32;
+    if (cmd_info_->state_duplicate_) {
+        dupHist = new int[histSize];
+        memset(dupHist, 0, sizeof(int) * histSize);
+        dupMeanGC = new double[histSize];
+        memset(dupMeanGC, 0, sizeof(double) * histSize);
+        dupRate = duplicate_->statAll(dupHist, dupMeanGC, histSize);
+        printf("Duplication rate (may be overestimated since this is SE data): %.5f %%\n", dupRate * 100.0);
+        delete[] dupHist;
+        delete[] dupMeanGC;
+
+    }
+
 
     delete fastqPool;
     for (int t = 0; t < cmd_info_->thread_number_; t++) {

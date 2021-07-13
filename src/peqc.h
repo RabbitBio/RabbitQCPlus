@@ -18,6 +18,7 @@
 #include "concurrentqueue.h"
 #include "state.h"
 #include "adapter.h"
+#include "duplicate.h"
 
 
 class PeQc {
@@ -60,6 +61,7 @@ private:
     std::atomic_int done_thread_number_;
     std::fstream out_stream1_;
     std::fstream out_stream2_;
+    Duplicate *duplicate_;
 };
 
 

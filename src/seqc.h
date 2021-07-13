@@ -18,6 +18,7 @@
 #include "concurrentqueue.h"
 #include "state.h"
 #include "adapter.h"
+#include "duplicate.h"
 
 class SeQc {
 public:
@@ -54,6 +55,7 @@ private:
 //TODO replace concurrentqueue with char*[]
     std::atomic_int done_thread_number_;
     std::fstream out_stream_;
+    Duplicate *duplicate_;
 
 
 };

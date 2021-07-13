@@ -19,6 +19,10 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
         printf("open stream %s\n", cmd_info1->out_file_name1_.c_str());
         out_stream_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
     }
+    duplicate_ = NULL;
+    if (cmd_info1->state_duplicate_) {
+        duplicate_ = new Duplicate(cmd_info1);
+    }
 }
 
 SeQc::~SeQc() {}
@@ -94,6 +98,9 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
         int out_len = 0;
         for (auto item:data) {
             thread_info->pre_state1_->StateInfo(item);
+            if (cmd_info_->state_duplicate_) {
+                duplicate_->statRead(item);
+            }
 
             bool trim_res = filter_->TrimSeq(item, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
 
@@ -204,6 +211,22 @@ void SeQc::ProcessSeFastq() {
     printf("print aft state info :\n");
     State::PrintStates(aft_state);
 
+    int *dupHist = NULL;
+    double *dupMeanGC = NULL;
+    double dupRate = 0.0;
+    int histSize = 32;
+    if (cmd_info_->state_duplicate_) {
+        dupHist = new int[histSize];
+        memset(dupHist, 0, sizeof(int) * histSize);
+        dupMeanGC = new double[histSize];
+        memset(dupMeanGC, 0, sizeof(double) * histSize);
+        dupRate = duplicate_->statAll(dupHist, dupMeanGC, histSize);
+        printf("Duplication rate (may be overestimated since this is SE data): %.5f %%\n", dupRate * 100.0);
+        delete[] dupHist;
+        delete[] dupMeanGC;
+
+    }
+
 
     delete fastqPool;
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
@@ -211,4 +234,5 @@ void SeQc::ProcessSeFastq() {
     }
     delete[] threads;
     delete[] p_thread_info;
+
 }
