@@ -408,3 +408,12 @@ main函数中基本的逻辑判断大体是这样的：
 | Add adapter trim for giving sequence no output -c thread 1 | 22.43     | 62.27 |
 | Add adapter trim for giving sequence no output -c thread 4 | 6.00      | 18.54 |
 
+关于自动检测adapter的版本，感觉fastp的实现不是很好，有机会和凯子哥讨论一下再写这部分。
+
+除了对adapter的trim还有质量trim，包括两个方面，一是直接输入front和tail，二是从5‘或者3’端进行滑动窗口质量trim。这个功能模块基本上参考了fastp的代码，做了一点点的改动，测试如下：
+
+|                                                              | Se    | Pe    |
+| ------------------------------------------------------------ | ----- | ----- |
+| -5 -3 --trimFront1 3 --trimTail1 5  --adapter_seq1 [--adapter_seq2 -c] -w 1 | 21.03 | 61.10 |
+| -5 -3 --trimFront1 3 --trimTail1 5  --adapter_seq1 [--adapter_seq2 -c] -w 4 | 5.89  | 16.26 |
+

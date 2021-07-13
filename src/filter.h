@@ -17,7 +17,10 @@ public:
 
     Filter(CmdInfo *cmd_info);
 
-    int ReadFiltering(neoReference &ref);
+    int ReadFiltering(neoReference &ref, bool trim_res);
+
+    bool TrimSeq(neoReference &r, int front, int tail);
+
 
     //TODO
     void PrintResult();

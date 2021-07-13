@@ -15,7 +15,16 @@ CmdInfo::CmdInfo() {
     thread_number_ = 1;
     n_number_limit_ = 5;
     low_qual_perc_limit_ = 40;
-    base_len_limit_ = 15;
+    length_required_ = 15;
+    trim_5end_ = false;
+    trim_3end_ = false;
+    cut_window_size_ = 4;
+    cut_mean_quality_ = 20;
+    trim_front1_ = 0;
+    trim_tail1_ = 0;
+    trim_front2_ = 0;
+    trim_tail2_ = 0;
+
     write_data_ = false;
     in_file_size1_ = 0;
     in_file_size2_ = 0;

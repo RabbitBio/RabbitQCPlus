@@ -102,10 +102,15 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             thread_info->pre_state1_->StateInfo(item1);
             thread_info->pre_state2_->StateInfo(item2);
 
+            //do pe sequence trim
+            bool trim_res1 = filter_->TrimSeq(item1, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
+            bool trim_res2 = filter_->TrimSeq(item2, cmd_info_->trim_front2_, cmd_info_->trim_tail2_);
+
+
             //do pe overlap analyze
             //TODO copy from fastp(RabbitQC)
             OverlapRes overlap_res;
-            if (cmd_info_->analyze_overlap_) {
+            if (trim_res1 && trim_res2 && cmd_info_->analyze_overlap_) {
                 overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
                                                       cmd_info_->overlap_require_);
 //                printf("ov %d %d %d\n", overlap_res.offset, overlap_res.overlap_len, overlap_res.diff_num);
@@ -115,10 +120,10 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 //                    statInsertSize(r1, r2, ov);
 //                    isizeEvaluated = true;
 //                }
-            if (cmd_info_->correct_data_) {
+            if (trim_res1 && trim_res2 && cmd_info_->correct_data_) {
                 Adapter::CorrectData(item1, item2, overlap_res);
             }
-            if (cmd_info_->trim_adapter_) {
+            if (trim_res1 && trim_res2 && cmd_info_->trim_adapter_) {
                 bool trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
                 if (!trimmed) {
                     if (cmd_info_->detect_adapter1_)
@@ -130,8 +135,8 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 
 
             //do filer in refs
-            int filter_res1 = filter_->ReadFiltering(item1);
-            int filter_res2 = filter_->ReadFiltering(item2);
+            int filter_res1 = filter_->ReadFiltering(item1, trim_res1);
+            int filter_res2 = filter_->ReadFiltering(item2, trim_res2);
 
             if (filter_res1 == 0 && filter_res2 == 0) {
                 thread_info->aft_state1_->StateInfo(item1);

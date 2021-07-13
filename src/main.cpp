@@ -33,6 +33,15 @@ int main(int argc, char **argv) {
 
     app.add_option("-w,--threadNum", cmd_info.thread_number_, "number thread used to solve fastq data");
 
+    //filter
+    app.add_flag("-5,--trim5End", cmd_info.trim_5end_, "do sliding window 5end trim");
+    app.add_flag("-3,--trim3End", cmd_info.trim_3end_, "do sliding window 3end trim");
+    app.add_option("--trimFront1", cmd_info.trim_front1_, "ref1 trim front size");
+    app.add_option("--trimFront2", cmd_info.trim_front2_, "ref2 trim front size");
+    app.add_option("--trimTail1", cmd_info.trim_tail1_, "ref1 trim tail size");
+    app.add_option("--trimTail2", cmd_info.trim_tail2_, "ref2 trim tail size");
+
+
     CLI11_PARSE(app, argc, argv);
     printf("in1 is %s\n", cmd_info.in_file_name1_.c_str());
     if (cmd_info.in_file_name2_.length())printf("in2 is %s\n", cmd_info.in_file_name2_.c_str());
@@ -47,6 +56,13 @@ int main(int argc, char **argv) {
         cmd_info.adapter_seq1_ = "";
         cmd_info.adapter_seq2_ = "";
         printf("no adapter trim!\n");
+    }
+
+    if (cmd_info.trim_5end_) {
+        printf("now do 5end trim\n");
+    }
+    if (cmd_info.trim_3end_) {
+        printf("now do 3end trim\n");
     }
     printf("now use %d thread\n", cmd_info.thread_number_);
 
@@ -87,6 +103,18 @@ int main(int argc, char **argv) {
             printf("now do overlap analyze\n");
         }
 
+        if (cmd_info.trim_front1_) {
+            printf("ref1 trim front %d bases\n", cmd_info.trim_front1_);
+            cmd_info.trim_front2_ = cmd_info.trim_front1_;
+            printf("ref2 trim front %d bases\n", cmd_info.trim_front2_);
+
+        }
+        if (cmd_info.trim_tail1_) {
+            printf("ref1 trim tail %d bases\n", cmd_info.trim_tail1_);
+            cmd_info.trim_tail2_ = cmd_info.trim_tail1_;
+            printf("ref2 trim tail %d bases\n", cmd_info.trim_tail2_);
+        }
+
         PeQc pe_qc(&cmd_info);
         pe_qc.ProcessPeFastq();
     } else {
@@ -111,6 +139,12 @@ int main(int argc, char **argv) {
         }
         if (cmd_info.se_auto_detect_adapter_) {
             printf("now auto detect adapter\n");
+        }
+        if (cmd_info.trim_front1_) {
+            printf("trim front %d bases\n", cmd_info.trim_front1_);
+        }
+        if (cmd_info.trim_tail1_) {
+            printf("trim tail %d bases\n", cmd_info.trim_tail1_);
         }
 
 

@@ -17,15 +17,26 @@ public:
     std::string out_file_name1_;
     std::string out_file_name2_;
     int thread_number_;
-    int n_number_limit_;
-    int low_qual_perc_limit_;
-    int base_len_limit_;
+
     bool write_data_;
     int64_t out_block_size_;
     int64_t in_file_size1_;
     int64_t in_file_size2_;
     int seq_len_;
     int qul_range_;
+
+    //param for filter
+    int length_required_;
+    int n_number_limit_;
+    int low_qual_perc_limit_;
+    bool trim_5end_;
+    bool trim_3end_;
+    int cut_window_size_;
+    int cut_mean_quality_;
+    int trim_front1_;
+    int trim_tail1_;
+    int trim_front2_;
+    int trim_tail2_;
 
 
     //param for adapter
