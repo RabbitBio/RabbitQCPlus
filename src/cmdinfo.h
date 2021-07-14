@@ -56,6 +56,11 @@ public:
     //duplicate
     bool state_duplicate_;
 
+    //polyx
+    bool trim_polyx_;
+    bool trim_polyg_;
+    int trim_poly_len_;
+
 };
 
 

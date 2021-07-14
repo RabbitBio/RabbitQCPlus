@@ -19,6 +19,7 @@
 #include "state.h"
 #include "adapter.h"
 #include "duplicate.h"
+#include "polyx.h"
 
 class SeQc {
 public:

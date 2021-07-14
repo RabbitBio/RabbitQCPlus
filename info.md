@@ -2,17 +2,17 @@
 
 - [x] Stats
 
-- [ ] Trimer->front tail trim
+- [x] Trimer->front tail trim
 
 - [ ] Trimer->adapter trim
 
 - [ ] Umi
 
-- [ ] PolyX
+- [x] PolyX
 
 - [ ] Overrepresented
 
-- [ ] Duplicate
+- [x] Duplicate
 
 - [ ] new Duplicate
 
@@ -435,5 +435,27 @@ fastp相对于fastqc进行了改进，它统计的整个文件的所有read，�
 | ------------------------------------------------------------ | --------- | ----- |
 | -5 -3 --trimFront1 3 --trimTail1 5  --adapter_seq1 [--adapter_seq2 -c] -w 1 | 22.81     | 61.60 |
 | -5 -3 --trimFront1 3 --trimTail1 5  --adapter_seq1 [--adapter_seq2 -c] -w 4 | 6.24      | 16.73 |
+|                                                              |           |       |
+
+## 0714
+
+上午看了看fastp和fastqc关于Overrepresented Sequences的部分。
+
+Overrepresented Sequences即过度代表的序列，说白了就是把出现频率特别高的序列找出来作报告，他和👆duplicate模块一样只是发现问题，暂时还不能解决问题。
+
+fastqc中的做法是只统计前1000000条read，找到比例超过0.1%的序列然后和常见的污染物列表比对，fastp指出了这种方法存在的问题，并进行了改进：统计前1.5Mbase中出现频率较高的序列，记录到hotSeqs中，然后对整个文件统计hotSeqs中序列的出现次数，依次来统计过度表示。
+
+考虑了一下暂时不写了，fastp实质上还是统计了前1.5Mbase中的序列，我觉得不够合理，虽然统计整个文件的序列信息非常耗时，暂时等一下，下次开会找学长商量一下，等下周回来找找论文。
+
+
+
+简单加一下poly模块
+
+淦 fastp有个地方写的可能数组越界，找了半天。
+
+|                                                              | SeAdapter | Pe    |
+| ------------------------------------------------------------ | --------- | ----- |
+| ./RabbitQCPlus -i $data/SRR2496709_1.fastq -I $data/SRR2496709_2.fastq -5 -3 --trimFront1 3 --trimTail1 5 -w 1 -g -x -c --adapter_seq1 AGATCGGAAGAGCACACGTCTGAACTCCAGTCA --adapter_seq2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT | 23.10     | 62.27 |
+| ./RabbitQCPlus -i $data/SRR2496709_1.fastq -I $data/SRR2496709_2.fastq -5 -3 --trimFront1 3 --trimTail1 5 -w 4 -g -x -c --adapter_seq1 AGATCGGAAGAGCACACGTCTGAACTCCAGTCA --adapter_seq2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT | 6.91      | 17.19 |
 |                                                              |           |       |
 

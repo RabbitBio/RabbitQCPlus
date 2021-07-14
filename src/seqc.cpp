@@ -104,6 +104,17 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 
             bool trim_res = filter_->TrimSeq(item, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
 
+//            printf("gogo %s\n",
+//                   std::string(reinterpret_cast<const char *>(item.base + item.pname), item.lname).c_str());
+            if (trim_res && cmd_info_->trim_polyg_) {
+                PolyX::trimPolyG(item, cmd_info_->trim_poly_len_);
+            }
+
+            if (trim_res && cmd_info_->trim_polyx_) {
+                PolyX::trimPolyX(item, cmd_info_->trim_poly_len_);
+            }
+
+
             if (trim_res && cmd_info_->trim_adapter_ && cmd_info_->detect_adapter1_) {
 //                printf("Adapter::TrimAdapter ...\n");
                 Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);

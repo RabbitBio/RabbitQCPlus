@@ -112,6 +112,13 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             bool trim_res1 = filter_->TrimSeq(item1, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
             bool trim_res2 = filter_->TrimSeq(item2, cmd_info_->trim_front2_, cmd_info_->trim_tail2_);
 
+            if (trim_res1 && trim_res2 && cmd_info_->trim_polyg_) {
+                PolyX::trimPolyG(item1, item2, cmd_info_->trim_poly_len_);
+            }
+
+            if (trim_res1 && trim_res2 && cmd_info_->trim_polyx_) {
+                PolyX::trimPolyX(item1, item2, cmd_info_->trim_poly_len_);
+            }
 
             //do pe overlap analyze
             //TODO copy from fastp(RabbitQC)

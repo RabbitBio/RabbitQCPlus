@@ -52,4 +52,9 @@ CmdInfo::CmdInfo() {
 
     //duplicate
     state_duplicate_ = true;
+
+    //polyx
+    trim_polyg_ = false;
+    trim_polyx_ = false;
+    trim_poly_len_ = 10;
 }

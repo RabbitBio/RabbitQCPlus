@@ -42,6 +42,10 @@ int main(int argc, char **argv) {
     app.add_option("--trimTail2", cmd_info.trim_tail2_, "ref2 trim tail size");
 
 
+    app.add_flag("-g,--trimPolyg", cmd_info.trim_polyg_, "do polyg trim");
+    app.add_flag("-x,--trimPolyx", cmd_info.trim_polyx_, "do polyx trim");
+
+
     CLI11_PARSE(app, argc, argv);
     printf("in1 is %s\n", cmd_info.in_file_name1_.c_str());
     if (cmd_info.in_file_name2_.length())printf("in2 is %s\n", cmd_info.in_file_name2_.c_str());
@@ -64,6 +68,13 @@ int main(int argc, char **argv) {
     if (cmd_info.trim_3end_) {
         printf("now do 3end trim\n");
     }
+    if (cmd_info.trim_polyg_) {
+        printf("now do polyg trim\n");
+    }
+    if (cmd_info.trim_polyx_) {
+        printf("now do polyx trim\n");
+    }
+
     printf("now use %d thread\n", cmd_info.thread_number_);
 
     double t1 = GetTime();
