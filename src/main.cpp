@@ -150,7 +150,24 @@ int main(int argc, char **argv) {
             cmd_info.detect_adapter2_ = true;
         }
         if (cmd_info.pe_auto_detect_adapter_) {
+            double t2 = GetTime();
             printf("now auto detect adapter\n");
+            cmd_info.adapter_seq1_ = Adapter::AutoDetect(cmd_info.in_file_name1_, cmd_info.trim_tail1_);
+            cmd_info.adapter_seq2_ = Adapter::AutoDetect(cmd_info.in_file_name2_, cmd_info.trim_tail1_);
+            if (cmd_info.adapter_seq1_.length()) {
+                printf("find adapter %s\n", cmd_info.adapter_seq1_.c_str());
+                cmd_info.detect_adapter1_ = true;
+            } else {
+                printf("not find adapter\n");
+            }
+            if (cmd_info.adapter_seq2_.length()) {
+                printf("find adapter %s\n", cmd_info.adapter_seq2_.c_str());
+                cmd_info.detect_adapter2_ = true;
+            } else {
+                printf("not find adapter\n");
+            }
+            printf("detect adapter cost %.5f\n", GetTime() - t2);
+
         }
         if (cmd_info.correct_data_) {
             printf("now correct data\n");
@@ -195,7 +212,17 @@ int main(int argc, char **argv) {
             cmd_info.detect_adapter1_ = true;
         }
         if (cmd_info.se_auto_detect_adapter_) {
+            double t2 = GetTime();
             printf("now auto detect adapter\n");
+            cmd_info.adapter_seq1_ = Adapter::AutoDetect(cmd_info.in_file_name1_, cmd_info.trim_tail1_);
+            if (cmd_info.adapter_seq1_.length()) {
+                printf("find adapter %s\n", cmd_info.adapter_seq1_.c_str());
+                cmd_info.detect_adapter1_ = true;
+            } else {
+                printf("not find adapter\n");
+            }
+            printf("detect adapter cost %.5f\n", GetTime() - t2);
+
         }
         if (cmd_info.trim_front1_) {
             printf("trim front %d bases\n", cmd_info.trim_front1_);

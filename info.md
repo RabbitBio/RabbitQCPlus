@@ -4,11 +4,11 @@
 
 - [x] Trimer->front tail trim
 
-- [ ] Trimer->auto adapter trim
+- [x] Trimer->auto adapter trim
 
 - [x] Trimer->input adapter trim
 
-- [ ] Umi
+- [x] Umi
 
 - [x] PolyX
 
@@ -478,9 +478,17 @@ windows
 |                                                              |      | Pe    |
 | ------------------------------------------------------------ | ---- | ----- |
 | ./RabbitQCPlus  -i ../../data/SRR2496709_1.fastq -I ../../data/SRR2496709_2.fastq --addUmi --umiLoc per_read -o p1.fq -O p2.fq --umiLen 4  -w 1 |      | 77.27 |
-| Pe./RabbitQCPlus  -i ../../data/SRR2496709_1.fastq -I ../../data/SRR2496709_2.fastq --addUmi --umiLoc per_read -o p1.fq -O p2.fq --umiLen 4  -w 4 |      | 64.52 |
-| Pe./RabbitQCPlus  -i ../../data/SRR2496709_1.fastq -I ../../data/SRR2496709_2.fastq --addUmi --umiLoc per_read -o p1.fq -O p2.fq --umiLen 4  -w 1 |      | 57.87 |
-| Pe./RabbitQCPlus  -i ../../data/SRR2496709_1.fastq -I ../../data/SRR2496709_2.fastq --addUmi --umiLoc per_read -o p1.fq -O p2.fq --umiLen 4  -w 4 |      | 26.93 |
+| ./RabbitQCPlus  -i ../../data/SRR2496709_1.fastq -I ../../data/SRR2496709_2.fastq --addUmi --umiLoc per_read -o p1.fq -O p2.fq --umiLen 4  -w 4 |      | 64.52 |
+| ./RabbitQCPlus  -i ../../data/SRR2496709_1.fastq -I ../../data/SRR2496709_2.fastq --addUmi --umiLoc per_read --umiLen 4  -w 1 |      | 57.87 |
+| ./RabbitQCPlus  -i ../../data/SRR2496709_1.fastq -I ../../data/SRR2496709_2.fastq --addUmi --umiLoc per_read --umiLen 4  -w 4 |      | 26.93 |
 
 //TODO 似乎是个热点，暂时先实现功能，以后去服务器重点测性能
+
+参考fastp（RabbitQC）添加了auto detect adapter模块
+
+|                                                              | Se        | Pe         |
+| ------------------------------------------------------------ | --------- | ---------- |
+| ./RabbitQCPlus -w 1 -i ../../data/SRR2496709_1.fastq -I ../../data/SRR2496709_2.fastq --decAdaForPe | 28.7(0.8) | 82.14(1.5) |
+| ./RabbitQCPlus -w 4 -i ../../data/SRR2496709_1.fastq -I ../../data/SRR2496709_2.fastq --decAdaForPe | 10.5(0.8) | 33.24(1.6) |
+|                                                              |           |            |
 

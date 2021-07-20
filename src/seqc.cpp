@@ -43,7 +43,7 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
     rabbit::fq::FastqFileReader *fqFileReader;
     fqFileReader = new rabbit::fq::FastqFileReader(file, *fastq_data_pool);
-    rabbit::int64 n_chunks = 0;
+    int64_t n_chunks = 0;
     while (true) {
         rabbit::fq::FastqDataChunk *fqdatachunk;// = new rabbit::fq::FastqDataChunk;
         fqdatachunk = fqFileReader->readNextChunk();
@@ -121,7 +121,6 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 
 
             if (trim_res && cmd_info_->trim_adapter_ && cmd_info_->detect_adapter1_) {
-//                printf("Adapter::TrimAdapter ...\n");
                 Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);
             }
             int filter_res = filter_->ReadFiltering(item, trim_res);

@@ -5,10 +5,15 @@
 #ifndef RABBITQCPLUS_ADAPTER_H
 #define RABBITQCPLUS_ADAPTER_H
 
+#include <iostream>
+#include <vector>
+#include <cstring>
+#include <map>
+#include <algorithm>
 #include "Reference.h"
 #include "repoter.h"
-
-
+#include "Formater.h"
+#include "nucleotidetree.h"
 
 struct OverlapRes {
     bool overlaped;
@@ -20,6 +25,17 @@ struct OverlapRes {
 class Adapter {
 public:
     Adapter();
+
+    static std::string int2seq(unsigned int val, int seqlen);
+
+    static int seq2int(std::string &seq, int pos, int keylen, int lastVal);
+
+    static std::string matchKnownAdapter(std::string seq);
+
+    static std::string AutoDetect(std::string file_name, int trim_tail);
+
+    static std::string
+    getAdapterWithSeed(int seed, std::vector<Reference> loadedReads, long records, int keylen, int trim_tail);
 
     static OverlapRes AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require);
 
