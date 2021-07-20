@@ -29,8 +29,8 @@ int main(int argc, char **argv) {
     app.add_flag("-a,--noTrimAdapter", cmd_info.no_trim_adapter_, "no trim adapter");
     app.add_flag("--decAdaForSe", cmd_info.se_auto_detect_adapter_, "detect adapter for se data");
     app.add_flag("--decAdaForPe", cmd_info.pe_auto_detect_adapter_, "detect adapter for pe data");
-    app.add_option("--adapter_seq1", cmd_info.adapter_seq1_, "input adapter sequence1");
-    app.add_option("--adapter_seq2", cmd_info.adapter_seq2_, "input adapter sequence2");
+    app.add_option("--adapterSeq1", cmd_info.adapter_seq1_, "input adapter sequence1");
+    app.add_option("--adapterSeq2", cmd_info.adapter_seq2_, "input adapter sequence2");
 
     app.add_flag("-c,--correctData", cmd_info.correct_data_, "correct data");
 
@@ -88,9 +88,14 @@ int main(int argc, char **argv) {
 
 
     if (cmd_info.add_umi_) {
+        printf("now doing umi add\n");
+        printf("umi location is %s\n", umiLoc.c_str());
+        printf("umi len is %d\n", cmd_info.umi_len_);
+        printf("umi skip is %d\n", cmd_info.umi_skip_);
+        printf("umi prefix is %s\n", cmd_info.umi_prefix_.c_str());
 
         if (umiLoc.empty())
-            error_exit("You've enabled UMI by (--umi), you should specify the UMI location by (--umi_loc)");
+            error_exit("You've enabled UMI by (--addUmi), you should specify the UMI location by (--umiLoc)");
         if (umiLoc != "index1" && umiLoc != "index2" && umiLoc != "read1" && umiLoc != "read2" &&
             umiLoc != "per_index" && umiLoc != "per_read") {
             error_exit("UMI location can only be index1/index2/read1/read2/per_index/per_read");
@@ -99,7 +104,7 @@ int main(int argc, char **argv) {
             error_exit("You specified the UMI location as " + umiLoc + ", but the input data is not paired end.");
         if (cmd_info.umi_len_ == 0 && (umiLoc == "read1" || umiLoc == "read2" || umiLoc == "per_read"))
             error_exit(
-                    "You specified the UMI location as " + umiLoc + ", but the length is not specified (--umi_len).");
+                    "You specified the UMI location as " + umiLoc + ", but the length is not specified (--umiLen).");
         if (umiLoc == "index1") {
             cmd_info.umi_loc_ = UMI_LOC_INDEX1;
         } else if (umiLoc == "index2") {

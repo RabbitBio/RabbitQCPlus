@@ -23,6 +23,10 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     if (cmd_info1->state_duplicate_) {
         duplicate_ = new Duplicate(cmd_info1);
     }
+    umier_ = NULL;
+    if (cmd_info1->add_umi_) {
+        umier_ = new Umier(cmd_info1);
+    }
 }
 
 SeQc::~SeQc() {}
@@ -102,10 +106,11 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                 duplicate_->statRead(item);
             }
 
+            if (cmd_info_->add_umi_) {
+                umier_->ProcessSe(item);
+            }
             bool trim_res = filter_->TrimSeq(item, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
 
-//            printf("gogo %s\n",
-//                   std::string(reinterpret_cast<const char *>(item.base + item.pname), item.lname).c_str());
             if (trim_res && cmd_info_->trim_polyg_) {
                 PolyX::trimPolyG(item, cmd_info_->trim_poly_len_);
             }
@@ -134,6 +139,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                 char *out_data = new char[out_len];
                 int pos = 0;
                 for (auto item:pass_data) {
+                    //TODO delete name
                     Read2Chars(item, out_data, pos);
                 }
                 ASSERT(pos == out_len);

@@ -26,6 +26,8 @@
 
 - [ ] check 正确性
 
+- [ ] option里面的error detect
+
   
 
 ## AfterQC
@@ -460,4 +462,25 @@ fastqc中的做法是只统计前1000000条read，找到比例超过0.1%的序�
 | ./RabbitQCPlus -i $data/SRR2496709_1.fastq -I $data/SRR2496709_2.fastq -5 -3 --trimFront1 3 --trimTail1 5 -w 1 -g -x -c --adapter_seq1 AGATCGGAAGAGCACACGTCTGAACTCCAGTCA --adapter_seq2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT | 23.10     | 62.27 |
 | ./RabbitQCPlus -i $data/SRR2496709_1.fastq -I $data/SRR2496709_2.fastq -5 -3 --trimFront1 3 --trimTail1 5 -w 4 -g -x -c --adapter_seq1 AGATCGGAAGAGCACACGTCTGAACTCCAGTCA --adapter_seq2 AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT | 6.91      | 17.19 |
 |                                                              |           |       |
+
+
+
+## 0720
+
+沈阳回来了，继续干活
+
+今天简单加了一下umi的功能，//TODO 一部分的参数检测还没有加，比如umiLen不能超过100，可以参考option.cpp。
+
+因为对ref的操作不再仅仅是简单的substr，所以新的name地址可能和原来的并不连续，这里注意及时释放。
+
+windows
+
+|                                                              |      | Pe    |
+| ------------------------------------------------------------ | ---- | ----- |
+| ./RabbitQCPlus  -i ../../data/SRR2496709_1.fastq -I ../../data/SRR2496709_2.fastq --addUmi --umiLoc per_read -o p1.fq -O p2.fq --umiLen 4  -w 1 |      | 77.27 |
+| Pe./RabbitQCPlus  -i ../../data/SRR2496709_1.fastq -I ../../data/SRR2496709_2.fastq --addUmi --umiLoc per_read -o p1.fq -O p2.fq --umiLen 4  -w 4 |      | 64.52 |
+| Pe./RabbitQCPlus  -i ../../data/SRR2496709_1.fastq -I ../../data/SRR2496709_2.fastq --addUmi --umiLoc per_read -o p1.fq -O p2.fq --umiLen 4  -w 1 |      | 57.87 |
+| Pe./RabbitQCPlus  -i ../../data/SRR2496709_1.fastq -I ../../data/SRR2496709_2.fastq --addUmi --umiLoc per_read -o p1.fq -O p2.fq --umiLen 4  -w 4 |      | 26.93 |
+
+//TODO 似乎是个热点，暂时先实现功能，以后去服务器重点测性能
 

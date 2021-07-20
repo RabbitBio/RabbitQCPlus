@@ -20,6 +20,7 @@
 #include "adapter.h"
 #include "duplicate.h"
 #include "polyx.h"
+#include "umier.h"
 
 class SeQc {
 public:
@@ -57,6 +58,7 @@ private:
     std::atomic_int done_thread_number_;
     std::fstream out_stream_;
     Duplicate *duplicate_;
+    Umier *umier_;
 
 
 };

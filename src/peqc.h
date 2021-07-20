@@ -20,6 +20,7 @@
 #include "adapter.h"
 #include "duplicate.h"
 #include "polyx.h"
+#include "umier.h"
 
 
 class PeQc {
@@ -63,6 +64,7 @@ private:
     std::fstream out_stream1_;
     std::fstream out_stream2_;
     Duplicate *duplicate_;
+    Umier *umier_;
 };
 
 
