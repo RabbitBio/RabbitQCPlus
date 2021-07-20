@@ -34,7 +34,13 @@
 #else
 #define ASSERT(x) (void)(x)
 #endif
-
+#define UMI_LOC_NONE 0
+#define UMI_LOC_INDEX1 1
+#define UMI_LOC_INDEX2 2
+#define UMI_LOC_READ1 3
+#define UMI_LOC_READ2 4
+#define UMI_LOC_PER_INDEX 5
+#define UMI_LOC_PER_READ 6
 #include <string>
 #include <stdexcept>
 

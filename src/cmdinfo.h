@@ -61,6 +61,14 @@ public:
     bool trim_polyg_;
     int trim_poly_len_;
 
+    //umi
+    bool add_umi_;
+    int umi_loc_;
+    int umi_len_;
+    std::string umi_prefix_;
+    int umi_skip_;
+
+
 };
 
 

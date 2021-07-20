@@ -1,5 +1,4 @@
 #include <sys/time.h>
-#include <string>
 #include <iostream>
 #include "CLI11.hpp"
 #include "seqc.h"
@@ -12,6 +11,10 @@ double GetTime() {
     return (double) tv.tv_sec + (double) tv.tv_usec / 1000000;
 }
 
+void error_exit(string log_info) {
+    cout << log_info << endl;
+    exit(0);
+}
 
 int main(int argc, char **argv) {
 
@@ -46,6 +49,14 @@ int main(int argc, char **argv) {
     app.add_flag("-x,--trimPolyx", cmd_info.trim_polyx_, "do polyx trim");
 
 
+    app.add_flag("-u,--addUmi", cmd_info.add_umi_, "do umi add");
+    app.add_option("--umiLen", cmd_info.umi_len_, "");
+    string umiLoc = "";
+    app.add_option("--umiLoc", umiLoc, "");
+    app.add_option("--umiPrefix", cmd_info.umi_prefix_, "");
+    app.add_option("--umiSkip", cmd_info.umi_skip_, "");
+
+
     CLI11_PARSE(app, argc, argv);
     printf("in1 is %s\n", cmd_info.in_file_name1_.c_str());
     if (cmd_info.in_file_name2_.length())printf("in2 is %s\n", cmd_info.in_file_name2_.c_str());
@@ -74,6 +85,36 @@ int main(int argc, char **argv) {
     if (cmd_info.trim_polyx_) {
         printf("now do polyx trim\n");
     }
+
+
+    if (cmd_info.add_umi_) {
+
+        if (umiLoc.empty())
+            error_exit("You've enabled UMI by (--umi), you should specify the UMI location by (--umi_loc)");
+        if (umiLoc != "index1" && umiLoc != "index2" && umiLoc != "read1" && umiLoc != "read2" &&
+            umiLoc != "per_index" && umiLoc != "per_read") {
+            error_exit("UMI location can only be index1/index2/read1/read2/per_index/per_read");
+        }
+        if (cmd_info.in_file_name2_.length() == 0 && (umiLoc == "index2" || umiLoc == "read2"))
+            error_exit("You specified the UMI location as " + umiLoc + ", but the input data is not paired end.");
+        if (cmd_info.umi_len_ == 0 && (umiLoc == "read1" || umiLoc == "read2" || umiLoc == "per_read"))
+            error_exit(
+                    "You specified the UMI location as " + umiLoc + ", but the length is not specified (--umi_len).");
+        if (umiLoc == "index1") {
+            cmd_info.umi_loc_ = UMI_LOC_INDEX1;
+        } else if (umiLoc == "index2") {
+            cmd_info.umi_loc_ = UMI_LOC_INDEX2;
+        } else if (umiLoc == "read1") {
+            cmd_info.umi_loc_ = UMI_LOC_READ1;
+        } else if (umiLoc == "read2") {
+            cmd_info.umi_loc_ = UMI_LOC_READ2;
+        } else if (umiLoc == "per_index") {
+            cmd_info.umi_loc_ = UMI_LOC_PER_INDEX;
+        } else if (umiLoc == "per_read") {
+            cmd_info.umi_loc_ = UMI_LOC_PER_READ;
+        }
+    }
+
 
     printf("now use %d thread\n", cmd_info.thread_number_);
 

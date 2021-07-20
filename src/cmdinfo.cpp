@@ -57,4 +57,12 @@ CmdInfo::CmdInfo() {
     trim_polyg_ = false;
     trim_polyx_ = false;
     trim_poly_len_ = 10;
+
+    //umi
+    umi_loc_ = UMI_LOC_NONE;
+    umi_len_ = 0;
+    umi_prefix_ = "";
+    umi_skip_ = 0;
+    add_umi_ = false;
+
 }

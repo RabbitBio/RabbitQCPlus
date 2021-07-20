@@ -4,7 +4,9 @@
 
 - [x] Trimer->front tail trim
 
-- [ ] Trimer->adapter trim
+- [ ] Trimer->auto adapter trim
+
+- [x] Trimer->input adapter trim
 
 - [ ] Umi
 
