@@ -492,3 +492,8 @@ windows
 | ./RabbitQCPlus -w 4 -i ../../data/SRR2496709_1.fastq -I ../../data/SRR2496709_2.fastq --decAdaForPe | 10.5(0.8) | 33.24(1.6) |
 |                                                              |           |            |
 
+## 0805
+
+好啊，pac差不多了，来看看QC了。
+
+基本的功能除了Overrepresented都有了，fastp的Overrepresented功能感觉不太好用，有点暴力，运行起来太慢了，准备过几天读读论文写写新方法，功能部分的开发暂时先这样，参考RabbitQCPlus搞一下性能。
