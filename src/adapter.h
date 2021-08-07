@@ -16,7 +16,7 @@
 #include "nucleotidetree.h"
 
 struct OverlapRes {
-    bool overlaped;
+    bool overlapped;
     int offset;
     int overlap_len;
     int diff_num;

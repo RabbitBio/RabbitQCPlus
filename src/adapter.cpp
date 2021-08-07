@@ -4,6 +4,18 @@
 
 #include "adapter.h"
 
+#ifdef Vec512
+
+#include<immintrin.h>
+
+#endif
+
+#ifdef Vec256
+
+#include<immintrin.h>
+
+#endif
+
 struct AdapterSeedInfo {
     int recordsID;
     int pos;
@@ -363,13 +375,34 @@ Adapter::getAdapterWithSeed(int seed, std::vector<Reference> loadedReads, long r
  * @param overlap_require : the min length of overlap part
  * @return bool overlaped;int offset;int overlap_len;int diff_num;
  */
+
+static bool cntt = 0;
+
+#ifdef Vec512
+
 OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require) {
+
+    if(cntt==0){
+        printf("512\n");
+        cntt++;
+    }
 
     int len1 = r1.lseq;
     int len2 = r2.lseq;
-    const char *str1 = reinterpret_cast<const char *>(r1.base + r1.pseq);
+
+    char *tmpRev = new char[len2];
     const char *str2 = reinterpret_cast<const char *>(r2.base + r2.pseq);
+
+    for (int i = 0; i < len2; i++) {
+        tmpRev[i] = rabbit::reMap[str2[len2 - i - 1]];
+    }
+    str2 = tmpRev;
+
+    const char *str1 = reinterpret_cast<const char *>(r1.base + r1.pseq);
+
+
     int complete_compare_require = 50;
+
     int overlap_len = 0;
     int offset = 0;
     int diff_num = 0;
@@ -379,18 +412,181 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
     while (offset < len1 - overlap_require) {
         // the overlap length of r1 & r2 when r2 is move right for offset
         overlap_len = std::min(len1 - offset, len2);
-
         diff_num = 0;
-        int i = 0;
-        for (i = 0; i < overlap_len; i++) {
-            if (str1[offset + i] != rabbit::reMap[str2[len2 - 1 - i]]) {
-                diff_num += 1;
-                if (diff_num > overlap_diff_limit && i < complete_compare_require)
-                    break;
-            }
+        int leng = std::min(complete_compare_require, overlap_len);
+        for (int i = 0; i < leng; i += 64) {
+            uint64_t tag = (1ll << std::min(64, leng - i)) - 1;
+            __m512i t1 = _mm512_maskz_loadu_epi8(tag, str1 + offset + i);
+            __m512i t2 = _mm512_maskz_loadu_epi8(tag, str2 + i);
+            __mmask64 res = _mm512_cmp_epi8_mask(t1, t2, 4);
+            diff_num += _mm_popcnt_u64(res);
+            if (diff_num > overlap_diff_limit)break;
         }
 
-        if (diff_num <= overlap_diff_limit || (diff_num > overlap_diff_limit && i > complete_compare_require)) {
+        if (diff_num <= overlap_diff_limit) {
+            return {true, offset, overlap_len, diff_num};
+        }
+        offset += 1;
+    }
+
+
+    // reverse
+    // in this case, the adapter is sequenced since TEMPLATE_LEN < SEQ_LEN
+    // check if distance can get smaller if offset goes negative
+    // this only happens when insert DNA is shorter than sequencing read length, and some adapter/primer is sequenced but not trimmed cleanly
+    // we go reversely
+    offset = 0;
+    while (offset > -(len2 - overlap_require)) {
+        // the overlap length of r1 & r2 when r2 is move right for offset
+        overlap_len = std::min(len1, len2 - abs(offset));
+
+        diff_num = 0;
+
+        int leng = std::min(complete_compare_require, overlap_len);
+        for (int i = 0; i < leng; i += 64) {
+            uint64_t tag = (1ll << std::min(64, leng - i)) - 1;
+            __m512i t1 = _mm512_maskz_loadu_epi8(tag, str1 + i);
+            __m512i t2 = _mm512_maskz_loadu_epi8(tag, str2 - offset + i);
+            __mmask64 res = _mm512_cmp_epi8_mask(t1, t2, 4);
+            diff_num += _mm_popcnt_u64(res);
+            if (diff_num > overlap_diff_limit)break;
+        }
+        if (diff_num <= overlap_diff_limit) {
+            return {true, offset, overlap_len, diff_num};
+        }
+        offset -= 1;
+    }
+    return {false, 0, 0, 0};
+
+}
+
+#elif Vec256
+
+OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require) {
+
+    if(cntt==0){
+        printf("256\n");
+        cntt++;
+    }
+    int len1 = r1.lseq;
+    int len2 = r2.lseq;
+
+    char *tmpRev = new char[len2];
+    const char *str2 = reinterpret_cast<const char *>(r2.base + r2.pseq);
+
+    for (int i = 0; i < len2; i++) {
+        tmpRev[i] = rabbit::reMap[str2[len2 - i - 1]];
+    }
+    str2 = tmpRev;
+
+    const char *str1 = reinterpret_cast<const char *>(r1.base + r1.pseq);
+
+    int complete_compare_require = 50;
+
+    int overlap_len = 0;
+    int offset = 0;
+    int diff_num = 0;
+
+    // forward
+    // a match of less than overlapRequire is considered as unconfident
+    while (offset < len1 - overlap_require) {
+        // the overlap length of r1 & r2 when r2 is move right for offset
+        overlap_len = std::min(len1 - offset, len2);
+        diff_num = 0;
+        int leng = std::min(complete_compare_require, overlap_len);
+        int i = 0;
+        for (; i + 32 <= leng; i += 32) {
+
+            __m256i t1 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(str1 + offset + i));
+            __m256i t2 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(str2 + i));
+            __m256i res = _mm256_cmpeq_epi8(t1, t2);
+            unsigned mask = _mm256_movemask_epi8(res);
+            diff_num += 32 - _mm_popcnt_u32(mask);
+            if (diff_num > overlap_diff_limit)break;
+        }
+        for (; i < leng; i++) {
+            diff_num += str1[offset + i] != str2[i];
+            if (diff_num > overlap_diff_limit)break;
+        }
+
+        if (diff_num <= overlap_diff_limit) {
+            return {true, offset, overlap_len, diff_num};
+        }
+        offset += 1;
+    }
+
+
+    // reverse
+    // in this case, the adapter is sequenced since TEMPLATE_LEN < SEQ_LEN
+    // check if distance can get smaller if offset goes negative
+    // this only happens when insert DNA is shorter than sequencing read length, and some adapter/primer is sequenced but not trimmed cleanly
+    // we go reversely
+    offset = 0;
+    while (offset > -(len2 - overlap_require)) {
+        // the overlap length of r1 & r2 when r2 is move right for offset
+        overlap_len = std::min(len1, len2 - abs(offset));
+
+        diff_num = 0;
+        int leng = std::min(complete_compare_require, overlap_len);
+
+
+        int i = 0;
+        for (; i + 32 <= leng; i += 32) {
+            __m256i t1 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(str1 + i));
+            __m256i t2 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(str2 - offset + i));
+            __m256i res = _mm256_cmpeq_epi8(t1, t2);
+            unsigned mask = _mm256_movemask_epi8(res);
+            diff_num += 32 - _mm_popcnt_u32(mask);
+            if (diff_num > overlap_diff_limit)break;
+        }
+        for (; i < leng; i++) {
+            diff_num += str1[i] != str2[-offset + i];
+            if (diff_num > overlap_diff_limit)break;
+        }
+        if (diff_num <= overlap_diff_limit) {
+            return {true, offset, overlap_len, diff_num};
+        }
+        offset -= 1;
+    }
+    return {false, 0, 0, 0};
+
+}
+
+#else
+
+OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require) {
+
+    if(cntt==0){
+        printf("novec\n");
+        cntt++;
+    }
+
+    int len1 = r1.lseq;
+    int len2 = r2.lseq;
+    const char *str1 = reinterpret_cast<const char *>(r1.base + r1.pseq);
+    const char *str2 = reinterpret_cast<const char *>(r2.base + r2.pseq);
+
+
+    int complete_compare_require = 50;
+
+    int overlap_len = 0;
+    int offset = 0;
+    int diff_num = 0;
+
+    // forward
+    // a match of less than overlapRequire is considered as unconfident
+    while (offset < len1 - overlap_require) {
+        // the overlap length of r1 & r2 when r2 is move right for offset
+        overlap_len = std::min(len1 - offset, len2);
+        int leng = std::min(complete_compare_require, overlap_len);
+        diff_num = 0;
+        for (int i = 0; i < leng; i++) {
+            diff_num += str1[offset + i] != rabbit::reMap[str2[len2 - 1 - i]];
+            if (diff_num > overlap_diff_limit)
+                break;
+        }
+
+        if (diff_num <= overlap_diff_limit) {
             return {true, offset, overlap_len, diff_num};
         }
 
@@ -407,26 +603,25 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
     while (offset > -(len2 - overlap_require)) {
         // the overlap length of r1 & r2 when r2 is move right for offset
         overlap_len = std::min(len1, len2 - abs(offset));
-
+        int leng = std::min(complete_compare_require, overlap_len);
         diff_num = 0;
-        int i = 0;
-        for (i = 0; i < overlap_len; i++) {
-            if (str1[i] != rabbit::reMap[str2[len2 - 1 + offset - i]]) {
-                diff_num += 1;
-                if (diff_num > overlap_diff_limit && i < complete_compare_require)
-                    break;
-            }
+        for (int i = 0; i < leng; i++) {
+            diff_num += str1[i] != rabbit::reMap[str2[len2 - 1 + offset - i]];
+            if (diff_num > overlap_diff_limit)
+                break;
         }
 
-        if (diff_num <= overlap_diff_limit || (diff_num > overlap_diff_limit && i > complete_compare_require)) {
+        if (diff_num <= overlap_diff_limit) {
             return {true, offset, overlap_len, diff_num};
         }
 
         offset -= 1;
     }
-    return {false, 0, 0, 0};
 
+    return {false, 0, 0, 0};
 }
+
+#endif
 
 /**
  * @brief Trim adapter by giving adapter sequence
@@ -546,7 +741,8 @@ bool Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int ov
 }
 
 int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap_res) {
-    if (overlap_res.diff_num == 0 || overlap_res.diff_num > 5)
+    //TODO check ？
+    if (!overlap_res.overlapped)
         return 0;
 
     int ol = overlap_res.overlap_len;
