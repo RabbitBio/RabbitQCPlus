@@ -188,9 +188,11 @@ int main(int argc, char **argv) {
             cmd_info.trim_tail2_ = cmd_info.trim_tail1_;
             printf("ref2 trim tail %d bases\n", cmd_info.trim_tail2_);
         }
-
+        double tp = GetTime();
         PeQc pe_qc(&cmd_info);
         pe_qc.ProcessPeFastq();
+        printf("part %.5f\n", GetTime() - tp);
+
     } else {
         if (cmd_info.out_file_name1_.length() > 0) {
             cmd_info.write_data_ = true;
@@ -231,11 +233,13 @@ int main(int argc, char **argv) {
             printf("trim tail %d bases\n", cmd_info.trim_tail1_);
         }
 
-
+        double tp = GetTime();
         SeQc se_qc(&cmd_info);
         se_qc.ProcessSeFastq();
+        printf("part %.5f\n", GetTime() - tp);
+
     }
-    printf("cost %.5f\n", GetTime() - t1);
+    printf("total cost %.5f\n", GetTime() - t1);
 
     return 0;
 

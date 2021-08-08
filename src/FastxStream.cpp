@@ -319,7 +319,7 @@ namespace rabbit {
         void FastqFileReader::readChunk() {
             FastqDataChunk *part = NULL;
 
-            recordsPool.Acquire(part);
+            recordsPool->Acquire(part);
             printf("fastqio: ready to into while\n");
 
             // while (!errorHandler.IsError() && fileReader.ReadNextChunk(part))
@@ -329,12 +329,12 @@ namespace rabbit {
                 //printf("numParts is %d\n", numParts);
                 numParts++;
 
-                recordsPool.Release(part);
-                recordsPool.Acquire(part);
+                recordsPool->Release(part);
+                recordsPool->Acquire(part);
             }
 
             ASSERT(part->size == 0);
-            recordsPool.Release(part);  // the last empty part
+            recordsPool->Release(part);  // the last empty part
 
             // recordsQueue.SetCompleted();
         }
@@ -345,16 +345,17 @@ namespace rabbit {
  */
         FastqDataChunk *FastqFileReader::readNextChunk() {
             FastqDataChunk *part = NULL;
-            recordsPool.Acquire(part);
+            recordsPool->Acquire(part);
             if (ReadNextChunk_(part)) {
                 return part;
             } else {
-                recordsPool.Release(part);
+                recordsPool->Release(part);
                 return NULL;
             }
         }
 
-/**
+
+        /**
 	@brief Read the next paired chunk
 	@return FastqDataPairChunk pointer if next chunk data has data, else return NULL
  */
@@ -362,10 +363,10 @@ namespace rabbit {
             FastqDataPairChunk *pair = new FastqDataPairChunk;
 
             FastqDataChunk *leftPart = NULL;
-            recordsPool.Acquire(leftPart);  // song: all in one datapool
+            recordsPool->Acquire(leftPart);  // song: all in one datapool
 
             FastqDataChunk *rightPart = NULL;
-            recordsPool.Acquire(rightPart);
+            recordsPool->Acquire(rightPart);
 
             int64 left_line_count = 0;
             int64 right_line_count = 0;
@@ -377,8 +378,8 @@ namespace rabbit {
                 leftPart->size = 0;
                 rightPart->size = 0;
                 // return false;
-                recordsPool.Release(leftPart);
-                recordsPool.Release(rightPart);
+                recordsPool->Release(leftPart);
+                recordsPool->Release(rightPart);
                 return NULL;
             }
 
@@ -397,9 +398,8 @@ namespace rabbit {
             r = Read(data + leftPart->size, toRead);
             if (r > 0) {
                 if (r == toRead) {
-                    chunkEnd =
-                            cbufSize -
-                            SwapBufferSize;  // SwapBufferSize; // SwapBuffersize defined in FastqStream.h as constant value : 1<<20;
+                    chunkEnd = cbufSize - SwapBufferSize;
+                    // SwapBufferSize; // SwapBuffersize defined in FastqStream.h as constant value : 1<<20;
                     chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
                 } else {
                     // chunkEnd = r;
@@ -426,9 +426,8 @@ namespace rabbit {
             r = Read2(data_right + rightPart->size, toRead);
             if (r > 0) {
                 if (r == toRead) {
-                    chunkEnd_right =
-                            cbufSize_right -
-                            SwapBufferSize; // SwapBuffersize defined in FastqStream.h as constant value : 1<<20;
+                    chunkEnd_right = cbufSize_right - SwapBufferSize;
+                    // SwapBuffersize defined in FastqStream.h as constant value : 1<<20;
                     chunkEnd_right = GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
                 } else {
                     // chunkEnd_right += r;

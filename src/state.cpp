@@ -4,6 +4,17 @@
 
 #include "state.h"
 
+#ifdef Vec512
+
+#include <immintrin.h>
+
+#endif
+#ifdef Vec256
+
+#include <immintrin.h>
+
+#endif
+
 State::State(int seq_len, int qul_range) {
     q20bases_ = 0;
     q30bases_ = 0;
@@ -69,6 +80,113 @@ void State::StateInfo(neoReference &ref) {
     int qul_tot = 0;
     int kmer = 0;
 
+
+#ifdef Vec512
+    int i = 0;
+    int64_t *p1, *p2, *p3, *p4, *p5, *p6;
+    __m512i ad0, ad1, ad2, ad3, ad4, v1, v2, v3, v4, v5, v6, sub33, quamm;
+    __m256i bse, and7, add8, idx;
+    __m128i ide;
+    bse = _mm256_set_epi32(7 * 8, 6 * 8, 5 * 8, 4 * 8, 3 * 8, 2 * 8, 1 * 8, 0 * 8);
+    ad1 = _mm512_set1_epi64(1);
+    and7 = _mm256_set1_epi32(0x07);
+    add8 = _mm256_set1_epi32(64);
+    sub33 = _mm512_set1_epi64(33);
+    __m512i q20_vec = _mm512_set1_epi64((int64_t) '5');
+    __m512i q30_vec = _mm512_set1_epi64((int64_t) '?');
+    __m256i con3 = _mm256_set1_epi32(3);
+    __m256i con7 = _mm256_set1_epi32(7);
+
+
+    __m512i qul_tot_vec = _mm512_set1_epi64(0);
+
+
+    for (; i + 8 <= slen; i += 8) {
+
+        ide = _mm_maskz_loadu_epi8(0xFF, quals + i);
+        quamm = _mm512_cvtepi8_epi64(ide);
+        ad2 = _mm512_sub_epi64(quamm, sub33);
+        __mmask8 q30_mask = _mm512_cmp_epi64_mask(quamm, q30_vec, _MM_CMPINT_NLT);
+        __mmask8 q20_mask = _mm512_cmp_epi64_mask(quamm, q20_vec, _MM_CMPINT_NLT);
+        ide = _mm_maskz_loadu_epi8(0xFF, bases + i);
+        idx = _mm256_cvtepi8_epi32(ide);
+        idx = _mm256_and_si256(idx, and7);
+
+        __mmask8 gc_mask1 = _mm256_cmp_epi32_mask(idx, con3, _MM_CMPINT_EQ);
+        __mmask8 gc_mask2 = _mm256_cmp_epi32_mask(idx, con7, _MM_CMPINT_EQ);
+        gc_cnt += _mm_popcnt_u32(gc_mask1 | gc_mask2);
+
+        idx = _mm256_add_epi32(bse, idx);
+        bse = _mm256_add_epi32(bse, add8);
+
+        q20bases_ += _mm_popcnt_u32(q20_mask);
+        q30bases_ += _mm_popcnt_u32(q30_mask);
+
+        qul_tot_vec = _mm512_add_epi64(qul_tot_vec, ad2);
+
+
+        p3 = (int64_t *) pos_cnt_;
+        v3 = _mm512_i32gather_epi64(idx, p3, 8);
+        v3 = _mm512_add_epi64(v3, ad1);
+        _mm512_i32scatter_epi64(p3, idx, v3, 8);
+
+        p4 = (int64_t *) pos_qul_;
+        v4 = _mm512_i32gather_epi64(idx, p4, 8);
+        v4 = _mm512_add_epi64(v4, ad2);
+        _mm512_i32scatter_epi64(p4, idx, v4, 8);
+
+        for (int j = i; j < i + 8; j++) {
+            if (bases[j] == 'N')flag = 5;
+            int val = valAGCT[bases[j] & 0x07];
+            kmer = ((kmer << 2) & 0x3FC) | val;
+            if (flag <= 0)kmer_[kmer]++;
+            flag--;
+        }
+    }
+    int64_t tmp[8];
+    _mm512_store_epi64(tmp, qul_tot_vec);
+    for (int ii = 0; ii < 8; ii++)
+        qul_tot += tmp[ii];
+    for (; i < slen; i++) {
+        char b = bases[i] & 0x07;
+        if (b == 3 || b == 7)gc_cnt++;
+        qul_tot += quals[i] - 33;
+        if (quals[i] >= q30) {
+            q20bases_++;
+            q30bases_++;
+        } else if (quals[i] >= q20) {
+            q20bases_++;
+        }
+        pos_cnt_[i * 8 + b]++;
+        pos_qul_[i * 8 + b] += quals[i] - 33;
+        if (bases[i] == 'N')flag = 5;
+        int val = valAGCT[bases[i] & 0x07];
+        kmer = ((kmer << 2) & 0x3FC) | val;
+        if (flag <= 0)kmer_[kmer]++;
+        flag--;
+    }
+//
+//    int gc_cnt2 = 0;
+//    int qul_tot2 = 0;
+//    for (int i = 0; i < slen; i++) {
+//        char b = bases[i] & 0x07;
+//        if (b == 3 || b == 7)gc_cnt2++;
+//        qul_tot2 += quals[i] - 33;
+//    }
+//    if (gc_cnt2 != gc_cnt) {
+//        printf("GG1\n");
+//        printf("%d %d\n", gc_cnt2, gc_cnt);
+//        exit(0);
+//    }
+//    if (qul_tot2 != qul_tot) {
+//        printf("GG2\n");
+//        printf("%d %d\n", qul_tot2, qul_tot);
+//        exit(0);
+//    }
+
+#elif Vec256
+    print("pending...");
+#else
     for (int i = 0; i < slen; i++) {
         char b = bases[i] & 0x07;
         if (b == 3 || b == 7)gc_cnt++;
@@ -88,6 +206,8 @@ void State::StateInfo(neoReference &ref) {
         flag--;
 
     }
+#endif
+
     gc_cnt_[int(100.0 * gc_cnt / slen)]++;
     qul_cnt_[int(1.0 * qul_tot / slen)]++;
 }

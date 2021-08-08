@@ -9,6 +9,7 @@
 #include <fstream>
 #include <functional>
 #include <cstring>
+#include <sys/time.h>
 
 #include "Globals.h"
 #include "Formater.h"

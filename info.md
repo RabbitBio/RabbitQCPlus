@@ -512,14 +512,46 @@ cost ： STD/RabbitQCPlus/ReRabbitQC
 | init -o se | 1.68/1.47/2.37         | 76.97/50.12/31.64 |
 | init pe    | x                      | 85.53/42.77/47.17 |
 | init -o pe | x                      | 92.64/49.84/51.47 |
-|            |                        |                   |
-|            |                        |                   |
-|            |                        |                   |
-|            |                        |                   |
-|            |                        |                   |
 
 关于重复度分析的部分加了向量化，效果还可以。
 
 //TODO correct部分把判断条件改了，感觉是没啥问题。
 
 为了保证测试时间的时候Re和Plus执行的功能是一样的，就把Plus的UseLong打开了，并且在Re中添加了kmer统计的功能。
+
+好啊，现在基本上的优化都加上了，除了detect adapter和stateRead的向量化，来测测时间：
+
+| version               | detect adapter cost /s | total cost /s （no detect） |
+| --------------------- | ---------------------- | --------------------------- |
+| init se thread 1      | 1.67/1.52/2.51         | 71.35/41.77/26.25           |
+| init se -o thread 1   |                        | 74.15/49.16/30.96           |
+| init se thread 2      |                        | 39.17/22.55/14.95           |
+| init se -o thread 2   |                        | 41.95/26.26/16.42           |
+| init se thread 4      |                        | 20.34/11.70/7.77            |
+| init se -o thread 4   |                        | 21.38/13.73/8.58            |
+| init se thread 8      |                        | 11.30/6.41/4.30             |
+| init se -o thread 8   |                        | 11.88/8.33/6.11             |
+| init se thread 16     |                        | 6.07/3.72/3.60(12)          |
+| init se -o thread 16  |                        | 6.95/8.10(10)/6.11(8)       |
+| init se thread >16    |                        | 3.75(30)/3.66(18)/3.60(12)  |
+| init se -o thread >16 |                        | 6.88(20)/8.25(10)/6.11(8)   |
+|                       |                        |                             |
+|                       |                        |                             |
+| init pe thread 1      |                        | 82.77/43.12/37.99           |
+| init pe -o thread 1   |                        |                             |
+| init pe thread 2      |                        | 42.35/21.89/19.98           |
+| init pe -o thread 2   |                        |                             |
+| init pe thread 4      |                        | 22.07/11.44/10.13           |
+| init pe -o thread 4   |                        |                             |
+| init pe thread 8      |                        | 11.90/6.28/5.39             |
+| init pe -o thread 8   |                        |                             |
+| init pe thread 16     |                        | 6.26/4.07/5.15(10)          |
+| init pe -o thread 16  |                        |                             |
+| init pe thread 32     |                        | 5.08(22)/4.07(16)/5.15(10)  |
+| init pe -o thread 32  |                        |                             |
+|                       |                        |                             |
+|                       |                        |                             |
+
+可以发现，pe的时候，Re比Plus要慢一点，用vtune看了看，居然是stateInfo那里，可能向量化确实是有用的，下午给Re的那一块写一下，现在睡会觉。
+
+写完向量化确实单线程快了很多，直接起飞，但是峰值性能还是略差，简单分析了一下，猜想是生产者读的慢，拖慢了整体的速度，把消费者的功能都关了，果然pe的数据一个读2s一个2.9s，和测出来的数据基本上是一样的。

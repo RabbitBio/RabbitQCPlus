@@ -4,6 +4,12 @@
 
 #include "peqc.h"
 
+double GetTime3() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (double) tv.tv_sec + (double) tv.tv_usec / 1000000;
+}
+
 /**
  * @brief Construct function
  * @param cmd_info1 : cmd information
@@ -70,21 +76,26 @@ void PeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
 void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
     rabbit::fq::FastqFileReader *fqFileReader;
-    fqFileReader = new rabbit::fq::FastqFileReader(file, *fastqPool, file2, false);
+    fqFileReader = new rabbit::fq::FastqFileReader(file, fastqPool, file2, false);
     int n_chunks = 0;
-    int line_sum = 0;
+    double t0 = GetTime3();
+
+    rabbit::fq::FastqDataPairChunk *fqdatachunk;
     while (true) {
-        rabbit::fq::FastqDataPairChunk *fqdatachunk = new rabbit::fq::FastqDataPairChunk;
         fqdatachunk = fqFileReader->readNextPairChunk();
         if (fqdatachunk == NULL) break;
         n_chunks++;
         //std::cout << "readed chunk: " << n_chunks << std::endl;
-        dq.Push(n_chunks, fqdatachunk);
+//        dq.Push(n_chunks, fqdatachunk);
+        fastqPool->Release(fqdatachunk->left_part);
+        fastqPool->Release(fqdatachunk->right_part);
     }
+    printf("producer cost %.3f\n", GetTime3() - t0);
 
     dq.SetCompleted();
     delete fqFileReader;
     std::cout << "file " << file << " has " << n_chunks << " chunks" << std::endl;
+
 }
 
 /**
@@ -97,102 +108,102 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataPairChunk *fqdatachunk = new rabbit::fq::FastqDataPairChunk;
-    while (dq.Pop(id, fqdatachunk)) {
-        std::vector<neoReference> data1, data2;
-        std::vector<neoReference> pass_data1, pass_data2;
-        rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->left_part), data1, true);
-        rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->right_part), data2, true);
-        ASSERT(data1.size() == data2.size());
-        int out_len1 = 0, out_len2 = 0;
-        for (int i = 0; i < data1.size(); i++) {
-            auto item1 = data1[i];
-            auto item2 = data2[i];
-            thread_info->pre_state1_->StateInfo(item1);
-            thread_info->pre_state2_->StateInfo(item2);
-            if (cmd_info_->state_duplicate_) {
-                duplicate_->statPair(item1, item2);
-            }
-            if (cmd_info_->add_umi_) {
-                umier_->ProcessPe(item1, item2);
-            }
-
-            //do pe sequence trim
-            bool trim_res1 = filter_->TrimSeq(item1, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
-            bool trim_res2 = filter_->TrimSeq(item2, cmd_info_->trim_front2_, cmd_info_->trim_tail2_);
-
-            if (trim_res1 && trim_res2 && cmd_info_->trim_polyg_) {
-                PolyX::trimPolyG(item1, item2, cmd_info_->trim_poly_len_);
-            }
-
-            if (trim_res1 && trim_res2 && cmd_info_->trim_polyx_) {
-                PolyX::trimPolyX(item1, item2, cmd_info_->trim_poly_len_);
-            }
-
-            //do pe overlap analyze
-            //TODO copy from fastp(RabbitQC)
-            OverlapRes overlap_res;
-            if (trim_res1 && trim_res2 && cmd_info_->analyze_overlap_) {
-                overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
-                                                      cmd_info_->overlap_require_);
-//                printf("ov %d %d %d\n", overlap_res.offset, overlap_res.overlap_len, overlap_res.diff_num);
-            }
-            //TODO what is that
-//                if (config->getThreadId() == 0) {
-//                    statInsertSize(r1, r2, ov);
-//                    isizeEvaluated = true;
+//    while (dq.Pop(id, fqdatachunk)) {
+//        std::vector<neoReference> data1, data2;
+//        std::vector<neoReference> pass_data1, pass_data2;
+//        rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->left_part), data1, true);
+//        rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->right_part), data2, true);
+//        ASSERT(data1.size() == data2.size());
+//        int out_len1 = 0, out_len2 = 0;
+//        for (int i = 0; i < data1.size(); i++) {
+//            auto item1 = data1[i];
+//            auto item2 = data2[i];
+//            thread_info->pre_state1_->StateInfo(item1);
+//            thread_info->pre_state2_->StateInfo(item2);
+//            if (cmd_info_->state_duplicate_) {
+//                duplicate_->statPair(item1, item2);
+//            }
+//            if (cmd_info_->add_umi_) {
+//                umier_->ProcessPe(item1, item2);
+//            }
+//
+//            //do pe sequence trim
+//            bool trim_res1 = filter_->TrimSeq(item1, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
+//            bool trim_res2 = filter_->TrimSeq(item2, cmd_info_->trim_front2_, cmd_info_->trim_tail2_);
+//
+//            if (trim_res1 && trim_res2 && cmd_info_->trim_polyg_) {
+//                PolyX::trimPolyG(item1, item2, cmd_info_->trim_poly_len_);
+//            }
+//
+//            if (trim_res1 && trim_res2 && cmd_info_->trim_polyx_) {
+//                PolyX::trimPolyX(item1, item2, cmd_info_->trim_poly_len_);
+//            }
+//
+//            //do pe overlap analyze
+//            //TODO copy from fastp(RabbitQC)
+//            OverlapRes overlap_res;
+//            if (trim_res1 && trim_res2 && cmd_info_->analyze_overlap_) {
+//                overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
+//                                                      cmd_info_->overlap_require_);
+////                printf("ov %d %d %d\n", overlap_res.offset, overlap_res.overlap_len, overlap_res.diff_num);
+//            }
+//            //TODO what is that
+////                if (config->getThreadId() == 0) {
+////                    statInsertSize(r1, r2, ov);
+////                    isizeEvaluated = true;
+////                }
+//            if (trim_res1 && trim_res2 && cmd_info_->correct_data_) {
+//                Adapter::CorrectData(item1, item2, overlap_res);
+//            }
+//            if (trim_res1 && trim_res2 && cmd_info_->trim_adapter_) {
+//                bool trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
+//                if (!trimmed) {
+//                    if (cmd_info_->detect_adapter1_)
+//                        Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, false);
+//                    if (cmd_info_->detect_adapter2_)
+//                        Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, true);
 //                }
-            if (trim_res1 && trim_res2 && cmd_info_->correct_data_) {
-                Adapter::CorrectData(item1, item2, overlap_res);
-            }
-            if (trim_res1 && trim_res2 && cmd_info_->trim_adapter_) {
-                bool trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
-                if (!trimmed) {
-                    if (cmd_info_->detect_adapter1_)
-                        Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, false);
-                    if (cmd_info_->detect_adapter2_)
-                        Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, true);
-                }
-            }
-
-
-            //do filer in refs
-            int filter_res1 = filter_->ReadFiltering(item1, trim_res1);
-            int filter_res2 = filter_->ReadFiltering(item2, trim_res2);
-
-            if (filter_res1 == 0 && filter_res2 == 0) {
-                thread_info->aft_state1_->StateInfo(item1);
-                thread_info->aft_state2_->StateInfo(item2);
-                if (cmd_info_->write_data_) {
-                    pass_data1.push_back(item1);
-                    pass_data2.push_back(item2);
-                    out_len1 += item1.lname + item1.lseq + item1.lstrand + item1.lqual + 4;
-                    out_len2 += item2.lname + item2.lseq + item2.lstrand + item2.lqual + 4;
-                }
-            }
-        }
-        if (cmd_info_->write_data_) {
-            if (pass_data1.size() > 0) {
-                char *out_data1 = new char[out_len1];
-                int pos = 0;
-                for (auto item:pass_data1) {
-                    Read2Chars(item, out_data1, pos);
-                }
-                ASSERT(pos == out_len1);
-                out_queue1_->enqueue({out_data1, out_len1});
-            }
-            if (pass_data2.size() > 0) {
-                char *out_data2 = new char[out_len2];
-                int pos = 0;
-                for (auto item:pass_data2) {
-                    Read2Chars(item, out_data2, pos);
-                }
-                ASSERT(pos == out_len2);
-                out_queue2_->enqueue({out_data2, out_len2});
-            }
-        }
-        fastqPool->Release(fqdatachunk->left_part);
-        fastqPool->Release(fqdatachunk->right_part);
-    }
+//            }
+//
+//
+//            //do filer in refs
+//            int filter_res1 = filter_->ReadFiltering(item1, trim_res1);
+//            int filter_res2 = filter_->ReadFiltering(item2, trim_res2);
+//
+//            if (filter_res1 == 0 && filter_res2 == 0) {
+//                thread_info->aft_state1_->StateInfo(item1);
+//                thread_info->aft_state2_->StateInfo(item2);
+//                if (cmd_info_->write_data_) {
+//                    pass_data1.push_back(item1);
+//                    pass_data2.push_back(item2);
+//                    out_len1 += item1.lname + item1.lseq + item1.lstrand + item1.lqual + 4;
+//                    out_len2 += item2.lname + item2.lseq + item2.lstrand + item2.lqual + 4;
+//                }
+//            }
+//        }
+//        if (cmd_info_->write_data_) {
+//            if (pass_data1.size() > 0) {
+//                char *out_data1 = new char[out_len1];
+//                int pos = 0;
+//                for (auto item:pass_data1) {
+//                    Read2Chars(item, out_data1, pos);
+//                }
+//                ASSERT(pos == out_len1);
+//                out_queue1_->enqueue({out_data1, out_len1});
+//            }
+//            if (pass_data2.size() > 0) {
+//                char *out_data2 = new char[out_len2];
+//                int pos = 0;
+//                for (auto item:pass_data2) {
+//                    Read2Chars(item, out_data2, pos);
+//                }
+//                ASSERT(pos == out_len2);
+//                out_queue2_->enqueue({out_data2, out_len2});
+//            }
+//        }
+//        fastqPool1->Release(fqdatachunk->left_part);
+//        fastqPool2->Release(fqdatachunk->right_part);
+//    }
     done_thread_number_++;
 }
 
@@ -246,7 +257,7 @@ void PeQc::WriteSeFastqTask2() {
  * @brief do QC for pair-end data
  */
 void PeQc::ProcessPeFastq() {
-    rabbit::fq::FastqDataPool *fastqPool = new rabbit::fq::FastqDataPool(256, 1 << 22);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(256, 1 << 22);
     //TODO replace this queue
     rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(128, 1);
     auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
@@ -262,12 +273,13 @@ void PeQc::ProcessPeFastq() {
 
     //TODO bind ?
     std::thread producer(
-            std::bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_, fastqPool,
-                      std::ref(queue1)));
+            std::bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_,
+                      fastqPool, std::ref(queue1)));
     auto **threads = new std::thread *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         threads[t] = new std::thread(
-                std::bind(&PeQc::ConsumerPeFastqTask, this, p_thread_info[t], fastqPool, std::ref(queue1)));
+                std::bind(&PeQc::ConsumerPeFastqTask, this, p_thread_info[t], fastqPool,
+                          std::ref(queue1)));
     }
     producer.join();
     for (int t = 0; t < cmd_info_->thread_number_; t++) {

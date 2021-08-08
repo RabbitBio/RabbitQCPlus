@@ -156,7 +156,7 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
 
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
     rabbit::fq::FastqFileReader *fqFileReader;
-    fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool);
+    fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool);
     int64_t n_chunks = 0;
     // stat up to 256K reads
     const long READ_LIMIT = 256 * 1024;
