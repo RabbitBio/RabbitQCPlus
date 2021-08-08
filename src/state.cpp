@@ -11,6 +11,7 @@ State::State(int seq_len, int qul_range) {
     malloc_seq_len_ = seq_len;
     qul_range_ = qul_range;
     real_seq_len_ = 0;
+    has_summarize_ = 0;
     int pos_seq_len = seq_len * 8;
     pos_cnt_ = new int64_t[pos_seq_len];
     memset(pos_cnt_, 0, pos_seq_len * sizeof(int64_t));
@@ -23,11 +24,26 @@ State::State(int seq_len, int qul_range) {
     qul_cnt_ = new int64_t[qul_range];
     memset(qul_cnt_, 0, qul_range * sizeof(int64_t));
 
+    kmer_buf_len_ = 2 << (5 * 2);
+    kmer_ = new int64_t[kmer_buf_len_];
+    memset(kmer_, 0, sizeof(int64_t) * kmer_buf_len_);
+}
+
+State::~State() {
+    delete pos_cnt_;
+    delete pos_qul_;
+    delete len_cnt_;
+    delete gc_cnt_;
+    delete qul_cnt_;
+    delete kmer_;
+
 }
 
 int State::get_seq_len() {
     return real_seq_len_;
 }
+
+static int valAGCT[8] = {-1, 0, -1, 2, 1, -1, -1, 3};
 
 /**
  * @brief State reference information
@@ -48,8 +64,11 @@ void State::StateInfo(neoReference &ref) {
     char *quals = reinterpret_cast<char *>(ref.base + ref.pqual);
     const char q20 = '5';
     const char q30 = '?';
+    int flag = 4;
     int gc_cnt = 0;
     int qul_tot = 0;
+    int kmer = 0;
+
     for (int i = 0; i < slen; i++) {
         char b = bases[i] & 0x07;
         if (b == 3 || b == 7)gc_cnt++;
@@ -62,9 +81,33 @@ void State::StateInfo(neoReference &ref) {
         }
         pos_cnt_[i * 8 + b]++;
         pos_qul_[i * 8 + b] += quals[i] - 33;
+        if (bases[i] == 'N')flag = 5;
+        int val = valAGCT[b];
+        kmer = ((kmer << 2) & 0x3FC) | val;
+        if (flag <= 0)kmer_[kmer]++;
+        flag--;
+
     }
     gc_cnt_[int(100.0 * gc_cnt / slen)]++;
     qul_cnt_[int(1.0 * qul_tot / slen)]++;
+}
+
+
+void State::Summarize() {
+    if (has_summarize_)return;
+
+    kmer_min_ = kmer_[0];
+    kmer_max_ = kmer_[0];
+    for (int i = 0; i < kmer_buf_len_; i++) {
+//        printf("%d ", kmer_[i]);
+        if (kmer_[i] > kmer_max_)
+            kmer_max_ = kmer_[i];
+        if (kmer_[i] < kmer_min_)
+            kmer_min_ = kmer_[i];
+    }
+//    printf("\n");
+
+    has_summarize_ = true;
 }
 
 /**
@@ -75,6 +118,7 @@ void State::StateInfo(neoReference &ref) {
 State *State::MergeStates(const std::vector<State *> &states) {
     int now_seq_len = 0;
     for (auto item:states) {
+        item->Summarize();
         now_seq_len = std::max(now_seq_len, item->real_seq_len_);
     }
     auto *res_state = new State(now_seq_len, states[0]->qul_range_);
@@ -96,7 +140,11 @@ State *State::MergeStates(const std::vector<State *> &states) {
         for (int i = 0; i <= 100; i++) {
             res_state->gc_cnt_[i] += item->gc_cnt_[i];
         }
+        for (int i = 0; i < res_state->kmer_buf_len_; i++) {
+            res_state->kmer_[i] += item->kmer_[i];
+        }
     }
+    res_state->Summarize();
     return res_state;
 }
 
@@ -108,6 +156,9 @@ void State::PrintStates(const State *state) {
     printf("q20bases %lld\n", state->q20bases_);
     printf("q30bases %lld\n", state->q30bases_);
     printf("lines %lld\n", state->lines_);
+    printf("kmer max is %lld\n", state->kmer_max_);
+    printf("kmer min is %lld\n", state->kmer_min_);
+
     int now_seq_len = state->real_seq_len_;
 //    printf("position--quality :\n");
 //    for (int i = 0; i < now_seq_len; i++) {

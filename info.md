@@ -521,3 +521,5 @@ cost ： STD/RabbitQCPlus/ReRabbitQC
 关于重复度分析的部分加了向量化，效果还可以。
 
 //TODO correct部分把判断条件改了，感觉是没啥问题。
+
+为了保证测试时间的时候Re和Plus执行的功能是一样的，就把Plus的UseLong打开了，并且在Re中添加了kmer统计的功能。

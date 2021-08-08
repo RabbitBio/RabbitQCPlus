@@ -653,27 +653,111 @@ bool Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2
         start = -3;
     else if (alen >= 8)
         start = -2;
-    // we start from negative numbers since the Illumina adapter dimer usually have the first A skipped as A-tailing
+
+
+
+#ifdef Vec512
+    for (pos = start; pos < rlen - matchReq; pos++) {
+        int cmplen = std::min(rlen - pos, alen);
+        int allowedMismatch = cmplen / allowOneMismatchForEach;
+        int mismatch = 0;
+        int l = std::max(0, -pos);
+        for (int i = l; i < cmplen; i += 64) {
+            uint64_t tag = (1ll << std::min(64, cmplen - i)) - 1;
+            __m512i t1 = _mm512_maskz_loadu_epi8(tag, adata + i);
+            __m512i t2 = _mm512_maskz_loadu_epi8(tag, rdata + i + pos);
+            __mmask64 res = _mm512_cmp_epi8_mask(t1, t2, 4);
+            mismatch += _mm_popcnt_u64(res);
+            if (mismatch > allowedMismatch)break;
+        }
+
+
+        if (mismatch <= allowedMismatch) {
+            found = true;
+            break;
+        }
+    }
+#elif Vec256
+    for (pos = start; pos < rlen - matchReq; pos++) {
+        int cmplen = std::min(rlen - pos, alen);
+        int allowedMismatch = cmplen / allowOneMismatchForEach;
+        int mismatch = 0;
+        int l = std::max(0, -pos);
+        int i = l;
+        for (; i + 32 < cmplen; i += 32) {
+            __m256i t1 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(adata + i));
+            __m256i t2 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(rdata + i + pos));
+            __m256i res = _mm256_cmpeq_epi8(t1, t2);
+            unsigned mask = _mm256_movemask_epi8(res);
+            mismatch += 32 - _mm_popcnt_u32(mask);
+            if (mismatch > allowedMismatch)break;
+        }
+        for (; i < cmplen; i++) {
+            mismatch += adata[i] != rdata[i + pos];
+            if (mismatch > allowedMismatch)break;
+        }
+        if (mismatch <= allowedMismatch) {
+            found = true;
+            break;
+        }
+    }
+#elif KK
+
+    for (pos = start; pos < rlen - matchReq; pos++) {
+        int cmplen = min(rlen - pos, alen);
+        int allowedMismatch = cmplen / allowOneMismatchForEach;
+        int ok = 1;
+        for (int i = max(0, -pos), j = 0; i < cmplen && j < 3; i++, j++) {
+            if (adata[i] != rdata[i + pos]) {
+                ok = 0;
+                break;
+            }
+        }
+        if (ok == 0) {
+            for (int i = cmplen - 1, j = 0; i >= max(0, -pos) && j < 3; i--, j++) {
+                if (adata[i] != rdata[i + pos]) {
+                    ok = 0;
+                    break;
+                }
+            }
+        }
+        if (ok == 0) {
+            for (int i = max(0, -pos) + 3, j = 0; i < cmplen && j < 3; i++, j++) {
+                if (adata[i] != rdata[i + pos]) {
+                    ok = 0;
+                    break;
+                }
+            }
+        }
+        if (ok) {
+            int mismatch = 0;
+            for (int i = max(0, -pos); i < cmplen; i++) {
+                mismatch += adata[i] != rdata[i + pos];
+                if (mismatch > allowedMismatch)break;
+            }
+            if (mismatch <= allowedMismatch) {
+                found = true;
+                break;
+            }
+        }
+    }
+#else
     for (pos = start; pos < rlen - matchReq; pos++) {
         int cmplen = std::min(rlen - pos, alen);
         int allowedMismatch = cmplen / allowOneMismatchForEach;
         int mismatch = 0;
         bool matched = true;
         for (int i = std::max(0, -pos); i < cmplen; i++) {
-            if (adata[i] != rdata[i + pos]) {
-                mismatch++;
-                if (mismatch > allowedMismatch) {
-                    matched = false;
-                    break;
-                }
-            }
+            mismatch += adata[i] != rdata[i + pos];
+            if (mismatch > allowedMismatch)break;
         }
-        if (matched) {
+        if (mismatch <= allowedMismatch) {
             found = true;
             break;
         }
-
     }
+#endif
+
 
     if (found) {
         if (pos < 0) {
