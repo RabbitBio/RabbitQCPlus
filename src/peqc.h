@@ -44,10 +44,12 @@ private:
     void Read2Chars(neoReference &ref, char *out_data, int &pos);
 
 
-    void ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
+    void ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool1,
+                             rabbit::fq::FastqDataPool *fastqPool2,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
 
-    void ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
+    void ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool1,
+                             rabbit::fq::FastqDataPool *fastqPool2,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
 
     void WriteSeFastqTask1();

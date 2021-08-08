@@ -555,3 +555,21 @@ cost ： STD/RabbitQCPlus/ReRabbitQC
 可以发现，pe的时候，Re比Plus要慢一点，用vtune看了看，居然是stateInfo那里，可能向量化确实是有用的，下午给Re的那一块写一下，现在睡会觉。
 
 写完向量化确实单线程快了很多，直接起飞，但是峰值性能还是略差，简单分析了一下，猜想是生产者读的慢，拖慢了整体的速度，把消费者的功能都关了，果然pe的数据一个读2s一个2.9s，和测出来的数据基本上是一样的。
+
+用vtune跑一下发现：
+
+![image-20210808233224806](/Users/ylf9811/Library/Application Support/typora-user-images/image-20210808233224806.png)
+
+![image-20210808233615857](/Users/ylf9811/Library/Application Support/typora-user-images/image-20210808233615857.png)
+
+首先countline比较好处理，看看汇编发现是自动向量化的程度不同，至于为什么几乎一样的代码自动向量化的程度不同就先不管了，手写一下之后这不部分的时间差不多了👇：
+
+![image-20210808233231909](/Users/ylf9811/Library/Application Support/typora-user-images/image-20210808233231909.png)
+
+但是很奇怪的多了好几个copy函数，在总的显示的是这个👇：
+
+![image-20210808233920868](/Users/ylf9811/Library/Application Support/typora-user-images/image-20210808233920868.png)
+
+这块时间是哪里来的就比较迷。一开始以为是一个pool的原因，改成两个pool的版本还是一样。
+
+经过一一的排查，最终确定是SwapBufferSize的原因，fastp设置的是1<<13，RabbitIO设置的是1<<20，这个参数可能要根据数据集或者机器配置调整，明天再看详细的，先睡觉。

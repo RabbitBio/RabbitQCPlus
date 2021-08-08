@@ -348,6 +348,45 @@ namespace rabbit {
                 }
             }
 
+            FastqFileReader(const std::string &fileName_, FastqDataPool *pool_, FastqDataPool *pool2_,
+                            std::string fileName2_ = "",
+                            bool isZippedNew = false)
+                    : swapBuffer(SwapBufferSize),
+                      swapBuffer2(SwapBufferSize),
+                      bufferSize(0),
+                      bufferSize2(0),
+                      eof(false),
+                      usesCrlf(false),
+                      isZipped(isZippedNew),
+                      numParts(0),
+                      recordsPool(pool_),
+                      recordsPool2(pool2_) {
+                // if(ends_with(fileName_,".gz"))
+                if (isZipped) {
+                    mZipFile = gzopen(fileName_.c_str(), "r");
+                    if (mZipFile == NULL) {
+                        throw RioException(
+                                ("Can not open file to read: " +
+                                 fileName_).c_str());  //--------------need to change----------//
+                    }
+                    // isZipped=true;
+                    gzrewind(mZipFile);
+
+                } else {
+                    mFile = FOPEN(fileName_.c_str(), "rb");
+                    if (fileName2_ != "") {
+                        mFile2 = FOPEN(fileName2_.c_str(), "rb");
+                        if (mFile2 == NULL)
+                            throw RioException(
+                                    "Can not open file to read: ");  //--------------need to change----------//
+                    }
+                    if (mFile == NULL) {
+                        throw RioException(
+                                ("Can not open file to read: " +
+                                 fileName_).c_str());  //--------------need to change----------//
+                    }
+                }
+            }
 
             /**
              * @brief FastaFileReader Constructor
@@ -471,7 +510,8 @@ namespace rabbit {
             gzFile mZipFile = NULL;
 
             // added from fastxIO.h
-            FastqDataPool *recordsPool;
+            FastqDataPool *recordsPool = NULL;
+            FastqDataPool *recordsPool2 = NULL;
             uint32 numParts;
 
             uint64 lastOneReadPos;
