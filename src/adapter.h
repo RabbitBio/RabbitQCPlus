@@ -28,14 +28,15 @@ public:
 
     static std::string int2seq(unsigned int val, int seqlen);
 
-    static int seq2int(std::string &seq, int pos, int keylen, int lastVal);
+    static int seq2int(const char *seq, int pos, int keylen, int lastVal);
+//    static int seq2int(std::string &seq, int pos, int keylen, int lastVal);
 
     static std::string matchKnownAdapter(std::string seq);
 
     static std::string AutoDetect(std::string file_name, int trim_tail);
 
     static std::string
-    getAdapterWithSeed(int seed, std::vector<Reference> loadedReads, long records, int keylen, int trim_tail);
+    getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, long records, int keylen, int trim_tail);
 
     static OverlapRes AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require);
 

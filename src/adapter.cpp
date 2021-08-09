@@ -79,56 +79,79 @@ std::string Adapter::int2seq(unsigned int val, int seqlen) {
     return ret;
 }
 
-int Adapter::seq2int(std::string &seq, int pos, int keylen, int lastVal) {
-    int rlen = seq.length();
+static int valAGCT[8] = {-1, 0, -1, 2, 1, -1, -1, 3};
+
+int Adapter::seq2int(const char *seq, int pos, int keylen, int lastVal) {
     if (lastVal >= 0) {
         const int mask = (1 << (keylen * 2)) - 1;
         int key = (lastVal << 2) & mask;
         char base = seq[pos + keylen - 1];
-        switch (base) {
-            case 'A':
-                key += 0;
-                break;
-            case 'T':
-                key += 1;
-                break;
-            case 'C':
-                key += 2;
-                break;
-            case 'G':
-                key += 3;
-                break;
-            default:
-                // N or anything else
-                return -1;
-        }
+        int val = valAGCT[base & 0x07];
+        if (val == -1)return -1;
+        key += val;
         return key;
     } else {
         int key = 0;
         for (int i = pos; i < keylen + pos; i++) {
             key = (key << 2);
             char base = seq[i];
-            switch (base) {
-                case 'A':
-                    key += 0;
-                    break;
-                case 'T':
-                    key += 1;
-                    break;
-                case 'C':
-                    key += 2;
-                    break;
-                case 'G':
-                    key += 3;
-                    break;
-                default:
-                    // N or anything else
-                    return -1;
-            }
+            int val = valAGCT[base & 0x07];
+            if (val == -1)return -1;
+            key += val;
         }
         return key;
     }
 }
+//int Adapter::seq2int(std::string &seq, int pos, int keylen, int lastVal) {
+//    int rlen = seq.length();
+//    if (lastVal >= 0) {
+//        const int mask = (1 << (keylen * 2)) - 1;
+//        int key = (lastVal << 2) & mask;
+//        char base = seq[pos + keylen - 1];
+//        switch (base) {
+//            case 'A':
+//                key += 0;
+//                break;
+//            case 'T':
+//                key += 1;
+//                break;
+//            case 'C':
+//                key += 2;
+//                break;
+//            case 'G':
+//                key += 3;
+//                break;
+//            default:
+//                // N or anything else
+//                return -1;
+//        }
+//        return key;
+//    } else {
+//        int key = 0;
+//        for (int i = pos; i < keylen + pos; i++) {
+//            key = (key << 2);
+//            char base = seq[i];
+//            switch (base) {
+//                case 'A':
+//                    key += 0;
+//                    break;
+//                case 'T':
+//                    key += 1;
+//                    break;
+//                case 'C':
+//                    key += 2;
+//                    break;
+//                case 'G':
+//                    key += 3;
+//                    break;
+//                default:
+//                    // N or anything else
+//                    return -1;
+//            }
+//        }
+//        return key;
+//    }
+//}
 
 
 std::string Adapter::matchKnownAdapter(std::string seq) {
@@ -165,20 +188,20 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
     long bases = 0;
 
 
-    std::vector<Reference> loadedReads;
-    printf("now loadRead size %d\n", loadedReads.size());
-
+    std::vector<neoReference> loadedReads;
+    std::vector<rabbit::fq::FastqDataChunk *> chunks;
 
     while (records < READ_LIMIT && bases < BASE_LIMIT) {
         rabbit::fq::FastqDataChunk *fqdatachunk;
         fqdatachunk = fqFileReader->readNextChunk();
         if (fqdatachunk == NULL) break;
         n_chunks++;
-        std::vector<Reference> data;
+        std::vector<neoReference> data;
         rabbit::fq::chunkFormat(fqdatachunk, data, true);
-        fastq_data_pool->Release(fqdatachunk);
+        chunks.push_back(fqdatachunk);
+//        fastq_data_pool->Release(fqdatachunk);
         for (auto item:data) {
-            bases += item.seq.length();
+            bases += item.lseq;
             loadedReads.push_back(item);
             records++;
             if (records >= READ_LIMIT || bases >= BASE_LIMIT)
@@ -186,8 +209,7 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
         }
     }
 
-    delete fastq_data_pool;
-    delete fqFileReader;
+
     // we need at least 10000 valid records to evaluate
     if (records < 10000) {
         return "";
@@ -202,33 +224,17 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
     unsigned int *counts = new unsigned int[size];
     memset(counts, 0, sizeof(unsigned int) * size);
 
-    //prepare data for openMP add by liumy
-//    int thread_count = 1; //num of threads
-//    unsigned int **countArr = new unsigned int *[thread_count];
-//    for (int i = 0; i < thread_count; i++) {
-//        countArr[i] = new unsigned int[size];
-//    }
-
-//#pragma omp parallel for num_threads(thread_count)
+//TODO omp ? maybe not need
     for (int i = 0; i < records; i++) {
-//        int my_rank = omp_get_thread_num();
-        Reference r = loadedReads[i];
-        //const char* data = r->mSeq.mStr.c_str();
+        neoReference r = loadedReads[i];
         int key = -1;
-        for (int pos = 20; pos <= r.seq.length() - keylen - shiftTail; pos++) {
-            key = seq2int(r.seq, pos, keylen, key);
+        for (int pos = 20; pos <= r.lseq - keylen - shiftTail; pos++) {
+            key = seq2int(reinterpret_cast<const char *>(r.base + r.pseq), pos, keylen, key);
             if (key >= 0) {
                 counts[key]++;
             }
         }
     }
-    //merge countArr to counts
-//    for (int i = 0; i < thread_count; i++) {
-//        for (int j = 0; j < size; j++)
-//            counts[j] += countArr[i][j];
-//    }
-
-    // set AAAAAAAAAA = 0;
     counts[0] = 0;
 
     // get the top N
@@ -303,6 +309,11 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
         }
     }
 
+    for (auto item:chunks)
+        fastq_data_pool->Release(item);
+
+    delete fastq_data_pool;
+    delete fqFileReader;
     delete[] counts;
     return "";
 
@@ -310,34 +321,38 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
 
 
 std::string
-Adapter::getAdapterWithSeed(int seed, std::vector<Reference> loadedReads, long records, int keylen, int trim_tail) {
+Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, long records, int keylen, int trim_tail) {
     // we have to shift last cycle for evaluation since it is so noisy, especially for Illumina data
     const int shiftTail = std::max(1, trim_tail);
     NucleotideTree *forwardTree = new NucleotideTree();
     NucleotideTree *backwardTree = new NucleotideTree();
 
-    int thread_count = 1;
     std::vector<AdapterSeedInfo> vec;
+#pragma omp parallel for
     for (int i = 0; i < records; i++) {
-        Reference r = loadedReads[i];
+        neoReference r = loadedReads[i];
         struct AdapterSeedInfo seedInfo;
         int key = -1;
-        for (int pos = 20; pos <= r.seq.length() - keylen - shiftTail; pos++) {
-            key = seq2int(r.seq, pos, keylen, key);
+        for (int pos = 20; pos <= r.lseq - keylen - shiftTail; pos++) {
+            key = seq2int(reinterpret_cast<const char *>(r.base + r.pseq), pos, keylen, key);
             if (key == seed) {
                 seedInfo.recordsID = i;
                 seedInfo.pos = pos;
-                vec.push_back(seedInfo);
+#pragma omp critical
+                {
+                    vec.push_back(seedInfo);
+                }
             }
         }
     }
 
     std::vector<AdapterSeedInfo>::iterator it;
     for (it = vec.begin(); it != vec.end(); it++) {
-        forwardTree->addSeq(loadedReads[it->recordsID].seq.substr(it->pos + keylen,
-                                                                  loadedReads[it->recordsID].seq.length() - keylen -
-                                                                  shiftTail - it->pos));
-        std::string seq = loadedReads[it->recordsID].seq.substr(0, it->pos);
+
+        auto now_it = loadedReads[it->recordsID];
+        forwardTree->addSeq(std::string(reinterpret_cast<const char *>(now_it.base + now_it.pseq + it->pos + keylen),
+                                        now_it.lseq - keylen - shiftTail - it->pos));
+        std::string seq = std::string(reinterpret_cast<const char *>(now_it.base + now_it.pseq), it->pos);
         std::string rcseq = Reverse(seq);
         backwardTree->addSeq(rcseq);
     }
@@ -382,7 +397,7 @@ static bool cntt = 0;
 
 OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require) {
 
-    if(cntt==0){
+    if (cntt == 0) {
         printf("512\n");
         cntt++;
     }
@@ -653,7 +668,6 @@ bool Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2
         start = -3;
     else if (alen >= 8)
         start = -2;
-
 
 
 #ifdef Vec512

@@ -96,55 +96,55 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;// = new rabbit::fq::FastqDataChunk;
     while (dq.Pop(id, fqdatachunk)) {
-//        std::vector<neoReference> data;
-//        std::vector<neoReference> pass_data;
-//        rabbit::fq::chunkFormat(fqdatachunk, data, true);
-//        int out_len = 0;
-//        for (auto item:data) {
-//            thread_info->pre_state1_->StateInfo(item);
-//            if (cmd_info_->state_duplicate_) {
-//                duplicate_->statRead(item);
-//            }
-//
-//            if (cmd_info_->add_umi_) {
-//                umier_->ProcessSe(item);
-//            }
-//            bool trim_res = filter_->TrimSeq(item, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
-//
-//            if (trim_res && cmd_info_->trim_polyg_) {
-//                PolyX::trimPolyG(item, cmd_info_->trim_poly_len_);
-//            }
-//
-//            if (trim_res && cmd_info_->trim_polyx_) {
-//                PolyX::trimPolyX(item, cmd_info_->trim_poly_len_);
-//            }
-//
-//
-//            if (trim_res && cmd_info_->trim_adapter_ && cmd_info_->detect_adapter1_) {
-//                Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);
-//            }
-//            int filter_res = filter_->ReadFiltering(item, trim_res);
-//            if (filter_res == 0) {
-//                thread_info->aft_state1_->StateInfo(item);
-//                if (cmd_info_->write_data_) {
-//                    pass_data.push_back(item);
-//                    out_len += item.lname + item.lseq + item.lstrand + item.lqual + 4;
-//                }
-//            }
-//        }
-//
-//        if (cmd_info_->write_data_) {
-//            if (pass_data.size() > 0) {
-//                char *out_data = new char[out_len];
-//                int pos = 0;
-//                for (auto item:pass_data) {
-//                    //TODO delete name
-//                    Read2Chars(item, out_data, pos);
-//                }
-//                ASSERT(pos == out_len);
-//                out_queue_->enqueue({out_data, out_len});
-//            }
-//        }
+        std::vector<neoReference> data;
+        std::vector<neoReference> pass_data;
+        rabbit::fq::chunkFormat(fqdatachunk, data, true);
+        int out_len = 0;
+        for (auto item:data) {
+            thread_info->pre_state1_->StateInfo(item);
+            if (cmd_info_->state_duplicate_) {
+                duplicate_->statRead(item);
+            }
+
+            if (cmd_info_->add_umi_) {
+                umier_->ProcessSe(item);
+            }
+            bool trim_res = filter_->TrimSeq(item, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
+
+            if (trim_res && cmd_info_->trim_polyg_) {
+                PolyX::trimPolyG(item, cmd_info_->trim_poly_len_);
+            }
+
+            if (trim_res && cmd_info_->trim_polyx_) {
+                PolyX::trimPolyX(item, cmd_info_->trim_poly_len_);
+            }
+
+
+            if (trim_res && cmd_info_->trim_adapter_ && cmd_info_->detect_adapter1_) {
+                Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);
+            }
+            int filter_res = filter_->ReadFiltering(item, trim_res);
+            if (filter_res == 0) {
+                thread_info->aft_state1_->StateInfo(item);
+                if (cmd_info_->write_data_) {
+                    pass_data.push_back(item);
+                    out_len += item.lname + item.lseq + item.lstrand + item.lqual + 4;
+                }
+            }
+        }
+
+        if (cmd_info_->write_data_) {
+            if (pass_data.size() > 0) {
+                char *out_data = new char[out_len];
+                int pos = 0;
+                for (auto item:pass_data) {
+                    //TODO delete name
+                    Read2Chars(item, out_data, pos);
+                }
+                ASSERT(pos == out_len);
+                out_queue_->enqueue({out_data, out_len});
+            }
+        }
 
         fastq_data_pool->Release(fqdatachunk);
     }
