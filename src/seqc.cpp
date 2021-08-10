@@ -13,9 +13,10 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     done_thread_number_ = 0;
     int out_block_nums = int(1.0 * cmd_info1->in_file_size1_ / cmd_info1->out_block_size_);
     printf("out_block_nums %d\n", out_block_nums);
-    out_queue_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>
-            (out_block_nums + 1000);
+    out_queue_ = NULL;
     if (cmd_info1->write_data_) {
+        out_queue_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>
+                (out_block_nums + 1000);
         printf("open stream %s\n", cmd_info1->out_file_name1_.c_str());
         out_stream_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
     }
@@ -29,7 +30,19 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     }
 }
 
-SeQc::~SeQc() {}
+SeQc::~SeQc() {
+    delete filter_;
+    if (cmd_info_->write_data_) {
+        delete out_queue_;
+    }
+
+    if (cmd_info_->state_duplicate_) {
+        delete duplicate_;
+    }
+    if (cmd_info_->add_umi_) {
+        delete umier_;
+    }
+}
 
 
 /**
@@ -45,7 +58,7 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
     fqFileReader = new rabbit::fq::FastqFileReader(file, fastq_data_pool);
     int64_t n_chunks = 0;
     while (true) {
-        rabbit::fq::FastqDataChunk *fqdatachunk;// = new rabbit::fq::FastqDataChunk;
+        rabbit::fq::FastqDataChunk *fqdatachunk;
         fqdatachunk = fqFileReader->readNextChunk();
         if (fqdatachunk == NULL) break;
         n_chunks++;
@@ -53,6 +66,7 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
         dq.Push(n_chunks, fqdatachunk);
     }
     dq.SetCompleted();
+    delete fqFileReader;
     std::cout << "file " << file << " has " << n_chunks << " chunks" << std::endl;
 }
 //
@@ -94,7 +108,7 @@ void SeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
 void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastq_data_pool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
     rabbit::int64 id = 0;
-    rabbit::fq::FastqDataChunk *fqdatachunk;// = new rabbit::fq::FastqDataChunk;
+    rabbit::fq::FastqDataChunk *fqdatachunk;
     while (dq.Pop(id, fqdatachunk)) {
         std::vector<neoReference> data;
         std::vector<neoReference> pass_data;
@@ -169,7 +183,7 @@ void SeQc::WriteSeFastqTask() {
             out_queue_->try_dequeue(now);
 //            printf("write thread working, write %d %d\n", now.second, cnt++);
             out_stream_.write(now.first, now.second);
-            delete now.first;
+            delete[] now.first;
         }
     }
     out_stream_.close();
@@ -180,9 +194,9 @@ void SeQc::WriteSeFastqTask() {
  */
 
 void SeQc::ProcessSeFastq() {
-    auto *fastqPool = new rabbit::fq::FastqDataPool(32, 1 << 22);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(256, 1 << 22);
     //TODO replace this queue
-    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(64, 1);
+    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(128, 1);
 
     auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
@@ -227,6 +241,7 @@ void SeQc::ProcessSeFastq() {
     printf("print aft state info :\n");
     State::PrintStates(aft_state);
 
+
     int *dupHist = NULL;
     double *dupMeanGC = NULL;
     double dupRate = 0.0;
@@ -244,11 +259,18 @@ void SeQc::ProcessSeFastq() {
     }
 
 
+    delete pre_state;
+    delete aft_state;
+
     delete fastqPool;
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         delete threads[t];
+        delete p_thread_info[t];
     }
+
     delete[] threads;
     delete[] p_thread_info;
-
+    if (cmd_info_->write_data_){
+        delete write_thread;
+    }
 }

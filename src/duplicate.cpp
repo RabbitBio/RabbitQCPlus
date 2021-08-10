@@ -25,6 +25,7 @@ Duplicate::Duplicate(CmdInfo *cmd_info) {
 Duplicate::~Duplicate() {
     delete[] dups_;
     delete[] counts_;
+    delete[] gcs_;
 }
 
 

@@ -20,11 +20,13 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
     done_thread_number_ = 0;
     int out_block_nums = int(1.0 * cmd_info1->in_file_size1_ / cmd_info1->out_block_size_);
     printf("out_block_nums %d\n", out_block_nums);
-    out_queue1_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>
-            (out_block_nums + 1000);
-    out_queue2_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>
-            (out_block_nums + 1000);
+    out_queue1_ = NULL;
+    out_queue2_ = NULL;
     if (cmd_info1->write_data_) {
+        out_queue1_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>
+                (out_block_nums + 1000);
+        out_queue2_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>
+                (out_block_nums + 1000);
         printf("open stream1 %s\n", cmd_info1->out_file_name1_.c_str());
         printf("open stream2 %s\n", cmd_info1->out_file_name2_.c_str());
         out_stream1_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
@@ -35,12 +37,26 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
         duplicate_ = new Duplicate(cmd_info1);
     }
     umier_ = NULL;
-    if (cmd_info_->add_umi_) {
+    if (cmd_info1->add_umi_) {
         umier_ = new Umier(cmd_info1);
     }
 }
 
-PeQc::~PeQc() {}
+PeQc::~PeQc() {
+    delete filter_;
+    if (cmd_info_->write_data_) {
+        delete out_queue1_;
+        delete out_queue2_;
+    }
+    if (cmd_info_->state_duplicate_) {
+        delete duplicate_;
+    }
+    if (cmd_info_->add_umi_) {
+        delete umier_;
+    }
+
+
+}
 
 //
 //void PeQc::PrintRead(neoReference &ref) {
@@ -73,23 +89,19 @@ void PeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
 }
 
 
-void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool1,
-                               rabbit::fq::FastqDataPool *fastqPool2,
+void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
     rabbit::fq::FastqFileReader *fqFileReader;
-    fqFileReader = new rabbit::fq::FastqFileReader(file, fastqPool1, fastqPool2, file2, false);
+    fqFileReader = new rabbit::fq::FastqFileReader(file, fastqPool, file2, false);
     int n_chunks = 0;
     double t0 = GetTime3();
 
     rabbit::fq::FastqDataPairChunk *fqdatachunk;
     while (true) {
-        fqdatachunk = fqFileReader->readNextPairChunkWithTwoPool();
+        fqdatachunk = fqFileReader->readNextPairChunk();
         if (fqdatachunk == NULL) break;
         n_chunks++;
-        //std::cout << "readed chunk: " << n_chunks << std::endl;
         dq.Push(n_chunks, fqdatachunk);
-//        fastqPool1->Release(fqdatachunk->left_part);
-//        fastqPool2->Release(fqdatachunk->right_part);
     }
     printf("producer cost %.3f\n", GetTime3() - t0);
 
@@ -105,11 +117,10 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
  * @param fastq_data_pool :a fastq data pool, it will be used to release data chunk
  * @param dq : data queue
  */
-void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool1,
-                               rabbit::fq::FastqDataPool *fastqPool2,
+void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
     rabbit::int64 id = 0;
-    rabbit::fq::FastqDataPairChunk *fqdatachunk = new rabbit::fq::FastqDataPairChunk;
+    rabbit::fq::FastqDataPairChunk *fqdatachunk;
     while (dq.Pop(id, fqdatachunk)) {
         std::vector<neoReference> data1, data2;
         std::vector<neoReference> pass_data1, pass_data2;
@@ -142,18 +153,12 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             }
 
             //do pe overlap analyze
-            //TODO copy from fastp(RabbitQC)
             OverlapRes overlap_res;
             if (trim_res1 && trim_res2 && cmd_info_->analyze_overlap_) {
                 overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
                                                       cmd_info_->overlap_require_);
 //                printf("ov %d %d %d\n", overlap_res.offset, overlap_res.overlap_len, overlap_res.diff_num);
             }
-            //TODO what is that
-//                if (config->getThreadId() == 0) {
-//                    statInsertSize(r1, r2, ov);
-//                    isizeEvaluated = true;
-//                }
             if (trim_res1 && trim_res2 && cmd_info_->correct_data_) {
                 Adapter::CorrectData(item1, item2, overlap_res);
             }
@@ -203,8 +208,8 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                 out_queue2_->enqueue({out_data2, out_len2});
             }
         }
-        fastqPool1->Release(fqdatachunk->left_part);
-        fastqPool2->Release(fqdatachunk->right_part);
+        fastqPool->Release(fqdatachunk->left_part);
+        fastqPool->Release(fqdatachunk->right_part);
     }
     done_thread_number_++;
 }
@@ -226,7 +231,7 @@ void PeQc::WriteSeFastqTask1() {
             out_queue1_->try_dequeue(now);
 //            printf("write thread working, write %d %d\n", now.second, cnt++);
             out_stream1_.write(now.first, now.second);
-            delete now.first;
+            delete[] now.first;
         }
     }
     out_stream1_.close();
@@ -249,7 +254,7 @@ void PeQc::WriteSeFastqTask2() {
             out_queue2_->try_dequeue(now);
 //            printf("write thread working, write %d %d\n", now.second, cnt++);
             out_stream2_.write(now.first, now.second);
-            delete now.first;
+            delete[] now.first;
         }
     }
     out_stream2_.close();
@@ -259,8 +264,7 @@ void PeQc::WriteSeFastqTask2() {
  * @brief do QC for pair-end data
  */
 void PeQc::ProcessPeFastq() {
-    auto *fastqPool1 = new rabbit::fq::FastqDataPool(128, 1 << 22);
-    auto *fastqPool2 = new rabbit::fq::FastqDataPool(128, 1 << 22);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(256, 1 << 22);
     //TODO replace this queue
     rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(128, 1);
     auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
@@ -277,12 +281,11 @@ void PeQc::ProcessPeFastq() {
     //TODO bind ?
     std::thread producer(
             std::bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_,
-                      fastqPool1, fastqPool2, std::ref(queue1)));
+                      fastqPool, std::ref(queue1)));
     auto **threads = new std::thread *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         threads[t] = new std::thread(
-                std::bind(&PeQc::ConsumerPeFastqTask, this, p_thread_info[t], fastqPool1, fastqPool2,
-                          std::ref(queue1)));
+                std::bind(&PeQc::ConsumerPeFastqTask, this, p_thread_info[t], fastqPool, std::ref(queue1)));
     }
     producer.join();
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
@@ -338,13 +341,21 @@ void PeQc::ProcessPeFastq() {
 
     }
 
+    delete pre_state1;
+    delete pre_state2;
+    delete aft_state1;
+    delete aft_state2;
 
-    delete fastqPool1;
-    delete fastqPool2;
+
+    delete fastqPool;
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
+        delete p_thread_info[t];
         delete threads[t];
     }
     delete[] threads;
     delete[] p_thread_info;
-
+    if (cmd_info_->write_data_) {
+        delete write_thread1;
+        delete write_thread2;
+    }
 }

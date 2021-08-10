@@ -189,8 +189,9 @@ int main(int argc, char **argv) {
             printf("ref2 trim tail %d bases\n", cmd_info.trim_tail2_);
         }
         double tp = GetTime();
-        PeQc pe_qc(&cmd_info);
-        pe_qc.ProcessPeFastq();
+        PeQc *pe_qc = new PeQc(&cmd_info);
+        pe_qc->ProcessPeFastq();
+        delete pe_qc;
         printf("part %.5f\n", GetTime() - tp);
 
     } else {
@@ -234,8 +235,9 @@ int main(int argc, char **argv) {
         }
 
         double tp = GetTime();
-        SeQc se_qc(&cmd_info);
-        se_qc.ProcessSeFastq();
+        SeQc *se_qc = new SeQc(&cmd_info);
+        se_qc->ProcessSeFastq();
+        delete se_qc;
         printf("part %.5f\n", GetTime() - tp);
 
     }

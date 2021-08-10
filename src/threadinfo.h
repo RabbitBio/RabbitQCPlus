@@ -14,6 +14,8 @@ public:
 
     ThreadInfo(CmdInfo *cmd_info);
 
+    ~ThreadInfo();
+
 public:
     CmdInfo *cmd_info_;
     State *pre_state1_;

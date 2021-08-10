@@ -41,12 +41,12 @@ State::State(int seq_len, int qul_range) {
 }
 
 State::~State() {
-    delete pos_cnt_;
-    delete pos_qul_;
-    delete len_cnt_;
-    delete gc_cnt_;
-    delete qul_cnt_;
-    delete kmer_;
+    delete[] pos_cnt_;
+    delete[] pos_qul_;
+    delete[] len_cnt_;
+    delete[] gc_cnt_;
+    delete[] qul_cnt_;
+    delete[] kmer_;
 
 }
 

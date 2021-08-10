@@ -178,8 +178,7 @@ std::string Adapter::matchKnownAdapter(std::string seq) {
 std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
 
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
-    rabbit::fq::FastqFileReader *fqFileReader;
-    fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool);
+    auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool);
     int64_t n_chunks = 0;
     // stat up to 256K reads
     const long READ_LIMIT = 256 * 1024;
@@ -405,7 +404,7 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
     int len1 = r1.lseq;
     int len2 = r2.lseq;
 
-    char *tmpRev = new char[len2];
+    char tmpRev[len2];
     const char *str2 = reinterpret_cast<const char *>(r2.base + r2.pseq);
 
     for (int i = 0; i < len2; i++) {
@@ -471,6 +470,7 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
         }
         offset -= 1;
     }
+
     return {false, 0, 0, 0};
 
 }
@@ -563,6 +563,8 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
         }
         offset -= 1;
     }
+    delete[] tmpRev;
+
     return {false, 0, 0, 0};
 
 }
