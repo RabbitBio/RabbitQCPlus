@@ -57,6 +57,11 @@ int main(int argc, char **argv) {
     app.add_option("--umiSkip", cmd_info.umi_skip_, "");
 
 
+    //TGS
+    //TODO now just se
+    app.add_flag("--TGS", cmd_info.is_TGS_, "process TGS");
+
+
     CLI11_PARSE(app, argc, argv);
     printf("in1 is %s\n", cmd_info.in_file_name1_.c_str());
     if (cmd_info.in_file_name2_.length())printf("in2 is %s\n", cmd_info.in_file_name2_.c_str());
@@ -236,7 +241,11 @@ int main(int argc, char **argv) {
 
         double tp = GetTime();
         SeQc *se_qc = new SeQc(&cmd_info);
-        se_qc->ProcessSeFastq();
+        if (cmd_info.is_TGS_) {
+            se_qc->ProcessSeTGS();
+        } else {
+            se_qc->ProcessSeFastq();
+        }
         delete se_qc;
         printf("part %.5f\n", GetTime() - tp);
 

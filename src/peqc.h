@@ -2,8 +2,8 @@
 // Created by ylf9811 on 2021/7/6.
 //
 
-#ifndef RABBITQCPLUS_PEQC_H
-#define RABBITQCPLUS_PEQC_H
+#ifndef RERABBITQC_PEQC_H
+#define RERABBITQC_PEQC_H
 
 #include <atomic>
 #include <fstream>
@@ -77,4 +77,4 @@ private:
 };
 
 
-#endif //RABBITQCPLUS_PEQC_H
+#endif //RERABBITQC_PEQC_H

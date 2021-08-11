@@ -2,8 +2,8 @@
 // Created by ylf9811 on 2021/7/7.
 //
 
-#ifndef RABBITQCPLUS_FILTER_H
-#define RABBITQCPLUS_FILTER_H
+#ifndef RERABBITQC_FILTER_H
+#define RERABBITQC_FILTER_H
 
 #include <cstring>
 
@@ -32,4 +32,4 @@ private:
 };
 
 
-#endif //RABBITQCPLUS_FILTER_H
+#endif //RERABBITQC_FILTER_H

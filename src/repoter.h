@@ -2,10 +2,13 @@
 // Created by ylf9811 on 2021/7/12.
 //
 
-#ifndef RABBITQCPLUS_REPOTER_H
-#define RABBITQCPLUS_REPOTER_H
+#ifndef RERABBITQC_REPOTER_H
+#define RERABBITQC_REPOTER_H
+
+#include <fstream>
 
 #include "Reference.h"
+#include "state.h"
 
 class Repoter {
 public:
@@ -16,8 +19,11 @@ public:
 
     static void PrintRef(Reference &ref);
 
+    static void ReportHtmlSe(State *state1, State *state2, std::string file_name, double dup);
+//    static void ReportHtmlPe(State *state1, State *state2);
+
     static Reference GetRevRef(neoReference &ref);
 };
 
 
-#endif //RABBITQCPLUS_REPOTER_H
+#endif //RERABBITQC_REPOTER_H

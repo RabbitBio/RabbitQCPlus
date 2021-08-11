@@ -2,8 +2,8 @@
 // Created by ylf9811 on 2021/7/6.
 //
 
-#ifndef RABBITQCPLUS_CMDINFO_H
-#define RABBITQCPLUS_CMDINFO_H
+#ifndef RERABBITQC_CMDINFO_H
+#define RERABBITQC_CMDINFO_H
 
 #include "Globals.h"
 
@@ -68,8 +68,12 @@ public:
     std::string umi_prefix_;
     int umi_skip_;
 
+    //TGS
+    bool is_TGS_;
+    int TGS_min_len_;
+
 
 };
 
 
-#endif //RABBITQCPLUS_CMDINFO_H
+#endif //RERABBITQC_CMDINFO_H

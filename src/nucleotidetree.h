@@ -2,8 +2,8 @@
 // Created by yanli on 2021/7/20.
 //
 
-#ifndef RABBITQCPLUS_NUCLEOTIDETREE_H
-#define RABBITQCPLUS_NUCLEOTIDETREE_H
+#ifndef RERABBITQC_NUCLEOTIDETREE_H
+#define RERABBITQC_NUCLEOTIDETREE_H
 
 #include <cstring>
 #include <sstream>
@@ -40,4 +40,4 @@ private:
 };
 
 
-#endif //RABBITQCPLUS_NUCLEOTIDETREE_H
+#endif //RERABBITQC_NUCLEOTIDETREE_H

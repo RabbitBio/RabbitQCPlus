@@ -2,8 +2,8 @@
 // Created by ylf9811 on 2021/7/13.
 //
 
-#ifndef RABBITQCPLUS_DUPLICATE_H
-#define RABBITQCPLUS_DUPLICATE_H
+#ifndef RERABBITQC_DUPLICATE_H
+#define RERABBITQC_DUPLICATE_H
 
 
 #include <iostream>
@@ -46,4 +46,4 @@ public:
 };
 
 
-#endif //RABBITQCPLUS_DUPLICATE_H
+#endif //RERABBITQC_DUPLICATE_H

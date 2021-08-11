@@ -2,8 +2,8 @@
 // Created by ylf9811 on 2021/7/14.
 //
 
-#ifndef RABBITQCPLUS_POLYX_H
-#define RABBITQCPLUS_POLYX_H
+#ifndef RERABBITQC_POLYX_H
+#define RERABBITQC_POLYX_H
 
 
 #include "Reference.h"
@@ -26,4 +26,4 @@ public:
 };
 
 
-#endif //RABBITQCPLUS_POLYX_H
+#endif //RERABBITQC_POLYX_H

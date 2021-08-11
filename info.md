@@ -20,7 +20,7 @@
 
 - [ ] Deduplicate
 
-- [ ] Draw
+- [x] Draw
 
 - [x] 内存泄漏
 
@@ -28,7 +28,7 @@
 
 - [ ] option里面的error detect
 
-- [ ] support long reads
+- [x] support long reads
 
 - [ ] support reading from STDIN and writing to STDOUT
 
@@ -606,3 +606,10 @@ cost ： STD/RabbitQCPlus/ReRabbitQC
 
 以及发现内存有的地方没有及时delete，导致内存使用量并不是定值，这里稍微改了一下。
 
+对于overrepresent部分fastp的有点离谱，不好用，先不管了，先看看补充一下功能，然后赶紧画画图。
+
+## 0811
+
+基于zz毕设的画图结构，简单画了几个。
+
+然后把TGS写了，顺便画好。

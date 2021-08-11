@@ -65,4 +65,8 @@ CmdInfo::CmdInfo() {
     umi_skip_ = 0;
     add_umi_ = false;
 
+    //TGS
+    is_TGS_ = false;
+    TGS_min_len_ = 200;
+
 }

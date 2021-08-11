@@ -2,12 +2,13 @@
 // Created by ylf9811 on 2021/7/7.
 //
 
-#ifndef RABBITQCPLUS_THREADINFO_H
-#define RABBITQCPLUS_THREADINFO_H
+#ifndef RERABBITQC_THREADINFO_H
+#define RERABBITQC_THREADINFO_H
 
 #include "Globals.h"
 #include "state.h"
 #include "cmdinfo.h"
+#include "tgsstate.h"
 
 class ThreadInfo {
 public:
@@ -18,6 +19,7 @@ public:
 
 public:
     CmdInfo *cmd_info_;
+    TGSStats *TGS_state_;
     State *pre_state1_;
     State *pre_state2_;
     State *aft_state1_;
@@ -27,4 +29,4 @@ public:
 };
 
 
-#endif //RABBITQCPLUS_THREADINFO_H
+#endif //RERABBITQC_THREADINFO_H

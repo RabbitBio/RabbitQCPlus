@@ -38,6 +38,9 @@ State::State(int seq_len, int qul_range) {
     kmer_buf_len_ = 2 << (5 * 2);
     kmer_ = new int64_t[kmer_buf_len_];
     memset(kmer_, 0, sizeof(int64_t) * kmer_buf_len_);
+
+    tot_bases_ = 0;
+    gc_bases_ = 0;
 }
 
 State::~State() {
@@ -208,6 +211,8 @@ void State::StateInfo(neoReference &ref) {
     }
 #endif
 
+    tot_bases_ += slen;
+    gc_bases_ += gc_cnt;
     gc_cnt_[int(100.0 * gc_cnt / slen)]++;
     qul_cnt_[int(1.0 * qul_tot / slen)]++;
 }
@@ -247,6 +252,8 @@ State *State::MergeStates(const std::vector<State *> &states) {
         res_state->q20bases_ += item->q20bases_;
         res_state->q30bases_ += item->q30bases_;
         res_state->lines_ += item->lines_;
+        res_state->tot_bases_ += item->tot_bases_;
+        res_state->gc_bases_ += item->gc_bases_;
         for (int i = 0; i < now_seq_len; i++) {
             for (int j = 0; j < 8; j++) {
                 res_state->pos_cnt_[i * 8 + j] += item->pos_cnt_[i * 8 + j];
@@ -279,7 +286,7 @@ void State::PrintStates(const State *state) {
     printf("kmer max is %lld\n", state->kmer_max_);
     printf("kmer min is %lld\n", state->kmer_min_);
 
-    int now_seq_len = state->real_seq_len_;
+//    int now_seq_len = state->real_seq_len_;
 //    printf("position--quality :\n");
 //    for (int i = 0; i < now_seq_len; i++) {
 //        int64_t tot_cnt = 0;
@@ -304,4 +311,76 @@ void State::PrintStates(const State *state) {
 //    }
 
 
+}
+
+int64_t State::GetQ20Bases() const {
+    return q20bases_;
+}
+
+int64_t State::GetQ30Bases() const {
+    return q30bases_;
+}
+
+int64_t State::GetLines() const {
+    return lines_;
+}
+
+int State::GetMallocSeqLen() const {
+    return malloc_seq_len_;
+}
+
+int State::GetQulRange() const {
+    return qul_range_;
+}
+
+int State::GetRealSeqLen() const {
+    return real_seq_len_;
+}
+
+int State::GetKmerBufLen() const {
+    return kmer_buf_len_;
+}
+
+int64_t *State::GetPosQul() const {
+    return pos_qul_;
+}
+
+int64_t *State::GetPosCnt() const {
+    return pos_cnt_;
+}
+
+int64_t *State::GetLenCnt() const {
+    return len_cnt_;
+}
+
+int64_t *State::GetGcCnt() const {
+    return gc_cnt_;
+}
+
+int64_t *State::GetQulCnt() const {
+    return qul_cnt_;
+}
+
+int64_t *State::GetKmer() const {
+    return kmer_;
+}
+
+int64_t State::GetKmerMin() const {
+    return kmer_min_;
+}
+
+int64_t State::GetKmerMax() const {
+    return kmer_max_;
+}
+
+bool State::IsHasSummarize() const {
+    return has_summarize_;
+}
+
+int64_t State::GetTotBases() const {
+    return tot_bases_;
+}
+
+int64_t State::GetGcBases() const {
+    return gc_bases_;
 }

@@ -2,8 +2,8 @@
 // Created by ylf9811 on 2021/7/6.
 //
 
-#ifndef RABBITQCPLUS_SEQC_H
-#define RABBITQCPLUS_SEQC_H
+#ifndef RERABBITQC_SEQC_H
+#define RERABBITQC_SEQC_H
 
 #include <atomic>
 #include <fstream>
@@ -31,6 +31,8 @@ public:
     ~SeQc();
 
     void ProcessSeFastq();
+
+    void ProcessSeTGS();
 
 
 private:
@@ -64,4 +66,4 @@ private:
 };
 
 
-#endif //RABBITQCPLUS_SEQC_H
+#endif //RERABBITQC_SEQC_H

@@ -2,8 +2,8 @@
 // Created by ylf9811 on 2021/7/8.
 //
 
-#ifndef RABBITQCPLUS_STATE_H
-#define RABBITQCPLUS_STATE_H
+#ifndef RERABBITQC_STATE_H
+#define RERABBITQC_STATE_H
 
 #include <cstring>
 
@@ -27,6 +27,38 @@ public:
 
     static void PrintStates(const State *state);
 
+    int64_t GetQ20Bases() const;
+
+    int64_t GetQ30Bases() const;
+
+    int64_t GetLines() const;
+
+    int GetMallocSeqLen() const;
+
+    int GetQulRange() const;
+
+    int GetRealSeqLen() const;
+
+    int GetKmerBufLen() const;
+
+    int64_t *GetPosQul() const;
+
+    int64_t *GetPosCnt() const;
+
+    int64_t *GetLenCnt() const;
+
+    int64_t *GetGcCnt() const;
+
+    int64_t *GetQulCnt() const;
+
+    int64_t *GetKmer() const;
+
+    int64_t GetKmerMin() const;
+
+    int64_t GetKmerMax() const;
+
+    bool IsHasSummarize() const;
+
 private:
     int64_t q20bases_;
     int64_t q30bases_;
@@ -43,6 +75,14 @@ private:
     int64_t *kmer_;
     int64_t kmer_min_;
     int64_t kmer_max_;
+    int64_t tot_bases_;
+public:
+    int64_t GetTotBases() const;
+
+    int64_t GetGcBases() const;
+
+private:
+    int64_t gc_bases_;
 
     bool has_summarize_;
 
@@ -50,4 +90,4 @@ private:
 };
 
 
-#endif //RABBITQCPLUS_STATE_H
+#endif //RERABBITQC_STATE_H

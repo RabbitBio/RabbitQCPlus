@@ -2,8 +2,8 @@
 // Created by ylf9811 on 2021/7/11.
 //
 
-#ifndef RABBITQCPLUS_ADAPTER_H
-#define RABBITQCPLUS_ADAPTER_H
+#ifndef RERABBITQC_ADAPTER_H
+#define RERABBITQC_ADAPTER_H
 
 #include <iostream>
 #include <vector>
@@ -50,4 +50,4 @@ public:
 };
 
 
-#endif //RABBITQCPLUS_ADAPTER_H
+#endif //RERABBITQC_ADAPTER_H

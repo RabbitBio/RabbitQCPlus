@@ -109,58 +109,71 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;
-    while (dq.Pop(id, fqdatachunk)) {
-        std::vector<neoReference> data;
-        std::vector<neoReference> pass_data;
-        rabbit::fq::chunkFormat(fqdatachunk, data, true);
-        int out_len = 0;
-        for (auto item:data) {
-            thread_info->pre_state1_->StateInfo(item);
-            if (cmd_info_->state_duplicate_) {
-                duplicate_->statRead(item);
-            }
 
-            if (cmd_info_->add_umi_) {
-                umier_->ProcessSe(item);
+    if (cmd_info_->is_TGS_) {
+        while (dq.Pop(id, fqdatachunk)) {
+            std::vector<neoReference> data;
+            rabbit::fq::chunkFormat(fqdatachunk, data, true);
+            for (auto item:data) {
+                thread_info->TGS_state_->tgsStatRead(item);
             }
-            bool trim_res = filter_->TrimSeq(item, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
+            fastq_data_pool->Release(fqdatachunk);
+        }
+    } else {
+        while (dq.Pop(id, fqdatachunk)) {
+            std::vector<neoReference> data;
+            std::vector<neoReference> pass_data;
+            rabbit::fq::chunkFormat(fqdatachunk, data, true);
+            int out_len = 0;
+            for (auto item:data) {
+                thread_info->pre_state1_->StateInfo(item);
+                if (cmd_info_->state_duplicate_) {
+                    duplicate_->statRead(item);
+                }
 
-            if (trim_res && cmd_info_->trim_polyg_) {
-                PolyX::trimPolyG(item, cmd_info_->trim_poly_len_);
-            }
+                if (cmd_info_->add_umi_) {
+                    umier_->ProcessSe(item);
+                }
+                bool trim_res = filter_->TrimSeq(item, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
 
-            if (trim_res && cmd_info_->trim_polyx_) {
-                PolyX::trimPolyX(item, cmd_info_->trim_poly_len_);
-            }
+                if (trim_res && cmd_info_->trim_polyg_) {
+                    PolyX::trimPolyG(item, cmd_info_->trim_poly_len_);
+                }
+
+                if (trim_res && cmd_info_->trim_polyx_) {
+                    PolyX::trimPolyX(item, cmd_info_->trim_poly_len_);
+                }
 
 
-            if (trim_res && cmd_info_->trim_adapter_ && cmd_info_->detect_adapter1_) {
-                Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);
-            }
-            int filter_res = filter_->ReadFiltering(item, trim_res);
-            if (filter_res == 0) {
-                thread_info->aft_state1_->StateInfo(item);
-                if (cmd_info_->write_data_) {
-                    pass_data.push_back(item);
-                    out_len += item.lname + item.lseq + item.lstrand + item.lqual + 4;
+                if (trim_res && cmd_info_->trim_adapter_ && cmd_info_->detect_adapter1_) {
+                    Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);
+                }
+                int filter_res = filter_->ReadFiltering(item, trim_res);
+                if (filter_res == 0) {
+                    thread_info->aft_state1_->StateInfo(item);
+                    if (cmd_info_->write_data_) {
+                        pass_data.push_back(item);
+                        out_len += item.lname + item.lseq + item.lstrand + item.lqual + 4;
+                    }
                 }
             }
-        }
 
-        if (cmd_info_->write_data_) {
-            if (pass_data.size() > 0) {
-                char *out_data = new char[out_len];
-                int pos = 0;
-                for (auto item:pass_data) {
-                    //TODO delete name
-                    Read2Chars(item, out_data, pos);
+            if (cmd_info_->write_data_) {
+                if (pass_data.size() > 0) {
+                    char *out_data = new char[out_len];
+                    int pos = 0;
+                    for (auto item:pass_data) {
+                        //TODO delete name
+                        Read2Chars(item, out_data, pos);
+                    }
+                    ASSERT(pos == out_len);
+                    out_queue_->enqueue({out_data, out_len});
                 }
-                ASSERT(pos == out_len);
-                out_queue_->enqueue({out_data, out_len});
             }
+
+            fastq_data_pool->Release(fqdatachunk);
         }
 
-        fastq_data_pool->Release(fqdatachunk);
     }
     done_thread_number_++;
 
@@ -258,6 +271,8 @@ void SeQc::ProcessSeFastq() {
 
     }
 
+    Repoter::ReportHtmlSe(pre_state, aft_state, cmd_info_->in_file_name1_, dupRate * 100.0);
+
 
     delete pre_state;
     delete aft_state;
@@ -270,7 +285,176 @@ void SeQc::ProcessSeFastq() {
 
     delete[] threads;
     delete[] p_thread_info;
-    if (cmd_info_->write_data_){
+    if (cmd_info_->write_data_) {
         delete write_thread;
     }
+}
+
+
+void printCSS(ofstream &ofs) {
+    ofs << "<style type=\"text/css\">" << endl;
+    ofs << "td {border:1px solid #dddddd;padding:5px;font-size:12px;}" << endl;
+    ofs << "table {border:1px solid #999999;padding:2x;border-collapse:collapse; width:800px}" << endl;
+    ofs << ".col1 {width:240px; font-weight:bold;}" << endl;
+    ofs << ".adapter_col {width:500px; font-size:10px;}" << endl;
+    ofs << "img {padding:30px;}" << endl;
+    ofs << "#menu {font-family:Consolas, 'Liberation Mono', Menlo, Courier, monospace;}" << endl;
+    ofs
+            << "#menu a {color:#0366d6; font-size:18px;font-weight:600;line-height:28px;text-decoration:none;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol'}"
+            << endl;
+    ofs << "a:visited {color: #999999}" << endl;
+    ofs << ".alignleft {text-align:left;}" << endl;
+    ofs << ".alignright {text-align:right;}" << endl;
+    ofs << ".figure {width:800px;height:600px;}" << endl;
+    ofs << ".header {color:#ffffff;padding:1px;height:20px;background:#000000;}" << endl;
+    ofs
+            << ".section_title {color:#ffffff;font-size:20px;padding:5px;text-align:left;background:#663355; margin-top:10px;}"
+            << endl;
+    ofs << ".subsection_title {font-size:16px;padding:5px;margin-top:10px;text-align:left;color:#663355}" << endl;
+    ofs
+            << "#container {text-align:center;padding:3px 3px 3px 10px;font-family:Arail,'Liberation Mono', Menlo, Courier, monospace;}"
+            << endl;
+    ofs << ".menu_item {text-align:left;padding-top:5px;font-size:18px;}" << endl;
+    ofs << ".highlight {text-align:left;padding-top:30px;padding-bottom:30px;font-size:20px;line-height:35px;}" << endl;
+    ofs << "#helper {text-align:left;border:1px dotted #fafafa;color:#777777;font-size:12px;}" << endl;
+    ofs
+            << "#footer {text-align:left;padding:15px;color:#ffffff;font-size:10px;background:#663355;font-family:Arail,'Liberation Mono', Menlo, Courier, monospace;}"
+            << endl;
+    ofs << ".kmer_table {text-align:center;font-size:8px;padding:2px;}" << endl;
+    ofs << ".kmer_table td{text-align:center;font-size:8px;padding:0px;color:#ffffff}" << endl;
+    ofs << ".sub_section_tips {color:#999999;font-size:10px;padding-left:5px;padding-bottom:3px;}" << endl;
+    ofs << "</style>" << endl;
+}
+
+void printJS(ofstream &ofs) {
+    ofs << "<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>" << endl;
+    ofs << "\n<script type=\"text/javascript\">" << endl;
+    ofs << "    function showOrHide(divname) {" << endl;
+    ofs << "        div = document.getElementById(divname);" << endl;
+    ofs << "        if(div.style.display == 'none')" << endl;
+    ofs << "            div.style.display = 'block';" << endl;
+    ofs << "        else" << endl;
+    ofs << "            div.style.display = 'none';" << endl;
+    ofs << "    }" << endl;
+    ofs << "</script>" << endl;
+}
+
+
+void printHeader(ofstream &ofs) {
+    ofs << "<html><head><meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\" />";
+    //ofs << "<title>RabbitQC report at " + getCurrentSystemTime() + " </title>";
+    ofs << "<title>RabbitQC report at 111 </title>";
+    printJS(ofs);
+    printCSS(ofs);
+    ofs << "</head>";
+    ofs << "<body><div id='container'>";
+}
+
+const string getCurrentSystemTime() {
+    auto tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    struct tm *ptm = localtime(&tt);
+    char date[60] = {0};
+    sprintf(date, "%d-%02d-%02d      %02d:%02d:%02d",
+            (int) ptm->tm_year + 1900, (int) ptm->tm_mon + 1, (int) ptm->tm_mday,
+            (int) ptm->tm_hour, (int) ptm->tm_min, (int) ptm->tm_sec);
+    return std::string(date);
+}
+
+void printFooter(ofstream &ofs) {
+    ofs << "\n</div>" << endl;
+    ofs << "<div id='footer'> ";
+    ofs << "<p>" << "" << "</p>";
+    ofs << "RabbitQC " << "" << ", at " << getCurrentSystemTime() << " </div>";
+    ofs << "</body></html>";
+}
+
+void report3(TGSStats *preStats1) {
+    ofstream ofs;
+    ofs.open("TGS.html", ifstream::out);
+
+    printHeader(ofs);
+
+    //printSummary(ofs, result, preStats1, postStats1, preStats2, postStats2);
+
+    ofs << "<div class='section_div'>\n";
+    ofs
+            << "<div class='section_title' onclick=showOrHide('QC_information')><a name='summary'>QC information</a></div>\n";
+    ofs << "<div id='QC_information'>\n";
+
+    if (preStats1) {
+        preStats1->reportHtml(ofs, "QC information", "read1");
+    }
+
+    //if(preStats2) {
+    //    preStats2 -> reportHtml(ofs, "Before filtering", "read2");
+    //}
+
+    ofs << "</div>\n";
+    ofs << "</div>\n";
+
+    //ofs << "<div class='section_div'>\n";
+    //ofs << "<div class='section_title' onclick=showOrHide('after_filtering')><a name='summary'>After filtering</a></div>\n";
+    //ofs << "<div id='after_filtering'>\n";
+
+    //if(postStats1) {
+    //    postStats1 -> reportHtml(ofs, "After filtering", "read1");
+    //}
+
+    //if(postStats2) {
+    //    postStats2 -> reportHtml(ofs, "After filtering", "read2");
+    //}
+
+    //ofs << "</div>\n";
+    //ofs << "</div>\n";
+
+    printFooter(ofs);
+
+}
+
+void SeQc::ProcessSeTGS() {
+    auto *fastqPool = new rabbit::fq::FastqDataPool(256, 1 << 22);
+    //TODO replace this queue
+    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(128, 1);
+
+    auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
+    for (int t = 0; t < cmd_info_->thread_number_; t++) {
+        p_thread_info[t] = new ThreadInfo(cmd_info_);
+    }
+    //TODO bind ?
+    std::thread producer(
+            std::bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, std::ref(queue1)));
+    auto **threads = new std::thread *[cmd_info_->thread_number_];
+    for (int t = 0; t < cmd_info_->thread_number_; t++) {
+        threads[t] = new std::thread(
+                std::bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info[t], fastqPool, std::ref(queue1)));
+    }
+    producer.join();
+    for (int t = 0; t < cmd_info_->thread_number_; t++) {
+        threads[t]->join();
+    }
+
+    printf("all thrad done\n");
+    printf("now merge thread info\n");
+
+    std::vector<TGSStats *> vec_state;
+
+    for (int t = 0; t < cmd_info_->thread_number_; t++) {
+        vec_state.push_back(p_thread_info[t]->TGS_state_);
+    }
+    auto mer_state = TGSStats::merge(vec_state);
+
+    printf("merge done\n");
+    printf("print TGS state info :\n");
+    mer_state->print();
+
+    report3(mer_state);
+
+    delete fastqPool;
+    for (int t = 0; t < cmd_info_->thread_number_; t++) {
+        delete threads[t];
+        delete p_thread_info[t];
+    }
+
+    delete[] threads;
+    delete[] p_thread_info;
 }

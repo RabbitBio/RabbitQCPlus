@@ -2,8 +2,8 @@
 // Created by ylf9811 on 2021/7/20.
 //
 
-#ifndef RABBITQCPLUS_UMIER_H
-#define RABBITQCPLUS_UMIER_H
+#ifndef RERABBITQC_UMIER_H
+#define RERABBITQC_UMIER_H
 
 #include <cstring>
 #include "cmdinfo.h"
@@ -31,4 +31,4 @@ private:
 };
 
 
-#endif //RABBITQCPLUS_UMIER_H
+#endif //RERABBITQC_UMIER_H
