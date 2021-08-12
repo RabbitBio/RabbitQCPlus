@@ -26,9 +26,6 @@ public:
 
     void tgsStatRead(neoReference &ref);
 
-
-    void reportJson(std::ofstream &ofs, std::string padding);
-
     // a port of HTML report
     void reportHtml(std::ofstream &ofs, std::string filteringType, std::string readName);
 
@@ -44,11 +41,11 @@ public:
 
     static std::string list2string(double *list, int size);
 
-    static std::string list2string(double *list, int size, long *coords);
+    static std::string list2string(double *list, int size, int64_t *coords);
 
-    static std::string list2string(long *list, int size);
+    static std::string list2string(int64_t *list, int size);
 
-    static std::string list2stringReversedOrder(long *list, int size);
+    static std::string list2stringReversedOrder(int64_t *list, int size);
 
     int base2num(std::string base);
 
@@ -57,10 +54,20 @@ private:
     int mHalfMinlen;
     std::vector<int> mLengths;
     std::vector<int> mTotalReadsLen;
-    long *head_seq_pos_count[4];
-    long *tail_seq_pos_count[4];
-    long *head_qual_sum;
-    long *tail_qual_sum;
+    int64_t *head_seq_pos_count[4];
+    int64_t *tail_seq_pos_count[4];
+    int64_t *head_qual_sum;
+public:
+    int64_t *const *GetHeadSeqPosCount() const;
+
+    int64_t *const *GetTailSeqPosCount() const;
+
+    int64_t *GetHeadQualSum() const;
+
+    int64_t *GetTailQualSum() const;
+
+private:
+    int64_t *tail_qual_sum;
 };
 
 

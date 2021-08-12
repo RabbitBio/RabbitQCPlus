@@ -613,3 +613,11 @@ cost ： STD/RabbitQCPlus/ReRabbitQC
 基于zz毕设的画图结构，简单画了几个。
 
 然后把TGS写了，顺便画好。
+
+## 0812
+
+今天找了找overrepresent的论文，根据论文里提到的数据找到一个会出现过度表示的数据。
+
+是什么454巴拉巴拉，直接运行好像画的图很丑，不如fastp好看，以为是代码写的有bug，但找了找发现是fastp在画图的时候做了一点点美化，比如下标很密集的话就把长度100区间的val取平均值之类的。
+
+此外，ReRabbitQC还加了自动的buffer extend等功能。

@@ -19,9 +19,9 @@ public:
 
     void StateInfo(neoReference &ref);
 
-    void Summarize();
+    void ExtendBuffer(int old_len, int new_len);
 
-    int get_seq_len();
+    void Summarize();
 
     static State *MergeStates(const std::vector<State *> &states);
 

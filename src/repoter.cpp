@@ -472,6 +472,183 @@ std::string insertTableTr(std::string str1, std::string str2) {
                                                            "    </tr>\n";
 }
 
+void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
+    printf("report html TGS data\n");
+    std::string outhtml;
+    int mx_len = 100;
+    double *tmp_double = new double[mx_len];
+    outhtml.append(HTMLHeader());
+    outhtml.append(HTMLCss());
+    //Basic Status
+    outhtml.append(insertTableBegin());
+    outhtml.append(insertTableTitle("General(TGS)", ""));
+    outhtml.append(insertTableTbobyBegin());
+    outhtml.append(insertTableTr("RabbitQC version:", "0.0.2"));
+    outhtml.append(insertTableTr("FileName", file_name));
+    outhtml.append(insertTableTbobyEnd());
+    outhtml.append(insertTableEnd());
+
+
+    std::string PositionQuality1("PositionQuality1");
+    std::string PositionQuality2("PositionQuality2");
+    std::string PositionContent1("PositionContent1");
+    std::string PositionContent2("PositionContent2");
+
+    outhtml.append(insertDiv(PositionQuality1));
+    outhtml.append(insertDiv(PositionQuality2));
+    outhtml.append(insertDiv(PositionContent1));
+    outhtml.append(insertDiv(PositionContent2));
+
+    outhtml.append("</body>\n");
+
+    //js
+    outhtml.append("<script type=\"text/javascript\">\n");
+
+    // Quality Scores cross all bases
+
+    outhtml.append(insertChart(PositionQuality1));
+    //option
+    outhtml.append(insertOptionBegin(PositionQuality1));
+    outhtml.append(insertTitle("Quality scores of head bases"));
+    outhtml.append(insertTooltip());
+    outhtml.append(insertDataZoom());
+    outhtml.append(insertxAxis("Position in read from start(bp)", mx_len + 1));
+    outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+    outhtml.append(insertSeriesBegin());
+
+    auto tot_cnt4 = tgs_stats->GetHeadSeqPosCount();
+    auto tot_qul = tgs_stats->GetHeadQualSum();
+    for (int i = 0; i < mx_len; i++) {
+        int64_t sum_qul = tot_qul[i];
+        int64_t sum_cnt = 0;
+        for (int j = 0; j < 4; j++) {
+            sum_cnt += tot_cnt4[j][i];
+        }
+        tmp_double[i] = 1.0 * sum_qul / sum_cnt;
+    }
+    outhtml.append(insertSeriesData("line", tmp_double, mx_len));
+    outhtml.append(insertSeriesEnd());
+    outhtml.append(insertOptionEnd());
+    outhtml.append(insertChartOption(PositionQuality1));
+
+
+    outhtml.append(insertChart(PositionQuality2));
+    //option
+    outhtml.append(insertOptionBegin(PositionQuality2));
+    outhtml.append(insertTitle("Quality scores of tail bases"));
+    outhtml.append(insertTooltip());
+    outhtml.append(insertDataZoom());
+    outhtml.append(insertxAxis("Position in read from end(bp)", mx_len + 1));
+    outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+    outhtml.append(insertSeriesBegin());
+
+    tot_cnt4 = tgs_stats->GetTailSeqPosCount();
+    tot_qul = tgs_stats->GetTailQualSum();
+    for (int i = 0; i < mx_len; i++) {
+        int64_t sum_qul = tot_qul[mx_len - i - 1];
+        int64_t sum_cnt = 0;
+        for (int j = 0; j < 4; j++) {
+            sum_cnt += tot_cnt4[j][mx_len - i - 1];
+        }
+        tmp_double[mx_len - i - 1] = 1.0 * sum_qul / sum_cnt;
+    }
+    outhtml.append(insertSeriesData("line", tmp_double, mx_len));
+    outhtml.append(insertSeriesEnd());
+    outhtml.append(insertOptionEnd());
+    outhtml.append(insertChartOption(PositionQuality2));
+
+
+    //AGCT Content
+    outhtml.append(insertChart(PositionContent1));
+    //option
+    outhtml.append(insertOptionBegin(PositionContent1));
+    outhtml.append(insertTitle("AGCT content of head bases"));
+    outhtml.append(insertTooltip());
+    outhtml.append(insertDataZoom());
+    outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
+    outhtml.append(insertxAxis("Position in read from start(bp)", mx_len + 1));
+    outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+    outhtml.append(insertSeriesBegin());
+
+    tot_cnt4 = tgs_stats->GetHeadSeqPosCount();
+    for (int i = 0; i < mx_len; i++) {
+        int64_t sum_tot = 0.0;
+        for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][i];
+        tmp_double[i] = 1.0 * tot_cnt4[0][i] / sum_tot;
+    }
+    outhtml.append(insertSeriesData("line", "A", tmp_double, mx_len));
+    for (int i = 0; i < mx_len; i++) {
+        int64_t sum_tot = 0.0;
+        for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][i];
+        tmp_double[i] = 1.0 * tot_cnt4[3][i] / sum_tot;
+    }
+    outhtml.append(insertSeriesData("line", "G", tmp_double, mx_len));
+    for (int i = 0; i < mx_len; i++) {
+        int64_t sum_tot = 0.0;
+        for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][i];
+        tmp_double[i] = 1.0 * tot_cnt4[2][i] / sum_tot;
+    }
+    outhtml.append(insertSeriesData("line", "C", tmp_double, mx_len));
+    for (int i = 0; i < mx_len; i++) {
+        int64_t sum_tot = 0.0;
+        for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][i];
+        tmp_double[i] = 1.0 * tot_cnt4[1][i] / sum_tot;
+    }
+    outhtml.append(insertSeriesData("line", "T", tmp_double, mx_len));
+    outhtml.append(insertSeriesEnd());
+    outhtml.append(insertOptionEnd());
+    outhtml.append(insertChartOption(PositionContent1));
+
+
+    outhtml.append(insertChart(PositionContent2));
+    //option
+    outhtml.append(insertOptionBegin(PositionContent2));
+    outhtml.append(insertTitle("AGCT content of tail bases"));
+    outhtml.append(insertTooltip());
+    outhtml.append(insertDataZoom());
+    outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
+    outhtml.append(insertxAxis("Position in read from end(bp)", mx_len + 1));
+    outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+    outhtml.append(insertSeriesBegin());
+
+    tot_cnt4 = tgs_stats->GetTailSeqPosCount();
+    for (int i = 0; i < mx_len; i++) {
+        int64_t sum_tot = 0.0;
+        for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][mx_len - i - 1];
+        tmp_double[i] = 1.0 * tot_cnt4[0][mx_len - i - 1] / sum_tot;
+    }
+    outhtml.append(insertSeriesData("line", "A", tmp_double, mx_len));
+    for (int i = 0; i < mx_len; i++) {
+        int64_t sum_tot = 0.0;
+        for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][mx_len - i - 1];
+        tmp_double[i] = 1.0 * tot_cnt4[3][mx_len - i - 1] / sum_tot;
+    }
+    outhtml.append(insertSeriesData("line", "G", tmp_double, mx_len));
+    for (int i = 0; i < mx_len; i++) {
+        int64_t sum_tot = 0.0;
+        for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][mx_len - i - 1];
+        tmp_double[i] = 1.0 * tot_cnt4[2][mx_len - i - 1] / sum_tot;
+    }
+    outhtml.append(insertSeriesData("line", "C", tmp_double, mx_len));
+    for (int i = 0; i < mx_len; i++) {
+        int64_t sum_tot = 0.0;
+        for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][mx_len - i - 1];
+        tmp_double[i] = 1.0 * tot_cnt4[1][mx_len - i - 1] / sum_tot;
+    }
+    outhtml.append(insertSeriesData("line", "T", tmp_double, mx_len));
+    outhtml.append(insertSeriesEnd());
+    outhtml.append(insertOptionEnd());
+    outhtml.append(insertChartOption(PositionContent2));
+
+
+    outhtml.append("</script>");
+    outhtml.append("</html>");
+    std::fstream fout = std::fstream("TGS.html", std::ios::out | std::ios::binary);
+    fout.write(outhtml.c_str(), outhtml.length());
+    fout.close();
+
+}
+
 void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, double dup) {
 
 
@@ -484,11 +661,13 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 
     std::string outhtml;
 
-    int mx_len = std::max(state1->GetRealSeqLen(), state2->GetRealSeqLen());
+    int mx_len1 = state1->GetRealSeqLen();
+    int mx_len2 = state2->GetRealSeqLen();
 
+    printf("mx len1 is %d\n", mx_len1);
+    printf("mx len2 is %d\n", mx_len2);
 
-    int *tmp_int = new int[mx_len];
-    double *tmp_double = new double[mx_len];
+    double *tmp_double = new double[std::max(mx_len1, mx_len2)];
 
 
     outhtml.append(HTMLHeader());
@@ -566,13 +745,13 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertTitle("Quality Scores cross all bases (Before filtering)"));
     outhtml.append(insertTooltip());
     outhtml.append(insertDataZoom());
-    outhtml.append(insertxAxis("Position in read(bp)", mx_len + 1));
+    outhtml.append(insertxAxis("Position in read(bp)", mx_len1 + 1));
     outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
     outhtml.append(insertSeriesBegin());
 
     int64_t *pos_qul_ = state1->GetPosQul();
     int64_t *pos_cnt_ = state1->GetPosCnt();
-    for (int i = 0; i < mx_len; i++) {
+    for (int i = 0; i < mx_len1; i++) {
         int64_t sum_qul = 0;
         int64_t sum_cnt = 0;
         for (int j = 0; j < 8; j++) {
@@ -581,7 +760,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         }
         tmp_double[i] = 1.0 * sum_qul / sum_cnt;
     }
-    outhtml.append(insertSeriesData("line", tmp_double, mx_len));
+    outhtml.append(insertSeriesData("line", tmp_double, mx_len1));
     outhtml.append(insertSeriesEnd());
     outhtml.append(insertOptionEnd());
     outhtml.append(insertChartOption(PositionQuality1));
@@ -593,13 +772,13 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertTitle("Quality Scores cross all bases (After filtering)"));
     outhtml.append(insertTooltip());
     outhtml.append(insertDataZoom());
-    outhtml.append(insertxAxis("Position in read(bp)", mx_len + 1));
+    outhtml.append(insertxAxis("Position in read(bp)", mx_len2 + 1));
     outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
     outhtml.append(insertSeriesBegin());
 
     pos_qul_ = state2->GetPosQul();
     pos_cnt_ = state2->GetPosCnt();
-    for (int i = 0; i < mx_len; i++) {
+    for (int i = 0; i < mx_len2; i++) {
         int64_t sum_qul = 0;
         int64_t sum_cnt = 0;
         for (int j = 0; j < 8; j++) {
@@ -607,8 +786,19 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
             sum_cnt += pos_cnt_[i * 8 + j];
         }
         tmp_double[i] = 1.0 * sum_qul / sum_cnt;
+
+        if (i > 900) {
+            printf("i ========== %d\n", i);
+            printf("sum_qul %lld , sum_cnt %lld\n", sum_qul, sum_cnt);
+            for (int j = 0; j < 8; j++)printf("%lld ", pos_qul_[i * 8 + j]);
+            printf("\n");
+            for (int j = 0; j < 8; j++)printf("%lld ", pos_cnt_[i * 8 + j]);
+            printf("\n");
+            printf("tmp_double %lf\n", tmp_double[i]);
+        }
+
     }
-    outhtml.append(insertSeriesData("line", tmp_double, mx_len));
+    outhtml.append(insertSeriesData("line", tmp_double, mx_len2));
     outhtml.append(insertSeriesEnd());
     outhtml.append(insertOptionEnd());
     outhtml.append(insertChartOption(PositionQuality2));
@@ -682,35 +872,44 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertTooltip());
     outhtml.append(insertDataZoom());
     outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
-    outhtml.append(insertxAxis("Position in read(bp)", mx_len + 1));
+    outhtml.append(insertxAxis("Position in read(bp)", mx_len1 + 1));
     outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
     outhtml.append(insertSeriesBegin());
 
     pos_cnt_ = state1->GetPosCnt();
-    for (int i = 0; i < mx_len; i++) {
+
+
+    for (int i = 0; i < mx_len1; i++) {
         int64_t sum_tot = 0.0;
         for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + 'A' & 0x07] / sum_tot;
+        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
+//        if (i == 1000) {
+//            for (int j = 0; j < 8; j++)printf("%d ", pos_cnt_[i * 8 + j]);
+//            printf("\n");
+//            printf("%lld\n", sum_tot);
+//            printf("%lld\n", pos_cnt_[i * 8 + ('A' & 0x07)]);
+//            printf("%lf\n", tmp_double[i]);
+//        }
     }
-    outhtml.append(insertSeriesData("line", "A", tmp_double, mx_len));
-    for (int i = 0; i < mx_len; i++) {
+    outhtml.append(insertSeriesData("line", "A", tmp_double, mx_len1));
+    for (int i = 0; i < mx_len1; i++) {
         int64_t sum_tot = 0.0;
         for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + 'G' & 0x07] / sum_tot;
+        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
     }
-    outhtml.append(insertSeriesData("line", "G", tmp_double, mx_len));
-    for (int i = 0; i < mx_len; i++) {
+    outhtml.append(insertSeriesData("line", "G", tmp_double, mx_len1));
+    for (int i = 0; i < mx_len1; i++) {
         int64_t sum_tot = 0.0;
         for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + 'C' & 0x07] / sum_tot;
+        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
     }
-    outhtml.append(insertSeriesData("line", "C", tmp_double, mx_len));
-    for (int i = 0; i < mx_len; i++) {
+    outhtml.append(insertSeriesData("line", "C", tmp_double, mx_len1));
+    for (int i = 0; i < mx_len1; i++) {
         int64_t sum_tot = 0.0;
         for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + 'T' & 0x07] / sum_tot;
+        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
     }
-    outhtml.append(insertSeriesData("line", "T", tmp_double, mx_len));
+    outhtml.append(insertSeriesData("line", "T", tmp_double, mx_len1));
     outhtml.append(insertSeriesEnd());
     outhtml.append(insertOptionEnd());
     outhtml.append(insertChartOption(PositionContent1));
@@ -723,35 +922,35 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertTooltip());
     outhtml.append(insertDataZoom());
     outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
-    outhtml.append(insertxAxis("Position in read(bp)", mx_len + 1));
+    outhtml.append(insertxAxis("Position in read(bp)", mx_len2 + 1));
     outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
     outhtml.append(insertSeriesBegin());
 
     pos_cnt_ = state2->GetPosCnt();
-    for (int i = 0; i < mx_len; i++) {
+    for (int i = 0; i < mx_len2; i++) {
         int64_t sum_tot = 0.0;
         for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + 'A' & 0x07] / sum_tot;
+        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
     }
-    outhtml.append(insertSeriesData("line", "A", tmp_double, mx_len));
-    for (int i = 0; i < mx_len; i++) {
+    outhtml.append(insertSeriesData("line", "A", tmp_double, mx_len2));
+    for (int i = 0; i < mx_len2; i++) {
         int64_t sum_tot = 0.0;
         for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + 'G' & 0x07] / sum_tot;
+        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
     }
-    outhtml.append(insertSeriesData("line", "G", tmp_double, mx_len));
-    for (int i = 0; i < mx_len; i++) {
+    outhtml.append(insertSeriesData("line", "G", tmp_double, mx_len2));
+    for (int i = 0; i < mx_len2; i++) {
         int64_t sum_tot = 0.0;
         for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + 'C' & 0x07] / sum_tot;
+        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
     }
-    outhtml.append(insertSeriesData("line", "C", tmp_double, mx_len));
-    for (int i = 0; i < mx_len; i++) {
+    outhtml.append(insertSeriesData("line", "C", tmp_double, mx_len2));
+    for (int i = 0; i < mx_len2; i++) {
         int64_t sum_tot = 0.0;
         for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + 'T' & 0x07] / sum_tot;
+        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
     }
-    outhtml.append(insertSeriesData("line", "T", tmp_double, mx_len));
+    outhtml.append(insertSeriesData("line", "T", tmp_double, mx_len2));
     outhtml.append(insertSeriesEnd());
     outhtml.append(insertOptionEnd());
     outhtml.append(insertChartOption(PositionContent2));
@@ -765,12 +964,12 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertTitle("Per Sequence GC content(Before filtering)"));
     outhtml.append(insertTooltip());
     outhtml.append(insertDataZoom());
-    outhtml.append(insertxAxis("Mean GC content(%)", mx_len + 1, 1));
+    outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
     outhtml.append(insertyAxis("value"));
     outhtml.append(insertSeriesBegin());
     int64_t *gc_cnt = state1->GetGcCnt();
-    for (int i = 0; i < mx_len; i++)tmp_double[i] = gc_cnt[i];
-    outhtml.append(insertSeriesData("line", tmp_double, mx_len));
+    for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
+    outhtml.append(insertSeriesData("line", tmp_double, 101));
     outhtml.append(insertSeriesEnd());
     outhtml.append(insertOptionEnd());
     outhtml.append(insertChartOption(GCContent1));
@@ -782,12 +981,12 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertTitle("Per Sequence GC content(After filtering)"));
     outhtml.append(insertTooltip());
     outhtml.append(insertDataZoom());
-    outhtml.append(insertxAxis("Mean GC content(%)", mx_len + 1, 1));
+    outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
     outhtml.append(insertyAxis("value"));
     outhtml.append(insertSeriesBegin());
     gc_cnt = state2->GetGcCnt();
-    for (int i = 0; i < mx_len; i++)tmp_double[i] = gc_cnt[i];
-    outhtml.append(insertSeriesData("line", tmp_double, mx_len));
+    for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
+    outhtml.append(insertSeriesData("line", tmp_double, 101));
     outhtml.append(insertSeriesEnd());
     outhtml.append(insertOptionEnd());
     outhtml.append(insertChartOption(GCContent2));

@@ -56,6 +56,8 @@ int main(int argc, char **argv) {
     app.add_option("--umiPrefix", cmd_info.umi_prefix_, "");
     app.add_option("--umiSkip", cmd_info.umi_skip_, "");
 
+    app.add_option("--seqLen", cmd_info.seq_len_, "");
+
 
     //TGS
     //TODO now just se

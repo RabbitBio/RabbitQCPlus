@@ -27,29 +27,29 @@ TGSStats::TGSStats(int minLen) {
     mHalfMinlen = mMinlen >> 1;
     ///mLengths;
     int size_range = mMinlen >> 1;
-    head_qual_sum = new long[size_range];
-    tail_qual_sum = new long[size_range];
+    head_qual_sum = new int64_t[size_range];
+    tail_qual_sum = new int64_t[size_range];
     int i;
     for (i = 0; i < 4; i++) {
-        head_seq_pos_count[i] = new long[size_range];
-        tail_seq_pos_count[i] = new long[size_range];
-        memset(head_seq_pos_count[i], 0, sizeof(long) * size_range);
-        memset(tail_seq_pos_count[i], 0, sizeof(long) * size_range);
+        head_seq_pos_count[i] = new int64_t[size_range];
+        tail_seq_pos_count[i] = new int64_t[size_range];
+        memset(head_seq_pos_count[i], 0, sizeof(int64_t) * size_range);
+        memset(tail_seq_pos_count[i], 0, sizeof(int64_t) * size_range);
     }
     //init
-    memset(head_qual_sum, 0, size_range * sizeof(long));
-    memset(tail_qual_sum, 0, size_range * sizeof(long));
+    memset(head_qual_sum, 0, size_range * sizeof(int64_t));
+    memset(tail_qual_sum, 0, size_range * sizeof(int64_t));
 
 
 }
 
 TGSStats::~TGSStats() {
-    delete head_qual_sum;
-    delete tail_qual_sum;
+    delete[] head_qual_sum;
+    delete[] tail_qual_sum;
     int i;
     for (i = 0; i < 4; i++) {
-        delete head_seq_pos_count[i];
-        delete tail_seq_pos_count[i];
+        delete[] head_seq_pos_count[i];
+        delete[] tail_seq_pos_count[i];
     }
 }
 
@@ -191,14 +191,14 @@ std::string TGSStats::list2string(double *list, int size) {
     return ss.str();
 }
 
-std::string TGSStats::list2string(double *list, int size, long *coords) {
+std::string TGSStats::list2string(double *list, int size, int64_t *coords) {
     std::stringstream ss;
     for (int i = 0; i < size; i++) {
         // coords is 1,2,3,...
-        long start = 0;
+        int64_t start = 0;
         if (i > 0)
             start = coords[i - 1];
-        long end = coords[i];
+        int64_t end = coords[i];
 
         double total = 0.0;
         for (int k = start; k < end; k++)
@@ -216,7 +216,7 @@ std::string TGSStats::list2string(double *list, int size, long *coords) {
     return ss.str();
 }
 
-std::string TGSStats::list2string(long *list, int size) {
+std::string TGSStats::list2string(int64_t *list, int size) {
     std::stringstream ss;
     for (int i = 0; i < size; i++) {
         ss << list[i];
@@ -226,7 +226,7 @@ std::string TGSStats::list2string(long *list, int size) {
     return ss.str();
 }
 
-std::string TGSStats::list2stringReversedOrder(long *list, int size) {
+std::string TGSStats::list2stringReversedOrder(int64_t *list, int size) {
     std::stringstream ss;
     for (int i = size - 1; i >= 0; --i) {
         ss << list[i];
@@ -238,7 +238,7 @@ std::string TGSStats::list2stringReversedOrder(long *list, int size) {
 
 
 void TGSStats::reportHtml(std::ofstream &ofs, std::string filteringType, std::string seqFileName) {
-    long seq_count = mLengths.size();
+    int64_t seq_count = mLengths.size();
     double *head_base_pos_persent[4];
     double *tail_base_pos_persent[4];
     double *head_quality_mean = new double[mHalfMinlen];
@@ -253,7 +253,7 @@ void TGSStats::reportHtml(std::ofstream &ofs, std::string filteringType, std::st
     memset(tail_quality_mean, 0, sizeof(double) * mHalfMinlen);
 
     for (int i = 0; i < mHalfMinlen; ++i) {
-        long head_total_base_per_pos = head_seq_pos_count[0][i]
+        int64_t head_total_base_per_pos = head_seq_pos_count[0][i]
                                        + head_seq_pos_count[1][i]
                                        + head_seq_pos_count[2][i]
                                        + head_seq_pos_count[3][i];
@@ -261,7 +261,7 @@ void TGSStats::reportHtml(std::ofstream &ofs, std::string filteringType, std::st
         head_base_pos_persent[1][i] = head_seq_pos_count[1][i] * (1.0 / head_total_base_per_pos);
         head_base_pos_persent[2][i] = head_seq_pos_count[2][i] * (1.0 / head_total_base_per_pos);
         head_base_pos_persent[3][i] = head_seq_pos_count[3][i] * (1.0 / head_total_base_per_pos);
-        long tail_total_base_per_pos = tail_seq_pos_count[0][i]
+        int64_t tail_total_base_per_pos = tail_seq_pos_count[0][i]
                                        + tail_seq_pos_count[1][i]
                                        + tail_seq_pos_count[2][i]
                                        + tail_seq_pos_count[3][i];
@@ -311,22 +311,22 @@ void TGSStats::reportHtmlQuality(std::ofstream &ofs, std::string seqFileName, bo
     ofs << "\n<script type=\"text/javascript\">" << std::endl;
     std::string json_str = "var data=[";
 
-    long *x = new long[mHalfMinlen];
+    int64_t *x = new int64_t[mHalfMinlen];
     int total = 0;
-    //remove log-style in long reads to be identical with nanoQC by liumy @2017/7/2
+    //remove log-style in int64_t reads to be identical with nanoQC by liumy @2017/7/2
     //if(!isLongRead()) {
     for (int i = 0; i < mHalfMinlen; i++) {
         x[total] = i + 1;
         total++;
     }
-    //remove log-style in long reads to be identical with nanoQC by liumy @2017/7/2
+    //remove log-style in int64_t reads to be identical with nanoQC by liumy @2017/7/2
     //} else {
     //    const int fullSampling = 40;
     //    for(int i=0; i<fullSampling && i<mHalfMinlen; i++){
     //        x[total] = i+1;
     //        total++;
     //    }
-    //    // down sampling if it's too long
+    //    // down sampling if it's too int64_t
     //    if(mHalfMinlen>fullSampling) {
     //        double pos = fullSampling;
     //        while(true){
@@ -363,8 +363,8 @@ void TGSStats::reportHtmlQuality(std::ofstream &ofs, std::string seqFileName, bo
     json_str += "var layout={title:'" + title + "', xaxis:{title:'" + xAxisName + "'";
     if (isTail)
         json_str += ",autorange:'reversed'";
-    // use log plot if it's too long
-    //remove log-style in long reads to be identical with nanoQC by liumy @2017/7/2
+    // use log plot if it's too int64_t
+    //remove log-style in int64_t reads to be identical with nanoQC by liumy @2017/7/2
     //if(isLongRead()) {
     //    json_str += ",type:'log'";
     //}
@@ -403,22 +403,22 @@ void TGSStats::reportHtmlContents(std::ofstream &ofs, std::string seqFileName, b
     ofs << "\n<script type=\"text/javascript\">" << std::endl;
     std::string json_str = "var data=[";
 
-    long *x = new long[mHalfMinlen];
+    int64_t *x = new int64_t[mHalfMinlen];
     int total = 0;
-    //remove log-style in long reads to be identical with nanoQC by liumy @2017/7/2
+    //remove log-style in int64_t reads to be identical with nanoQC by liumy @2017/7/2
     //if(!isLongRead()) {
     for (int i = 0; i < mHalfMinlen; i++) {
         x[total] = i + 1;
         total++;
     }
-    //remove log-style in long reads to be identical with nanoQC by liumy @2017/7/2
+    //remove log-style in int64_t reads to be identical with nanoQC by liumy @2017/7/2
     //} else {
     //    const int fullSampling = 40;
     //    for(int i=0; i<fullSampling && i<mHalfMinlen; i++){
     //        x[total] = i+1;
     //        total++;
     //    }
-    //    // down sampling if it's too long
+    //    // down sampling if it's too int64_t
     //    if(mHalfMinlen>fullSampling) {
     //        double pos = fullSampling;
     //        while(true){
@@ -439,7 +439,7 @@ void TGSStats::reportHtmlContents(std::ofstream &ofs, std::string seqFileName, b
     //for (int b = 0; b<6; b++) {
     for (int b = 0; b < 4; b++) {
         std::string base = alphabets[b];
-        //long count = 0; //total base of A/C/G/T/N/CG
+        //int64_t count = 0; //total base of A/C/G/T/N/CG
         //if(base.size()==1) {
         //    //need to modify
         //    //char b = base[0] & 0x07;
@@ -472,8 +472,8 @@ void TGSStats::reportHtmlContents(std::ofstream &ofs, std::string seqFileName, b
     json_str += "var layout={title:'" + title + "', xaxis:{title:'" + xAxisName + "'";
     if (isTail)
         json_str += ",autorange:'reversed'";
-    // use log plot if it's too long
-    //remove log-style in long reads to be identical with nanoQC by liumy @2017/7/2
+    // use log plot if it's too int64_t
+    //remove log-style in int64_t reads to be identical with nanoQC by liumy @2017/7/2
     //if(isLongRead()) {
     //    json_str += ",type:'log'";
     //}
@@ -495,22 +495,22 @@ void TGSStats::reportHistogram(std::ofstream &ofs) {
     std::string json_str = "var data=[";
 
     //
-    //long total = Stats1->mLengths.size();
+    //int64_t total = Stats1->mLengths.size();
     //vector<int> x = Stats1->mLengths;
-    long total = mTotalReadsLen.size();
+    int64_t total = mTotalReadsLen.size();
     std::vector<int> x = mTotalReadsLen;
 
-    std::unordered_map<int, long> count;
+    std::unordered_map<int, int64_t> count;
     //statistics length;
     for (int xi : x) {
         count[xi]++;
     }
     //int* len = new int[count.size()];
-    long len[count.size()];
-    //long* percents = new long[count.size()];
-    long percents[count.size()];
+    int64_t len[count.size()];
+    //int64_t* percents = new int64_t[count.size()];
+    int64_t percents[count.size()];
     //memset(len, 0, sizeof(int)*count.size());
-    //memset(percents, 0, sizeof(long)*count.size());
+    //memset(percents, 0, sizeof(int64_t)*count.size());
     int i = 0;
     //for(auto xi = count.begin(); xi != count.end(); ++xi) {
     int maxLen = 0;
@@ -540,6 +540,22 @@ void TGSStats::reportHistogram(std::ofstream &ofs) {
 
     //delete[] len;
     //delete[] percents;
+}
+
+int64_t *const *TGSStats::GetHeadSeqPosCount() const {
+    return head_seq_pos_count;
+}
+
+int64_t *const *TGSStats::GetTailSeqPosCount() const {
+    return tail_seq_pos_count;
+}
+
+int64_t *TGSStats::GetHeadQualSum() const {
+    return head_qual_sum;
+}
+
+int64_t *TGSStats::GetTailQualSum() const {
+    return tail_qual_sum;
 }
 
 

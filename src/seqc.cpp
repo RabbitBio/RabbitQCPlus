@@ -447,7 +447,9 @@ void SeQc::ProcessSeTGS() {
     printf("print TGS state info :\n");
     mer_state->print();
 
-    report3(mer_state);
+//    report3(mer_state);
+
+    Repoter::ReportHtmlTGS(mer_state, cmd_info_->in_file_name1_);
 
     delete fastqPool;
     for (int t = 0; t < cmd_info_->thread_number_; t++) {

@@ -53,9 +53,32 @@ State::~State() {
 
 }
 
-int State::get_seq_len() {
-    return real_seq_len_;
+void State::ExtendBuffer(int old_len, int new_len) {
+
+    malloc_seq_len_ = new_len;
+    int64_t *newBuf = NULL;
+
+    newBuf = new int64_t[new_len * 8];
+    memset(newBuf, 0, sizeof(int64_t) * new_len * 8);
+    memcpy(newBuf, pos_cnt_, sizeof(int64_t) * old_len * 8);
+    delete pos_cnt_;
+    pos_cnt_ = newBuf;
+
+    newBuf = new int64_t[new_len * 8];
+    memset(newBuf, 0, sizeof(int64_t) * new_len * 8);
+    memcpy(newBuf, pos_qul_, sizeof(int64_t) * old_len * 8);
+    delete pos_qul_;
+    pos_qul_ = newBuf;
+
+
+    newBuf = new int64_t[new_len];
+    memset(newBuf, 0, sizeof(int64_t) * new_len);
+    memcpy(newBuf, len_cnt_, sizeof(int64_t) * old_len);
+    delete len_cnt_;
+    len_cnt_ = newBuf;
+
 }
+
 
 static int valAGCT[8] = {-1, 0, -1, 2, 1, -1, -1, 3};
 
@@ -68,8 +91,10 @@ void State::StateInfo(neoReference &ref) {
     int qlen = ref.lqual;
     ASSERT(slen == qlen);
     if (slen > malloc_seq_len_) {
-        printf("exit because sequence length is too long\n");
-        exit(0);
+
+        ExtendBuffer(malloc_seq_len_, std::max(slen + 100, slen * 2));
+//        printf("exit because sequence length is too long, malloc_seq_len_ is %d, slen is %d\n", malloc_seq_len_, slen);
+//        exit(0);
     }
     lines_++;
     real_seq_len_ = std::max(real_seq_len_, slen);
