@@ -665,7 +665,7 @@ bool overRepPassed(std::string &seq, int64_t count, int s) {
     }
 }
 
-std::string GetOver(State *state) {
+std::string GetOver(State *state, bool isAfter) {
     std::stringstream ofs;
     // over represented seqs
     double dBases = state->GetTotBases();
@@ -673,7 +673,9 @@ std::string GetOver(State *state) {
     auto cmd_info = state->GetCmdInfo();
 
     // KMER
-    std::string subsection = " overrepresented sequences";
+    std::string subsection;
+    if (isAfter)subsection = "After filtering overrepresented sequences";
+    else subsection = "Before filtering overrepresented sequences";
     std::string divName = replace(subsection, " ", "_");
     divName = replace(divName, ":", "_");
     std::string title = "";
@@ -840,6 +842,8 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertDiv(GCContent1));
     outhtml.append(insertDiv(GCContent2));
 
+    outhtml.append(GetOver(state1, 0));
+    outhtml.append(GetOver(state2, 1));
 
     outhtml.append("</body>\n");
 
@@ -1109,9 +1113,6 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 //    outhtml.append(insertOptionEnd());
 //    outhtml.append(insertChartOption(NContent));
 
-
-    outhtml.append(GetOver(state1));
-    outhtml.append(GetOver(state2));
 
 
     outhtml.append("</script>");

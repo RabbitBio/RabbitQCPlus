@@ -624,6 +624,7 @@ cost ： STD/RabbitQCPlus/ReRabbitQC
 
 ## 0813
 
-添加了过度表示的功能以及绘图的功能，但是有点bug。
+添加了过度表示的功能以及绘图的功能，但是有点bug。仔细看了看也不是bug，就是打印的热点sequence，sampling=1的时候就是对的，但是=20就不对了，是因为多线程采样到的sequence不一样。
 
 ## 0814
+
