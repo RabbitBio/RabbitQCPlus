@@ -9,10 +9,10 @@ ThreadInfo::ThreadInfo(CmdInfo *cmd_info) {
     if (cmd_info->is_TGS_) {
         TGS_state_ = new TGSStats(cmd_info->TGS_min_len_);
     } else {
-        pre_state1_ = new State(cmd_info->seq_len_, cmd_info->qul_range_);
-        pre_state2_ = new State(cmd_info->seq_len_, cmd_info->qul_range_);
-        aft_state1_ = new State(cmd_info->seq_len_, cmd_info->qul_range_);
-        aft_state2_ = new State(cmd_info->seq_len_, cmd_info->qul_range_);
+        pre_state1_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_);
+        pre_state2_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_);
+        aft_state1_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_);
+        aft_state2_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_);
     }
 
 }

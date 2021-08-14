@@ -64,6 +64,11 @@ int main(int argc, char **argv) {
     app.add_flag("--TGS", cmd_info.is_TGS_, "process TGS");
 
 
+    //overrepresentation
+    app.add_flag("-p,--do_overrepresentation", cmd_info.do_overrepresentation_, "do overrepresentation");
+    app.add_option("-P,--overrepresentation_sampling", cmd_info.overrepresentation_sampling_,
+                   "do overrepresentation every [] reads");
+
     CLI11_PARSE(app, argc, argv);
     printf("in1 is %s\n", cmd_info.in_file_name1_.c_str());
     if (cmd_info.in_file_name2_.length())printf("in2 is %s\n", cmd_info.in_file_name2_.c_str());
@@ -127,6 +132,10 @@ int main(int argc, char **argv) {
         }
     }
 
+    if (cmd_info.do_overrepresentation_) {
+        printf("now overrepresentation\n");
+        printf("overrepresentation sampling is %d\n", cmd_info.overrepresentation_sampling_);
+    }
 
     printf("now use %d thread\n", cmd_info.thread_number_);
 
@@ -239,6 +248,15 @@ int main(int argc, char **argv) {
         }
         if (cmd_info.trim_tail1_) {
             printf("trim tail %d bases\n", cmd_info.trim_tail1_);
+        }
+
+        if (cmd_info.do_overrepresentation_) {
+            double t2 = GetTime();
+            printf("now pre over represent\n");
+            Adapter::PreOverAnalyze(cmd_info.in_file_name1_, cmd_info.hot_seqs_, cmd_info.eva_len_);
+            printf("pre over represent done\n");
+            printf("total %d hot sqes\n", cmd_info.hot_seqs_.size());
+            printf("detect adapter cost %.5f\n", GetTime() - t2);
         }
 
         double tp = GetTime();

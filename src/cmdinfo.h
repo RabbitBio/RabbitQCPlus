@@ -5,6 +5,7 @@
 #ifndef RERABBITQC_CMDINFO_H
 #define RERABBITQC_CMDINFO_H
 
+#include <map>
 #include "Globals.h"
 
 class CmdInfo {
@@ -71,6 +72,12 @@ public:
     //TGS
     bool is_TGS_;
     int TGS_min_len_;
+
+    //overrepresentation_analysis
+    bool do_overrepresentation_;
+    int overrepresentation_sampling_;
+    std::map<std::string, int64_t> hot_seqs_;
+    int eva_len_;
 
 
 };

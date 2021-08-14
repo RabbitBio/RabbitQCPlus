@@ -6,14 +6,14 @@
 #define RERABBITQC_STATE_H
 
 #include <cstring>
-
+#include <iostream>
 #include "Globals.h"
 #include "Reference.h"
 #include "cmdinfo.h"
 
 class State {
 public:
-    State(int seq_len, int qul_range);
+    State(CmdInfo *cmd_info, int seq_len, int qul_range);
 
     ~State();
 
@@ -59,6 +59,19 @@ public:
 
     bool IsHasSummarize() const;
 
+    int64_t GetTotBases() const;
+
+    int64_t GetGcBases() const;
+
+
+private:
+    CmdInfo *cmd_info_;
+public:
+    const std::map<std::string, int64_t *> &GetHotSeqsDist() const;
+
+public:
+    CmdInfo *GetCmdInfo() const;
+
 private:
     int64_t q20bases_;
     int64_t q30bases_;
@@ -76,15 +89,16 @@ private:
     int64_t kmer_min_;
     int64_t kmer_max_;
     int64_t tot_bases_;
+    int64_t gc_bases_;
+    bool has_summarize_;
+    std::map<std::string, int64_t> hot_seqs_info_;
+    std::map<std::string, int64_t *> hot_seqs_dist_;
+    bool do_over_represent_analyze_;
 public:
-    int64_t GetTotBases() const;
-
-    int64_t GetGcBases() const;
+    const std::map<std::string, int64_t> &GetHotSeqsInfo() const;
 
 private:
-    int64_t gc_bases_;
-
-    bool has_summarize_;
+    int over_representation_sampling_;
 
 
 };

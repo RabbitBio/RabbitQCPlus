@@ -175,6 +175,127 @@ std::string Adapter::matchKnownAdapter(std::string seq) {
 }
 
 
+void Adapter::PreOverAnalyze(std::string file_name, std::map<std::string, int64_t> &hot_seqs, int &eva_len) {
+
+    auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
+    auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool);
+    int64_t n_chunks = 0;
+//    const long READ_LIMIT = 10000;
+    const long BASE_LIMIT = 151 * 10000;
+    long records = 0;
+    long bases = 0;
+    std::map<std::string, int64_t> seqCounts;
+
+    std::vector<neoReference> loadedReads;
+    std::vector<rabbit::fq::FastqDataChunk *> chunks;
+
+    while (bases < BASE_LIMIT) {
+        rabbit::fq::FastqDataChunk *fqdatachunk;
+        fqdatachunk = fqFileReader->readNextChunk();
+        if (fqdatachunk == NULL) break;
+        n_chunks++;
+        std::vector<neoReference> data;
+        rabbit::fq::chunkFormat(fqdatachunk, data, true);
+        chunks.push_back(fqdatachunk);
+        for (auto item:data) {
+            bases += item.lseq;
+            loadedReads.push_back(item);
+            records++;
+            if (bases >= BASE_LIMIT)
+                break;
+        }
+    }
+
+    int seqlen = 0;
+    for (int i = 0; i < 1000; i++) {
+        auto item = loadedReads[i];
+        seqlen = std::max(seqlen, int(item.lseq));
+    }
+    printf("seqlen is %d\n", seqlen);
+    eva_len = seqlen;
+
+    for (auto item:loadedReads) {
+        int rlen = item.lseq;
+
+        int steps[5] = {10, 20, 40, 100, std::min(150, seqlen - 2)};
+
+        for (int s = 0; s < 5; s++) {
+            int step = steps[s];
+            for (int i = 0; i < rlen - step; i++) {
+                std::string seq = std::string(reinterpret_cast<const char *>(item.base + item.pseq + i), step);
+                if (seqCounts.count(seq) > 0)
+                    seqCounts[seq]++;
+                else
+                    seqCounts[seq] = 1;
+            }
+        }
+
+    }
+
+    printf("now get hotseqs\n");
+
+    for (auto item:seqCounts) {
+        std::string seq = item.first;
+        long count = item.second;
+
+        if (seq.length() >= seqlen - 1) {
+            if (count >= 3) {
+                hot_seqs[seq] = count;
+            }
+        } else if (seq.length() >= 100) {
+            if (count >= 5) {
+                hot_seqs[seq] = count;
+            }
+        } else if (seq.length() >= 40) {
+            if (count >= 20) {
+                hot_seqs[seq] = count;
+            }
+        } else if (seq.length() >= 20) {
+            if (count >= 100) {
+                hot_seqs[seq] = count;
+            }
+        } else if (seq.length() >= 10) {
+            if (count >= 500) {
+                hot_seqs[seq] = count;
+            }
+        }
+    }
+
+    printf("now remove substrings\n");
+
+    // remove substrings
+    auto iter = hot_seqs.begin();
+    while (iter != hot_seqs.end()) {
+        std::string seq = iter->first;
+        long count = iter->second;
+        bool isSubString = false;
+        for (auto item:hot_seqs) {
+            std::string seq2 = item.first;
+            long count2 = item.second;
+            if (seq != seq2 && seq2.find(seq) != std::string::npos && count / count2 < 10) {
+                isSubString = true;
+                break;
+            }
+        }
+        if (isSubString) {
+            hot_seqs.erase(iter++);
+        } else {
+            iter++;
+        }
+    }
+
+    std::cout << hot_seqs.size() << std::endl;
+    // output for test
+    for (iter = hot_seqs.begin(); iter != hot_seqs.end(); iter++) {
+        std::cout << iter->first << ": " << iter->first.size() << " , " << iter->second << std::endl;
+    }
+    for (auto item:chunks)
+        fastq_data_pool->Release(item);
+    delete fastq_data_pool;
+    delete fqFileReader;
+}
+
+
 std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
 
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
@@ -320,7 +441,8 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
 
 
 std::string
-Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, long records, int keylen, int trim_tail) {
+Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, long records, int keylen,
+                            int trim_tail) {
     // we have to shift last cycle for evaluation since it is so noisy, especially for Illumina data
     const int shiftTail = std::max(1, trim_tail);
     NucleotideTree *forwardTree = new NucleotideTree();
@@ -349,8 +471,9 @@ Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, lon
     for (it = vec.begin(); it != vec.end(); it++) {
 
         auto now_it = loadedReads[it->recordsID];
-        forwardTree->addSeq(std::string(reinterpret_cast<const char *>(now_it.base + now_it.pseq + it->pos + keylen),
-                                        now_it.lseq - keylen - shiftTail - it->pos));
+        forwardTree->addSeq(
+                std::string(reinterpret_cast<const char *>(now_it.base + now_it.pseq + it->pos + keylen),
+                            now_it.lseq - keylen - shiftTail - it->pos));
         std::string seq = std::string(reinterpret_cast<const char *>(now_it.base + now_it.pseq), it->pos);
         std::string rcseq = Reverse(seq);
         backwardTree->addSeq(rcseq);
@@ -571,9 +694,10 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
 
 #else
 
-OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require) {
+OverlapRes
+Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require) {
 
-    if(cntt==0){
+    if (cntt == 0) {
         printf("novec\n");
         cntt++;
     }

@@ -33,6 +33,8 @@ public:
 
     static std::string matchKnownAdapter(std::string seq);
 
+    static void PreOverAnalyze(std::string file_name, std::map<std::string, int64_t> &ho_seqs, int &eva_len);
+
     static std::string AutoDetect(std::string file_name, int trim_tail);
 
     static std::string

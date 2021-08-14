@@ -649,6 +649,115 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
 
 }
 
+
+bool overRepPassed(std::string &seq, int64_t count, int s) {
+    switch (seq.length()) {
+        case 10:
+            return s * count > 500;
+        case 20:
+            return s * count > 200;
+        case 40:
+            return s * count > 100;
+        case 100:
+            return s * count > 50;
+        default:
+            return s * count > 20;
+    }
+}
+
+std::string GetOver(State *state) {
+    std::stringstream ofs;
+    // over represented seqs
+    double dBases = state->GetTotBases();
+    int displayed = 0;
+    auto cmd_info = state->GetCmdInfo();
+
+    // KMER
+    std::string subsection = " overrepresented sequences";
+    std::string divName = replace(subsection, " ", "_");
+    divName = replace(divName, ":", "_");
+    std::string title = "";
+
+    ofs << "<div class='subsection_title'><a title='click to hide/show' onclick=showOrHide('" << divName
+        << "')>" + subsection + "</a></div>\n";
+    ofs << "<div  id='" << divName << "'>\n";
+    ofs << "<div class='sub_section_tips'>Sampling rate: 1 / " << cmd_info->overrepresentation_sampling_
+        << "</div>\n";
+    ofs << "<table class='summary_table'>\n";
+    ofs
+            << "<tr style='font-weight:bold;'><td>overrepresented sequence</td><td>count (% of bases)</td><td>distribution: cycle 1 ~ cycle "
+            << cmd_info->eva_len_ << "</td></tr>" << std::endl;
+    int found = 0;
+    auto hot_seqs = state->GetHotSeqsInfo();
+    auto hot_seqs_dist = state->GetHotSeqsDist();
+    for (auto item:hot_seqs) {
+        std::string seq = item.first;
+        int64_t count = item.second;
+        if (!overRepPassed(seq, count, cmd_info->overrepresentation_sampling_))
+            continue;
+        found++;
+        double percent = (100.0 * count * seq.length() * cmd_info->overrepresentation_sampling_) / dBases;
+        ofs << "<tr>";
+        ofs << "<td width='400' style='word-break:break-all;font-size:8px;'>" << seq << "</td>";
+        ofs << "<td width='200'>" << count << " (" << std::to_string(percent) << "%)</td>";
+        ofs << "<td width='250'><canvas id='" << divName << "_" << seq << "' width='240' height='20'></td>";
+        ofs << "</tr>" << std::endl;
+    }
+    if (found == 0)
+        ofs << "<tr><td style='text-align:center' colspan='3'>not found</td></tr>" << std::endl;
+    ofs << "</table>\n";
+    ofs << "</div>\n";
+
+    // output the JS
+    ofs << "<script language='javascript'>" << std::endl;
+    ofs << "var seqlen = " << cmd_info->eva_len_ << ";" << std::endl;
+    ofs << "var orp_dist = {" << std::endl;
+    bool first = true;
+    for (auto item:hot_seqs) {
+        std::string seq = item.first;
+        long count = item.second;
+        if (!overRepPassed(seq, count, cmd_info->overrepresentation_sampling_))
+            continue;
+
+        if (!first) {
+            ofs << "," << std::endl;
+        } else
+            first = false;
+        ofs << "\t\"" << divName << "_" << seq << "\":[";
+        for (int i = 0; i < cmd_info->eva_len_; i++) {
+            if (i != 0)
+                ofs << ",";
+            ofs << hot_seqs_dist[seq][i];
+        }
+        ofs << "]";
+    }
+    ofs << "\n};" << std::endl;
+
+    ofs << "for (seq in orp_dist) {" << std::endl;
+    ofs << "    var cvs = document.getElementById(seq);" << std::endl;
+    ofs << "    var ctx = cvs.getContext('2d'); " << std::endl;
+    ofs << "    var data = orp_dist[seq];" << std::endl;
+    ofs << "    var w = 240;" << std::endl;
+    ofs << "    var h = 20;" << std::endl;
+    ofs << "    ctx.fillStyle='#cccccc';" << std::endl;
+    ofs << "    ctx.fillRect(0, 0, w, h);" << std::endl;
+    ofs << "    ctx.fillStyle='#0000FF';" << std::endl;
+    ofs << "    var maxVal = 0;" << std::endl;
+    ofs << "    for(d=0; d<seqlen; d++) {" << std::endl;
+    ofs << "        if(data[d]>maxVal) maxVal = data[d];" << std::endl;
+    ofs << "    }" << std::endl;
+    ofs << "    var step = (seqlen-1) /  (w-1);" << std::endl;
+    ofs << "    for(x=0; x<w; x++){" << std::endl;
+    ofs << "        var target = step * x;" << std::endl;
+    ofs << "        var val = data[Math.floor(target)];" << std::endl;
+    ofs << "        var y = Math.floor((val / maxVal) * h);" << std::endl;
+    ofs << "        ctx.fillRect(x,h-1, 1, -y);" << std::endl;
+    ofs << "    }" << std::endl;
+    ofs << "}" << std::endl;
+    ofs << "</script>" << std::endl;
+    return ofs.str();
+}
+
 void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, double dup) {
 
 
@@ -786,17 +895,6 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
             sum_cnt += pos_cnt_[i * 8 + j];
         }
         tmp_double[i] = 1.0 * sum_qul / sum_cnt;
-
-        if (i > 900) {
-            printf("i ========== %d\n", i);
-            printf("sum_qul %lld , sum_cnt %lld\n", sum_qul, sum_cnt);
-            for (int j = 0; j < 8; j++)printf("%lld ", pos_qul_[i * 8 + j]);
-            printf("\n");
-            for (int j = 0; j < 8; j++)printf("%lld ", pos_cnt_[i * 8 + j]);
-            printf("\n");
-            printf("tmp_double %lf\n", tmp_double[i]);
-        }
-
     }
     outhtml.append(insertSeriesData("line", tmp_double, mx_len2));
     outhtml.append(insertSeriesEnd());
@@ -1010,6 +1108,10 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 //    outhtml.append(insertSeriesEnd());
 //    outhtml.append(insertOptionEnd());
 //    outhtml.append(insertChartOption(NContent));
+
+
+    outhtml.append(GetOver(state1));
+    outhtml.append(GetOver(state2));
 
 
     outhtml.append("</script>");

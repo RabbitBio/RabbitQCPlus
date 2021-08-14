@@ -69,4 +69,9 @@ CmdInfo::CmdInfo() {
     is_TGS_ = false;
     TGS_min_len_ = 200;
 
+    //overrepresentation
+    do_overrepresentation_ = false;
+    overrepresentation_sampling_ = 20;
+    eva_len_ = 150;
+
 }

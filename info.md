@@ -621,3 +621,9 @@ cost ： STD/RabbitQCPlus/ReRabbitQC
 是什么454巴拉巴拉，直接运行好像画的图很丑，不如fastp好看，以为是代码写的有bug，但找了找发现是fastp在画图的时候做了一点点美化，比如下标很密集的话就把长度100区间的val取平均值之类的。
 
 此外，ReRabbitQC还加了自动的buffer extend等功能。
+
+## 0813
+
+添加了过度表示的功能以及绘图的功能，但是有点bug。
+
+## 0814

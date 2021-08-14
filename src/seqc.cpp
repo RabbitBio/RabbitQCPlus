@@ -255,6 +255,21 @@ void SeQc::ProcessSeFastq() {
     State::PrintStates(aft_state);
 
 
+    auto OverRepSeq1 = pre_state->GetHotSeqsInfo();
+    cout << "=============OverRepSeq1=============" << endl;
+    for (auto it:OverRepSeq1) {
+        cout << it.first << " " << it.second << endl;
+    }
+    cout << "=====================================" << endl;
+
+    auto OverRepSeq2 = aft_state->GetHotSeqsInfo();
+    cout << "=============OverRepSeq2=============" << endl;
+    for (auto it:OverRepSeq2) {
+        cout << it.first << " " << it.second << endl;
+    }
+    cout << "=====================================" << endl;
+
+
     int *dupHist = NULL;
     double *dupMeanGC = NULL;
     double dupRate = 0.0;

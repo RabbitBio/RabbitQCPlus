@@ -41,8 +41,26 @@
 #define UMI_LOC_READ2 4
 #define UMI_LOC_PER_INDEX 5
 #define UMI_LOC_PER_READ 6
+
 #include <string>
 #include <stdexcept>
+
+inline std::string replace(const std::string &str, const std::string &src, const std::string &dest) {
+    std::string ret;
+
+    std::string::size_type pos_begin = 0;
+    std::string::size_type pos = str.find(src);
+    while (pos != std::string::npos) {
+        ret.append(str.data() + pos_begin, pos - pos_begin);
+        ret += dest;
+        pos_begin = pos + 1;
+        pos = str.find(src, pos_begin);
+    }
+    if (pos_begin < str.length()) {
+        ret.append(str.begin() + pos_begin, str.end());
+    }
+    return ret;
+}
 
 namespace rabbit {
 
@@ -65,6 +83,7 @@ namespace rabbit {
                               'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'A', 'U', 'V', 'W', 'X', 'Y',
                               'Z', '0', '0', '0', '0', '0', '0', 'T', 'b', 'G', 'd', 'e', 'f', 'C', 'h', 'i', 'j', 'k',
                               'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 'A', 'u', 'v', 'w', 'x', 'y', 'z'};
+
 
 // exception class
 //

@@ -15,25 +15,26 @@
 
 #endif
 
-State::State(int seq_len, int qul_range) {
+State::State(CmdInfo *cmd_info, int seq_len, int qul_range) {
+    cmd_info_ = cmd_info;
     q20bases_ = 0;
     q30bases_ = 0;
     lines_ = 0;
     malloc_seq_len_ = seq_len;
     qul_range_ = qul_range;
     real_seq_len_ = 0;
-    has_summarize_ = 0;
-    int pos_seq_len = seq_len * 8;
+    has_summarize_ = false;
+    int pos_seq_len = malloc_seq_len_ * 8;
     pos_cnt_ = new int64_t[pos_seq_len];
     memset(pos_cnt_, 0, pos_seq_len * sizeof(int64_t));
     pos_qul_ = new int64_t[pos_seq_len];
     memset(pos_qul_, 0, pos_seq_len * sizeof(int64_t));
-    len_cnt_ = new int64_t[seq_len];
-    memset(len_cnt_, 0, seq_len * sizeof(int64_t));
+    len_cnt_ = new int64_t[malloc_seq_len_];
+    memset(len_cnt_, 0, malloc_seq_len_ * sizeof(int64_t));
     gc_cnt_ = new int64_t[101];
     memset(gc_cnt_, 0, 101 * sizeof(int64_t));
-    qul_cnt_ = new int64_t[qul_range];
-    memset(qul_cnt_, 0, qul_range * sizeof(int64_t));
+    qul_cnt_ = new int64_t[qul_range_];
+    memset(qul_cnt_, 0, qul_range_ * sizeof(int64_t));
 
     kmer_buf_len_ = 2 << (5 * 2);
     kmer_ = new int64_t[kmer_buf_len_];
@@ -41,7 +42,22 @@ State::State(int seq_len, int qul_range) {
 
     tot_bases_ = 0;
     gc_bases_ = 0;
+
+    do_over_represent_analyze_ = cmd_info->do_overrepresentation_;
+    over_representation_sampling_ = cmd_info->overrepresentation_sampling_;
+
+    if (do_over_represent_analyze_) {
+        for (auto item:cmd_info->hot_seqs_) {
+            std::string seq = item.first;
+            hot_seqs_info_[seq] = 0;
+            int64_t *distBuf = new int64_t[cmd_info->eva_len_];
+            memset(distBuf, 0, sizeof(int64_t) * cmd_info->eva_len_);
+            hot_seqs_dist_[seq] = distBuf;
+        }
+    }
+
 }
+
 
 State::~State() {
     delete[] pos_cnt_;
@@ -50,6 +66,11 @@ State::~State() {
     delete[] gc_cnt_;
     delete[] qul_cnt_;
     delete[] kmer_;
+    if (do_over_represent_analyze_) {
+        for (auto item:hot_seqs_dist_) {
+            delete[] item.second;
+        }
+    }
 
 }
 
@@ -96,7 +117,6 @@ void State::StateInfo(neoReference &ref) {
 //        printf("exit because sequence length is too long, malloc_seq_len_ is %d, slen is %d\n", malloc_seq_len_, slen);
 //        exit(0);
     }
-    lines_++;
     real_seq_len_ = std::max(real_seq_len_, slen);
     len_cnt_[slen - 1]++;
     char *bases = reinterpret_cast<char *>(ref.base + ref.pseq);
@@ -107,7 +127,6 @@ void State::StateInfo(neoReference &ref) {
     int gc_cnt = 0;
     int qul_tot = 0;
     int kmer = 0;
-
 
 #ifdef Vec512
     int i = 0;
@@ -240,6 +259,27 @@ void State::StateInfo(neoReference &ref) {
     gc_bases_ += gc_cnt;
     gc_cnt_[int(100.0 * gc_cnt / slen)]++;
     qul_cnt_[int(1.0 * qul_tot / slen)]++;
+
+
+    // do overrepresentation analysis for 1 of every 20 reads
+    if (do_over_represent_analyze_) {
+        if (lines_ % over_representation_sampling_ == 0) {
+            const int steps[5] = {10, 20, 40, 100, std::min(150, cmd_info_->eva_len_ - 2)};
+            for (int s = 0; s < 5; s++) {
+                int step = steps[s];
+                for (int i = 0; i < slen - step; i++) {
+                    std::string seq = std::string(reinterpret_cast<const char *>(ref.base + ref.pseq + i), step);
+                    if (hot_seqs_info_.count(seq) > 0) {
+                        hot_seqs_info_[seq]++;
+                        for (int p = i; p < seq.length() + i && p < cmd_info_->eva_len_; p++) {
+                            hot_seqs_dist_[seq][p]++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    lines_++;
 }
 
 
@@ -271,7 +311,7 @@ State *State::MergeStates(const std::vector<State *> &states) {
         item->Summarize();
         now_seq_len = std::max(now_seq_len, item->real_seq_len_);
     }
-    auto *res_state = new State(now_seq_len, states[0]->qul_range_);
+    auto *res_state = new State(states[0]->cmd_info_, now_seq_len, states[0]->qul_range_);
     res_state->real_seq_len_ = now_seq_len;
     for (auto item:states) {
         res_state->q20bases_ += item->q20bases_;
@@ -295,7 +335,18 @@ State *State::MergeStates(const std::vector<State *> &states) {
         for (int i = 0; i < res_state->kmer_buf_len_; i++) {
             res_state->kmer_[i] += item->kmer_[i];
         }
+
+        // merge over rep seq
+        for (auto it:res_state->hot_seqs_info_) {
+            std::string seq = it.first;
+            res_state->hot_seqs_info_[seq] += item->hot_seqs_info_[seq];
+            for (int i = 0; i < res_state->cmd_info_->eva_len_; i++) {
+                res_state->hot_seqs_dist_[seq][i] += item->hot_seqs_dist_[seq][i];
+            }
+        }
     }
+
+
     res_state->Summarize();
     return res_state;
 }
@@ -408,4 +459,16 @@ int64_t State::GetTotBases() const {
 
 int64_t State::GetGcBases() const {
     return gc_bases_;
+}
+
+const std::map<std::string, int64_t> &State::GetHotSeqsInfo() const {
+    return hot_seqs_info_;
+}
+
+CmdInfo *State::GetCmdInfo() const {
+    return cmd_info_;
+}
+
+const std::map<std::string, int64_t *> &State::GetHotSeqsDist() const {
+    return hot_seqs_dist_;
 }
