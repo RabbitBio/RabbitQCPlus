@@ -67,7 +67,7 @@ public:
 private:
     CmdInfo *cmd_info_;
 public:
-    const std::map<std::string, int64_t *> &GetHotSeqsDist() const;
+    const std::unordered_map<std::string, int64_t *> &GetHotSeqsDist() const;
 
 public:
     CmdInfo *GetCmdInfo() const;
@@ -91,11 +91,11 @@ private:
     int64_t tot_bases_;
     int64_t gc_bases_;
     bool has_summarize_;
-    std::map<std::string, int64_t> hot_seqs_info_;
-    std::map<std::string, int64_t *> hot_seqs_dist_;
+    std::unordered_map<std::string, int64_t> hot_seqs_info_;
+    std::unordered_map<std::string, int64_t *> hot_seqs_dist_;
     bool do_over_represent_analyze_;
 public:
-    const std::map<std::string, int64_t> &GetHotSeqsInfo() const;
+    const std::unordered_map<std::string, int64_t> &GetHotSeqsInfo() const;
 
 private:
     int over_representation_sampling_;

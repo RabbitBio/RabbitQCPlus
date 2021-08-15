@@ -461,7 +461,7 @@ int64_t State::GetGcBases() const {
     return gc_bases_;
 }
 
-const std::map<std::string, int64_t> &State::GetHotSeqsInfo() const {
+const std::unordered_map<std::string, int64_t> &State::GetHotSeqsInfo() const {
     return hot_seqs_info_;
 }
 
@@ -469,6 +469,6 @@ CmdInfo *State::GetCmdInfo() const {
     return cmd_info_;
 }
 
-const std::map<std::string, int64_t *> &State::GetHotSeqsDist() const {
+const std::unordered_map<std::string, int64_t *> &State::GetHotSeqsDist() const {
     return hot_seqs_dist_;
 }

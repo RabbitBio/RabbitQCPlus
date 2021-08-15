@@ -256,18 +256,31 @@ void SeQc::ProcessSeFastq() {
 
 
     auto OverRepSeq1 = pre_state->GetHotSeqsInfo();
-    cout << "=============OverRepSeq1=============" << endl;
-    for (auto it:OverRepSeq1) {
-        cout << it.first << " " << it.second << endl;
-    }
-    cout << "=====================================" << endl;
+//    cout << "=============OverRepSeq1=============" << endl;
+//    for (auto it:OverRepSeq1) {
+//        cout << it.first << " " << it.second << endl;
+//    }
+//    cout << "=====================================" << endl;
 
     auto OverRepSeq2 = aft_state->GetHotSeqsInfo();
-    cout << "=============OverRepSeq2=============" << endl;
-    for (auto it:OverRepSeq2) {
-        cout << it.first << " " << it.second << endl;
+//    cout << "=============OverRepSeq2=============" << endl;
+//    for (auto it:OverRepSeq2) {
+//        cout << it.first << " " << it.second << endl;
+//    }
+//    cout << "=====================================" << endl;
+
+
+    ofstream ofs;
+    ofs.open("ORP2.log", ifstream::out);
+    for (auto it:OverRepSeq1) {
+        ofs << it.first << " " << it.second << "\n";
     }
-    cout << "=====================================" << endl;
+    ofs.close();
+    ofs.open("ORP3.log", ifstream::out);
+    for (auto it:OverRepSeq2) {
+        ofs << it.first << " " << it.second << "\n";
+    }
+    ofs.close();
 
 
     int *dupHist = NULL;
@@ -423,6 +436,7 @@ void report3(TGSStats *preStats1) {
     //ofs << "</div>\n";
 
     printFooter(ofs);
+    ofs.close();
 
 }
 

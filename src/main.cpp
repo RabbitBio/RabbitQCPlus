@@ -256,7 +256,7 @@ int main(int argc, char **argv) {
             Adapter::PreOverAnalyze(cmd_info.in_file_name1_, cmd_info.hot_seqs_, cmd_info.eva_len_);
             printf("pre over represent done\n");
             printf("total %d hot sqes\n", cmd_info.hot_seqs_.size());
-            printf("detect adapter cost %.5f\n", GetTime() - t2);
+            printf("pre over representation cost %.5f\n", GetTime() - t2);
         }
 
         double tp = GetTime();

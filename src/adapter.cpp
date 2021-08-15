@@ -175,7 +175,7 @@ std::string Adapter::matchKnownAdapter(std::string seq) {
 }
 
 
-void Adapter::PreOverAnalyze(std::string file_name, std::map<std::string, int64_t> &hot_seqs, int &eva_len) {
+void Adapter::PreOverAnalyze(std::string file_name, std::unordered_map<std::string, int64_t> &hot_seqs, int &eva_len) {
 
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool);
@@ -234,29 +234,31 @@ void Adapter::PreOverAnalyze(std::string file_name, std::map<std::string, int64_
 
     printf("now get hotseqs\n");
 
+    std::unordered_map<std::string, int64_t> hot_s;
+
     for (auto item:seqCounts) {
         std::string seq = item.first;
         long count = item.second;
 
         if (seq.length() >= seqlen - 1) {
             if (count >= 3) {
-                hot_seqs[seq] = count;
+                hot_s[seq] = count;
             }
         } else if (seq.length() >= 100) {
             if (count >= 5) {
-                hot_seqs[seq] = count;
+                hot_s[seq] = count;
             }
         } else if (seq.length() >= 40) {
             if (count >= 20) {
-                hot_seqs[seq] = count;
+                hot_s[seq] = count;
             }
         } else if (seq.length() >= 20) {
             if (count >= 100) {
-                hot_seqs[seq] = count;
+                hot_s[seq] = count;
             }
         } else if (seq.length() >= 10) {
             if (count >= 500) {
-                hot_seqs[seq] = count;
+                hot_s[seq] = count;
             }
         }
     }
@@ -264,31 +266,34 @@ void Adapter::PreOverAnalyze(std::string file_name, std::map<std::string, int64_
     printf("now remove substrings\n");
 
     // remove substrings
-    auto iter = hot_seqs.begin();
-    while (iter != hot_seqs.end()) {
-        std::string seq = iter->first;
-        long count = iter->second;
+    for (auto item:hot_s) {
+        auto seq = item.first;
+        auto count = item.second;
         bool isSubString = false;
-        for (auto item:hot_seqs) {
-            std::string seq2 = item.first;
-            long count2 = item.second;
+        for (auto item:hot_s) {
+            auto seq2 = item.first;
+            auto count2 = item.second;
             if (seq != seq2 && seq2.find(seq) != std::string::npos && count / count2 < 10) {
                 isSubString = true;
                 break;
             }
         }
-        if (isSubString) {
-            hot_seqs.erase(iter++);
-        } else {
-            iter++;
-        }
+        if (!isSubString)hot_seqs[seq] = count;
+
     }
 
     std::cout << hot_seqs.size() << std::endl;
     // output for test
-    for (iter = hot_seqs.begin(); iter != hot_seqs.end(); iter++) {
-        std::cout << iter->first << ": " << iter->first.size() << " , " << iter->second << std::endl;
+//    for (auto iter = hot_seqs.begin(); iter != hot_seqs.end(); iter++) {
+//        std::cout << iter->first << ": " << iter->first.size() << " , " << iter->second << std::endl;
+//    }
+    std::ofstream ofs;
+    ofs.open("ORP.log", std::ifstream::out);
+    for (auto iter = hot_seqs.begin(); iter != hot_seqs.end(); iter++) {
+
+        ofs << iter->first << " " << iter->second << "\n";
     }
+    ofs.close();
     for (auto item:chunks)
         fastq_data_pool->Release(item);
     delete fastq_data_pool;

@@ -6,6 +6,7 @@
 #define RERABBITQC_CMDINFO_H
 
 #include <map>
+#include <unordered_map>
 #include "Globals.h"
 
 class CmdInfo {
@@ -76,7 +77,7 @@ public:
     //overrepresentation_analysis
     bool do_overrepresentation_;
     int overrepresentation_sampling_;
-    std::map<std::string, int64_t> hot_seqs_;
+    std::unordered_map<std::string, int64_t> hot_seqs_;
     int eva_len_;
 
 
