@@ -44,6 +44,8 @@
 
 #include <string>
 #include <stdexcept>
+#include <sys/time.h>
+
 
 inline std::string replace(const std::string &str, const std::string &src, const std::string &dest) {
     std::string ret;
@@ -61,6 +63,16 @@ inline std::string replace(const std::string &str, const std::string &src, const
     }
     return ret;
 }
+
+inline double GetTime() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (double) tv.tv_sec + (double) tv.tv_usec / 1000000;
+}
+
+static int valAGCT[8] = {-1, 0, -1, 2, 1, -1, -1, 3};
+static int valAGCT2[8] = {-1, 0, -1, 2, 1, -1, 4, 3};
+
 
 namespace rabbit {
 
@@ -83,7 +95,6 @@ namespace rabbit {
                               'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'A', 'U', 'V', 'W', 'X', 'Y',
                               'Z', '0', '0', '0', '0', '0', '0', 'T', 'b', 'G', 'd', 'e', 'f', 'C', 'h', 'i', 'j', 'k',
                               'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 'A', 'u', 'v', 'w', 'x', 'y', 'z'};
-
 
 // exception class
 //

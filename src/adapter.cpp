@@ -4,6 +4,8 @@
 
 #include "adapter.h"
 
+#define mod 9999991
+
 #ifdef Vec512
 
 #include<immintrin.h>
@@ -79,7 +81,6 @@ std::string Adapter::int2seq(unsigned int val, int seqlen) {
     return ret;
 }
 
-static int valAGCT[8] = {-1, 0, -1, 2, 1, -1, -1, 3};
 
 int Adapter::seq2int(const char *seq, int pos, int keylen, int lastVal) {
     if (lastVal >= 0) {
@@ -174,17 +175,25 @@ std::string Adapter::matchKnownAdapter(std::string seq) {
     return "";
 }
 
+void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &hot_seqs, int &eva_len) {
 
-void Adapter::PreOverAnalyze(std::string file_name, std::unordered_map<std::string, int64_t> &hot_seqs, int &eva_len) {
-
+    double t0 = GetTime();
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool);
     int64_t n_chunks = 0;
-//    const long READ_LIMIT = 10000;
     const long BASE_LIMIT = 151 * 10000;
     long records = 0;
     long bases = 0;
-    std::map<std::string, int64_t> seqCounts;
+    int maxn = 1e7;
+    int maxm = 1e7;
+    int *head = new int[maxn];
+    int *pre = new int[maxm];
+    int *cnt = new int[maxm];
+    int64_t *v = new int64_t[maxm];
+    std::string *seqs = new std::string[maxm];
+    int num = 0;
+    for (int i = 0; i < maxn; i++)head[i] = -1;
+
 
     std::vector<neoReference> loadedReads;
     std::vector<rabbit::fq::FastqDataChunk *> chunks;
@@ -205,6 +214,8 @@ void Adapter::PreOverAnalyze(std::string file_name, std::unordered_map<std::stri
                 break;
         }
     }
+    printf("part0 cost %.5f\n", GetTime() - t0);
+    t0 = GetTime();
 
     int seqlen = 0;
     for (int i = 0; i < 1000; i++) {
@@ -213,60 +224,95 @@ void Adapter::PreOverAnalyze(std::string file_name, std::unordered_map<std::stri
     }
     printf("seqlen is %d\n", seqlen);
     eva_len = seqlen;
+    int threadNumber = omp_get_num_procs();
 
-    for (auto item:loadedReads) {
+    printf("now use %d threads\n", threadNumber);
+
+//#pragma omp parallel for num_threads(threadNumber)
+    for (int it = 0; it < loadedReads.size(); it++) {
+        auto item = loadedReads[it];
         int rlen = item.lseq;
 
         int steps[5] = {10, 20, 40, 100, std::min(150, seqlen - 2)};
 
         for (int s = 0; s < 5; s++) {
             int step = steps[s];
-            for (int i = 0; i < rlen - step; i++) {
-                std::string seq = std::string(reinterpret_cast<const char *>(item.base + item.pseq + i), step);
-                if (seqCounts.count(seq) > 0)
-                    seqCounts[seq]++;
-                else
-                    seqCounts[seq] = 1;
+            for (int offset = 0; offset < rlen - step; offset++) {
+                std::string seq = std::string(reinterpret_cast<const char *>(item.base + item.pseq + offset), step);
+                int64_t now = 0;
+                for (int j = 0; j < step; j++) {
+                    now = now * 5;
+                    now += valAGCT2[seq[j] & 0x07];
+                }
+                int ha = (now % mod + mod) % mod;
+                int ok_find = 0;
+                for (int i = head[ha]; i != -1; i = pre[i]) {
+                    if (now == v[i]) {
+                        ok_find = 1;
+//#pragma omp critical
+                        {
+                            cnt[i]++;
+                        }
+                        break;
+                    }
+                }
+                if (ok_find == 0) {
+//#pragma omp critical
+                    {
+                        v[num] = now;
+                        pre[num] = head[ha];
+                        cnt[num] = 1;
+                        seqs[num] = seq;
+                        head[ha] = num;
+                        num++;
+                    }
+                    if (num >= maxm) {
+                        printf("num is bigger than maxm!\n");
+                        exit(0);
+                    }
+                }
             }
         }
-
     }
-
+    printf("part1 cost %.5f\n", GetTime() - t0);
+    t0 = GetTime();
+    printf("total hot seqs num is %d\n", num);
     printf("now get hotseqs\n");
 
-    std::unordered_map<std::string, int64_t> hot_s;
+    std::vector<std::pair<std::string, int>> hot_s;
 
-    for (auto item:seqCounts) {
-        std::string seq = item.first;
-        long count = item.second;
-
-        if (seq.length() >= seqlen - 1) {
-            if (count >= 3) {
-                hot_s[seq] = count;
+    for (int i = 0; i < num; i++) {
+        if (seqs[i].length() >= seqlen - 1) {
+            if (cnt[i] >= 3) {
+                hot_s.push_back({seqs[i], cnt[i]});
             }
-        } else if (seq.length() >= 100) {
-            if (count >= 5) {
-                hot_s[seq] = count;
+        } else if (seqs[i].length() >= 100) {
+            if (cnt[i] >= 5) {
+                hot_s.push_back({seqs[i], cnt[i]});
             }
-        } else if (seq.length() >= 40) {
-            if (count >= 20) {
-                hot_s[seq] = count;
+        } else if (seqs[i].length() >= 40) {
+            if (cnt[i] >= 20) {
+                hot_s.push_back({seqs[i], cnt[i]});
             }
-        } else if (seq.length() >= 20) {
-            if (count >= 100) {
-                hot_s[seq] = count;
+        } else if (seqs[i].length() >= 20) {
+            if (cnt[i] >= 100) {
+                hot_s.push_back({seqs[i], cnt[i]});
             }
-        } else if (seq.length() >= 10) {
-            if (count >= 500) {
-                hot_s[seq] = count;
+        } else if (seqs[i].length() >= 10) {
+            if (cnt[i] >= 500) {
+                hot_s.push_back({seqs[i], cnt[i]});
             }
         }
     }
 
+    printf("part2 cost %.5f\n", GetTime() - t0);
+    t0 = GetTime();
     printf("now remove substrings\n");
-
+    printf("before size %d\n", hot_s.size());
     // remove substrings
-    for (auto item:hot_s) {
+#pragma omp parallel for num_threads(threadNumber)
+    for (int i = 0; i < hot_s.size(); i++) {
+        auto item = hot_s[i];
         auto seq = item.first;
         auto count = item.second;
         bool isSubString = false;
@@ -278,28 +324,42 @@ void Adapter::PreOverAnalyze(std::string file_name, std::unordered_map<std::stri
                 break;
             }
         }
-        if (!isSubString)hot_seqs[seq] = count;
+        if (!isSubString) {
+#pragma omp critical
+            {
+                hot_seqs.push_back(seq);
+            }
+        }
 
     }
-
-    std::cout << hot_seqs.size() << std::endl;
+    printf("part3 cost %.5f\n", GetTime() - t0);
+    t0 = GetTime();
+    printf("after size %d\n", hot_seqs.size());
     // output for test
 //    for (auto iter = hot_seqs.begin(); iter != hot_seqs.end(); iter++) {
 //        std::cout << iter->first << ": " << iter->first.size() << " , " << iter->second << std::endl;
 //    }
     std::ofstream ofs;
     ofs.open("ORP.log", std::ifstream::out);
-    for (auto iter = hot_seqs.begin(); iter != hot_seqs.end(); iter++) {
+    for (auto item:hot_seqs) {
 
-        ofs << iter->first << " " << iter->second << "\n";
+        ofs << item << "\n";
     }
     ofs.close();
+    printf("part4 cost %.5f\n", GetTime() - t0);
+    t0 = GetTime();
     for (auto item:chunks)
         fastq_data_pool->Release(item);
     delete fastq_data_pool;
     delete fqFileReader;
-}
+    delete[]head;
+    delete[]pre;
+    delete[]v;
+    delete[]cnt;
+    delete[]seqs;
+    printf("part5 cost %.5f\n", GetTime() - t0);
 
+}
 
 std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
 

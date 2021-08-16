@@ -11,6 +11,9 @@
 #include <map>
 #include <unordered_map>
 #include <algorithm>
+#include <omp.h>
+#include <set>
+
 #include "Reference.h"
 #include "repoter.h"
 #include "Formater.h"
@@ -34,7 +37,7 @@ public:
 
     static std::string matchKnownAdapter(std::string seq);
 
-    static void PreOverAnalyze(std::string file_name, std::unordered_map<std::string, int64_t> &ho_seqs, int &eva_len);
+    static void PreOverAnalyze(std::string file_name, std::vector<std::string> &ho_seqs, int &eva_len);
 
     static std::string AutoDetect(std::string file_name, int trim_tail);
 

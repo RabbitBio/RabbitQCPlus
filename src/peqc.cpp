@@ -4,12 +4,6 @@
 
 #include "peqc.h"
 
-double GetTime3() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (double) tv.tv_sec + (double) tv.tv_usec / 1000000;
-}
-
 /**
  * @brief Construct function
  * @param cmd_info1 : cmd information
@@ -94,7 +88,7 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
     rabbit::fq::FastqFileReader *fqFileReader;
     fqFileReader = new rabbit::fq::FastqFileReader(file, fastqPool, file2, false);
     int n_chunks = 0;
-    double t0 = GetTime3();
+    double t0 = GetTime();
 
     rabbit::fq::FastqDataPairChunk *fqdatachunk;
     while (true) {
@@ -103,7 +97,7 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
         n_chunks++;
         dq.Push(n_chunks, fqdatachunk);
     }
-    printf("producer cost %.3f\n", GetTime3() - t0);
+    printf("producer cost %.3f\n", GetTime() - t0);
 
     dq.SetCompleted();
     delete fqFileReader;

@@ -1,15 +1,9 @@
-#include <sys/time.h>
 #include <iostream>
 #include "CLI11.hpp"
 #include "seqc.h"
 #include "peqc.h"
 #include "cmdinfo.h"
-
-double GetTime() {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (double) tv.tv_sec + (double) tv.tv_usec / 1000000;
-}
+#include "Globals.h"
 
 void error_exit(string log_info) {
     cout << log_info << endl;

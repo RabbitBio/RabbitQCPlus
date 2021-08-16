@@ -247,6 +247,13 @@ void SeQc::ProcessSeFastq() {
     }
     auto pre_state = State::MergeStates(pre_vec_state);
     auto aft_state = State::MergeStates(aft_vec_state);
+//
+//    for (auto item:pre_vec_state) {
+//        printf("now pre state hash graph size %d\n", item->GetHashNum());
+//    }
+//    for (auto item:aft_vec_state) {
+//        printf("now aft state hash graph size %d\n", item->GetHashNum());
+//    }
 
     printf("merge done\n");
     printf("print pre state info :\n");
@@ -255,14 +262,18 @@ void SeQc::ProcessSeFastq() {
     State::PrintStates(aft_state);
 
 
-    auto OverRepSeq1 = pre_state->GetHotSeqsInfo();
+//    auto OverRepSeq1 = pre_state->GetHotSeqsInfo();
+    auto hash_graph1 = pre_state->GetHashGraph();
+    int hash_num1 = pre_state->GetHashNum();
 //    cout << "=============OverRepSeq1=============" << endl;
 //    for (auto it:OverRepSeq1) {
 //        cout << it.first << " " << it.second << endl;
 //    }
 //    cout << "=====================================" << endl;
 
-    auto OverRepSeq2 = aft_state->GetHotSeqsInfo();
+//    auto OverRepSeq2 = aft_state->GetHotSeqsInfo();
+    auto hash_graph2 = aft_state->GetHashGraph();
+    int hash_num2 = aft_state->GetHashNum();
 //    cout << "=============OverRepSeq2=============" << endl;
 //    for (auto it:OverRepSeq2) {
 //        cout << it.first << " " << it.second << endl;
@@ -270,15 +281,27 @@ void SeQc::ProcessSeFastq() {
 //    cout << "=====================================" << endl;
 
 
+//    ofstream ofs;
+//    ofs.open("ORP2.log", ifstream::out);
+//    for (auto it:OverRepSeq1) {
+//        ofs << it.first << " " << it.second << "\n";
+//    }
+//    ofs.close();
+//    ofs.open("ORP3.log", ifstream::out);
+//    for (auto it:OverRepSeq2) {
+//        ofs << it.first << " " << it.second << "\n";
+//    }
+//    ofs.close();
+//
     ofstream ofs;
     ofs.open("ORP2.log", ifstream::out);
-    for (auto it:OverRepSeq1) {
-        ofs << it.first << " " << it.second << "\n";
+    for (int i = 0; i < hash_num1; i++) {
+        ofs << hash_graph1[i].seq << " " << hash_graph1[i].cnt << "\n";
     }
     ofs.close();
     ofs.open("ORP3.log", ifstream::out);
-    for (auto it:OverRepSeq2) {
-        ofs << it.first << " " << it.second << "\n";
+    for (int i = 0; i < hash_num2; i++) {
+        ofs << hash_graph2[i].seq << " " << hash_graph2[i].cnt << "\n";
     }
     ofs.close();
 

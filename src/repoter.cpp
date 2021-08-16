@@ -690,11 +690,12 @@ std::string GetOver(State *state, bool isAfter) {
             << "<tr style='font-weight:bold;'><td>overrepresented sequence</td><td>count (% of bases)</td><td>distribution: cycle 1 ~ cycle "
             << cmd_info->eva_len_ << "</td></tr>" << std::endl;
     int found = 0;
-    auto hot_seqs = state->GetHotSeqsInfo();
-    auto hot_seqs_dist = state->GetHotSeqsDist();
-    for (auto item:hot_seqs) {
-        std::string seq = item.first;
-        int64_t count = item.second;
+    auto hash_graph = state->GetHashGraph();
+    int hash_num = state->GetHashNum();
+
+    for (int i = 0; i < hash_num; i++) {
+        std::string seq = hash_graph[i].seq;
+        int64_t count = hash_graph[i].cnt;
         if (!overRepPassed(seq, count, cmd_info->overrepresentation_sampling_))
             continue;
         found++;
@@ -705,6 +706,19 @@ std::string GetOver(State *state, bool isAfter) {
         ofs << "<td width='250'><canvas id='" << divName << "_" << seq << "' width='240' height='20'></td>";
         ofs << "</tr>" << std::endl;
     }
+//    for (auto item:hot_seqs) {
+//        std::string seq = item.first;
+//        int64_t count = item.second;
+//        if (!overRepPassed(seq, count, cmd_info->overrepresentation_sampling_))
+//            continue;
+//        found++;
+//        double percent = (100.0 * count * seq.length() * cmd_info->overrepresentation_sampling_) / dBases;
+//        ofs << "<tr>";
+//        ofs << "<td width='400' style='word-break:break-all;font-size:8px;'>" << seq << "</td>";
+//        ofs << "<td width='200'>" << count << " (" << std::to_string(percent) << "%)</td>";
+//        ofs << "<td width='250'><canvas id='" << divName << "_" << seq << "' width='240' height='20'></td>";
+//        ofs << "</tr>" << std::endl;
+//    }
     if (found == 0)
         ofs << "<tr><td style='text-align:center' colspan='3'>not found</td></tr>" << std::endl;
     ofs << "</table>\n";
@@ -715,9 +729,9 @@ std::string GetOver(State *state, bool isAfter) {
     ofs << "var seqlen = " << cmd_info->eva_len_ << ";" << std::endl;
     ofs << "var orp_dist = {" << std::endl;
     bool first = true;
-    for (auto item:hot_seqs) {
-        std::string seq = item.first;
-        long count = item.second;
+    for (int i = 0; i < hash_num; i++) {
+        std::string seq = hash_graph[i].seq;
+        int64_t count = hash_graph[i].cnt;
         if (!overRepPassed(seq, count, cmd_info->overrepresentation_sampling_))
             continue;
 
@@ -726,13 +740,32 @@ std::string GetOver(State *state, bool isAfter) {
         } else
             first = false;
         ofs << "\t\"" << divName << "_" << seq << "\":[";
-        for (int i = 0; i < cmd_info->eva_len_; i++) {
-            if (i != 0)
+        for (int j = 0; j < cmd_info->eva_len_; j++) {
+            if (j != 0)
                 ofs << ",";
-            ofs << hot_seqs_dist[seq][i];
+            ofs << hash_graph[i].dist[j];
         }
         ofs << "]";
     }
+
+//    for (auto item:hot_seqs) {
+//        std::string seq = item.first;
+//        long count = item.second;
+//        if (!overRepPassed(seq, count, cmd_info->overrepresentation_sampling_))
+//            continue;
+//
+//        if (!first) {
+//            ofs << "," << std::endl;
+//        } else
+//            first = false;
+//        ofs << "\t\"" << divName << "_" << seq << "\":[";
+//        for (int i = 0; i < cmd_info->eva_len_; i++) {
+//            if (i != 0)
+//                ofs << ",";
+//            ofs << hot_seqs_dist[seq][i];
+//        }
+//        ofs << "]";
+//    }
     ofs << "\n};" << std::endl;
 
     ofs << "for (seq in orp_dist) {" << std::endl;

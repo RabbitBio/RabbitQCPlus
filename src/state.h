@@ -11,6 +11,13 @@
 #include "Reference.h"
 #include "cmdinfo.h"
 
+struct node {
+    int pre, cnt;
+    int64_t v;
+    std::string seq;
+    int64_t *dist;
+};
+
 class State {
 public:
     State(CmdInfo *cmd_info, int seq_len, int qul_range);
@@ -26,6 +33,16 @@ public:
     static State *MergeStates(const std::vector<State *> &states);
 
     static void PrintStates(const State *state);
+
+    void HashInsert(const char *seq, int len);
+
+    void HashQueryAndAdd(const char *seq, int offset, int len);
+
+    int *GetHeadHashGraph() const;
+
+    node *GetHashGraph() const;
+
+    int GetHashNum() const;
 
     int64_t GetQ20Bases() const;
 
@@ -66,8 +83,8 @@ public:
 
 private:
     CmdInfo *cmd_info_;
-public:
-    const std::unordered_map<std::string, int64_t *> &GetHotSeqsDist() const;
+//public:
+//    const std::unordered_map<std::string, int64_t *> &GetHotSeqsDist() const;
 
 public:
     CmdInfo *GetCmdInfo() const;
@@ -91,11 +108,15 @@ private:
     int64_t tot_bases_;
     int64_t gc_bases_;
     bool has_summarize_;
-    std::unordered_map<std::string, int64_t> hot_seqs_info_;
-    std::unordered_map<std::string, int64_t *> hot_seqs_dist_;
+    int *head_hash_graph_;
+    node *hash_graph_;
+    int hash_num_;
+
+//    std::unordered_map<std::string, int64_t> hot_seqs_info_;
+//    std::unordered_map<std::string, int64_t *> hot_seqs_dist_;
     bool do_over_represent_analyze_;
-public:
-    const std::unordered_map<std::string, int64_t> &GetHotSeqsInfo() const;
+//public:
+//    const std::unordered_map<std::string, int64_t> &GetHotSeqsInfo() const;
 
 private:
     int over_representation_sampling_;

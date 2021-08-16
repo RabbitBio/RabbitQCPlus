@@ -29,7 +29,6 @@ Duplicate::~Duplicate() {
 }
 
 
-static int valAGCT[8] = {-1, 0, -1, 2, 1, -1, -1, 3};
 
 uint64_t Duplicate::seq2int(const char *data, int start, int key_len, bool &valid) {
     uint64_t ret = 0;
