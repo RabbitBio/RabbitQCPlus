@@ -7,6 +7,9 @@
 
 #include <cstring>
 #include <iostream>
+#include <fstream>
+#include <sstream>
+
 #include "Globals.h"
 #include "Reference.h"
 #include "cmdinfo.h"
@@ -33,6 +36,10 @@ public:
     static State *MergeStates(const std::vector<State *> &states);
 
     static void PrintStates(const State *state);
+
+    static std::string list2string(int64_t *list, int size);
+
+    static std::string list2string(double *list, int size);
 
     void HashInsert(const char *seq, int len, int eva_len);
 
@@ -80,16 +87,11 @@ public:
 
     int64_t GetGcBases() const;
 
-
-private:
-    CmdInfo *cmd_info_;
-//public:
-//    const std::unordered_map<std::string, int64_t *> &GetHotSeqsDist() const;
-
-public:
     CmdInfo *GetCmdInfo() const;
 
 private:
+    CmdInfo *cmd_info_;
+
     int64_t q20bases_;
     int64_t q30bases_;
     int64_t lines_;
@@ -112,14 +114,7 @@ private:
     node *hash_graph_;
     int hash_num_;
     bool is_read2_;
-
-//    std::unordered_map<std::string, int64_t> hot_seqs_info_;
-//    std::unordered_map<std::string, int64_t *> hot_seqs_dist_;
     bool do_over_represent_analyze_;
-//public:
-//    const std::unordered_map<std::string, int64_t> &GetHotSeqsInfo() const;
-
-private:
     int over_representation_sampling_;
 
 

@@ -676,3 +676,25 @@ pre over似乎不是很好改，先不管了，主要是这个state里面的部�
 
 对pe数据添加了html report和over represented analyze。
 
+然后实现一下InsertSize Analyze：
+
+```c++
+void PairEndProcessor::statInsertSize(Read *r1, Read *r2, OverlapResult &ov) {
+    int isize = mOptions->insertSizeMax;
+    if (ov.overlapped) {
+        if (ov.offset > 0)
+            isize = r1->length() + r2->length() - ov.overlap_len;
+        else
+            isize = ov.overlap_len;
+    }
+
+    if (isize > mOptions->insertSizeMax)
+        isize = mOptions->insertSizeMax;
+
+    mInsertSizeHist[isize]++;
+}
+```
+
+这一块是fastp（RabbitQC）中用来统计insertSize的，也就是双端数据实际上的序列长度。
+
+本来是想直接用fastp中的画图模块的，但是出现了bug，暂时写了个简单的折线图的版本，并且不再仅仅统计thread0的信息，是所有线程的都要统计。

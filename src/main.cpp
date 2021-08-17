@@ -59,9 +59,13 @@ int main(int argc, char **argv) {
 
 
     //overrepresentation
-    app.add_flag("-p,--do_overrepresentation", cmd_info.do_overrepresentation_, "do overrepresentation");
-    app.add_option("-P,--overrepresentation_sampling", cmd_info.overrepresentation_sampling_,
+    app.add_flag("-p,--doOverrepresentation", cmd_info.do_overrepresentation_, "do overrepresentation");
+    app.add_option("-P,--overrepresentationSampling", cmd_info.overrepresentation_sampling_,
                    "do overrepresentation every [] reads");
+
+    //insert size analyze
+    app.add_flag("--noInsertSize", cmd_info.no_insert_size_, "no insert size analyze");
+
 
     CLI11_PARSE(app, argc, argv);
     printf("in1 is %s\n", cmd_info.in_file_name1_.c_str());
@@ -182,7 +186,7 @@ int main(int argc, char **argv) {
         if (cmd_info.correct_data_) {
             printf("now correct data\n");
         }
-        if (cmd_info.trim_adapter_ || cmd_info.correct_data_) {
+        if (cmd_info.trim_adapter_ || cmd_info.correct_data_ || !cmd_info.no_insert_size_) {
             cmd_info.analyze_overlap_ = true;
             printf("now do overlap analyze\n");
         }

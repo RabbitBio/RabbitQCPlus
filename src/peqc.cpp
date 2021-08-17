@@ -151,7 +151,15 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             if (trim_res1 && trim_res2 && cmd_info_->analyze_overlap_) {
                 overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
                                                       cmd_info_->overlap_require_);
-//                printf("ov %d %d %d\n", overlap_res.offset, overlap_res.overlap_len, overlap_res.diff_num);
+                int now_size = cmd_info_->max_insert_size_;
+                if (overlap_res.overlapped) {
+                    if (overlap_res.offset > 0)
+                        now_size = item1.lseq + item2.lseq - overlap_res.overlap_len;
+                    else
+                        now_size = overlap_res.overlap_len;
+                }
+                now_size = min(now_size, cmd_info_->max_insert_size_);
+                thread_info->insert_size_dist_[now_size]++;
             }
             if (trim_res1 && trim_res2 && cmd_info_->correct_data_) {
                 Adapter::CorrectData(item1, item2, overlap_res);
@@ -309,6 +317,7 @@ void PeQc::ProcessPeFastq() {
     auto aft_state1 = State::MergeStates(aft_vec_state1);
     auto aft_state2 = State::MergeStates(aft_vec_state2);
 
+
     printf("merge done\n");
     printf("print pre state1 info :\n");
     State::PrintStates(pre_state1);
@@ -365,13 +374,36 @@ void PeQc::ProcessPeFastq() {
 
     }
 
+    int64_t *merge_insert_size;
+    if (!cmd_info_->no_insert_size_) {
+        merge_insert_size = new int64_t[cmd_info_->max_insert_size_ + 1];
+        memset(merge_insert_size, 0, sizeof(int64_t) * (cmd_info_->max_insert_size_ + 1));
+
+        for (int t = 0; t < cmd_info_->thread_number_; t++) {
+            for (int i = 0; i <= cmd_info_->max_insert_size_; i++) {
+                merge_insert_size[i] += p_thread_info[t]->insert_size_dist_[i];
+            }
+        }
+        int mx_id = 0;
+        for (int i = 0; i < cmd_info_->max_insert_size_; i++) {
+            if (merge_insert_size[i] > merge_insert_size[mx_id])mx_id = i;
+        }
+        printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
+
+    }
+
     Repoter::ReportHtmlPe(pre_state1, pre_state2, aft_state1, aft_state2, cmd_info_->in_file_name1_,
-                          cmd_info_->in_file_name2_, dupRate);
+                          cmd_info_->in_file_name2_, dupRate, merge_insert_size, cmd_info_->max_insert_size_,
+                          cmd_info_->overlap_require_, cmd_info_->no_insert_size_);
+
+    printf("report done\n");
 
     delete pre_state1;
     delete pre_state2;
     delete aft_state1;
     delete aft_state2;
+    if (!cmd_info_->no_insert_size_)
+        delete[] merge_insert_size;
 
 
     delete fastqPool;

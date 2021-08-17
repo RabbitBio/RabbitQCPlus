@@ -768,6 +768,76 @@ std::string GetOver(State *state, bool isAfter, bool isRead2, int eva_len) {
     return ofs.str();
 }
 
+
+std::string GetInsertSize(int64_t *size_info, int size_len_mx, int size_len_l, int size_len_r) {
+    std::stringstream ofs;
+
+    printf("size_len_mx is %d\n", size_len_mx);
+    printf("size_len_l is %d\n", size_len_l);
+    printf("size_len_r is %d\n", size_len_r);
+
+
+    int total = std::min(size_len_mx, size_len_r);
+    int64_t *x = new int64_t[total];
+    double allCount = 0;
+    for (int i = 0; i < total; i++) {
+        x[i] = i;
+        allCount += size_info[i];
+    }
+    allCount += size_info[size_len_mx];
+    double *percents = new double[total];
+    memset(percents, 0, sizeof(double) * total);
+    if (allCount > 0) {
+        for (int i = 0; i < total; i++) {
+            percents[i] = (double) size_info[i] * 100.0 / (double) allCount;
+        }
+    }
+
+    double unknownPercents = (double) size_info[size_len_mx] * 100.0 / (double) allCount;
+
+    ofs << "<div class='section_div'>\n";
+    ofs
+            << "<div class='section_title' onclick=showOrHide('insert_size')><a name='summary'>Insert size estimation</a></div>\n";
+    ofs << "<div id='insert_size'>\n";
+    ofs << "<div id='insert_size_figure'>\n";
+    ofs << "<div class='figure' id='plot_insert_size' style='height:400px;'></div>\n";
+    ofs << "</div>\n";
+
+    ofs << "<div class='sub_section_tips'>This estimation is based on paired-end overlap analysis, and there are ";
+    ofs << std::to_string(unknownPercents);
+    ofs << "% reads found not overlapped. <br /> The nonoverlapped read pairs may have insert size &lt;"
+        << size_len_l;
+    ofs << " or &gt;" << size_len_r;
+    ofs << ", or contain too much sequencing errors to be detected as overlapped.";
+    ofs << "</div>\n";
+
+    ofs << "\n<script type=\"text/javascript\">" << std::endl;
+    std::string json_str = "var data=[";
+
+    json_str += "{";
+    json_str += "x:[" + State::list2string(x, total) + "],";
+    json_str += "y:[" + State::list2string(percents, total) + "],";
+    json_str += "name: 'Percent (%)  ',";
+    json_str += "type:'bar',";
+    json_str += "line:{color:'rgba(128,0,128,1.0)', width:1}\n";
+    json_str += "}";
+
+    json_str += "];\n";
+
+    json_str += "var layout={title:'Insert size distribution (" + std::to_string(unknownPercents) +
+                "% reads are with unknown length)', xaxis:{title:'Insert size'}, yaxis:{title:'Read percent (%)'}};\n";
+    json_str += "Plotly.newPlot('plot_insert_size', data, layout);\n";
+
+    ofs << json_str;
+    ofs << "</script>" << std::endl;
+    ofs << "</div>\n";
+    ofs << "</div>\n";
+
+    delete[] x;
+    delete[] percents;
+    return ofs.str();
+}
+
 void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, double dup) {
 
 
@@ -1092,7 +1162,8 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 }
 
 void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_state1, State *aft_state2,
-                           std::string file_name1, std::string file_name2, double dup) {
+                           std::string file_name1, std::string file_name2, double dup, int64_t *size_info,
+                           int size_len_mx, int size_require, bool no_size) {
     printf("report html pe data\n");
 
     std::string outhtml;
@@ -1115,7 +1186,11 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     printf("aft mx len1 is %d\n", aft_mx_len1);
     printf("aft mx len2 is %d\n", aft_mx_len2);
 
-    tmp_double = new double[std::max(std::max(pre_mx_len1, pre_mx_len2), std::max(aft_mx_len1, aft_mx_len2))];
+    int mx_malloc_size = size_len_mx + 1;
+    mx_malloc_size = std::max(mx_malloc_size,
+                              std::max(std::max(pre_mx_len1, pre_mx_len2), std::max(aft_mx_len1, aft_mx_len2)));
+
+    tmp_double = new double[mx_malloc_size];
 
 
     outhtml.append(HTMLHeader());
@@ -1160,6 +1235,12 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
+    int size_real = pre_state1->GetRealSeqLen() + pre_state2->GetRealSeqLen() - size_require;
+
+//    if (!no_size)
+//        outhtml.append(GetInsertSize(size_info, size_len_mx, size_require, size_real));
+
+    std::string InsertSizeInfo("InsertSizeInfo");
 
     std::string PrePositionQuality1("PrePositionQuality1");
     std::string PrePositionQuality2("PrePositionQuality2");
@@ -1179,6 +1260,8 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     std::string AftGCContent1("AftGCContent1");
     std::string AftGCContent2("AftGCContent2");
 
+
+    outhtml.append(insertDiv(InsertSizeInfo));
 
     outhtml.append(insertDiv(PrePositionQuality1));
     outhtml.append(insertDiv(PrePositionQuality2));
@@ -1211,6 +1294,27 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
 
     //js
     outhtml.append("<script type=\"text/javascript\">\n");
+
+    //Insert Size
+    if (!no_size) {
+        outhtml.append(insertChart(InsertSizeInfo));
+        //option
+        outhtml.append(insertOptionBegin(InsertSizeInfo));
+        outhtml.append(insertTitle("Insert Size Info"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("read length", size_real, 1));
+        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertSeriesBegin());
+        int64_t sum_read = 0;
+        for (int i = 0; i < size_real; i++)sum_read += size_info[i];
+        sum_read += size_info[size_len_mx];
+        for (int i = 0; i < size_real; i++)tmp_double[i] = 100.0 * size_info[i] / sum_read;
+        outhtml.append(insertSeriesData("line", tmp_double, size_real));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(InsertSizeInfo));
+    }
 
     // Quality Scores cross all bases
     {

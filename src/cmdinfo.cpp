@@ -75,4 +75,8 @@ CmdInfo::CmdInfo() {
     eva_len_ = 150;
     eva_len2_ = 150;
 
+    //insert size
+    no_insert_size_ = false;
+    max_insert_size_ = 512;
+
 }

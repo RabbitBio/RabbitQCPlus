@@ -78,11 +78,14 @@ public:
     //overrepresentation_analysis
     bool do_overrepresentation_;
     int overrepresentation_sampling_;
-//    std::unordered_map<std::string, int64_t> hot_seqs_;
     std::vector<std::string> hot_seqs_;
     std::vector<std::string> hot_seqs2_;
     int eva_len_;
     int eva_len2_;
+
+    //insert size
+    bool no_insert_size_;
+    int max_insert_size_;
 
 
 };

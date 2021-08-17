@@ -19,9 +19,12 @@ ThreadInfo::ThreadInfo(CmdInfo *cmd_info, bool is_pe) {
             pre_state1_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_, false);
             aft_state1_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_, false);
         }
-
     }
-
+    insert_size_dist_ = NULL;
+    if (cmd_info->in_file_name2_.length()) {
+        insert_size_dist_ = new int64_t[cmd_info->max_insert_size_ + 1];
+        memset(insert_size_dist_, 0, sizeof(int64_t) * (cmd_info->max_insert_size_ + 1));
+    }
 }
 
 ThreadInfo::~ThreadInfo() {
@@ -32,6 +35,9 @@ ThreadInfo::~ThreadInfo() {
         delete pre_state2_;
         delete aft_state1_;
         delete aft_state2_;
+    }
+    if (cmd_info_->in_file_name2_.length()) {
+        delete[]insert_size_dist_;
     }
 
 }

@@ -13,7 +13,7 @@
 class ThreadInfo {
 public:
 
-    ThreadInfo(CmdInfo *cmd_info,bool is_pre);
+    ThreadInfo(CmdInfo *cmd_info, bool is_pre);
 
     ~ThreadInfo();
 
@@ -25,6 +25,7 @@ public:
     State *pre_state2_;
     State *aft_state1_;
     State *aft_state2_;
+    int64_t *insert_size_dist_;
 
 
 };

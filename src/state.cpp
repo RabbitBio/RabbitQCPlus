@@ -532,3 +532,23 @@ node *State::GetHashGraph() const {
 int State::GetHashNum() const {
     return hash_num_;
 }
+
+std::string State::list2string(int64_t *list, int size) {
+    std::stringstream ss;
+    for (int i = 0; i < size; i++) {
+        ss << list[i];
+        if (i < size - 1)
+            ss << ",";
+    }
+    return ss.str();
+}
+
+std::string State::list2string(double *list, int size) {
+    std::stringstream ss;
+    for (int i = 0; i < size; i++) {
+        ss << list[i];
+        if (i < size - 1)
+            ss << ",";
+    }
+    return ss.str();
+}
