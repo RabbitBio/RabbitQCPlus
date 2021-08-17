@@ -665,7 +665,7 @@ bool overRepPassed(std::string &seq, int64_t count, int s) {
     }
 }
 
-std::string GetOver(State *state, bool isAfter) {
+std::string GetOver(State *state, bool isAfter, bool isRead2, int eva_len) {
     std::stringstream ofs;
     // over represented seqs
     double dBases = state->GetTotBases();
@@ -674,8 +674,13 @@ std::string GetOver(State *state, bool isAfter) {
 
     // KMER
     std::string subsection;
-    if (isAfter)subsection = "After filtering overrepresented sequences";
-    else subsection = "Before filtering overrepresented sequences";
+    if (isAfter) {
+        if (isRead2)subsection = "Read2 after filtering overrepresented sequences";
+        else subsection = "Read1 after filtering overrepresented sequences";
+    } else {
+        if (isRead2)subsection = "Read2 before filtering overrepresented sequences";
+        else subsection = "Read1 before filtering overrepresented sequences";
+    }
     std::string divName = replace(subsection, " ", "_");
     divName = replace(divName, ":", "_");
     std::string title = "";
@@ -688,7 +693,7 @@ std::string GetOver(State *state, bool isAfter) {
     ofs << "<table class='summary_table'>\n";
     ofs
             << "<tr style='font-weight:bold;'><td>overrepresented sequence</td><td>count (% of bases)</td><td>distribution: cycle 1 ~ cycle "
-            << cmd_info->eva_len_ << "</td></tr>" << std::endl;
+            << eva_len << "</td></tr>" << std::endl;
     int found = 0;
     auto hash_graph = state->GetHashGraph();
     int hash_num = state->GetHashNum();
@@ -706,19 +711,7 @@ std::string GetOver(State *state, bool isAfter) {
         ofs << "<td width='250'><canvas id='" << divName << "_" << seq << "' width='240' height='20'></td>";
         ofs << "</tr>" << std::endl;
     }
-//    for (auto item:hot_seqs) {
-//        std::string seq = item.first;
-//        int64_t count = item.second;
-//        if (!overRepPassed(seq, count, cmd_info->overrepresentation_sampling_))
-//            continue;
-//        found++;
-//        double percent = (100.0 * count * seq.length() * cmd_info->overrepresentation_sampling_) / dBases;
-//        ofs << "<tr>";
-//        ofs << "<td width='400' style='word-break:break-all;font-size:8px;'>" << seq << "</td>";
-//        ofs << "<td width='200'>" << count << " (" << std::to_string(percent) << "%)</td>";
-//        ofs << "<td width='250'><canvas id='" << divName << "_" << seq << "' width='240' height='20'></td>";
-//        ofs << "</tr>" << std::endl;
-//    }
+
     if (found == 0)
         ofs << "<tr><td style='text-align:center' colspan='3'>not found</td></tr>" << std::endl;
     ofs << "</table>\n";
@@ -726,7 +719,7 @@ std::string GetOver(State *state, bool isAfter) {
 
     // output the JS
     ofs << "<script language='javascript'>" << std::endl;
-    ofs << "var seqlen = " << cmd_info->eva_len_ << ";" << std::endl;
+    ofs << "var seqlen = " << eva_len << ";" << std::endl;
     ofs << "var orp_dist = {" << std::endl;
     bool first = true;
     for (int i = 0; i < hash_num; i++) {
@@ -740,7 +733,7 @@ std::string GetOver(State *state, bool isAfter) {
         } else
             first = false;
         ofs << "\t\"" << divName << "_" << seq << "\":[";
-        for (int j = 0; j < cmd_info->eva_len_; j++) {
+        for (int j = 0; j < eva_len; j++) {
             if (j != 0)
                 ofs << ",";
             ofs << hash_graph[i].dist[j];
@@ -748,24 +741,6 @@ std::string GetOver(State *state, bool isAfter) {
         ofs << "]";
     }
 
-//    for (auto item:hot_seqs) {
-//        std::string seq = item.first;
-//        long count = item.second;
-//        if (!overRepPassed(seq, count, cmd_info->overrepresentation_sampling_))
-//            continue;
-//
-//        if (!first) {
-//            ofs << "," << std::endl;
-//        } else
-//            first = false;
-//        ofs << "\t\"" << divName << "_" << seq << "\":[";
-//        for (int i = 0; i < cmd_info->eva_len_; i++) {
-//            if (i != 0)
-//                ofs << ",";
-//            ofs << hot_seqs_dist[seq][i];
-//        }
-//        ofs << "]";
-//    }
     ofs << "\n};" << std::endl;
 
     ofs << "for (seq in orp_dist) {" << std::endl;
@@ -807,6 +782,11 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 
     int mx_len1 = state1->GetRealSeqLen();
     int mx_len2 = state2->GetRealSeqLen();
+
+    int64_t *pos_qul_;
+    int64_t *pos_cnt_;
+    int64_t *qul_cnt;
+    int64_t *gc_cnt;
 
     printf("mx len1 is %d\n", mx_len1);
     printf("mx len2 is %d\n", mx_len2);
@@ -875,8 +855,8 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertDiv(GCContent1));
     outhtml.append(insertDiv(GCContent2));
 
-    outhtml.append(GetOver(state1, 0));
-    outhtml.append(GetOver(state2, 1));
+    outhtml.append(GetOver(state1, 0, 0, state1->GetCmdInfo()->eva_len_));
+    outhtml.append(GetOver(state2, 1, 0, state1->GetCmdInfo()->eva_len_));
 
     outhtml.append("</body>\n");
 
@@ -885,268 +865,223 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 
     // Quality Scores cross all bases
 
-    outhtml.append(insertChart(PositionQuality1));
-    //option
-    outhtml.append(insertOptionBegin(PositionQuality1));
-    outhtml.append(insertTitle("Quality Scores cross all bases (Before filtering)"));
-    outhtml.append(insertTooltip());
-    outhtml.append(insertDataZoom());
-    outhtml.append(insertxAxis("Position in read(bp)", mx_len1 + 1));
-    outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
-    outhtml.append(insertSeriesBegin());
+    {
+        outhtml.append(insertChart(PositionQuality1));
+        //option
+        outhtml.append(insertOptionBegin(PositionQuality1));
+        outhtml.append(insertTitle("Quality Scores cross all bases (Before filtering)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Position in read(bp)", mx_len1 + 1));
+        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+        outhtml.append(insertSeriesBegin());
 
-    int64_t *pos_qul_ = state1->GetPosQul();
-    int64_t *pos_cnt_ = state1->GetPosCnt();
-    for (int i = 0; i < mx_len1; i++) {
-        int64_t sum_qul = 0;
-        int64_t sum_cnt = 0;
-        for (int j = 0; j < 8; j++) {
-            sum_qul += pos_qul_[i * 8 + j];
-            sum_cnt += pos_cnt_[i * 8 + j];
+        pos_qul_ = state1->GetPosQul();
+        pos_cnt_ = state1->GetPosCnt();
+        for (int i = 0; i < mx_len1; i++) {
+            int64_t sum_qul = 0;
+            int64_t sum_cnt = 0;
+            for (int j = 0; j < 8; j++) {
+                sum_qul += pos_qul_[i * 8 + j];
+                sum_cnt += pos_cnt_[i * 8 + j];
+            }
+            tmp_double[i] = 1.0 * sum_qul / sum_cnt;
         }
-        tmp_double[i] = 1.0 * sum_qul / sum_cnt;
+        outhtml.append(insertSeriesData("line", tmp_double, mx_len1));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(PositionQuality1));
     }
-    outhtml.append(insertSeriesData("line", tmp_double, mx_len1));
-    outhtml.append(insertSeriesEnd());
-    outhtml.append(insertOptionEnd());
-    outhtml.append(insertChartOption(PositionQuality1));
 
+    {
+        outhtml.append(insertChart(PositionQuality2));
+        //option
+        outhtml.append(insertOptionBegin(PositionQuality2));
+        outhtml.append(insertTitle("Quality Scores cross all bases (After filtering)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Position in read(bp)", mx_len2 + 1));
+        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+        outhtml.append(insertSeriesBegin());
 
-    outhtml.append(insertChart(PositionQuality2));
-    //option
-    outhtml.append(insertOptionBegin(PositionQuality2));
-    outhtml.append(insertTitle("Quality Scores cross all bases (After filtering)"));
-    outhtml.append(insertTooltip());
-    outhtml.append(insertDataZoom());
-    outhtml.append(insertxAxis("Position in read(bp)", mx_len2 + 1));
-    outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
-    outhtml.append(insertSeriesBegin());
-
-    pos_qul_ = state2->GetPosQul();
-    pos_cnt_ = state2->GetPosCnt();
-    for (int i = 0; i < mx_len2; i++) {
-        int64_t sum_qul = 0;
-        int64_t sum_cnt = 0;
-        for (int j = 0; j < 8; j++) {
-            sum_qul += pos_qul_[i * 8 + j];
-            sum_cnt += pos_cnt_[i * 8 + j];
+        pos_qul_ = state2->GetPosQul();
+        pos_cnt_ = state2->GetPosCnt();
+        for (int i = 0; i < mx_len2; i++) {
+            int64_t sum_qul = 0;
+            int64_t sum_cnt = 0;
+            for (int j = 0; j < 8; j++) {
+                sum_qul += pos_qul_[i * 8 + j];
+                sum_cnt += pos_cnt_[i * 8 + j];
+            }
+            tmp_double[i] = 1.0 * sum_qul / sum_cnt;
         }
-        tmp_double[i] = 1.0 * sum_qul / sum_cnt;
+        outhtml.append(insertSeriesData("line", tmp_double, mx_len2));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(PositionQuality2));
     }
-    outhtml.append(insertSeriesData("line", tmp_double, mx_len2));
-    outhtml.append(insertSeriesEnd());
-    outhtml.append(insertOptionEnd());
-    outhtml.append(insertChartOption(PositionQuality2));
-
-
-
-
-
-
-//
-//    //lengthlist
-//    outhtml.append(insertChart(LengthList));
-//    //option
-//    outhtml.append(insertOptionBegin(LengthList));
-//    outhtml.append(insertTitle("Seqence Length List"));
-//    outhtml.append(insertTooltip());
-//    outhtml.append(insertDataZoom());
-//    outhtml.append(insertxAxis("Sequence Length(bp)", max_len + 1));
-//    outhtml.append(insertyAxis("value"));
-//    outhtml.append(insertSeriesBegin());
-//    outhtml.append(insertSeriesData("line", LengthSequence, max_len + 1));
-//    outhtml.append(insertSeriesEnd());
-//    outhtml.append(insertOptionEnd());
-//    outhtml.append(insertChartOption(LengthList));
-//
 
     // Mean Quanlity
-    outhtml.append(insertChart(MeanQuality1));
-    //option
-    outhtml.append(insertOptionBegin(MeanQuality1));
-    outhtml.append(insertTitle("Mean Quanlity List(Before filtering)"));
-    outhtml.append(insertTooltip());
-    outhtml.append(insertDataZoom());
-    outhtml.append(insertxAxis("Mean Sequence Quality(Phred Score)", 42));
-    outhtml.append(insertyAxis("value"));
-    outhtml.append(insertSeriesBegin());
-    int64_t *qul_cnt = state1->GetQulCnt();
-    for (int i = 0; i < 42; i++)
-        tmp_double[i] = qul_cnt[i];
-    outhtml.append(insertSeriesData("line", tmp_double, 42));
-    outhtml.append(insertSeriesEnd());
-    outhtml.append(insertOptionEnd());
-    outhtml.append(insertChartOption(MeanQuality1));
 
+    {
+        outhtml.append(insertChart(MeanQuality1));
+        //option
+        outhtml.append(insertOptionBegin(MeanQuality1));
+        outhtml.append(insertTitle("Mean Quality List(Before filtering)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Mean Sequence Quality(Phred Score)", 42));
+        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertSeriesBegin());
+        qul_cnt = state1->GetQulCnt();
+        for (int i = 0; i < 42; i++)
+            tmp_double[i] = qul_cnt[i];
+        outhtml.append(insertSeriesData("line", tmp_double, 42));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(MeanQuality1));
+    }
 
-    outhtml.append(insertChart(MeanQuality2));
-    //option
-    outhtml.append(insertOptionBegin(MeanQuality2));
-    outhtml.append(insertTitle("Mean Quanlity List(After filtering)"));
-    outhtml.append(insertTooltip());
-    outhtml.append(insertDataZoom());
-    outhtml.append(insertxAxis("Mean Sequence Quality(Phred Score)", 42));
-    outhtml.append(insertyAxis("value"));
-    outhtml.append(insertSeriesBegin());
-    qul_cnt = state1->GetQulCnt();
-    for (int i = 0; i < 42; i++)
-        tmp_double[i] = qul_cnt[i];
-    outhtml.append(insertSeriesData("line", tmp_double, 42));
-    outhtml.append(insertSeriesEnd());
-    outhtml.append(insertOptionEnd());
-    outhtml.append(insertChartOption(MeanQuality2));
-
-
-
+    {
+        outhtml.append(insertChart(MeanQuality2));
+        //option
+        outhtml.append(insertOptionBegin(MeanQuality2));
+        outhtml.append(insertTitle("Mean Quality List(After filtering)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Mean Sequence Quality(Phred Score)", 42));
+        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertSeriesBegin());
+        qul_cnt = state2->GetQulCnt();
+        for (int i = 0; i < 42; i++)
+            tmp_double[i] = qul_cnt[i];
+        outhtml.append(insertSeriesData("line", tmp_double, 42));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(MeanQuality2));
+    }
 
     //AGCT Content
-    outhtml.append(insertChart(PositionContent1));
-    //option
-    outhtml.append(insertOptionBegin(PositionContent1));
-    outhtml.append(insertTitle("AGCT Content(Before filtering)"));
-    outhtml.append(insertTooltip());
-    outhtml.append(insertDataZoom());
-    outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
-    outhtml.append(insertxAxis("Position in read(bp)", mx_len1 + 1));
-    outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
-    outhtml.append(insertSeriesBegin());
 
-    pos_cnt_ = state1->GetPosCnt();
+    {
+        outhtml.append(insertChart(PositionContent1));
+        //option
+        outhtml.append(insertOptionBegin(PositionContent1));
+        outhtml.append(insertTitle("AGCT Content(Before filtering)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
+        outhtml.append(insertxAxis("Position in read(bp)", mx_len1 + 1));
+        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+        outhtml.append(insertSeriesBegin());
+        pos_cnt_ = state1->GetPosCnt();
+        for (int i = 0; i < mx_len1; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "A", tmp_double, mx_len1));
+        for (int i = 0; i < mx_len1; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "G", tmp_double, mx_len1));
+        for (int i = 0; i < mx_len1; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "C", tmp_double, mx_len1));
+        for (int i = 0; i < mx_len1; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "T", tmp_double, mx_len1));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(PositionContent1));
+    }
+    {
+        outhtml.append(insertChart(PositionContent2));
+        //option
+        outhtml.append(insertOptionBegin(PositionContent2));
+        outhtml.append(insertTitle("AGCT Content(After filtering)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
+        outhtml.append(insertxAxis("Position in read(bp)", mx_len2 + 1));
+        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+        outhtml.append(insertSeriesBegin());
 
-
-    for (int i = 0; i < mx_len1; i++) {
-        int64_t sum_tot = 0.0;
-        for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
-//        if (i == 1000) {
-//            for (int j = 0; j < 8; j++)printf("%d ", pos_cnt_[i * 8 + j]);
-//            printf("\n");
-//            printf("%lld\n", sum_tot);
-//            printf("%lld\n", pos_cnt_[i * 8 + ('A' & 0x07)]);
-//            printf("%lf\n", tmp_double[i]);
-//        }
+        pos_cnt_ = state2->GetPosCnt();
+        for (int i = 0; i < mx_len2; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "A", tmp_double, mx_len2));
+        for (int i = 0; i < mx_len2; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "G", tmp_double, mx_len2));
+        for (int i = 0; i < mx_len2; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "C", tmp_double, mx_len2));
+        for (int i = 0; i < mx_len2; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "T", tmp_double, mx_len2));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(PositionContent2));
     }
-    outhtml.append(insertSeriesData("line", "A", tmp_double, mx_len1));
-    for (int i = 0; i < mx_len1; i++) {
-        int64_t sum_tot = 0.0;
-        for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
-    }
-    outhtml.append(insertSeriesData("line", "G", tmp_double, mx_len1));
-    for (int i = 0; i < mx_len1; i++) {
-        int64_t sum_tot = 0.0;
-        for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
-    }
-    outhtml.append(insertSeriesData("line", "C", tmp_double, mx_len1));
-    for (int i = 0; i < mx_len1; i++) {
-        int64_t sum_tot = 0.0;
-        for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
-    }
-    outhtml.append(insertSeriesData("line", "T", tmp_double, mx_len1));
-    outhtml.append(insertSeriesEnd());
-    outhtml.append(insertOptionEnd());
-    outhtml.append(insertChartOption(PositionContent1));
-
-
-    outhtml.append(insertChart(PositionContent2));
-    //option
-    outhtml.append(insertOptionBegin(PositionContent2));
-    outhtml.append(insertTitle("AGCT Content(After filtering)"));
-    outhtml.append(insertTooltip());
-    outhtml.append(insertDataZoom());
-    outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
-    outhtml.append(insertxAxis("Position in read(bp)", mx_len2 + 1));
-    outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
-    outhtml.append(insertSeriesBegin());
-
-    pos_cnt_ = state2->GetPosCnt();
-    for (int i = 0; i < mx_len2; i++) {
-        int64_t sum_tot = 0.0;
-        for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
-    }
-    outhtml.append(insertSeriesData("line", "A", tmp_double, mx_len2));
-    for (int i = 0; i < mx_len2; i++) {
-        int64_t sum_tot = 0.0;
-        for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
-    }
-    outhtml.append(insertSeriesData("line", "G", tmp_double, mx_len2));
-    for (int i = 0; i < mx_len2; i++) {
-        int64_t sum_tot = 0.0;
-        for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
-    }
-    outhtml.append(insertSeriesData("line", "C", tmp_double, mx_len2));
-    for (int i = 0; i < mx_len2; i++) {
-        int64_t sum_tot = 0.0;
-        for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-        tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
-    }
-    outhtml.append(insertSeriesData("line", "T", tmp_double, mx_len2));
-    outhtml.append(insertSeriesEnd());
-    outhtml.append(insertOptionEnd());
-    outhtml.append(insertChartOption(PositionContent2));
-
-
 
     //GC Content
-    outhtml.append(insertChart(GCContent1));
-    //option
-    outhtml.append(insertOptionBegin(GCContent1));
-    outhtml.append(insertTitle("Per Sequence GC content(Before filtering)"));
-    outhtml.append(insertTooltip());
-    outhtml.append(insertDataZoom());
-    outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
-    outhtml.append(insertyAxis("value"));
-    outhtml.append(insertSeriesBegin());
-    int64_t *gc_cnt = state1->GetGcCnt();
-    for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
-    outhtml.append(insertSeriesData("line", tmp_double, 101));
-    outhtml.append(insertSeriesEnd());
-    outhtml.append(insertOptionEnd());
-    outhtml.append(insertChartOption(GCContent1));
 
+    {
+        outhtml.append(insertChart(GCContent1));
+        //option
+        outhtml.append(insertOptionBegin(GCContent1));
+        outhtml.append(insertTitle("Per Sequence GC content(Before filtering)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
+        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertSeriesBegin());
+        gc_cnt = state1->GetGcCnt();
+        for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
+        outhtml.append(insertSeriesData("line", tmp_double, 101));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(GCContent1));
+    }
 
-    outhtml.append(insertChart(GCContent2));
-    //option
-    outhtml.append(insertOptionBegin(GCContent2));
-    outhtml.append(insertTitle("Per Sequence GC content(After filtering)"));
-    outhtml.append(insertTooltip());
-    outhtml.append(insertDataZoom());
-    outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
-    outhtml.append(insertyAxis("value"));
-    outhtml.append(insertSeriesBegin());
-    gc_cnt = state2->GetGcCnt();
-    for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
-    outhtml.append(insertSeriesData("line", tmp_double, 101));
-    outhtml.append(insertSeriesEnd());
-    outhtml.append(insertOptionEnd());
-    outhtml.append(insertChartOption(GCContent2));
-//
-//    //N Content
-//    outhtml.append(insertChart(NContent));
-//    //option
-//    outhtml.append(insertOptionBegin(NContent));
-//    outhtml.append(insertTitle("Per Sequence N content"));
-//    outhtml.append(insertTooltip());
-//    outhtml.append(insertDataZoom());
-//    outhtml.append(insertxAxis("position in read(%)", max_len));
-//    outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
-//    outhtml.append(insertSeriesBegin());
-//    for (int i = 0; i < max_len + 1; i++) {
-//        double total = 0.0;
-//        for (int j = 0; j < 8; j++) total += NumberList[i][j];
-//        tmp_double[i] = NumberList[i]['N' & 0x07] / total;
-//    }
-//    outhtml.append(insertSeriesData("line", tmp_double, max_len));
-//    outhtml.append(insertSeriesEnd());
-//    outhtml.append(insertOptionEnd());
-//    outhtml.append(insertChartOption(NContent));
-
-
+    {
+        outhtml.append(insertChart(GCContent2));
+        //option
+        outhtml.append(insertOptionBegin(GCContent2));
+        outhtml.append(insertTitle("Per Sequence GC content(After filtering)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
+        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertSeriesBegin());
+        gc_cnt = state2->GetGcCnt();
+        for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
+        outhtml.append(insertSeriesData("line", tmp_double, 101));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(GCContent2));
+    }
 
     outhtml.append("</script>");
     outhtml.append("</html>");
@@ -1154,4 +1089,564 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
 
+}
+
+void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_state1, State *aft_state2,
+                           std::string file_name1, std::string file_name2, double dup) {
+    printf("report html pe data\n");
+
+    std::string outhtml;
+    double *tmp_double;
+
+    int pre_mx_len1 = pre_state1->GetRealSeqLen();
+    int pre_mx_len2 = pre_state2->GetRealSeqLen();
+
+    int aft_mx_len1 = aft_state1->GetRealSeqLen();
+    int aft_mx_len2 = aft_state2->GetRealSeqLen();
+
+    int64_t *pos_qul_;
+    int64_t *pos_cnt_;
+    int64_t *qul_cnt;
+
+
+    printf("pre mx len1 is %d\n", pre_mx_len1);
+    printf("pre mx len2 is %d\n", pre_mx_len2);
+
+    printf("aft mx len1 is %d\n", aft_mx_len1);
+    printf("aft mx len2 is %d\n", aft_mx_len2);
+
+    tmp_double = new double[std::max(std::max(pre_mx_len1, pre_mx_len2), std::max(aft_mx_len1, aft_mx_len2))];
+
+
+    outhtml.append(HTMLHeader());
+    outhtml.append(HTMLCss());
+    //Basic Status
+    outhtml.append(insertTableBegin());
+    outhtml.append(insertTableTitle("General", ""));
+    outhtml.append(insertTableTbobyBegin());
+    outhtml.append(insertTableTr("RabbitQC version:", "0.0.2"));
+    outhtml.append(insertTableTr("FileName", file_name1 + "," + file_name2));
+    outhtml.append(
+            insertTableTr("duplication rate:", std::to_string(dup) + "(may be overestimated since this is SE data)"));
+    outhtml.append(insertTableTbobyEnd());
+    outhtml.append(insertTableEnd());
+
+    //Before filtering information
+    outhtml.append(insertTableBegin());
+    outhtml.append(insertTableTitle("Before filtering", ""));
+    outhtml.append(insertTableTbobyBegin());
+    outhtml.append(insertTableTr("total reads:", std::to_string(pre_state1->GetLines() + pre_state2->GetLines())));
+    outhtml.append(
+            insertTableTr("total bases:", std::to_string(pre_state1->GetTotBases() + pre_state2->GetTotBases())));
+    outhtml.append(insertTableTr("Q20 bases:", std::to_string(pre_state1->GetQ20Bases() + pre_state2->GetQ20Bases())));
+    outhtml.append(insertTableTr("Q30 bases:", std::to_string(pre_state1->GetQ30Bases() + pre_state2->GetQ30Bases())));
+    outhtml.append(insertTableTr("%GC", std::to_string(1.0 * (pre_state1->GetGcBases() + pre_state2->GetGcBases()) /
+                                                       (pre_state1->GetTotBases() + pre_state2->GetTotBases()))));
+    outhtml.append(insertTableTbobyEnd());
+    outhtml.append(insertTableEnd());
+
+    //After filtering information
+    outhtml.append(insertTableBegin());
+    outhtml.append(insertTableTitle("After filtering", ""));
+    outhtml.append(insertTableTbobyBegin());
+
+    outhtml.append(insertTableTr("total reads:", std::to_string(aft_state1->GetLines() + aft_state2->GetLines())));
+    outhtml.append(
+            insertTableTr("total bases:", std::to_string(aft_state1->GetTotBases() + aft_state2->GetTotBases())));
+    outhtml.append(insertTableTr("Q20 bases:", std::to_string(aft_state1->GetQ20Bases() + aft_state2->GetQ20Bases())));
+    outhtml.append(insertTableTr("Q30 bases:", std::to_string(+aft_state1->GetQ30Bases() + aft_state2->GetQ30Bases())));
+    outhtml.append(insertTableTr("%GC", std::to_string(1.0 * (aft_state1->GetGcBases() + aft_state2->GetGcBases()) /
+                                                       (aft_state1->GetTotBases() + aft_state2->GetTotBases()))));
+    outhtml.append(insertTableTbobyEnd());
+    outhtml.append(insertTableEnd());
+
+
+    std::string PrePositionQuality1("PrePositionQuality1");
+    std::string PrePositionQuality2("PrePositionQuality2");
+    std::string PrePositionContent1("PrePositionContent1");
+    std::string PrePositionContent2("PrePositionContent2");
+    std::string PreMeanQuality1("PreMeanQuality1");
+    std::string PreMeanQuality2("PreMeanQuality2");
+    std::string PreGCContent1("PreGCContent1");
+    std::string PreGCContent2("PreGCContent2");
+
+    std::string AftPositionQuality1("AftPositionQuality1");
+    std::string AftPositionQuality2("AftPositionQuality2");
+    std::string AftPositionContent1("AftPositionContent1");
+    std::string AftPositionContent2("AftPositionContent2");
+    std::string AftMeanQuality1("AftMeanQuality1");
+    std::string AftMeanQuality2("AftMeanQuality2");
+    std::string AftGCContent1("AftGCContent1");
+    std::string AftGCContent2("AftGCContent2");
+
+
+    outhtml.append(insertDiv(PrePositionQuality1));
+    outhtml.append(insertDiv(PrePositionQuality2));
+    outhtml.append(insertDiv(PrePositionContent1));
+    outhtml.append(insertDiv(PrePositionContent2));
+    outhtml.append(insertDiv(PreMeanQuality1));
+    outhtml.append(insertDiv(PreMeanQuality2));
+    outhtml.append(insertDiv(PreGCContent1));
+    outhtml.append(insertDiv(PreGCContent2));
+
+    outhtml.append(GetOver(pre_state1, 0, 0, pre_state1->GetCmdInfo()->eva_len_));
+    outhtml.append(GetOver(pre_state2, 0, 1, pre_state2->GetCmdInfo()->eva_len2_));
+
+
+    outhtml.append(insertDiv(AftPositionQuality1));
+    outhtml.append(insertDiv(AftPositionQuality2));
+    outhtml.append(insertDiv(AftPositionContent1));
+    outhtml.append(insertDiv(AftPositionContent2));
+    outhtml.append(insertDiv(AftMeanQuality1));
+    outhtml.append(insertDiv(AftMeanQuality2));
+    outhtml.append(insertDiv(AftGCContent1));
+    outhtml.append(insertDiv(AftGCContent2));
+
+
+    outhtml.append(GetOver(aft_state1, 1, 0, pre_state1->GetCmdInfo()->eva_len_));
+    outhtml.append(GetOver(aft_state2, 1, 1, pre_state2->GetCmdInfo()->eva_len2_));
+
+
+    outhtml.append("</body>\n");
+
+    //js
+    outhtml.append("<script type=\"text/javascript\">\n");
+
+    // Quality Scores cross all bases
+    {
+        outhtml.append(insertChart(PrePositionQuality1));
+        //option
+        outhtml.append(insertOptionBegin(PrePositionQuality1));
+        outhtml.append(insertTitle("Quality Scores cross all bases (Before filtering, read1)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Position in read(bp)", pre_mx_len1 + 1));
+        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+        outhtml.append(insertSeriesBegin());
+
+        pos_qul_ = pre_state1->GetPosQul();
+        pos_cnt_ = pre_state1->GetPosCnt();
+        for (int i = 0; i < pre_mx_len1; i++) {
+            int64_t sum_qul = 0;
+            int64_t sum_cnt = 0;
+            for (int j = 0; j < 8; j++) {
+                sum_qul += pos_qul_[i * 8 + j];
+                sum_cnt += pos_cnt_[i * 8 + j];
+            }
+            tmp_double[i] = 1.0 * sum_qul / sum_cnt;
+        }
+        outhtml.append(insertSeriesData("line", tmp_double, pre_mx_len1));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(PrePositionQuality1));
+
+
+        outhtml.append(insertChart(PrePositionQuality2));
+        //option
+        outhtml.append(insertOptionBegin(PrePositionQuality2));
+        outhtml.append(insertTitle("Quality Scores cross all bases (Before filtering, read2)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Position in read(bp)", pre_mx_len2 + 1));
+        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+        outhtml.append(insertSeriesBegin());
+
+        pos_qul_ = pre_state2->GetPosQul();
+        pos_cnt_ = pre_state2->GetPosCnt();
+        for (int i = 0; i < pre_mx_len2; i++) {
+            int64_t sum_qul = 0;
+            int64_t sum_cnt = 0;
+            for (int j = 0; j < 8; j++) {
+                sum_qul += pos_qul_[i * 8 + j];
+                sum_cnt += pos_cnt_[i * 8 + j];
+            }
+            tmp_double[i] = 1.0 * sum_qul / sum_cnt;
+        }
+        outhtml.append(insertSeriesData("line", tmp_double, pre_mx_len2));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(PrePositionQuality2));
+    }
+
+    {
+        outhtml.append(insertChart(AftPositionQuality1));
+        //option
+        outhtml.append(insertOptionBegin(AftPositionQuality1));
+        outhtml.append(insertTitle("Quality Scores cross all bases (After filtering, read1)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Position in read(bp)", aft_mx_len1 + 1));
+        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+        outhtml.append(insertSeriesBegin());
+
+        pos_qul_ = aft_state1->GetPosQul();
+        pos_cnt_ = aft_state1->GetPosCnt();
+        for (int i = 0; i < aft_mx_len1; i++) {
+            int64_t sum_qul = 0;
+            int64_t sum_cnt = 0;
+            for (int j = 0; j < 8; j++) {
+                sum_qul += pos_qul_[i * 8 + j];
+                sum_cnt += pos_cnt_[i * 8 + j];
+            }
+            tmp_double[i] = 1.0 * sum_qul / sum_cnt;
+        }
+        outhtml.append(insertSeriesData("line", tmp_double, aft_mx_len1));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(AftPositionQuality1));
+
+
+        outhtml.append(insertChart(AftPositionQuality2));
+        //option
+        outhtml.append(insertOptionBegin(AftPositionQuality2));
+        outhtml.append(insertTitle("Quality Scores cross all bases (After filtering, read2)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Position in read(bp)", aft_mx_len2 + 1));
+        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+        outhtml.append(insertSeriesBegin());
+
+        pos_qul_ = aft_state2->GetPosQul();
+        pos_cnt_ = aft_state2->GetPosCnt();
+        for (int i = 0; i < aft_mx_len2; i++) {
+            int64_t sum_qul = 0;
+            int64_t sum_cnt = 0;
+            for (int j = 0; j < 8; j++) {
+                sum_qul += pos_qul_[i * 8 + j];
+                sum_cnt += pos_cnt_[i * 8 + j];
+            }
+            tmp_double[i] = 1.0 * sum_qul / sum_cnt;
+        }
+        outhtml.append(insertSeriesData("line", tmp_double, aft_mx_len2));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(AftPositionQuality2));
+    }
+
+    // Mean Quanlity
+    {
+        outhtml.append(insertChart(PreMeanQuality1));
+        //option
+        outhtml.append(insertOptionBegin(PreMeanQuality1));
+        outhtml.append(insertTitle("Mean Quality List(Before filtering, read1)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Mean Sequence Quality(Phred Score)", 42));
+        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertSeriesBegin());
+        qul_cnt = pre_state1->GetQulCnt();
+        for (int i = 0; i < 42; i++)
+            tmp_double[i] = qul_cnt[i];
+        outhtml.append(insertSeriesData("line", tmp_double, 42));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(PreMeanQuality1));
+
+
+        outhtml.append(insertChart(PreMeanQuality2));
+        //option
+        outhtml.append(insertOptionBegin(PreMeanQuality2));
+        outhtml.append(insertTitle("Mean Quality List(Before filtering, read2)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Mean Sequence Quality(Phred Score)", 42));
+        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertSeriesBegin());
+        qul_cnt = pre_state2->GetQulCnt();
+        for (int i = 0; i < 42; i++)
+            tmp_double[i] = qul_cnt[i];
+        outhtml.append(insertSeriesData("line", tmp_double, 42));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(PreMeanQuality2));
+    }
+
+    {
+
+        outhtml.append(insertChart(AftMeanQuality1));
+        //option
+        outhtml.append(insertOptionBegin(AftMeanQuality1));
+        outhtml.append(insertTitle("Mean Quality List(After filtering, read1)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Mean Sequence Quality(Phred Score)", 42));
+        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertSeriesBegin());
+        qul_cnt = aft_state1->GetQulCnt();
+        for (int i = 0; i < 42; i++)
+            tmp_double[i] = qul_cnt[i];
+        outhtml.append(insertSeriesData("line", tmp_double, 42));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(AftMeanQuality1));
+
+
+        outhtml.append(insertChart(AftMeanQuality2));
+        //option
+        outhtml.append(insertOptionBegin(AftMeanQuality2));
+        outhtml.append(insertTitle("Mean Quality List(After filtering, read2)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Mean Sequence Quality(Phred Score)", 42));
+        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertSeriesBegin());
+        qul_cnt = aft_state2->GetQulCnt();
+        for (int i = 0; i < 42; i++)
+            tmp_double[i] = qul_cnt[i];
+        outhtml.append(insertSeriesData("line", tmp_double, 42));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(AftMeanQuality2));
+    }
+
+    //AGCT Content
+    {
+        outhtml.append(insertChart(PrePositionContent1));
+        //option
+        outhtml.append(insertOptionBegin(PrePositionContent1));
+        outhtml.append(insertTitle("AGCT Content(Before filtering, read1)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
+        outhtml.append(insertxAxis("Position in read(bp)", pre_mx_len1 + 1));
+        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+        outhtml.append(insertSeriesBegin());
+
+        pos_cnt_ = pre_state1->GetPosCnt();
+
+
+        for (int i = 0; i < pre_mx_len1; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "A", tmp_double, pre_mx_len1));
+        for (int i = 0; i < pre_mx_len1; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "G", tmp_double, pre_mx_len1));
+        for (int i = 0; i < pre_mx_len1; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "C", tmp_double, pre_mx_len1));
+        for (int i = 0; i < pre_mx_len1; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "T", tmp_double, pre_mx_len1));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(PrePositionContent1));
+
+
+        outhtml.append(insertChart(PrePositionContent2));
+        //option
+        outhtml.append(insertOptionBegin(PrePositionContent2));
+        outhtml.append(insertTitle("AGCT Content(Before filtering, read2)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
+        outhtml.append(insertxAxis("Position in read(bp)", pre_mx_len2 + 1));
+        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+        outhtml.append(insertSeriesBegin());
+
+        pos_cnt_ = pre_state2->GetPosCnt();
+        for (int i = 0; i < pre_mx_len2; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "A", tmp_double, pre_mx_len2));
+        for (int i = 0; i < pre_mx_len2; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "G", tmp_double, pre_mx_len2));
+        for (int i = 0; i < pre_mx_len2; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "C", tmp_double, pre_mx_len2));
+        for (int i = 0; i < pre_mx_len2; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "T", tmp_double, pre_mx_len2));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(PrePositionContent2));
+
+
+    }
+    {
+        outhtml.append(insertChart(AftPositionContent1));
+        //option
+        outhtml.append(insertOptionBegin(AftPositionContent1));
+        outhtml.append(insertTitle("AGCT Content(After filtering, read1)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
+        outhtml.append(insertxAxis("Position in read(bp)", aft_mx_len1 + 1));
+        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+        outhtml.append(insertSeriesBegin());
+
+        pos_cnt_ = aft_state1->GetPosCnt();
+
+
+        for (int i = 0; i < aft_mx_len1; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "A", tmp_double, aft_mx_len1));
+        for (int i = 0; i < aft_mx_len1; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "G", tmp_double, aft_mx_len1));
+        for (int i = 0; i < aft_mx_len1; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "C", tmp_double, aft_mx_len1));
+        for (int i = 0; i < aft_mx_len1; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "T", tmp_double, aft_mx_len1));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(AftPositionContent1));
+
+
+        outhtml.append(insertChart(AftPositionContent2));
+        //option
+        outhtml.append(insertOptionBegin(AftPositionContent2));
+        outhtml.append(insertTitle("AGCT Content(After filtering, read2)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
+        outhtml.append(insertxAxis("Position in read(bp)", aft_mx_len2 + 1));
+        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+        outhtml.append(insertSeriesBegin());
+
+        pos_cnt_ = aft_state2->GetPosCnt();
+        for (int i = 0; i < aft_mx_len2; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "A", tmp_double, aft_mx_len2));
+        for (int i = 0; i < aft_mx_len2; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "G", tmp_double, aft_mx_len2));
+        for (int i = 0; i < aft_mx_len2; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "C", tmp_double, aft_mx_len2));
+        for (int i = 0; i < aft_mx_len2; i++) {
+            int64_t sum_tot = 0.0;
+            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
+            tmp_double[i] = 1.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
+        }
+        outhtml.append(insertSeriesData("line", "T", tmp_double, aft_mx_len2));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(AftPositionContent2));
+    }
+
+
+    //GC Content
+    {
+        outhtml.append(insertChart(PreGCContent1));
+        //option
+        outhtml.append(insertOptionBegin(PreGCContent1));
+        outhtml.append(insertTitle("Per Sequence GC content(Before filtering, read1)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
+        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertSeriesBegin());
+        int64_t *gc_cnt = pre_state1->GetGcCnt();
+        for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
+        outhtml.append(insertSeriesData("line", tmp_double, 101));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(PreGCContent1));
+
+
+        outhtml.append(insertChart(PreGCContent2));
+        //option
+        outhtml.append(insertOptionBegin(PreGCContent2));
+        outhtml.append(insertTitle("Per Sequence GC content(Before filtering, read2)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
+        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertSeriesBegin());
+        gc_cnt = pre_state2->GetGcCnt();
+        for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
+        outhtml.append(insertSeriesData("line", tmp_double, 101));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(PreGCContent2));
+
+    }
+    {
+        outhtml.append(insertChart(AftGCContent1));
+        //option
+        outhtml.append(insertOptionBegin(AftGCContent1));
+        outhtml.append(insertTitle("Per Sequence GC content(After filtering, read1)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
+        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertSeriesBegin());
+        int64_t *gc_cnt = aft_state1->GetGcCnt();
+        for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
+        outhtml.append(insertSeriesData("line", tmp_double, 101));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(AftGCContent1));
+
+
+        outhtml.append(insertChart(AftGCContent2));
+        //option
+        outhtml.append(insertOptionBegin(AftGCContent2));
+        outhtml.append(insertTitle("Per Sequence GC content(After filtering, read2)"));
+        outhtml.append(insertTooltip());
+        outhtml.append(insertDataZoom());
+        outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
+        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertSeriesBegin());
+        gc_cnt = aft_state2->GetGcCnt();
+        for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
+        outhtml.append(insertSeriesData("line", tmp_double, 101));
+        outhtml.append(insertSeriesEnd());
+        outhtml.append(insertOptionEnd());
+        outhtml.append(insertChartOption(AftGCContent2));
+    }
+
+
+    outhtml.append("</script>");
+    outhtml.append("</html>");
+    std::fstream fout = std::fstream("RabbitQC.html", std::ios::out | std::ios::binary);
+    fout.write(outhtml.c_str(), outhtml.length());
+    fout.close();
 }

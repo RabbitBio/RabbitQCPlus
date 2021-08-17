@@ -13,11 +13,12 @@
 class ThreadInfo {
 public:
 
-    ThreadInfo(CmdInfo *cmd_info);
+    ThreadInfo(CmdInfo *cmd_info,bool is_pre);
 
     ~ThreadInfo();
 
 public:
+    bool is_pe_;
     CmdInfo *cmd_info_;
     TGSStats *TGS_state_;
     State *pre_state1_;

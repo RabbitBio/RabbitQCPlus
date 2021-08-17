@@ -213,7 +213,7 @@ void SeQc::ProcessSeFastq() {
 
     auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
-        p_thread_info[t] = new ThreadInfo(cmd_info_);
+        p_thread_info[t] = new ThreadInfo(cmd_info_, false);
     }
     std::thread *write_thread;
     if (cmd_info_->write_data_) {
@@ -262,37 +262,12 @@ void SeQc::ProcessSeFastq() {
     State::PrintStates(aft_state);
 
 
-//    auto OverRepSeq1 = pre_state->GetHotSeqsInfo();
     auto hash_graph1 = pre_state->GetHashGraph();
     int hash_num1 = pre_state->GetHashNum();
-//    cout << "=============OverRepSeq1=============" << endl;
-//    for (auto it:OverRepSeq1) {
-//        cout << it.first << " " << it.second << endl;
-//    }
-//    cout << "=====================================" << endl;
 
-//    auto OverRepSeq2 = aft_state->GetHotSeqsInfo();
     auto hash_graph2 = aft_state->GetHashGraph();
     int hash_num2 = aft_state->GetHashNum();
-//    cout << "=============OverRepSeq2=============" << endl;
-//    for (auto it:OverRepSeq2) {
-//        cout << it.first << " " << it.second << endl;
-//    }
-//    cout << "=====================================" << endl;
 
-
-//    ofstream ofs;
-//    ofs.open("ORP2.log", ifstream::out);
-//    for (auto it:OverRepSeq1) {
-//        ofs << it.first << " " << it.second << "\n";
-//    }
-//    ofs.close();
-//    ofs.open("ORP3.log", ifstream::out);
-//    for (auto it:OverRepSeq2) {
-//        ofs << it.first << " " << it.second << "\n";
-//    }
-//    ofs.close();
-//
     ofstream ofs;
     ofs.open("ORP2.log", ifstream::out);
     for (int i = 0; i < hash_num1; i++) {
@@ -341,128 +316,6 @@ void SeQc::ProcessSeFastq() {
     }
 }
 
-
-void printCSS(ofstream &ofs) {
-    ofs << "<style type=\"text/css\">" << endl;
-    ofs << "td {border:1px solid #dddddd;padding:5px;font-size:12px;}" << endl;
-    ofs << "table {border:1px solid #999999;padding:2x;border-collapse:collapse; width:800px}" << endl;
-    ofs << ".col1 {width:240px; font-weight:bold;}" << endl;
-    ofs << ".adapter_col {width:500px; font-size:10px;}" << endl;
-    ofs << "img {padding:30px;}" << endl;
-    ofs << "#menu {font-family:Consolas, 'Liberation Mono', Menlo, Courier, monospace;}" << endl;
-    ofs
-            << "#menu a {color:#0366d6; font-size:18px;font-weight:600;line-height:28px;text-decoration:none;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol'}"
-            << endl;
-    ofs << "a:visited {color: #999999}" << endl;
-    ofs << ".alignleft {text-align:left;}" << endl;
-    ofs << ".alignright {text-align:right;}" << endl;
-    ofs << ".figure {width:800px;height:600px;}" << endl;
-    ofs << ".header {color:#ffffff;padding:1px;height:20px;background:#000000;}" << endl;
-    ofs
-            << ".section_title {color:#ffffff;font-size:20px;padding:5px;text-align:left;background:#663355; margin-top:10px;}"
-            << endl;
-    ofs << ".subsection_title {font-size:16px;padding:5px;margin-top:10px;text-align:left;color:#663355}" << endl;
-    ofs
-            << "#container {text-align:center;padding:3px 3px 3px 10px;font-family:Arail,'Liberation Mono', Menlo, Courier, monospace;}"
-            << endl;
-    ofs << ".menu_item {text-align:left;padding-top:5px;font-size:18px;}" << endl;
-    ofs << ".highlight {text-align:left;padding-top:30px;padding-bottom:30px;font-size:20px;line-height:35px;}" << endl;
-    ofs << "#helper {text-align:left;border:1px dotted #fafafa;color:#777777;font-size:12px;}" << endl;
-    ofs
-            << "#footer {text-align:left;padding:15px;color:#ffffff;font-size:10px;background:#663355;font-family:Arail,'Liberation Mono', Menlo, Courier, monospace;}"
-            << endl;
-    ofs << ".kmer_table {text-align:center;font-size:8px;padding:2px;}" << endl;
-    ofs << ".kmer_table td{text-align:center;font-size:8px;padding:0px;color:#ffffff}" << endl;
-    ofs << ".sub_section_tips {color:#999999;font-size:10px;padding-left:5px;padding-bottom:3px;}" << endl;
-    ofs << "</style>" << endl;
-}
-
-void printJS(ofstream &ofs) {
-    ofs << "<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>" << endl;
-    ofs << "\n<script type=\"text/javascript\">" << endl;
-    ofs << "    function showOrHide(divname) {" << endl;
-    ofs << "        div = document.getElementById(divname);" << endl;
-    ofs << "        if(div.style.display == 'none')" << endl;
-    ofs << "            div.style.display = 'block';" << endl;
-    ofs << "        else" << endl;
-    ofs << "            div.style.display = 'none';" << endl;
-    ofs << "    }" << endl;
-    ofs << "</script>" << endl;
-}
-
-
-void printHeader(ofstream &ofs) {
-    ofs << "<html><head><meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\" />";
-    //ofs << "<title>RabbitQC report at " + getCurrentSystemTime() + " </title>";
-    ofs << "<title>RabbitQC report at 111 </title>";
-    printJS(ofs);
-    printCSS(ofs);
-    ofs << "</head>";
-    ofs << "<body><div id='container'>";
-}
-
-const string getCurrentSystemTime() {
-    auto tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    struct tm *ptm = localtime(&tt);
-    char date[60] = {0};
-    sprintf(date, "%d-%02d-%02d      %02d:%02d:%02d",
-            (int) ptm->tm_year + 1900, (int) ptm->tm_mon + 1, (int) ptm->tm_mday,
-            (int) ptm->tm_hour, (int) ptm->tm_min, (int) ptm->tm_sec);
-    return std::string(date);
-}
-
-void printFooter(ofstream &ofs) {
-    ofs << "\n</div>" << endl;
-    ofs << "<div id='footer'> ";
-    ofs << "<p>" << "" << "</p>";
-    ofs << "RabbitQC " << "" << ", at " << getCurrentSystemTime() << " </div>";
-    ofs << "</body></html>";
-}
-
-void report3(TGSStats *preStats1) {
-    ofstream ofs;
-    ofs.open("TGS.html", ifstream::out);
-
-    printHeader(ofs);
-
-    //printSummary(ofs, result, preStats1, postStats1, preStats2, postStats2);
-
-    ofs << "<div class='section_div'>\n";
-    ofs
-            << "<div class='section_title' onclick=showOrHide('QC_information')><a name='summary'>QC information</a></div>\n";
-    ofs << "<div id='QC_information'>\n";
-
-    if (preStats1) {
-        preStats1->reportHtml(ofs, "QC information", "read1");
-    }
-
-    //if(preStats2) {
-    //    preStats2 -> reportHtml(ofs, "Before filtering", "read2");
-    //}
-
-    ofs << "</div>\n";
-    ofs << "</div>\n";
-
-    //ofs << "<div class='section_div'>\n";
-    //ofs << "<div class='section_title' onclick=showOrHide('after_filtering')><a name='summary'>After filtering</a></div>\n";
-    //ofs << "<div id='after_filtering'>\n";
-
-    //if(postStats1) {
-    //    postStats1 -> reportHtml(ofs, "After filtering", "read1");
-    //}
-
-    //if(postStats2) {
-    //    postStats2 -> reportHtml(ofs, "After filtering", "read2");
-    //}
-
-    //ofs << "</div>\n";
-    //ofs << "</div>\n";
-
-    printFooter(ofs);
-    ofs.close();
-
-}
-
 void SeQc::ProcessSeTGS() {
     auto *fastqPool = new rabbit::fq::FastqDataPool(256, 1 << 22);
     //TODO replace this queue
@@ -470,7 +323,7 @@ void SeQc::ProcessSeTGS() {
 
     auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
-        p_thread_info[t] = new ThreadInfo(cmd_info_);
+        p_thread_info[t] = new ThreadInfo(cmd_info_, false);
     }
     //TODO bind ?
     std::thread producer(

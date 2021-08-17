@@ -198,6 +198,18 @@ int main(int argc, char **argv) {
             cmd_info.trim_tail2_ = cmd_info.trim_tail1_;
             printf("ref2 trim tail %d bases\n", cmd_info.trim_tail2_);
         }
+
+        if (cmd_info.do_overrepresentation_) {
+            double t2 = GetTime();
+            printf("now pre over represent\n");
+            Adapter::PreOverAnalyze(cmd_info.in_file_name1_, cmd_info.hot_seqs_, cmd_info.eva_len_);
+            Adapter::PreOverAnalyze(cmd_info.in_file_name2_, cmd_info.hot_seqs2_, cmd_info.eva_len2_);
+            printf("pre over represent done\n");
+            printf("total %d hot sqes1\n", cmd_info.hot_seqs_.size());
+            printf("total %d hot sqes2\n", cmd_info.hot_seqs2_.size());
+            printf("pre over representation cost %.5f\n", GetTime() - t2);
+        }
+
         double tp = GetTime();
         PeQc *pe_qc = new PeQc(&cmd_info);
         pe_qc->ProcessPeFastq();

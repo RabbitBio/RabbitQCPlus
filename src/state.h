@@ -20,7 +20,7 @@ struct node {
 
 class State {
 public:
-    State(CmdInfo *cmd_info, int seq_len, int qul_range);
+    State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_reed2);
 
     ~State();
 
@@ -34,9 +34,9 @@ public:
 
     static void PrintStates(const State *state);
 
-    void HashInsert(const char *seq, int len);
+    void HashInsert(const char *seq, int len, int eva_len);
 
-    void HashQueryAndAdd(const char *seq, int offset, int len);
+    void HashQueryAndAdd(const char *seq, int offset, int len, int eva_len);
 
     int *GetHeadHashGraph() const;
 
@@ -111,6 +111,7 @@ private:
     int *head_hash_graph_;
     node *hash_graph_;
     int hash_num_;
+    bool is_read2_;
 
 //    std::unordered_map<std::string, int64_t> hot_seqs_info_;
 //    std::unordered_map<std::string, int64_t *> hot_seqs_dist_;

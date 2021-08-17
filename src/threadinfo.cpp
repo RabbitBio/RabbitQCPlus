@@ -4,15 +4,22 @@
 
 #include "threadinfo.h"
 
-ThreadInfo::ThreadInfo(CmdInfo *cmd_info) {
+ThreadInfo::ThreadInfo(CmdInfo *cmd_info, bool is_pe) {
+    is_pe_ = is_pe;
     cmd_info_ = cmd_info;
     if (cmd_info->is_TGS_) {
         TGS_state_ = new TGSStats(cmd_info->TGS_min_len_);
     } else {
-        pre_state1_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_);
-        pre_state2_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_);
-        aft_state1_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_);
-        aft_state2_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_);
+        if (is_pe) {
+            pre_state1_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_, false);
+            pre_state2_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_, true);
+            aft_state1_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_, false);
+            aft_state2_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_, true);
+        } else {
+            pre_state1_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_, false);
+            aft_state1_ = new State(cmd_info, cmd_info->seq_len_, cmd_info->qul_range_, false);
+        }
+
     }
 
 }

@@ -80,7 +80,9 @@ public:
     int overrepresentation_sampling_;
 //    std::unordered_map<std::string, int64_t> hot_seqs_;
     std::vector<std::string> hot_seqs_;
+    std::vector<std::string> hot_seqs2_;
     int eva_len_;
+    int eva_len2_;
 
 
 };

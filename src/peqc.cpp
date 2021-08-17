@@ -263,7 +263,7 @@ void PeQc::ProcessPeFastq() {
     rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(128, 1);
     auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
-        p_thread_info[t] = new ThreadInfo(cmd_info_);
+        p_thread_info[t] = new ThreadInfo(cmd_info_, true);
     }
     std::thread *write_thread1;
     std::thread *write_thread2;
@@ -319,6 +319,36 @@ void PeQc::ProcessPeFastq() {
     printf("print aft state2 info :\n");
     State::PrintStates(aft_state2);
 
+
+    auto pre_hash_graph1 = pre_state1->GetHashGraph();
+    int pre_hash_num1 = pre_state1->GetHashNum();
+    auto pre_hash_graph2 = pre_state2->GetHashGraph();
+    int pre_hash_num2 = pre_state2->GetHashNum();
+
+    auto aft_hash_graph1 = aft_state1->GetHashGraph();
+    int aft_hash_num1 = aft_state1->GetHashNum();
+    auto aft_hash_graph2 = aft_state2->GetHashGraph();
+    int aft_hash_num2 = aft_state2->GetHashNum();
+
+    ofstream ofs;
+    ofs.open("ORP2.log", ifstream::out);
+    for (int i = 0; i < pre_hash_num1; i++) {
+        ofs << pre_hash_graph1[i].seq << " " << pre_hash_graph1[i].cnt << "\n";
+    }
+    for (int i = 0; i < pre_hash_num2; i++) {
+        ofs << pre_hash_graph2[i].seq << " " << pre_hash_graph2[i].cnt << "\n";
+    }
+    ofs.close();
+    ofs.open("ORP3.log", ifstream::out);
+    for (int i = 0; i < aft_hash_num1; i++) {
+        ofs << aft_hash_graph1[i].seq << " " << aft_hash_graph1[i].cnt << "\n";
+    }
+    for (int i = 0; i < aft_hash_num2; i++) {
+        ofs << aft_hash_graph2[i].seq << " " << aft_hash_graph2[i].cnt << "\n";
+    }
+    ofs.close();
+
+
     int *dupHist = NULL;
     double *dupMeanGC = NULL;
     double dupRate = 0.0;
@@ -334,6 +364,9 @@ void PeQc::ProcessPeFastq() {
         delete[] dupMeanGC;
 
     }
+
+    Repoter::ReportHtmlPe(pre_state1, pre_state2, aft_state1, aft_state2, cmd_info_->in_file_name1_,
+                          cmd_info_->in_file_name2_, dupRate);
 
     delete pre_state1;
     delete pre_state2;

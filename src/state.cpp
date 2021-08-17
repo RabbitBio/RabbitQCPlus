@@ -16,7 +16,8 @@
 
 #endif
 
-State::State(CmdInfo *cmd_info, int seq_len, int qul_range) {
+State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
+    is_read2_ = is_read2;
     cmd_info_ = cmd_info;
     q20bases_ = 0;
     q30bases_ = 0;
@@ -52,18 +53,21 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range) {
     hash_num_ = 0;
 
     if (do_over_represent_analyze_) {
-//        int maxn = 1e8 / cmd_info->eva_len_;
         int maxn = 1e7;
         head_hash_graph_ = new int[maxn];
         for (int i = 0; i < maxn; i++)head_hash_graph_[i] = -1;
-        hash_graph_ = new node[cmd_info->hot_seqs_.size()];
-        for (auto item:cmd_info->hot_seqs_) {
-            HashInsert(item.c_str(), item.length());
-//            hot_seqs_info_[seq] = 0;
-//            int64_t *distBuf = new int64_t[cmd_info->eva_len_];
-//            memset(distBuf, 0, sizeof(int64_t) * cmd_info->eva_len_);
-//            hot_seqs_dist_[seq] = distBuf;
+        if (is_read2_) {
+            hash_graph_ = new node[cmd_info->hot_seqs2_.size()];
+            for (auto item:cmd_info->hot_seqs2_) {
+                HashInsert(item.c_str(), item.length(), cmd_info->eva_len2_);
+            }
+        } else {
+            hash_graph_ = new node[cmd_info->hot_seqs_.size()];
+            for (auto item:cmd_info->hot_seqs_) {
+                HashInsert(item.c_str(), item.length(), cmd_info->eva_len_);
+            }
         }
+
     }
 
 }
@@ -81,15 +85,12 @@ State::~State() {
             delete[] hash_graph_[i].dist;
         delete[] hash_graph_;
         delete[] head_hash_graph_;
-//        for (auto item:hot_seqs_dist_) {
-//            delete[] item.second;
-//        }
     }
 
 }
 
 
-void State::HashInsert(const char *seq, int len) {
+void State::HashInsert(const char *seq, int len, int eva_len) {
     int64_t now = 0;
     for (int i = 0; i < len; i++) {
         now = now * 5;
@@ -101,13 +102,13 @@ void State::HashInsert(const char *seq, int len) {
     head_hash_graph_[ha] = hash_num_;
     hash_graph_[hash_num_].cnt = 0;
     hash_graph_[hash_num_].seq = std::string(seq, len);
-    hash_graph_[hash_num_].dist = new int64_t[cmd_info_->eva_len_];
-    memset(hash_graph_[hash_num_].dist, 0, sizeof(int64_t) * cmd_info_->eva_len_);
+    hash_graph_[hash_num_].dist = new int64_t[eva_len];
+    memset(hash_graph_[hash_num_].dist, 0, sizeof(int64_t) * eva_len);
     hash_num_++;
 }
 
 
-void State::HashQueryAndAdd(const char *seq, int offset, int len) {
+void State::HashQueryAndAdd(const char *seq, int offset, int len, int eva_len) {
     int64_t now = 0;
     for (int i = 0; i < len; i++) {
         now = now * 5;
@@ -116,7 +117,7 @@ void State::HashQueryAndAdd(const char *seq, int offset, int len) {
     int ha = (now % mod + mod) % mod;
     for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre)
         if (hash_graph_[i].v == now) {
-            for (int p = offset; p < offset + len && p < cmd_info_->eva_len_; p++) {
+            for (int p = offset; p < offset + len && p < eva_len; p++) {
                 hash_graph_[i].dist[p]++;
             }
             hash_graph_[i].cnt++;
@@ -313,35 +314,17 @@ void State::StateInfo(neoReference &ref) {
     // do overrepresentation analysis for 1 of every 20 reads
     if (do_over_represent_analyze_) {
         if (lines_ % over_representation_sampling_ == 0) {
-            const int steps[5] = {10, 20, 40, 100, std::min(150, cmd_info_->eva_len_ - 2)};
+            int eva_len = 0;
+            if (is_read2_)eva_len = cmd_info_->eva_len2_;
+            else eva_len = cmd_info_->eva_len_;
+            const int steps[5] = {10, 20, 40, 100, std::min(150, eva_len - 2)};
             for (int i = 0; i < slen; i++) {
                 char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
                 for (int s = 0; s < 5; s++) {
-                    if (i + steps[s] < slen)HashQueryAndAdd(seq, i, steps[s]);
-//                    std::string seq = std::string(reinterpret_cast<const char *>(ref.base + ref.pseq + i),
-//                                                  steps[s]);
-//                    if (hot_seqs_info_.count(seq) > 0) {
-//                        hot_seqs_info_[seq]++;
-//                        for (int p = i; p < seq.length() + i && p < cmd_info_->eva_len_; p++) {
-//                            hot_seqs_dist_[seq][p]++;
-//                        }
-//                    }
+                    if (i + steps[s] < slen)HashQueryAndAdd(seq, i, steps[s], eva_len);
                 }
             }
 
-//
-//            for (int s = 0; s < 5; s++) {
-//                int step = steps[s];
-//                for (int i = 0; i < slen - step; i++) {
-//                    std::string seq = std::string(reinterpret_cast<const char *>(ref.base + ref.pseq + i), step);
-//                    if (hot_seqs_info_.count(seq) > 0) {
-//                        hot_seqs_info_[seq]++;
-//                        for (int p = i; p < seq.length() + i && p < cmd_info_->eva_len_; p++) {
-//                            hot_seqs_dist_[seq][p]++;
-//                        }
-//                    }
-//                }
-//            }
         }
     }
     lines_++;
@@ -376,8 +359,12 @@ State *State::MergeStates(const std::vector<State *> &states) {
         item->Summarize();
         now_seq_len = std::max(now_seq_len, item->real_seq_len_);
     }
-    auto *res_state = new State(states[0]->cmd_info_, now_seq_len, states[0]->qul_range_);
+    auto *res_state = new State(states[0]->cmd_info_, now_seq_len, states[0]->qul_range_, states[0]->is_read2_);
     res_state->real_seq_len_ = now_seq_len;
+    int eva_len = 0;
+    if (states[0]->is_read2_)eva_len = states[0]->cmd_info_->eva_len2_;
+    else eva_len = states[0]->cmd_info_->eva_len_;
+
     for (auto item:states) {
         res_state->q20bases_ += item->q20bases_;
         res_state->q30bases_ += item->q30bases_;
@@ -405,17 +392,10 @@ State *State::MergeStates(const std::vector<State *> &states) {
         int hash_num = res_state->hash_num_;
         for (int i = 0; i < hash_num; i++) {
             res_state->hash_graph_[i].cnt += item->hash_graph_[i].cnt;
-            for (int j = 0; j < res_state->cmd_info_->eva_len_; j++) {
+            for (int j = 0; j < eva_len; j++) {
                 res_state->hash_graph_[i].dist[j] += item->hash_graph_[i].dist[j];
             }
         }
-//        for (auto it:res_state->hot_seqs_info_) {
-//            std::string seq = it.first;
-//            res_state->hot_seqs_info_[seq] += item->hot_seqs_info_[seq];
-//            for (int i = 0; i < res_state->cmd_info_->eva_len_; i++) {
-//                res_state->hot_seqs_dist_[seq][i] += item->hot_seqs_dist_[seq][i];
-//            }
-//        }
     }
 
 
@@ -552,7 +532,3 @@ node *State::GetHashGraph() const {
 int State::GetHashNum() const {
     return hash_num_;
 }
-
-//const std::unordered_map<std::string, int64_t *> &State::GetHotSeqsDist() const {
-//    return hot_seqs_dist_;
-//}
