@@ -62,6 +62,10 @@ private:
     Duplicate *duplicate_;
     Umier *umier_;
 
+    gzFile zip_out_stream;
+    bool in_is_zip_;
+    bool out_is_zip_;
+
 
 };
 

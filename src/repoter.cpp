@@ -925,8 +925,10 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertDiv(GCContent1));
     outhtml.append(insertDiv(GCContent2));
 
-    outhtml.append(GetOver(state1, 0, 0, state1->GetCmdInfo()->eva_len_));
-    outhtml.append(GetOver(state2, 1, 0, state1->GetCmdInfo()->eva_len_));
+    if (state1->GetCmdInfo()->do_overrepresentation_) {
+        outhtml.append(GetOver(state1, 0, 0, state1->GetCmdInfo()->eva_len_));
+        outhtml.append(GetOver(state2, 1, 0, state1->GetCmdInfo()->eva_len_));
+    }
 
     outhtml.append("</body>\n");
 
@@ -1153,6 +1155,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         outhtml.append(insertChartOption(GCContent2));
     }
 
+
     outhtml.append("</script>");
     outhtml.append("</html>");
     std::fstream fout = std::fstream("RabbitQC.html", std::ios::out | std::ios::binary);
@@ -1162,8 +1165,11 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 }
 
 void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_state1, State *aft_state2,
-                           std::string file_name1, std::string file_name2, double dup, int64_t *size_info,
-                           int size_len_mx, int size_require, bool no_size) {
+                           std::string file_name1, std::string file_name2, double dup, int64_t *size_info) {
+    auto cmd_info = pre_state1->GetCmdInfo();
+    int size_len_mx = cmd_info->max_insert_size_;
+    int size_require = cmd_info->overlap_require_;
+
     printf("report html pe data\n");
 
     std::string outhtml;
@@ -1260,8 +1266,8 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     std::string AftGCContent1("AftGCContent1");
     std::string AftGCContent2("AftGCContent2");
 
-
-    outhtml.append(insertDiv(InsertSizeInfo));
+    if (pre_state1->GetCmdInfo()->no_insert_size_ == 0)
+        outhtml.append(insertDiv(InsertSizeInfo));
 
     outhtml.append(insertDiv(PrePositionQuality1));
     outhtml.append(insertDiv(PrePositionQuality2));
@@ -1271,11 +1277,10 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     outhtml.append(insertDiv(PreMeanQuality2));
     outhtml.append(insertDiv(PreGCContent1));
     outhtml.append(insertDiv(PreGCContent2));
-
-    outhtml.append(GetOver(pre_state1, 0, 0, pre_state1->GetCmdInfo()->eva_len_));
-    outhtml.append(GetOver(pre_state2, 0, 1, pre_state2->GetCmdInfo()->eva_len2_));
-
-
+    if (pre_state1->GetCmdInfo()->do_overrepresentation_) {
+        outhtml.append(GetOver(pre_state1, 0, 0, pre_state1->GetCmdInfo()->eva_len_));
+        outhtml.append(GetOver(pre_state2, 0, 1, pre_state2->GetCmdInfo()->eva_len2_));
+    }
     outhtml.append(insertDiv(AftPositionQuality1));
     outhtml.append(insertDiv(AftPositionQuality2));
     outhtml.append(insertDiv(AftPositionContent1));
@@ -1285,10 +1290,10 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     outhtml.append(insertDiv(AftGCContent1));
     outhtml.append(insertDiv(AftGCContent2));
 
-
-    outhtml.append(GetOver(aft_state1, 1, 0, pre_state1->GetCmdInfo()->eva_len_));
-    outhtml.append(GetOver(aft_state2, 1, 1, pre_state2->GetCmdInfo()->eva_len2_));
-
+    if (pre_state1->GetCmdInfo()->do_overrepresentation_) {
+        outhtml.append(GetOver(aft_state1, 1, 0, pre_state1->GetCmdInfo()->eva_len_));
+        outhtml.append(GetOver(aft_state2, 1, 1, pre_state2->GetCmdInfo()->eva_len2_));
+    }
 
     outhtml.append("</body>\n");
 
@@ -1296,7 +1301,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     outhtml.append("<script type=\"text/javascript\">\n");
 
     //Insert Size
-    if (!no_size) {
+    if (pre_state1->GetCmdInfo()->no_insert_size_ == 0) {
         outhtml.append(insertChart(InsertSizeInfo));
         //option
         outhtml.append(insertOptionBegin(InsertSizeInfo));

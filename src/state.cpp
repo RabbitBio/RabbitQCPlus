@@ -388,14 +388,17 @@ State *State::MergeStates(const std::vector<State *> &states) {
             res_state->kmer_[i] += item->kmer_[i];
         }
 
-        // merge over rep seq
-        int hash_num = res_state->hash_num_;
-        for (int i = 0; i < hash_num; i++) {
-            res_state->hash_graph_[i].cnt += item->hash_graph_[i].cnt;
-            for (int j = 0; j < eva_len; j++) {
-                res_state->hash_graph_[i].dist[j] += item->hash_graph_[i].dist[j];
+        if (res_state->do_over_represent_analyze_) {
+            // merge over rep seq
+            int hash_num = res_state->hash_num_;
+            for (int i = 0; i < hash_num; i++) {
+                res_state->hash_graph_[i].cnt += item->hash_graph_[i].cnt;
+                for (int j = 0; j < eva_len; j++) {
+                    res_state->hash_graph_[i].dist[j] += item->hash_graph_[i].dist[j];
+                }
             }
         }
+
     }
 
 

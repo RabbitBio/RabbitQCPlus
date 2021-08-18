@@ -87,6 +87,9 @@ public:
     bool no_insert_size_;
     int max_insert_size_;
 
+    //gz
+    int compression_level_;
+
 
 };
 

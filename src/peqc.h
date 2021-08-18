@@ -74,6 +74,11 @@ private:
     std::fstream out_stream2_;
     Duplicate *duplicate_;
     Umier *umier_;
+
+    gzFile zip_out_stream1;
+    gzFile zip_out_stream2;
+    bool in_is_zip_;
+    bool out_is_zip_;
 };
 
 

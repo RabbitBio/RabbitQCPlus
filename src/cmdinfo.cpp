@@ -79,4 +79,7 @@ CmdInfo::CmdInfo() {
     no_insert_size_ = false;
     max_insert_size_ = 512;
 
+    //gz
+    compression_level_ = 2;
+
 }

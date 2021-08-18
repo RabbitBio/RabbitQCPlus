@@ -323,16 +323,30 @@ namespace rabbit {
                       recordsPool(pool_) {
                 // if(ends_with(fileName_,".gz"))
                 if (isZipped) {
+                    std::cout << "now zip reader" << std::endl;
                     mZipFile = gzopen(fileName_.c_str(), "r");
                     if (mZipFile == NULL) {
                         throw RioException(
                                 ("Can not open file to read: " +
                                  fileName_).c_str());  //--------------need to change----------//
                     }
-                    // isZipped=true;
                     gzrewind(mZipFile);
 
+                    if (fileName2_ != "") {
+                        std::cout << " fileName2_ " << fileName2_ << std::endl;
+                        mZipFile2 = gzopen(fileName2_.c_str(), "r");
+                        if (mZipFile2 == NULL) {
+                            throw RioException(
+                                    ("Can not open file to read: " +
+                                     fileName2_).c_str());  //--------------need to change----------//
+                        }
+                        gzrewind(mZipFile2);
+                    }
+                    // isZipped=true;
+
                 } else {
+                    std::cout << "now reader" << std::endl;
+
                     mFile = FOPEN(fileName_.c_str(), "rb");
                     if (fileName2_ != "") {
                         mFile2 = FOPEN(fileName2_.c_str(), "rb");
@@ -487,8 +501,8 @@ namespace rabbit {
              */
             int64 Read2(byte *memory_, uint64 size_) {
                 if (isZipped) {
-                    int64 n = gzread(mZipFile, memory_, size_);  // TODO: mzipFile2
-                    if (n == -1) std::cerr << "Error to read gzip file" << std::endl;
+                    int64 n = gzread(mZipFile2, memory_, size_);
+                    if (n == -1) std::cerr << "Error to read gzip file2" << std::endl;
                     return n;
                 } else {
                     int64 n = fread(memory_, 1, size_, mFile2);
@@ -508,6 +522,7 @@ namespace rabbit {
             FILE *mFile = NULL;
             FILE *mFile2 = NULL;
             gzFile mZipFile = NULL;
+            gzFile mZipFile2 = NULL;
 
             // added from fastxIO.h
             FastqDataPool *recordsPool = NULL;

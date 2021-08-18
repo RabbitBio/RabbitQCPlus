@@ -179,7 +179,8 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
 
     double t0 = GetTime();
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
-    auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool);
+    auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool, "",
+                                                        file_name.find(".gz") != std::string::npos);
     int64_t n_chunks = 0;
     const long BASE_LIMIT = 151 * 10000;
     long records = 0;
@@ -364,7 +365,8 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
 std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
 
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
-    auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool);
+    auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool, "",
+                                                        file_name.find(".gz") != std::string::npos);
     int64_t n_chunks = 0;
     // stat up to 256K reads
     const long READ_LIMIT = 256 * 1024;

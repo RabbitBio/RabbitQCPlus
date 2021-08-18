@@ -16,15 +16,30 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
     printf("out_block_nums %d\n", out_block_nums);
     out_queue1_ = NULL;
     out_queue2_ = NULL;
+    in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != std::string::npos;
+    out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != std::string::npos;
+
     if (cmd_info1->write_data_) {
         out_queue1_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>
                 (out_block_nums + 1000);
         out_queue2_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>
                 (out_block_nums + 1000);
-        printf("open stream1 %s\n", cmd_info1->out_file_name1_.c_str());
-        printf("open stream2 %s\n", cmd_info1->out_file_name2_.c_str());
-        out_stream1_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
-        out_stream2_ = std::fstream(cmd_info1->out_file_name2_, std::ios::out | std::ios::binary);
+
+        if (out_is_zip_) {
+            printf("open gzip stream1 %s\n", cmd_info1->out_file_name1_.c_str());
+            printf("open gzip stream2 %s\n", cmd_info1->out_file_name2_.c_str());
+            zip_out_stream1 = gzopen(cmd_info1->out_file_name1_.c_str(), "w");
+            gzsetparams(zip_out_stream1, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
+            gzbuffer(zip_out_stream1, 1024 * 1024);
+            zip_out_stream2 = gzopen(cmd_info1->out_file_name2_.c_str(), "w");
+            gzsetparams(zip_out_stream2, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
+            gzbuffer(zip_out_stream2, 1024 * 1024);
+        } else {
+            printf("open stream1 %s\n", cmd_info1->out_file_name1_.c_str());
+            printf("open stream2 %s\n", cmd_info1->out_file_name2_.c_str());
+            out_stream1_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
+            out_stream2_ = std::fstream(cmd_info1->out_file_name2_, std::ios::out | std::ios::binary);
+        }
     }
     duplicate_ = NULL;
     if (cmd_info1->state_duplicate_) {
@@ -85,10 +100,11 @@ void PeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
 
 void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
-    rabbit::fq::FastqFileReader *fqFileReader;
-    fqFileReader = new rabbit::fq::FastqFileReader(file, fastqPool, file2, false);
-    int n_chunks = 0;
     double t0 = GetTime();
+
+    rabbit::fq::FastqFileReader *fqFileReader;
+    fqFileReader = new rabbit::fq::FastqFileReader(file, fastqPool, file2, in_is_zip_);
+    int n_chunks = 0;
 
     rabbit::fq::FastqDataPairChunk *fqdatachunk;
     while (true) {
@@ -97,12 +113,11 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
         n_chunks++;
         dq.Push(n_chunks, fqdatachunk);
     }
-    printf("producer cost %.3f\n", GetTime() - t0);
 
     dq.SetCompleted();
     delete fqFileReader;
     std::cout << "file " << file << " has " << n_chunks << " chunks" << std::endl;
-
+    printf("producer cost %.3f\n", GetTime() - t0);
 }
 
 /**
@@ -220,6 +235,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
  * @brief a function to write pe data from out_data1 queue to file1
  */
 void PeQc::WriteSeFastqTask1() {
+    double t0 = GetTime();
     int cnt = 0;
     while (true) {
         if (out_queue1_->size_approx() == 0 && done_thread_number_ == cmd_info_->thread_number_) {
@@ -232,17 +248,36 @@ void PeQc::WriteSeFastqTask1() {
         while (out_queue1_->size_approx()) {
             out_queue1_->try_dequeue(now);
 //            printf("write thread working, write %d %d\n", now.second, cnt++);
-            out_stream1_.write(now.first, now.second);
+            if (out_is_zip_) {
+                int written = gzwrite(zip_out_stream1, now.first, now.second);
+                if (written != now.second) {
+                    printf("GG");
+                    exit(0);
+                }
+
+            } else {
+                out_stream1_.write(now.first, now.second);
+            }
             delete[] now.first;
         }
     }
-    out_stream1_.close();
+    if (out_is_zip_) {
+        if (zip_out_stream1) {
+            gzflush(zip_out_stream1, Z_FINISH);
+            gzclose(zip_out_stream1);
+            zip_out_stream1 = NULL;
+        }
+    } else {
+        out_stream1_.close();
+    }
+    printf("write cost %.5f\n", GetTime() - t0);
 }
 
 /**
  * @brief a function to write pe data from out_data2 queue to file2
  */
 void PeQc::WriteSeFastqTask2() {
+    double t0 = GetTime();
     int cnt = 0;
     while (true) {
         if (out_queue2_->size_approx() == 0 && done_thread_number_ == cmd_info_->thread_number_) {
@@ -255,11 +290,30 @@ void PeQc::WriteSeFastqTask2() {
         while (out_queue2_->size_approx()) {
             out_queue2_->try_dequeue(now);
 //            printf("write thread working, write %d %d\n", now.second, cnt++);
-            out_stream2_.write(now.first, now.second);
+            if (out_is_zip_) {
+                int written = gzwrite(zip_out_stream2, now.first, now.second);
+                if (written != now.second) {
+                    printf("GG");
+                    exit(0);
+                }
+
+            } else {
+                out_stream2_.write(now.first, now.second);
+            }
             delete[] now.first;
         }
     }
-    out_stream2_.close();
+    if (out_is_zip_) {
+        if (zip_out_stream2) {
+            gzflush(zip_out_stream2, Z_FINISH);
+            gzclose(zip_out_stream2);
+            zip_out_stream2 = NULL;
+        }
+    } else {
+        out_stream2_.close();
+    }
+    printf("write cost %.5f\n", GetTime() - t0);
+
 }
 
 /**
@@ -319,45 +373,44 @@ void PeQc::ProcessPeFastq() {
 
 
     printf("merge done\n");
-    printf("print pre state1 info :\n");
+    printf("print pre state1 info :\n\n");
     State::PrintStates(pre_state1);
-    printf("print pre state2 info :\n");
+    printf("print pre state2 info :\n\n");
     State::PrintStates(pre_state2);
-    printf("print aft state1 info :\n");
+    printf("print aft state1 info :\n\n");
     State::PrintStates(aft_state1);
-    printf("print aft state2 info :\n");
+    printf("print aft state2 info :\n\n");
     State::PrintStates(aft_state2);
 
+    if (cmd_info_->do_overrepresentation_) {
 
-    auto pre_hash_graph1 = pre_state1->GetHashGraph();
-    int pre_hash_num1 = pre_state1->GetHashNum();
-    auto pre_hash_graph2 = pre_state2->GetHashGraph();
-    int pre_hash_num2 = pre_state2->GetHashNum();
+        auto pre_hash_graph1 = pre_state1->GetHashGraph();
+        int pre_hash_num1 = pre_state1->GetHashNum();
+        auto pre_hash_graph2 = pre_state2->GetHashGraph();
+        int pre_hash_num2 = pre_state2->GetHashNum();
 
-    auto aft_hash_graph1 = aft_state1->GetHashGraph();
-    int aft_hash_num1 = aft_state1->GetHashNum();
-    auto aft_hash_graph2 = aft_state2->GetHashGraph();
-    int aft_hash_num2 = aft_state2->GetHashNum();
-
-    ofstream ofs;
-    ofs.open("ORP2.log", ifstream::out);
-    for (int i = 0; i < pre_hash_num1; i++) {
-        ofs << pre_hash_graph1[i].seq << " " << pre_hash_graph1[i].cnt << "\n";
+        auto aft_hash_graph1 = aft_state1->GetHashGraph();
+        int aft_hash_num1 = aft_state1->GetHashNum();
+        auto aft_hash_graph2 = aft_state2->GetHashGraph();
+        int aft_hash_num2 = aft_state2->GetHashNum();
+        ofstream ofs;
+        ofs.open("ORP2.log", ifstream::out);
+        for (int i = 0; i < pre_hash_num1; i++) {
+            ofs << pre_hash_graph1[i].seq << " " << pre_hash_graph1[i].cnt << "\n";
+        }
+        for (int i = 0; i < pre_hash_num2; i++) {
+            ofs << pre_hash_graph2[i].seq << " " << pre_hash_graph2[i].cnt << "\n";
+        }
+        ofs.close();
+        ofs.open("ORP3.log", ifstream::out);
+        for (int i = 0; i < aft_hash_num1; i++) {
+            ofs << aft_hash_graph1[i].seq << " " << aft_hash_graph1[i].cnt << "\n";
+        }
+        for (int i = 0; i < aft_hash_num2; i++) {
+            ofs << aft_hash_graph2[i].seq << " " << aft_hash_graph2[i].cnt << "\n";
+        }
+        ofs.close();
     }
-    for (int i = 0; i < pre_hash_num2; i++) {
-        ofs << pre_hash_graph2[i].seq << " " << pre_hash_graph2[i].cnt << "\n";
-    }
-    ofs.close();
-    ofs.open("ORP3.log", ifstream::out);
-    for (int i = 0; i < aft_hash_num1; i++) {
-        ofs << aft_hash_graph1[i].seq << " " << aft_hash_graph1[i].cnt << "\n";
-    }
-    for (int i = 0; i < aft_hash_num2; i++) {
-        ofs << aft_hash_graph2[i].seq << " " << aft_hash_graph2[i].cnt << "\n";
-    }
-    ofs.close();
-
-
     int *dupHist = NULL;
     double *dupMeanGC = NULL;
     double dupRate = 0.0;
@@ -389,12 +442,10 @@ void PeQc::ProcessPeFastq() {
             if (merge_insert_size[i] > merge_insert_size[mx_id])mx_id = i;
         }
         printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
-
     }
 
     Repoter::ReportHtmlPe(pre_state1, pre_state2, aft_state1, aft_state2, cmd_info_->in_file_name1_,
-                          cmd_info_->in_file_name2_, dupRate, merge_insert_size, cmd_info_->max_insert_size_,
-                          cmd_info_->overlap_require_, cmd_info_->no_insert_size_);
+                          cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
 
     printf("report done\n");
 

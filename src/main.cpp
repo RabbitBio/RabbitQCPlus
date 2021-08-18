@@ -221,6 +221,7 @@ int main(int argc, char **argv) {
         printf("part %.5f\n", GetTime() - tp);
 
     } else {
+        cmd_info.no_insert_size_ = 1;
         if (cmd_info.out_file_name1_.length() > 0) {
             cmd_info.write_data_ = true;
             printf("auto set write_data_ 1\n");

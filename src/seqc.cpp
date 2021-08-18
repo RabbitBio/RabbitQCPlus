@@ -14,11 +14,21 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     int out_block_nums = int(1.0 * cmd_info1->in_file_size1_ / cmd_info1->out_block_size_);
     printf("out_block_nums %d\n", out_block_nums);
     out_queue_ = NULL;
+
+    in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != std::string::npos;
+    out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != std::string::npos;
     if (cmd_info1->write_data_) {
         out_queue_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>
                 (out_block_nums + 1000);
-        printf("open stream %s\n", cmd_info1->out_file_name1_.c_str());
-        out_stream_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
+        if (out_is_zip_) {
+            printf("open gzip stream %s\n", cmd_info1->out_file_name1_.c_str());
+            zip_out_stream = gzopen(cmd_info1->out_file_name1_.c_str(), "w");
+            gzsetparams(zip_out_stream, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
+            gzbuffer(zip_out_stream, 1024 * 1024);
+        } else {
+            printf("open stream %s\n", cmd_info1->out_file_name1_.c_str());
+            out_stream_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
+        }
     }
     duplicate_ = NULL;
     if (cmd_info1->state_duplicate_) {
@@ -54,8 +64,10 @@ SeQc::~SeQc() {
 
 void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
+    double t0 = GetTime();
+
     rabbit::fq::FastqFileReader *fqFileReader;
-    fqFileReader = new rabbit::fq::FastqFileReader(file, fastq_data_pool);
+    fqFileReader = new rabbit::fq::FastqFileReader(file, fastq_data_pool, "", in_is_zip_);
     int64_t n_chunks = 0;
     while (true) {
         rabbit::fq::FastqDataChunk *fqdatachunk;
@@ -65,9 +77,12 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
         //std::cout << "readed chunk: " << n_chunks << std::endl;
         dq.Push(n_chunks, fqdatachunk);
     }
+
     dq.SetCompleted();
     delete fqFileReader;
     std::cout << "file " << file << " has " << n_chunks << " chunks" << std::endl;
+    printf("producer cost %.3f\n", GetTime() - t0);
+
 }
 //
 //void SeQc::PrintRead(neoReference &ref) {
@@ -183,6 +198,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
  * @brief a function to write data from out_data queue to file
  */
 void SeQc::WriteSeFastqTask() {
+    double t0 = GetTime();
     int cnt = 0;
     while (true) {
         if (out_queue_->size_approx() == 0 && done_thread_number_ == cmd_info_->thread_number_) {
@@ -195,11 +211,29 @@ void SeQc::WriteSeFastqTask() {
         while (out_queue_->size_approx()) {
             out_queue_->try_dequeue(now);
 //            printf("write thread working, write %d %d\n", now.second, cnt++);
-            out_stream_.write(now.first, now.second);
+            if (out_is_zip_) {
+                int written = gzwrite(zip_out_stream, now.first, now.second);
+                if (written != now.second) {
+                    printf("GG");
+                    exit(0);
+                }
+
+            } else {
+                out_stream_.write(now.first, now.second);
+            }
             delete[] now.first;
         }
     }
-    out_stream_.close();
+    if (out_is_zip_) {
+        if (zip_out_stream) {
+            gzflush(zip_out_stream, Z_FINISH);
+            gzclose(zip_out_stream);
+            zip_out_stream = NULL;
+        }
+    } else {
+        out_stream_.close();
+    }
+    printf("write cost %.5f\n", GetTime() - t0);
 }
 
 /**
@@ -247,38 +281,33 @@ void SeQc::ProcessSeFastq() {
     }
     auto pre_state = State::MergeStates(pre_vec_state);
     auto aft_state = State::MergeStates(aft_vec_state);
-//
-//    for (auto item:pre_vec_state) {
-//        printf("now pre state hash graph size %d\n", item->GetHashNum());
-//    }
-//    for (auto item:aft_vec_state) {
-//        printf("now aft state hash graph size %d\n", item->GetHashNum());
-//    }
 
     printf("merge done\n");
-    printf("print pre state info :\n");
+    printf("print pre state info :\n\n");
     State::PrintStates(pre_state);
-    printf("print aft state info :\n");
+    printf("print aft state info :\n\n");
     State::PrintStates(aft_state);
 
+    if (cmd_info_->do_overrepresentation_) {
+        auto hash_graph1 = pre_state->GetHashGraph();
+        int hash_num1 = pre_state->GetHashNum();
 
-    auto hash_graph1 = pre_state->GetHashGraph();
-    int hash_num1 = pre_state->GetHashNum();
+        auto hash_graph2 = aft_state->GetHashGraph();
+        int hash_num2 = aft_state->GetHashNum();
 
-    auto hash_graph2 = aft_state->GetHashGraph();
-    int hash_num2 = aft_state->GetHashNum();
 
-    ofstream ofs;
-    ofs.open("ORP2.log", ifstream::out);
-    for (int i = 0; i < hash_num1; i++) {
-        ofs << hash_graph1[i].seq << " " << hash_graph1[i].cnt << "\n";
+        ofstream ofs;
+        ofs.open("ORP2.log", ifstream::out);
+        for (int i = 0; i < hash_num1; i++) {
+            ofs << hash_graph1[i].seq << " " << hash_graph1[i].cnt << "\n";
+        }
+        ofs.close();
+        ofs.open("ORP3.log", ifstream::out);
+        for (int i = 0; i < hash_num2; i++) {
+            ofs << hash_graph2[i].seq << " " << hash_graph2[i].cnt << "\n";
+        }
+        ofs.close();
     }
-    ofs.close();
-    ofs.open("ORP3.log", ifstream::out);
-    for (int i = 0; i < hash_num2; i++) {
-        ofs << hash_graph2[i].seq << " " << hash_graph2[i].cnt << "\n";
-    }
-    ofs.close();
 
 
     int *dupHist = NULL;
@@ -299,11 +328,12 @@ void SeQc::ProcessSeFastq() {
 
     Repoter::ReportHtmlSe(pre_state, aft_state, cmd_info_->in_file_name1_, dupRate * 100.0);
 
-
     delete pre_state;
     delete aft_state;
 
     delete fastqPool;
+
+
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         delete threads[t];
         delete p_thread_info[t];
@@ -314,6 +344,7 @@ void SeQc::ProcessSeFastq() {
     if (cmd_info_->write_data_) {
         delete write_thread;
     }
+
 }
 
 void SeQc::ProcessSeTGS() {

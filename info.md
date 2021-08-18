@@ -16,9 +16,9 @@
 
 - [x] Duplicate
 
-- [ ] new Duplicate
+- [ ] ~~new Duplicate~~
 
-- [ ] Deduplicate
+- [ ] ~~Deduplicate~~
 
 - [x] Draw
 
@@ -30,13 +30,19 @@
 
 - [x] support long reads
 
-- [ ] support reading from STDIN and writing to STDOUT
+- [ ] ~~support reading from STDIN and writing to STDOUT~~
 
 - [ ] support interleaved input
 
-- [ ] split the output to multiple files
+- [ ] ~~split the output to multiple files~~
 
-- [ ] Insert size estimation
+- [x] Insert size estimation
+
+- [x] support zip input output
+
+- [ ] optimize gzip
+
+- [ ] optimize memory use when out is zip
 
   
 
@@ -698,3 +704,20 @@ void PairEndProcessor::statInsertSize(Read *r1, Read *r2, OverlapResult &ov) {
 这一块是fastp（RabbitQC）中用来统计insertSize的，也就是双端数据实际上的序列长度。
 
 本来是想直接用fastp中的画图模块的，但是出现了bug，暂时写了个简单的折线图的版本，并且不再仅仅统计thread0的信息，是所有线程的都要统计。
+
+## 0818
+
+今天先测试一下RabbitIO的解压缩模块怎么样（only producer）：
+
+|             | STD   | Re    |
+| ----------- | ----- | ----- |
+| Se data     | 23.08 | 22.72 |
+| new Se data | 14.65 | 14.84 |
+| Pe data     | 23.52 | 23.09 |
+
+确实慢啊zlib，大师兄的意思好像libdeflate不支持流式处理，寒假搞得bam解压缩那一套又不能用（bam不是标准的gz格式，是分块压缩的），暂时先这样吧。
+
+加一下gz输出部分。
+
+输出的时候压缩也很慢，而且现在没有写 输出队列大小限制 ，也就是说可能内存需求很大很大。
+

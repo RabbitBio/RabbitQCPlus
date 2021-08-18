@@ -21,7 +21,7 @@ ThreadInfo::ThreadInfo(CmdInfo *cmd_info, bool is_pe) {
         }
     }
     insert_size_dist_ = NULL;
-    if (cmd_info->in_file_name2_.length()) {
+    if (cmd_info->no_insert_size_ == 0) {
         insert_size_dist_ = new int64_t[cmd_info->max_insert_size_ + 1];
         memset(insert_size_dist_, 0, sizeof(int64_t) * (cmd_info->max_insert_size_ + 1));
     }
@@ -31,12 +31,18 @@ ThreadInfo::~ThreadInfo() {
     if (cmd_info_->is_TGS_) {
         delete TGS_state_;
     } else {
-        delete pre_state1_;
-        delete pre_state2_;
-        delete aft_state1_;
-        delete aft_state2_;
+        if (is_pe_) {
+            delete pre_state1_;
+            delete pre_state2_;
+            delete aft_state1_;
+            delete aft_state2_;
+        } else {
+            delete pre_state1_;
+            delete aft_state1_;
+        }
+
     }
-    if (cmd_info_->in_file_name2_.length()) {
+    if (cmd_info_->no_insert_size_ == 0) {
         delete[]insert_size_dist_;
     }
 
