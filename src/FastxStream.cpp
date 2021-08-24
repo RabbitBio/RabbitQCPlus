@@ -380,6 +380,61 @@ namespace rabbit {
 	@return FastqDataPairChunk pointer if next chunk data has data, else return NULL
  */
 
+        FastqDataChunk* FastqFileReader::readNextPairChunkInterleaved(){
+            FastqDataChunk *part = NULL;
+            recordsPool->Acquire(part);
+            uint64 lastChunkPos1;
+            uint64 lastChunkPos2;
+            //---------read chunk------------
+            if (eof) {
+                part->size = 0;
+                // return false;
+                recordsPool->Release(part);
+                return NULL;
+            }
+
+            // flush the data from previous incomplete chunk
+            uchar *data = part->data.Pointer();
+            const uint64 cbufSize = part->data.Size();
+            part->size = 0;
+            int64 toRead;
+            toRead = cbufSize - bufferSize;
+            if (bufferSize > 0) {
+                std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
+                part->size = bufferSize;
+                bufferSize = 0;
+            }
+            int64 r;
+            r = Read(data + part->size, toRead);
+            if (r > 0) {
+                if (r == toRead) {
+                    lastChunkPos1 = GetPreviousRecordPos_(data, cbufSize - 1, cbufSize);
+                    lastChunkPos2 = GetPreviousRecordPos_(data, lastChunkPos1 - 1, cbufSize);
+
+                } else {
+                    // chunkEnd = r;
+                    part->size += r - 1;
+                    if (usesCrlf) part->size -= 1;
+                    eof = true;
+                }
+            } else {
+                eof = true;
+                return NULL;
+            }
+            //------read chunk end------//
+
+            if (!eof) {
+
+                part->size = lastChunkPos1 - 1;
+                if (usesCrlf) part->size -= 1;
+
+                std::copy(data + lastChunkPos2, data + cbufSize, swapBuffer.Pointer());
+                bufferSize = cbufSize - lastChunkPos2;
+            }
+            return part;
+
+        }
+
         FastqDataPairChunk *FastqFileReader::readNextPairChunkWithTwoPool() {
             FastqDataPairChunk *pair = new FastqDataPairChunk;
 

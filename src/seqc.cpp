@@ -283,9 +283,9 @@ void SeQc::ProcessSeFastq() {
     auto aft_state = State::MergeStates(aft_vec_state);
 
     printf("merge done\n");
-    printf("print pre state info :\n\n");
+    printf("\nprint pre state info :\n");
     State::PrintStates(pre_state);
-    printf("print aft state info :\n\n");
+    printf("\nprint aft state info :\n");
     State::PrintStates(aft_state);
 
     if (cmd_info_->do_overrepresentation_) {
@@ -380,7 +380,7 @@ void SeQc::ProcessSeTGS() {
     auto mer_state = TGSStats::merge(vec_state);
 
     printf("merge done\n");
-    printf("print TGS state info :\n");
+    printf("\nprint TGS state info :\n");
     mer_state->print();
 
 //    report3(mer_state);

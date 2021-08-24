@@ -110,7 +110,7 @@ void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool 
     int64_t n_chunks = 0;
     while (true) {
         rabbit::fq::FastqDataChunk *fqdatachunk;
-        fqdatachunk = fqFileReader->readNextChunk();
+        fqdatachunk = fqFileReader->readNextPairChunkInterleaved();
         if (fqdatachunk == NULL) break;
         n_chunks++;
         //std::cout << "readed chunk: " << n_chunks << std::endl;
@@ -277,10 +277,8 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                                     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;
-    rabbit::fq::FastqDataChunk *laterFqdatachunk;
-    int now = 0;
     neoReference item1, item2;
-    bool laterRelease = 0;
+    std::string name1, name2;
 
     while (dq.Pop(id, fqdatachunk)) {
         std::vector<neoReference> data;
@@ -288,14 +286,26 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
         rabbit::fq::chunkFormat(fqdatachunk, data, true);
 
         int out_len1 = 0, out_len2 = 0;
-        for (int i = 0; i < data.size(); i++) {
-            if (now == 0) {
+        for (int i = 0; i + 2 <= data.size(); i += 2) {
+            item1 = data[i];
+            item2 = data[i + 1];
+            name1 = string(reinterpret_cast<const char *>(item1.base + item1.pname), item1.lname);
+            name2 = string(reinterpret_cast<const char *>(item2.base + item2.pname), item2.lname);
+            if (name1 != name2) {
+                if (i + 2 >= data.size())break;
+//                printf("1 : %s\n%s\n", name1.c_str(), name2.c_str());
+                i++;
                 item1 = data[i];
-                now ^= 1;
-                continue;
+                item2 = data[i + 1];
+                name1 = string(reinterpret_cast<const char *>(item1.base + item1.pname), item1.lname);
+                name2 = string(reinterpret_cast<const char *>(item2.base + item2.pname), item2.lname);
+                if (name1 != name2) {
+                    printf("2 : %s\n%s\n", name1.c_str(), name2.c_str());
+                    printf("GGGG\n");
+                    exit(0);
+                }
             }
-            item2 = data[i];
-            now ^= 1;
+
             thread_info->pre_state1_->StateInfo(item1);
             thread_info->pre_state2_->StateInfo(item2);
             if (cmd_info_->state_duplicate_) {
@@ -392,17 +402,7 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                 out_queue2_->enqueue({out_data2, out_len2});
             }
         }
-        if (laterRelease) {
-            fastqPool->Release(laterFqdatachunk);
-        }
-        if (now == 0) {
-            fastqPool->Release(fqdatachunk);
-            laterRelease = 0;
-        } else {
-            laterRelease = 1;
-            laterFqdatachunk = fqdatachunk;
-        }
-
+        fastqPool->Release(fqdatachunk);
     }
     done_thread_number_++;
 }
@@ -705,13 +705,13 @@ void PeQc::ProcessPeFastq() {
 
 
         printf("merge done\n");
-        printf("print pre state1 info :\n\n");
+        printf("\nprint pre state1 info :\n");
         State::PrintStates(pre_state1);
-        printf("print pre state2 info :\n\n");
+        printf("\nprint pre state2 info :\n");
         State::PrintStates(pre_state2);
-        printf("print aft state1 info :\n\n");
+        printf("\nprint aft state1 info :\n");
         State::PrintStates(aft_state1);
-        printf("print aft state2 info :\n\n");
+        printf("\nprint aft state2 info :\n");
         State::PrintStates(aft_state2);
 
         if (cmd_info_->do_overrepresentation_) {

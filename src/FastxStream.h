@@ -463,6 +463,8 @@ namespace rabbit {
 
             FastqDataPairChunk *readNextPairChunk();
 
+            FastqDataChunk *readNextPairChunkInterleaved();
+
             FastqDataPairChunk *readNextPairChunkWithTwoPool();
 
             bool ReadNextPairedChunk_(FastqDataChunk *chunk_);
