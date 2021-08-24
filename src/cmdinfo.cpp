@@ -82,4 +82,8 @@ CmdInfo::CmdInfo() {
     //gz
     compression_level_ = 2;
 
+    //interleaved
+    interleaved_in_ = false;
+    interleaved_out_ = false;
+
 }

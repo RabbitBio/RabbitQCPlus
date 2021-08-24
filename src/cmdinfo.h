@@ -90,6 +90,10 @@ public:
     //gz
     int compression_level_;
 
+    //interleaved
+    bool interleaved_in_;
+    bool interleaved_out_;
+
 
 };
 

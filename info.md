@@ -721,3 +721,6 @@ void PairEndProcessor::statInsertSize(Read *r1, Read *r2, OverlapResult &ov) {
 
 输出的时候压缩也很慢，而且现在没有写 输出队列大小限制 ，也就是说可能内存需求很大很大。
 
+## 0824
+
+加了inteeleaved的input和output，输出没啥问题，输入的话，目前有点小bug，多线程的时候答案不太对，因为某个块是奇数个reads的时候会有问题，凯子哥之前写了这块的代码，下午问问他。

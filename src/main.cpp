@@ -67,6 +67,11 @@ int main(int argc, char **argv) {
     app.add_flag("--noInsertSize", cmd_info.no_insert_size_, "no insert size analyze");
 
 
+    //interleaved
+    app.add_flag("--interleavedIn", cmd_info.interleaved_in_, "use interleaved input (only for pe data)");
+    app.add_flag("--interleavedOut", cmd_info.interleaved_out_, "use interleaved output (only for pe data)");
+
+
     CLI11_PARSE(app, argc, argv);
     printf("in1 is %s\n", cmd_info.in_file_name1_.c_str());
     if (cmd_info.in_file_name2_.length())printf("in2 is %s\n", cmd_info.in_file_name2_.c_str());
@@ -138,8 +143,9 @@ int main(int argc, char **argv) {
     printf("now use %d thread\n", cmd_info.thread_number_);
 
     double t1 = GetTime();
-    if (cmd_info.in_file_name2_.length()) {
-        if (cmd_info.out_file_name1_.length() > 0 && cmd_info.out_file_name2_.length() > 0) {
+    if (cmd_info.in_file_name2_.length() || cmd_info.interleaved_in_) {
+        if ((cmd_info.out_file_name1_.length() > 0 && cmd_info.out_file_name2_.length() > 0) ||
+            cmd_info.interleaved_out_) {
             cmd_info.write_data_ = true;
             printf("auto set write_data_ 1\n");
         }
@@ -212,6 +218,13 @@ int main(int argc, char **argv) {
             printf("total %d hot sqes1\n", cmd_info.hot_seqs_.size());
             printf("total %d hot sqes2\n", cmd_info.hot_seqs2_.size());
             printf("pre over representation cost %.5f\n", GetTime() - t2);
+        }
+
+        if (cmd_info.interleaved_in_) {
+            printf("now input use interleaved pe data\n");
+        }
+        if (cmd_info.interleaved_out_) {
+            printf("now output use interleaved pe data\n");
         }
 
         double tp = GetTime();
