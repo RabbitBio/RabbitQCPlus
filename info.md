@@ -7,15 +7,15 @@
 - [x] PolyX
 - [x] Overrepresented
 - [x] Duplicate
-- [ ] ~~new Duplicate~~
-- [ ] ~~Deduplicate~~
+- [ ] new Duplicate
+- [ ] Deduplicate
 - [x] Draw
 - [x] 内存泄漏
 - [x] check 正确性
 - [ ] option里面的error detect
 - [x] support long reads
-- [ ] support reading from STDIN and writing to STDOUT
-- [ ] support interleaved input
+- [x] support reading from STDIN and writing to STDOUT
+- [x] support interleaved input
 - [ ] ~~split the output to multiple files~~
 - [x] Insert size estimation
 - [x] support zip input output
@@ -715,4 +715,8 @@ void PairEndProcessor::statInsertSize(Read *r1, Read *r2, OverlapResult &ov) {
 芜湖九月份了
 
 加加stdin和stdout吧。
+
+加了phred64。
+
+发现了点子东西，最新的fastp里面更换了新的重复率判定方式（新的比旧的判定的重复度更低），并且添加了简单的去重机制。
 

@@ -12,6 +12,9 @@ CmdInfo::CmdInfo() {
     out_file_name1_ = "";
     out_file_name2_ = "";
     isPhred64_ = false;
+    isStdin_ = false;
+    isStdout_ = false;
+
 
     thread_number_ = 1;
     n_number_limit_ = 5;

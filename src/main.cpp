@@ -14,13 +14,17 @@ int main(int argc, char **argv) {
 
     CmdInfo cmd_info;
     CLI::App app("RabbitQCPlus");
-    auto opt = app.add_option("-i,--inFile1", cmd_info.in_file_name1_, "input fastq name 1, can not be ''");
-    opt->required();
-    app.add_option("-I,--inFile2", cmd_info.in_file_name2_, "input fastq name 2, can be '' when single data");
+    app.add_option("-i,--inFile1", cmd_info.in_file_name1_, "input fastq name 1");
+    app.add_option("-I,--inFile2", cmd_info.in_file_name2_, "input fastq name 2");
     app.add_option("-o,--outFile1", cmd_info.out_file_name1_, "output fastq name 1");
     app.add_option("-O,--outFile2", cmd_info.out_file_name2_, "output fastq name 2");
 
     app.add_flag("--phred64", cmd_info.isPhred64_, "input is using phred64 scoring");
+    app.add_flag("--stdin", cmd_info.isStdin_,
+                 "input from stdin, or -i /dev/stdin, only for se data or interleaved in pe data(which means use --interleavedIn)");
+    app.add_flag("--stdout", cmd_info.isStdout_,
+                 "output to stdout, or -o /dev/stdout, only for se data or interleaved out pe data(which means use --interleavedOut)");
+
 
     app.add_flag("-a,--noTrimAdapter", cmd_info.no_trim_adapter_, "no trim adapter");
     app.add_flag("--decAdaForSe", cmd_info.se_auto_detect_adapter_, "detect adapter for se data");
@@ -75,7 +79,19 @@ int main(int argc, char **argv) {
 
 
     CLI11_PARSE(app, argc, argv);
+    if (cmd_info.isStdin_) {
+        cmd_info.in_file_name1_ = "/dev/stdin";
+    }
+    if (cmd_info.in_file_name1_ == "/dev/stdin") {
+        cmd_info.se_auto_detect_adapter_ = false;
+        cmd_info.pe_auto_detect_adapter_ = false;
+        cmd_info.do_overrepresentation_ = false;
+    }
+    if (cmd_info.in_file_name1_.length() == 0) {
+        error_exit("in1 can't be null");
+    }
     printf("in1 is %s\n", cmd_info.in_file_name1_.c_str());
+    if (cmd_info.isStdout_)cmd_info.out_file_name1_ = "/dev/stdout";
     if (cmd_info.in_file_name2_.length())printf("in2 is %s\n", cmd_info.in_file_name2_.c_str());
     if (cmd_info.out_file_name1_.length())printf("out1 is %s\n", cmd_info.out_file_name1_.c_str());
     if (cmd_info.out_file_name2_.length())printf("out2 is %s\n", cmd_info.out_file_name2_.c_str());
@@ -154,14 +170,16 @@ int main(int argc, char **argv) {
             cmd_info.write_data_ = true;
             printf("auto set write_data_ 1\n");
         }
-        //calculate file size and estimate reads number
-        FILE *p_file;
-        p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
-        fseek(p_file, 0, SEEK_END);
-        int64_t total_size = ftell(p_file);
-        cmd_info.in_file_size1_ = total_size;
-        printf("in file total size is %lld\n", total_size);
-        printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
+        if (cmd_info.in_file_name1_ != "/dev/stdin") {
+            //calculate file size and estimate reads number
+            FILE *p_file;
+            p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
+            fseek(p_file, 0, SEEK_END);
+            int64_t total_size = ftell(p_file);
+            cmd_info.in_file_size1_ = total_size;
+            printf("in file total size is %lld\n", total_size);
+            printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
+        }
 
         //adapter
         if (cmd_info.adapter_seq1_.length()) {
@@ -244,14 +262,16 @@ int main(int argc, char **argv) {
             cmd_info.write_data_ = true;
             printf("auto set write_data_ 1\n");
         }
-        //calculate file size and estimate reads number
-        FILE *p_file;
-        p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
-        fseek(p_file, 0, SEEK_END);
-        int64_t total_size = ftell(p_file);
-        cmd_info.in_file_size1_ = total_size;
-        printf("in file total size is %lld\n", total_size);
-        printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
+        if (cmd_info.in_file_name1_ != "/dev/stdin") {
+            //calculate file size and estimate reads number
+            FILE *p_file;
+            p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
+            fseek(p_file, 0, SEEK_END);
+            int64_t total_size = ftell(p_file);
+            cmd_info.in_file_size1_ = total_size;
+            printf("in file total size is %lld\n", total_size);
+            printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
+        }
 
         //adapter
         if (cmd_info.adapter_seq1_.length()) {
