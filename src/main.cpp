@@ -20,6 +20,8 @@ int main(int argc, char **argv) {
     app.add_option("-o,--outFile1", cmd_info.out_file_name1_, "output fastq name 1");
     app.add_option("-O,--outFile2", cmd_info.out_file_name2_, "output fastq name 2");
 
+    app.add_flag("--phred64", cmd_info.isPhred64_, "input is using phred64 scoring");
+
     app.add_flag("-a,--noTrimAdapter", cmd_info.no_trim_adapter_, "no trim adapter");
     app.add_flag("--decAdaForSe", cmd_info.se_auto_detect_adapter_, "detect adapter for se data");
     app.add_flag("--decAdaForPe", cmd_info.pe_auto_detect_adapter_, "detect adapter for pe data");
@@ -140,6 +142,9 @@ int main(int argc, char **argv) {
         printf("overrepresentation sampling is %d\n", cmd_info.overrepresentation_sampling_);
     }
 
+    if (cmd_info.isPhred64_) {
+        printf("now use phred64 input\n");
+    }
     printf("now use %d thread\n", cmd_info.thread_number_);
 
     double t1 = GetTime();
@@ -297,53 +302,4 @@ int main(int argc, char **argv) {
     printf("total cost %.5f\n", GetTime() - t1);
 
     return 0;
-
-
 }
-/*
-@SRR2496709.17 17 length=100
-CCTTCCCCTCAAGCTCAGGGCCAAGCTGTCCGCCAACCTCGGCTCCTCCGGGCAGCCCTCGCCCGGGGTGCGCCCCGGGGCAGGACCCCCAGCCCACGCC
-+SRR2496709.17 17 length=100
-18+8?=>?>?==>?>?:>?1>,<<?)>><@@8>@>=>@?@8/?>@=?>=;;@A?BA>+>?8>,=;=?=01>;>>=(8->-8=9-2=>==;19>>A?.7>=
-@SRR2496709.17 17 length=100
-GGAGGGCAGGGGCGGGCCCTGGGCGTGGGCTGGGGGTCCTGCCCCGGGGCGCACCCCGGGCGAGGGCAGCCCGGAGGAGCCGAGGCTTGCGGACAGCTGG
-+SRR2496709.17 17 length=100
-819190-<>/;/:<//:===219-*<09.>0?>....891:8=@@;?><-6:1-=>############################################
-===================================================
-ov 21 79 4 2
-reference before correct :
-@SRR2496709.17 17 length=100
-CCTTCCCCTCAAGCTCAGGGCCAAGCTGTCCGCCAACCTCGGCTCCTCCGGGCAGCCCTCGCCCGGGGTGCGCCCCGGGGCAGGACCCCCAGCCCACGCC
-+SRR2496709.17 17 length=100
-18+8?=>?>?==>?>?:>?1>,<<?)>><@@8>@>=>@?@8/?>@=?>=;;@A?BA>+>?8>,=;=?=01>;>>=(8->-8=9-2=>==;19>>A?.7>=
-@SRR2496709.17 17 length=100
-GGAGGGCAGGGGCGGGCCCTGGGCGTGGGCTGGGGGTCCTGCCCCGGGGCGCACCCCGGGCGAGGGCTGCCCGGAGGAGCCGAGGCTGGCGGACAGCTGG
-+SRR2496709.17 17 length=100
-819190-<>/;/:<//:===219-*<09.>0?>....891:8=@@;?><-6:1-=>###########?###################@############
-===================================================
-
-
-
-
-@SRR2496709.17 17 length=100
-CCTTCCCCTCAAGCTCAGGGCCAAGCTGTCCGCCAACCTCGGCTCCTCCGGGCAGCCCTCGCCCGGGGTGCGCCCCGGGGCAGGACCCCCAGCCCACGCC
-+SRR2496709.17 17 length=100
-18+8?=>?>?==>?>?:>?1>,<<?)>><@@8>@>=>@?@8/?>@=?>=;;@A?BA>+>?8>,=;=?=01>;>>=(8->-8=9-2=>==;19>>A?.7>=
-@SRR2496709.17 17 length=100
-GGAGGGCAGGGGCGGGCCCTGGGCGTGGGCTGGGGGTCCTGCCCCGGGGCGCACCCCGGGCGAGGGCAGCCCGGAGGAGCCGAGGCTTGCGGACAGCTGG
-+SRR2496709.17 17 length=100
-819190-<>/;/:<//:===219-*<09.>0?>....891:8=@@;?><-6:1-=>############################################
-===================================================
-ov 21 79 4 2
-reference after correct :
-@SRR2496709.17 17 length=100
-CCTTCCCCTCAAGCTCAGGGCCAAGCTGTCCGCCAACCTCGGCTCCTCCGGGCAGCCCTCGCCCGGGGTGCGCCCCGGGGCAGGACCCCCAGCCCACGCC
-+SRR2496709.17 17 length=100
-18+8?=>?>?==>?>?:>?1>,<<?)>><@@8>@>=>@?@8/?>@=?>=;;@A?BA>+>?8>,=;=?=01>;>>=(8->-8=9-2=>==;19>>A?.7>=
-@SRR2496709.17 17 length=100
-GGAGGGCAGGGGCGGGCCCTGGGCGTGGGCTGGGGGTCCTGCCCCGGGGCGCACCCCGGGCGAGGGCTGCCCGGAGGAGCCGAGGCTGGCGGACAGCTGG
-+SRR2496709.17 17 length=100
-819190-<>/;/:<//:===219-*<09.>0?>@...891:8=@@;?><-6:1?=>############################################
-===================================================
-
- */

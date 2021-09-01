@@ -204,7 +204,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                 thread_info->insert_size_dist_[now_size]++;
             }
             if (trim_res1 && trim_res2 && cmd_info_->correct_data_) {
-                Adapter::CorrectData(item1, item2, overlap_res);
+                Adapter::CorrectData(item1, item2, overlap_res, cmd_info_->isPhred64_);
             }
             if (trim_res1 && trim_res2 && cmd_info_->trim_adapter_) {
                 bool trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
@@ -218,8 +218,8 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 
 
             //do filer in refs
-            int filter_res1 = filter_->ReadFiltering(item1, trim_res1);
-            int filter_res2 = filter_->ReadFiltering(item2, trim_res2);
+            int filter_res1 = filter_->ReadFiltering(item1, trim_res1, cmd_info_->isPhred64_);
+            int filter_res2 = filter_->ReadFiltering(item2, trim_res2, cmd_info_->isPhred64_);
 
             if (filter_res1 == 0 && filter_res2 == 0) {
                 thread_info->aft_state1_->StateInfo(item1);
@@ -343,7 +343,7 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                 thread_info->insert_size_dist_[now_size]++;
             }
             if (trim_res1 && trim_res2 && cmd_info_->correct_data_) {
-                Adapter::CorrectData(item1, item2, overlap_res);
+                Adapter::CorrectData(item1, item2, overlap_res, cmd_info_->isPhred64_);
             }
             if (trim_res1 && trim_res2 && cmd_info_->trim_adapter_) {
                 bool trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
@@ -357,8 +357,8 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
 
 
             //do filer in refs
-            int filter_res1 = filter_->ReadFiltering(item1, trim_res1);
-            int filter_res2 = filter_->ReadFiltering(item2, trim_res2);
+            int filter_res1 = filter_->ReadFiltering(item1, trim_res1, cmd_info_->isPhred64_);
+            int filter_res2 = filter_->ReadFiltering(item2, trim_res2, cmd_info_->isPhred64_);
 
             if (filter_res1 == 0 && filter_res2 == 0) {
                 thread_info->aft_state1_->StateInfo(item1);

@@ -24,7 +24,7 @@ public:
 
     void print();
 
-    void tgsStatRead(neoReference &ref);
+    void tgsStatRead(neoReference &ref, bool isPhred64);
 
     // a port of HTML report
     void reportHtml(std::ofstream &ofs, std::string filteringType, std::string readName);

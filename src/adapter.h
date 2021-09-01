@@ -50,7 +50,7 @@ public:
 
     static bool TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2 = false);
 
-    static int CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap_res);
+    static int CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap_res, bool isPhred64);
 
 
 };

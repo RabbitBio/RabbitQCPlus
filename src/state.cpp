@@ -171,12 +171,12 @@ void State::StateInfo(neoReference &ref) {
     len_cnt_[slen - 1]++;
     char *bases = reinterpret_cast<char *>(ref.base + ref.pseq);
     char *quals = reinterpret_cast<char *>(ref.base + ref.pqual);
-    const char q20 = '5';
-    const char q30 = '?';
     int flag = 4;
     int gc_cnt = 0;
     int qul_tot = 0;
     int kmer = 0;
+    int phredSub = 33;
+    if (cmd_info_->isPhred64_)phredSub = 64;
 
 #ifdef Vec512
     int i = 0;
@@ -188,9 +188,10 @@ void State::StateInfo(neoReference &ref) {
     ad1 = _mm512_set1_epi64(1);
     and7 = _mm256_set1_epi32(0x07);
     add8 = _mm256_set1_epi32(64);
-    sub33 = _mm512_set1_epi64(33);
-    __m512i q20_vec = _mm512_set1_epi64((int64_t) '5');
-    __m512i q30_vec = _mm512_set1_epi64((int64_t) '?');
+    sub33 = _mm512_set1_epi64(phredSub);
+    __m512i q20_vec = _mm512_set1_epi64(20);
+    __m512i q30_vec = _mm512_set1_epi64(30);
+    __m512i q0_vec = _mm512_set1_epi64(0);
     __m256i con3 = _mm256_set1_epi32(3);
     __m256i con7 = _mm256_set1_epi32(7);
 
@@ -203,8 +204,11 @@ void State::StateInfo(neoReference &ref) {
         ide = _mm_maskz_loadu_epi8(0xFF, quals + i);
         quamm = _mm512_cvtepi8_epi64(ide);
         ad2 = _mm512_sub_epi64(quamm, sub33);
-        __mmask8 q30_mask = _mm512_cmp_epi64_mask(quamm, q30_vec, _MM_CMPINT_NLT);
-        __mmask8 q20_mask = _mm512_cmp_epi64_mask(quamm, q20_vec, _MM_CMPINT_NLT);
+        __mmask8 mmsk = _mm512_cmp_epi64_mask(ad2, q0_vec, 1);
+        _mm512_mask_set1_epi64(ad2, mmsk, 0);
+
+        __mmask8 q30_mask = _mm512_cmp_epi64_mask(ad2, q30_vec, _MM_CMPINT_NLT);
+        __mmask8 q20_mask = _mm512_cmp_epi64_mask(ad2, q20_vec, _MM_CMPINT_NLT);
         ide = _mm_maskz_loadu_epi8(0xFF, bases + i);
         idx = _mm256_cvtepi8_epi32(ide);
         idx = _mm256_and_si256(idx, and7);
@@ -247,39 +251,23 @@ void State::StateInfo(neoReference &ref) {
     for (; i < slen; i++) {
         char b = bases[i] & 0x07;
         if (b == 3 || b == 7)gc_cnt++;
-        qul_tot += quals[i] - 33;
-        if (quals[i] >= q30) {
+        int q = std::max(0, quals[i] - phredSub);
+        qul_tot += q;
+        if (q >= 30) {
             q20bases_++;
             q30bases_++;
-        } else if (quals[i] >= q20) {
+        } else if (q >= 20) {
             q20bases_++;
         }
         pos_cnt_[i * 8 + b]++;
-        pos_qul_[i * 8 + b] += quals[i] - 33;
+        pos_qul_[i * 8 + b] += q;
         if (bases[i] == 'N')flag = 5;
         int val = valAGCT[bases[i] & 0x07];
         kmer = ((kmer << 2) & 0x3FC) | val;
         if (flag <= 0)kmer_[kmer]++;
         flag--;
     }
-//
-//    int gc_cnt2 = 0;
-//    int qul_tot2 = 0;
-//    for (int i = 0; i < slen; i++) {
-//        char b = bases[i] & 0x07;
-//        if (b == 3 || b == 7)gc_cnt2++;
-//        qul_tot2 += quals[i] - 33;
-//    }
-//    if (gc_cnt2 != gc_cnt) {
-//        printf("GG1\n");
-//        printf("%d %d\n", gc_cnt2, gc_cnt);
-//        exit(0);
-//    }
-//    if (qul_tot2 != qul_tot) {
-//        printf("GG2\n");
-//        printf("%d %d\n", qul_tot2, qul_tot);
-//        exit(0);
-//    }
+
 
 #elif Vec256
     print("pending...");
@@ -287,15 +275,17 @@ void State::StateInfo(neoReference &ref) {
     for (int i = 0; i < slen; i++) {
         char b = bases[i] & 0x07;
         if (b == 3 || b == 7)gc_cnt++;
-        qul_tot += quals[i] - 33;
-        if (quals[i] >= q30) {
+        int q = std::max(0, quals[i] - phredSub);
+
+        qul_tot += q;
+        if (q >= 30) {
             q20bases_++;
             q30bases_++;
-        } else if (quals[i] >= q20) {
+        } else if (q >= 20) {
             q20bases_++;
         }
         pos_cnt_[i * 8 + b]++;
-        pos_qul_[i * 8 + b] += quals[i] - 33;
+        pos_qul_[i * 8 + b] += q;
         if (bases[i] == 'N')flag = 5;
         int val = valAGCT[b];
         kmer = ((kmer << 2) & 0x3FC) | val;

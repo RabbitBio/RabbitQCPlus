@@ -1,50 +1,33 @@
 - [x] Filter
-
 - [x] Stats
-
 - [x] Trimer->front tail trim
-
 - [x] Trimer->auto adapter trim
-
 - [x] Trimer->input adapter trim
-
 - [x] Umi
-
 - [x] PolyX
-
 - [x] Overrepresented
-
 - [x] Duplicate
-
 - [ ] ~~new Duplicate~~
-
 - [ ] ~~Deduplicate~~
-
 - [x] Draw
-
 - [x] 内存泄漏
-
 - [x] check 正确性
-
 - [ ] option里面的error detect
-
 - [x] support long reads
-
-- [ ] ~~support reading from STDIN and writing to STDOUT~~
-
+- [ ] support reading from STDIN and writing to STDOUT
 - [ ] support interleaved input
-
 - [ ] ~~split the output to multiple files~~
-
 - [x] Insert size estimation
-
 - [x] support zip input output
-
 - [ ] optimize gzip
-
 - [ ] optimize memory use when out is zip
+- [x] Phred64
 
-  
+
+
+### QC的几个问题
+
+-6 👇 
 
 ## AfterQC
 
@@ -726,3 +709,10 @@ void PairEndProcessor::statInsertSize(Read *r1, Read *r2, OverlapResult &ov) {
 加了inteeleaved的input和output，输出没啥问题，输入的话，目前有点小bug，多线程的时候答案不太对，因为某个块是奇数个reads的时候会有问题，凯子哥之前写了这块的代码，下午问问他。
 
 更新interleaved的部分。
+
+## 0901
+
+芜湖九月份了
+
+加加stdin和stdout吧。
+

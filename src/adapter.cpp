@@ -1031,7 +1031,7 @@ bool Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int ov
     return false;
 }
 
-int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap_res) {
+int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap_res, bool isPhred64) {
     //TODO check ？
     if (!overlap_res.overlapped)
         return 0;
@@ -1047,8 +1047,11 @@ int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap
     char *qual1 = reinterpret_cast< char *>(r1.base + r1.pqual);
     char *qual2 = reinterpret_cast< char *>(r2.base + r2.pqual);
 
-    const char GOOD_QUAL = '?';//30 + 33
-    const char BAD_QUAL = '/';//14 + 33
+    int phredSub = 33;
+    if (isPhred64)phredSub = 64;
+
+    const char GOOD_QUAL = 30 + phredSub;//30
+    const char BAD_QUAL = 14 + phredSub;//14
 
 //    printf("GOOD_QUAL %d\n", GOOD_QUAL);
 //    printf("BAD_QUAL %d\n", BAD_QUAL);

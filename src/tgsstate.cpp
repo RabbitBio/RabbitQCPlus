@@ -5,8 +5,6 @@
 #include "tgsstate.h"
 
 
-
-
 TGSStats::TGSStats(int minLen) {
     mMinlen = minLen;
     mHalfMinlen = mMinlen >> 1;
@@ -38,14 +36,16 @@ TGSStats::~TGSStats() {
     }
 }
 
-void TGSStats::tgsStatRead(neoReference &ref) {
+void TGSStats::tgsStatRead(neoReference &ref, bool isPhred64) {
     const int rlen = ref.lseq;
     const char *seq = reinterpret_cast<const char *>(ref.base + ref.pseq);
     const char *quality = reinterpret_cast<const char *>(ref.base + ref.pqual);
     int size_range = mMinlen >> 1;
     int i;
     char c1, c2;
-    mTotalReadsLen.push_back(rlen);//
+    mTotalReadsLen.push_back(rlen);
+    int phredSub = 33;
+    if (isPhred64)phredSub = 64;
     if (rlen > mMinlen) {
         //[1] stats lengths
         mLengths.push_back(rlen);
@@ -53,7 +53,7 @@ void TGSStats::tgsStatRead(neoReference &ref) {
         for (i = 0; i < size_range; ++i) {
             c1 = seq[i];
             //[2] quality sum
-            head_qual_sum[i] += (quality[i] - 33);
+            head_qual_sum[i] += (quality[i] - phredSub);
             //[3] sequence count
             if (c1 == 'A') {
                 head_seq_pos_count[0][i]++;
@@ -69,7 +69,8 @@ void TGSStats::tgsStatRead(neoReference &ref) {
         //--tail
         for (i = rlen - 1; i >= rlen - size_range; --i) {
             c2 = seq[i];
-            tail_qual_sum[i - (rlen - size_range)] += (quality[i] - 33);
+            tail_qual_sum[i - (rlen - size_range)] += (quality[i] - phredSub);
+
             if (c2 == 'A') {
                 tail_seq_pos_count[0][i - (rlen - size_range)]++;
             } else if (c2 == 'T') {
@@ -239,17 +240,17 @@ void TGSStats::reportHtml(std::ofstream &ofs, std::string filteringType, std::st
 
     for (int i = 0; i < mHalfMinlen; ++i) {
         int64_t head_total_base_per_pos = head_seq_pos_count[0][i]
-                                       + head_seq_pos_count[1][i]
-                                       + head_seq_pos_count[2][i]
-                                       + head_seq_pos_count[3][i];
+                                          + head_seq_pos_count[1][i]
+                                          + head_seq_pos_count[2][i]
+                                          + head_seq_pos_count[3][i];
         head_base_pos_persent[0][i] = head_seq_pos_count[0][i] * (1.0 / head_total_base_per_pos);
         head_base_pos_persent[1][i] = head_seq_pos_count[1][i] * (1.0 / head_total_base_per_pos);
         head_base_pos_persent[2][i] = head_seq_pos_count[2][i] * (1.0 / head_total_base_per_pos);
         head_base_pos_persent[3][i] = head_seq_pos_count[3][i] * (1.0 / head_total_base_per_pos);
         int64_t tail_total_base_per_pos = tail_seq_pos_count[0][i]
-                                       + tail_seq_pos_count[1][i]
-                                       + tail_seq_pos_count[2][i]
-                                       + tail_seq_pos_count[3][i];
+                                          + tail_seq_pos_count[1][i]
+                                          + tail_seq_pos_count[2][i]
+                                          + tail_seq_pos_count[3][i];
         tail_base_pos_persent[0][i] = tail_seq_pos_count[0][i] * (1.0 / tail_total_base_per_pos);
         tail_base_pos_persent[1][i] = tail_seq_pos_count[1][i] * (1.0 / tail_total_base_per_pos);
         tail_base_pos_persent[2][i] = tail_seq_pos_count[2][i] * (1.0 / tail_total_base_per_pos);

@@ -20,6 +20,7 @@ public:
     std::string out_file_name1_;
     std::string out_file_name2_;
     int thread_number_;
+    bool isPhred64_;
 
     bool write_data_;
     int64_t out_block_size_;

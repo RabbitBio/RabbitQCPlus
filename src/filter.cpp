@@ -18,7 +18,7 @@ Filter::Filter(CmdInfo *cmd_info1) {
     3:fail because too many bases < q15
     4:fail because too many N
  */
-int Filter::ReadFiltering(neoReference &ref, bool trim_res) {
+int Filter::ReadFiltering(neoReference &ref, bool trim_res, bool isPhred64) {
     if (!trim_res)return 1;
     int seq_len = ref.lseq;
     int qul_len = ref.lqual;
@@ -30,10 +30,12 @@ int Filter::ReadFiltering(neoReference &ref, bool trim_res) {
     int low_qual_number = 0;// < q15
     char *bases = reinterpret_cast<char *>(ref.base + ref.pseq);
     char *quals = reinterpret_cast<char *>(ref.base + ref.pqual);
-    const char q15 = '0';
 
+    int phredSub = 33;
+    if (isPhred64)phredSub = 64;
     for (int i = 0; i < seq_len; i++) {
-        if (quals[i] < q15) {
+        int q = std::max(0, quals[i] - phredSub);
+        if (q < 15) {
             low_qual_number++;
         }
         if (bases[i] == 'N') {
@@ -56,6 +58,8 @@ bool Filter::TrimSeq(neoReference &ref, int front, int tail) {
     int l = ref.lseq;
     const char *seq = reinterpret_cast<const char *>(ref.base + ref.pseq);
     const char *qualstr = reinterpret_cast<const char *>(ref.base + ref.pqual);
+    int phredSub = 33;
+    if (cmd_info->isPhred64_)phredSub = 64;
     // quality cutting forward
     if (cmd_info->trim_5end_) {
         int s = front;
@@ -76,7 +80,7 @@ bool Filter::TrimSeq(neoReference &ref, int front, int tail) {
                 totalQual -= qualstr[s - 1];
             }
             // add 33 for phred33 transforming
-            if ((double) totalQual / (double) w >= 33 + cmd_info->cut_mean_quality_)
+            if ((double) totalQual / (double) w >= phredSub + cmd_info->cut_mean_quality_)
                 break;
         }
 
@@ -109,7 +113,7 @@ bool Filter::TrimSeq(neoReference &ref, int front, int tail) {
                 totalQual -= qualstr[t + 1];
             }
             // add 33 for phred33 transforming
-            if ((double) totalQual / (double) w >= 33 + cmd_info->cut_mean_quality_)
+            if ((double) totalQual / (double) w >= phredSub + cmd_info->cut_mean_quality_)
                 break;
         }
 

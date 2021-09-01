@@ -130,7 +130,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             std::vector<neoReference> data;
             rabbit::fq::chunkFormat(fqdatachunk, data, true);
             for (auto item:data) {
-                thread_info->TGS_state_->tgsStatRead(item);
+                thread_info->TGS_state_->tgsStatRead(item, cmd_info_->isPhred64_);
             }
             fastq_data_pool->Release(fqdatachunk);
         }
@@ -163,7 +163,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                 if (trim_res && cmd_info_->trim_adapter_ && cmd_info_->detect_adapter1_) {
                     Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);
                 }
-                int filter_res = filter_->ReadFiltering(item, trim_res);
+                int filter_res = filter_->ReadFiltering(item, trim_res, cmd_info_->isPhred64_);
                 if (filter_res == 0) {
                     thread_info->aft_state1_->StateInfo(item);
                     if (cmd_info_->write_data_) {
