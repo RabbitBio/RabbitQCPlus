@@ -707,10 +707,12 @@ void PeQc::ProcessPeFastq() {
         printf("merge done\n");
         printf("\nprint pre state1 info :\n");
         State::PrintStates(pre_state1);
-        printf("\nprint pre state2 info :\n");
-        State::PrintStates(pre_state2);
         printf("\nprint aft state1 info :\n");
         State::PrintStates(aft_state1);
+
+
+        printf("\nprint pre state2 info :\n");
+        State::PrintStates(pre_state2);
         printf("\nprint aft state2 info :\n");
         State::PrintStates(aft_state2);
 

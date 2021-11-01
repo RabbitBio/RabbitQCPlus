@@ -160,6 +160,13 @@ void State::ExtendBuffer(int old_len, int new_len) {
 void State::StateInfo(neoReference &ref) {
     int slen = ref.lseq;
     int qlen = ref.lqual;
+    if (slen != qlen) {
+        std::cout << slen << " " << qlen << std::endl;
+        printf("%s\n", std::string((char *) ref.base + ref.pname, ref.lname).c_str());
+        printf("%s\n", std::string((char *) ref.base + ref.pseq, ref.lseq).c_str());
+        printf("%s\n", std::string((char *) ref.base + ref.pstrand, ref.lstrand).c_str());
+        printf("%s\n", std::string((char *) ref.base + ref.pqual, ref.lqual).c_str());
+    }
     ASSERT(slen == qlen);
     if (slen > malloc_seq_len_) {
 

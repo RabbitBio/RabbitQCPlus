@@ -22,6 +22,9 @@
 - [ ] optimize gzip
 - [ ] optimize memory use when out is zip
 - [x] Phred64
+- [ ] add pac gz in QC
+- [ ] add 3ed function
+- [ ] 
 
 
 
@@ -720,3 +723,52 @@ void PairEndProcessor::statInsertSize(Read *r1, Read *r2, OverlapResult &ov) {
 
 发现了点子东西，最新的fastp里面更换了新的重复率判定方式（新的比旧的判定的重复度更低），并且添加了简单的去重机制。
 
+## 0902
+
+fastp中新的重复度检测模块是
+
+？？
+
+## 0911
+
+怎么上面写了半句就没了。。
+
+今天做pac突然找到了MinIONQC这个软件，他好像不是处理的fastq文件，但是是真对三代测序数据的，可以参考里面的指标丰富一下三代模块。
+
+## 1031
+
+抓住10月份的小已巴！
+
+今天把pugz&pigz整理一下弄到ReRabbitQC里面去。
+
+淦 怎么测的STD好久之前pe过滤之后的reads数目就不对了啊。
+
+```
+wa：
+Filtering result:
+reads passed filter: 23493144
+reads failed due to low quality: 1714548
+reads failed due to too many N: 7130
+reads failed due to too short: 0
+reads with adapter trimmed: 1143406
+bases trimmed due to adapters: 15890010
+
+ac：
+Filtering result:
+reads passed filter: 23490880
+reads failed due to low quality: 1716812
+reads failed due to too many N: 7130
+reads failed due to too short: 0
+reads with adapter trimmed: 1120462
+bases trimmed due to adapters: 15528554
+```
+
+哦哦哦 想起来了
+
+哎 还是怪自己这种记录文件写的不够清晰，很久之前为了方便向量化参考了最近版的fastp中的overlap方法，有些边界情况改了一下，具体的就是AdapterTrimmer::trimByOverlapAnalysis中和OverlapAnalysis::analyze中，这两个地方改一下就和RabbitQC一模一样了。
+
+## 1101
+
+qiao!
+
+原来的rabbitio代码，把1<<13改回20就好了，但是和凯子哥分析了一波，感觉diff！=0 的时候往后找不大行，要往前，就把大师兄前段时间弄的rabbitQC里面的操作整一下，结果一直有bug，精准定位了一下，发现是swapbuff的大小也是SwapBufferSize，往前的话就不够大存不下了，修改方案是加了个新的变量GetNxtBuffSize。

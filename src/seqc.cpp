@@ -241,7 +241,7 @@ void SeQc::WriteSeFastqTask() {
  */
 
 void SeQc::ProcessSeFastq() {
-    auto *fastqPool = new rabbit::fq::FastqDataPool(256, 1 << 22);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(128, 1 << 22);
     //TODO replace this queue
     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(128, 1);
 
@@ -328,6 +328,7 @@ void SeQc::ProcessSeFastq() {
 
     Repoter::ReportHtmlSe(pre_state, aft_state, cmd_info_->in_file_name1_, dupRate * 100.0);
 
+
     delete pre_state;
     delete aft_state;
 
@@ -348,7 +349,7 @@ void SeQc::ProcessSeFastq() {
 }
 
 void SeQc::ProcessSeTGS() {
-    auto *fastqPool = new rabbit::fq::FastqDataPool(256, 1 << 22);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(128, 1 << 22);
     //TODO replace this queue
     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(128, 1);
 

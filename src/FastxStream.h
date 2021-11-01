@@ -300,7 +300,8 @@ namespace rabbit {
     namespace fq {
         class FastqFileReader {
         private:
-            static const uint32 SwapBufferSize = 1 << 20;  // the longest FASTQ sequence todate is no longer than 1Mbp.
+            static const uint32 SwapBufferSize = 1 << 22;
+            static const uint32 GetNxtBuffSize = 1 << 20;  // the longest FASTQ sequence todate is no longer than 1Mbp.
 
         public:
             /**
@@ -465,7 +466,6 @@ namespace rabbit {
 
             FastqDataChunk *readNextPairChunkInterleaved();
 
-            FastqDataPairChunk *readNextPairChunkWithTwoPool();
 
             bool ReadNextPairedChunk_(FastqDataChunk *chunk_);
 
@@ -491,6 +491,7 @@ namespace rabbit {
                     if (n == -1) std::cerr << "Error to read gzip file" << std::endl;
                     return n;
                 } else {
+
                     int64 n = fread(memory_, 1, size_, mFile);
                     return n;
                 }

@@ -861,7 +861,8 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     printf("mx len1 is %d\n", mx_len1);
     printf("mx len2 is %d\n", mx_len2);
 
-    double *tmp_double = new double[std::max(mx_len1, mx_len2)];
+    double *tmp_double = new double[std::max(std::max(mx_len1, mx_len2), 1010)];
+
 
 
     outhtml.append(HTMLHeader());
@@ -876,6 +877,8 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
             insertTableTr("duplication rate:", std::to_string(dup) + "(may be overestimated since this is SE data)"));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
+
+
 
     //Before filtering information
     outhtml.append(insertTableBegin());
@@ -901,6 +904,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertTableTr("%GC", std::to_string(1.0 * state2->GetGcBases() / state2->GetTotBases())));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
+
 
 
     std::string PositionQuality1("PositionQuality1");
@@ -934,6 +938,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 
     //js
     outhtml.append("<script type=\"text/javascript\">\n");
+
 
     // Quality Scores cross all bases
 
@@ -993,6 +998,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         outhtml.append(insertChartOption(PositionQuality2));
     }
 
+
     // Mean Quanlity
 
     {
@@ -1032,6 +1038,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         outhtml.append(insertOptionEnd());
         outhtml.append(insertChartOption(MeanQuality2));
     }
+
 
     //AGCT Content
 
@@ -1117,6 +1124,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         outhtml.append(insertChartOption(PositionContent2));
     }
 
+
     //GC Content
 
     {
@@ -1154,6 +1162,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         outhtml.append(insertOptionEnd());
         outhtml.append(insertChartOption(GCContent2));
     }
+
 
 
     outhtml.append("</script>");
