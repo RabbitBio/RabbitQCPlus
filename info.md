@@ -24,6 +24,7 @@
 - [x] Phred64
 - [ ] add pac gz in QC
 - [ ] add 3ed function
+- [ ] parallel in producer ??
 - [ ] 
 
 
@@ -772,3 +773,6 @@ bases trimmed due to adapters: 15528554
 qiao!
 
 原来的rabbitio代码，把1<<13改回20就好了，但是和凯子哥分析了一波，感觉diff！=0 的时候往后找不大行，要往前，就把大师兄前段时间弄的rabbitQC里面的操作整一下，结果一直有bug，精准定位了一下，发现是swapbuff的大小也是SwapBufferSize，往前的话就不够大存不下了，修改方案是加了个新的变量GetNxtBuffSize。
+
+## 1102
+

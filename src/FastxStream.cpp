@@ -315,26 +315,26 @@ namespace rabbit {
 
         int64 count_line(uchar *contenx, int64 read_bytes) {
             int64 count_n = 0;
-//#ifdef Vec512
-//            int i = 0;
-//            __m512i conx;
-//            __m128i ide;
-//            __m512i enter_con = _mm512_set1_epi64('\n');
-//
-//            for (; i + 8 <= read_bytes; i += 8) {
-//                ide = _mm_maskz_loadu_epi8(0xFF, contenx + i);
-//                conx = _mm512_cvtepi8_epi64(ide);
-//                count_n += _mm_popcnt_u32(_mm512_cmp_epi64_mask(conx, enter_con, _MM_CMPINT_EQ));
-//            }
-//            for (; i < read_bytes; ++i) {
-//                if (contenx[i] == '\n') count_n++;
-//            }
-//#else
+#ifdef Vec512
+            int i = 0;
+            __m512i conx;
+            __m128i ide;
+            __m512i enter_con = _mm512_set1_epi64('\n');
+
+            for (; i + 8 <= read_bytes; i += 8) {
+                ide = _mm_maskz_loadu_epi8(0xFF, contenx + i);
+                conx = _mm512_cvtepi8_epi64(ide);
+                count_n += _mm_popcnt_u32(_mm512_cmp_epi64_mask(conx, enter_con, _MM_CMPINT_EQ));
+            }
+            for (; i < read_bytes; ++i) {
+                if (contenx[i] == '\n') count_n++;
+            }
+#else
             for (int i = 0; i < read_bytes; ++i) {
                 // printf("%c",contenx[i]);
                 if (contenx[i] == '\n') count_n++;
             }
-//#endif
+#endif
 
             return count_n;
         }
@@ -778,12 +778,12 @@ namespace rabbit {
 //                    printf("==========================\n");
 //                }
 
-                left_line_count = count_line(data, chunkEnd);
-                right_line_count = count_line(data_right, chunkEnd_right);
-                difference = left_line_count - right_line_count;
-                if (difference != 0) {
-                    std::cout << "still diff " << difference << std::endl;
-                }
+//                left_line_count = count_line(data, chunkEnd);
+//                right_line_count = count_line(data_right, chunkEnd_right);
+//                difference = left_line_count - right_line_count;
+//                if (difference != 0) {
+//                    std::cout << "still diff " << difference << std::endl;
+//                }
 
 
                 //std::copy(data_right + chunkEnd_right, data_right + cbufSize_right, swapBuffer2.Pointer());
