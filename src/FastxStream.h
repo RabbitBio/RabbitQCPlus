@@ -471,6 +471,11 @@ namespace rabbit {
 
             FastqDataPairChunk *readNextPairChunk();
 
+            FastqDataPairChunk *readNextPairChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q1,
+                                                  moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q2,
+                                                  atomic_int *d1, atomic_int *d2,
+                                                  pair<char *, int> &last1, pair<char *, int> &last2);
+
             FastqDataChunk *readNextPairChunkInterleaved();
 
 

@@ -4,6 +4,7 @@
 
 #include "peqc.h"
 
+
 /**
  * @brief Construct function
  * @param cmd_info1 : cmd information
@@ -52,6 +53,15 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
     if (cmd_info1->add_umi_) {
         umier_ = new Umier(cmd_info1);
     }
+    if (cmd_info1->use_pugz_) {
+        pugzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
+        pugzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
+    }
+    pugzDone1 = 0;
+    pugzDone2 = 0;
+    producerDone = 0;
+    writerDone = 0;
+
 }
 
 PeQc::~PeQc() {
@@ -134,12 +144,29 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
     int n_chunks = 0;
 
     rabbit::fq::FastqDataPairChunk *fqdatachunk;
-    while (true) {
-        fqdatachunk = fqFileReader->readNextPairChunk();
-        if (fqdatachunk == NULL) break;
-        n_chunks++;
-        dq.Push(n_chunks, fqdatachunk);
+
+    if (cmd_info_->use_pugz_) {
+        pair<char *, int> last1;
+        pair<char *, int> last2;
+        last1.first = new char[1 << 20];
+        last1.second = 0;
+        last2.first = new char[1 << 20];
+        last2.second = 0;
+        while (true) {
+            fqdatachunk = fqFileReader->readNextPairChunk(pugzQueue1, pugzQueue2, &pugzDone1, &pugzDone2, last1, last2);
+            if (fqdatachunk == NULL) break;
+            n_chunks++;
+            dq.Push(n_chunks, fqdatachunk);
+        }
+    } else {
+        while (true) {
+            fqdatachunk = fqFileReader->readNextPairChunk();
+            if (fqdatachunk == NULL) break;
+            n_chunks++;
+            dq.Push(n_chunks, fqdatachunk);
+        }
     }
+
 
     dq.SetCompleted();
     delete fqFileReader;
@@ -493,6 +520,23 @@ void PeQc::WriteSeFastqTask2() {
 
 }
 
+void PeQc::PugzTask1() {
+    printf("pugz1 start\n");
+    double t0 = GetTime();
+    main_pugz(cmd_info_->in_file_name1_, cmd_info_->pugz_threads_, pugzQueue1, &producerDone);
+    pugzDone1 = 1;
+    printf("pugz1 done, cost %.6f\n", GetTime() - t0);
+}
+
+void PeQc::PugzTask2() {
+    printf("pugz2 start\n");
+    double t0 = GetTime();
+    main_pugz(cmd_info_->in_file_name2_, cmd_info_->pugz_threads_, pugzQueue2, &producerDone);
+    pugzDone2 = 1;
+    printf("pugz2 done, cost %.6f\n", GetTime() - t0);
+}
+
+
 /**
  * @brief do QC for pair-end data
  */
@@ -650,6 +694,16 @@ void PeQc::ProcessPeFastq() {
                 delete write_thread2;
         }
     } else {
+
+        thread *pugzer1;
+        thread *pugzer2;
+
+        if (cmd_info_->use_pugz_) {
+            pugzer1 = new thread(bind(&::PeQc::PugzTask1, this));
+            pugzer2 = new thread(bind(&::PeQc::PugzTask2, this));
+        }
+
+
         auto *fastqPool = new rabbit::fq::FastqDataPool(256, 1 << 22);
         //TODO replace this queue
         rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(128, 1);
@@ -674,6 +728,12 @@ void PeQc::ProcessPeFastq() {
             threads[t] = new std::thread(
                     std::bind(&PeQc::ConsumerPeFastqTask, this, p_thread_info[t], fastqPool, std::ref(queue1)));
         }
+
+        if (cmd_info_->use_pugz_) {
+            pugzer1->join();
+            pugzer2->join();
+        }
+
         producer.join();
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             threads[t]->join();

@@ -16,12 +16,12 @@
 #include "cmdinfo.h"
 #include "threadinfo.h"
 #include "filter.h"
-#include "concurrentqueue.h"
 #include "state.h"
 #include "adapter.h"
 #include "duplicate.h"
 #include "polyx.h"
 #include "umier.h"
+#include "pugz.h"
 
 
 class PeQc {
@@ -56,17 +56,21 @@ private:
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
 
     void ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
-                             rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
+                                  rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
 
     void ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
 
     void ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
-                             rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
+                                  rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
 
     void WriteSeFastqTask1();
 
     void WriteSeFastqTask2();
+
+    void PugzTask1();
+
+    void PugzTask2();
 
 
 private:
@@ -85,6 +89,14 @@ private:
     gzFile zip_out_stream2;
     bool in_is_zip_;
     bool out_is_zip_;
+
+
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pugzQueue1;
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pugzQueue2;
+    std::atomic_int pugzDone1;
+    std::atomic_int pugzDone2;
+    std::atomic_int producerDone;
+    std::atomic_int writerDone;
 };
 
 

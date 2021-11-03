@@ -21,6 +21,7 @@
 #include "duplicate.h"
 #include "polyx.h"
 #include "umier.h"
+#include "pugz.h"
 
 
 class SeQc {

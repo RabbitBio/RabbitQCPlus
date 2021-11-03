@@ -47,6 +47,7 @@
 #include <sys/time.h>
 #include <atomic>
 #include "readerwriterqueue.h"
+#include "concurrentqueue.h"
 #include "atomicops.h"
 #include "util.h"
 

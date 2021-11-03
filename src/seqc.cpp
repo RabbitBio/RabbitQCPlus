@@ -3,11 +3,6 @@
 //
 #include "seqc.h"
 
-#include "../lib/gzip_decompress.hpp"
-
-#include "prog_util.h"
-
-//#include "pigz.h"
 
 /**
  * @brief Construct function
@@ -269,68 +264,13 @@ void SeQc::WriteSeFastqTask() {
 /**
  * @brief do pugz
  */
-static int
-stat_file(struct file_stream *in, stat_t *stbuf, bool allow_hard_links) {
-    if (tfstat(in->fd, stbuf) != 0) {
-        msg("%" TS ": unable to stat file", in->name);
-        return -1;
-    }
-
-    if (!S_ISREG(stbuf->st_mode) && !in->is_standard_stream) {
-        msg("%" TS " is %s -- skipping", in->name, S_ISDIR(stbuf->st_mode) ? "a directory" : "not a regular file");
-        return -2;
-    }
-
-    if (stbuf->st_nlink > 1 && !allow_hard_links) {
-        msg("%" TS " has multiple hard links -- skipping "
-            "(use -f to process anyway)",
-            in->name);
-        return -2;
-    }
-
-    return 0;
-}
 
 void SeQc::PugzTask() {
-
     printf("pugz start\n");
-
-    double t0 = GetTime();
-    struct file_stream in;
-    stat_t stbuf;
-    int ret;
-    const byte *in_p;
-
-    ret = xopen_for_read(cmd_info_->in_file_name1_.c_str(), true, &in);
-    if (ret != 0) {
-        printf("gg on xopen_for_read\n");
-        exit(0);
-    }
-
-    ret = stat_file(&in, &stbuf, true);
-    if (ret != 0) {
-        printf("gg on stat_file\n");
-        exit(0);
-    }
-    /* TODO: need a streaming-friendly solution */
-    ret = map_file_contents(&in, size_t(stbuf.st_size));
-
-    if (ret != 0) {
-        printf("gg on map_file_contents\n");
-        exit(0);
-    }
-
-    in_p = static_cast<const byte *>(in.mmap_mem);
-    OutputConsumer output{};
-
-    output.P = pugzQueue;
-    output.pDone = &producerDone;
-    ConsumerSync sync{};
-    libdeflate_gzip_decompress(in_p, in.mmap_size, cmd_info_->pugz_threads_, output, &sync);
-
+    auto t0 = GetTime();
+    main_pugz(cmd_info_->in_file_name1_, cmd_info_->pugz_threads_, pugzQueue, &producerDone);
+    printf("pugz cost %.5f\n", GetTime() - t0);
     pugzDone = 1;
-    printf("pugz done, cost %.6f\n", GetTime() - t0);
-//    xclose(&in);
 }
 
 
