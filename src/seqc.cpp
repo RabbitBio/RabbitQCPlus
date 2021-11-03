@@ -3,6 +3,12 @@
 //
 #include "seqc.h"
 
+#include "../lib/gzip_decompress.hpp"
+
+#include "prog_util.h"
+
+//#include "pigz.h"
+
 /**
  * @brief Construct function
  * @param cmd_info1 : cmd information
@@ -38,6 +44,12 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     if (cmd_info1->add_umi_) {
         umier_ = new Umier(cmd_info1);
     }
+    if (cmd_info1->use_pugz_) {
+        pugzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
+    }
+    pugzDone = 0;
+    producerDone = 0;
+    writerDone = 0;
 }
 
 SeQc::~SeQc() {
@@ -69,19 +81,36 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
     rabbit::fq::FastqFileReader *fqFileReader;
     fqFileReader = new rabbit::fq::FastqFileReader(file, fastq_data_pool, "", in_is_zip_);
     int64_t n_chunks = 0;
-    while (true) {
-        rabbit::fq::FastqDataChunk *fqdatachunk;
-        fqdatachunk = fqFileReader->readNextChunk();
-        if (fqdatachunk == NULL) break;
-        n_chunks++;
-        //std::cout << "readed chunk: " << n_chunks << std::endl;
-        dq.Push(n_chunks, fqdatachunk);
+
+    if (cmd_info_->use_pugz_) {
+        pair<char *, int> last_info;
+        last_info.first = new char[1 << 20];
+        last_info.second = 0;
+        while (true) {
+            rabbit::fq::FastqDataChunk *fqdatachunk;
+            fqdatachunk = fqFileReader->readNextChunk(pugzQueue, &pugzDone, last_info);
+            if (fqdatachunk == NULL) break;
+            n_chunks++;
+            //std::cout << "readed chunk: " << n_chunks << std::endl;
+            dq.Push(n_chunks, fqdatachunk);
+        }
+    } else {
+        while (true) {
+            rabbit::fq::FastqDataChunk *fqdatachunk;
+            fqdatachunk = fqFileReader->readNextChunk();
+            if (fqdatachunk == NULL) break;
+            n_chunks++;
+            //std::cout << "readed chunk: " << n_chunks << std::endl;
+            dq.Push(n_chunks, fqdatachunk);
+        }
     }
+
 
     dq.SetCompleted();
     delete fqFileReader;
     std::cout << "file " << file << " has " << n_chunks << " chunks" << std::endl;
     printf("producer cost %.3f\n", GetTime() - t0);
+    producerDone = 1;
 
 }
 //
@@ -236,11 +265,88 @@ void SeQc::WriteSeFastqTask() {
     printf("write cost %.5f\n", GetTime() - t0);
 }
 
+
+/**
+ * @brief do pugz
+ */
+static int
+stat_file(struct file_stream *in, stat_t *stbuf, bool allow_hard_links) {
+    if (tfstat(in->fd, stbuf) != 0) {
+        msg("%" TS ": unable to stat file", in->name);
+        return -1;
+    }
+
+    if (!S_ISREG(stbuf->st_mode) && !in->is_standard_stream) {
+        msg("%" TS " is %s -- skipping", in->name, S_ISDIR(stbuf->st_mode) ? "a directory" : "not a regular file");
+        return -2;
+    }
+
+    if (stbuf->st_nlink > 1 && !allow_hard_links) {
+        msg("%" TS " has multiple hard links -- skipping "
+            "(use -f to process anyway)",
+            in->name);
+        return -2;
+    }
+
+    return 0;
+}
+
+void SeQc::PugzTask() {
+
+    printf("pugz start\n");
+
+    double t0 = GetTime();
+    struct file_stream in;
+    stat_t stbuf;
+    int ret;
+    const byte *in_p;
+
+    ret = xopen_for_read(cmd_info_->in_file_name1_.c_str(), true, &in);
+    if (ret != 0) {
+        printf("gg on xopen_for_read\n");
+        exit(0);
+    }
+
+    ret = stat_file(&in, &stbuf, true);
+    if (ret != 0) {
+        printf("gg on stat_file\n");
+        exit(0);
+    }
+    /* TODO: need a streaming-friendly solution */
+    ret = map_file_contents(&in, size_t(stbuf.st_size));
+
+    if (ret != 0) {
+        printf("gg on map_file_contents\n");
+        exit(0);
+    }
+
+    in_p = static_cast<const byte *>(in.mmap_mem);
+    OutputConsumer output{};
+
+    output.P = pugzQueue;
+    output.pDone = &producerDone;
+    ConsumerSync sync{};
+    libdeflate_gzip_decompress(in_p, in.mmap_size, cmd_info_->pugz_threads_, output, &sync);
+
+    pugzDone = 1;
+    printf("pugz done, cost %.6f\n", GetTime() - t0);
+//    xclose(&in);
+}
+
+
 /**
  * @brief do QC for single-end data
  */
 
 void SeQc::ProcessSeFastq() {
+
+    thread *pugzer;
+
+    if (cmd_info_->use_pugz_) {
+        pugzer = new thread(bind(&::SeQc::PugzTask, this));
+    }
+
+
     auto *fastqPool = new rabbit::fq::FastqDataPool(128, 1 << 22);
     //TODO replace this queue
     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(128, 1);
@@ -261,6 +367,10 @@ void SeQc::ProcessSeFastq() {
         threads[t] = new std::thread(
                 std::bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info[t], fastqPool, std::ref(queue1)));
     }
+    if (cmd_info_->use_pugz_) {
+        pugzer->join();
+    }
+
     producer.join();
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         threads[t]->join();

@@ -90,4 +90,10 @@ CmdInfo::CmdInfo() {
     interleaved_in_ = false;
     interleaved_out_ = false;
 
+    //parallel gz
+    use_pugz_ = false;
+    use_pigz_ = false;
+    pugz_threads_ = 2;
+    pigz_threads_ = 2;
+
 }

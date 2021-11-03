@@ -98,6 +98,13 @@ public:
     bool interleaved_out_;
 
 
+    //parallel gz
+    bool use_pugz_;
+    bool use_pigz_;
+    int pugz_threads_;
+    int pigz_threads_;
+
+
 };
 
 

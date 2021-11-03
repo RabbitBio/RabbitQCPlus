@@ -18,6 +18,7 @@
 #include "utils.h"
 #include <iostream>
 #include <string>
+#include <cstring>
 #include <zlib.h>  //support gziped files, functional but inefficient
 #include "Reference.h"
 
@@ -458,9 +459,15 @@ namespace rabbit {
             // added from fastxIO.h
             FastqDataChunk *readNextChunk();
 
+            FastqDataChunk *readNextChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q,
+                                          atomic_int *d, pair<char *, int> &l);
+
             void readChunk();
 
             bool ReadNextChunk_(FastqDataChunk *chunk_);
+
+            bool ReadNextChunk_(FastqDataChunk *chunk_, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q,
+                                atomic_int *d, pair<char *, int> &l);
 
             FastqDataPairChunk *readNextPairChunk();
 
@@ -498,6 +505,81 @@ namespace rabbit {
             }
 
             /**
+             *
+             * @param buf
+             * @param len
+             * @param Q
+             * @param done
+             * @param L
+             * @param num
+             * @return
+             */
+            int64 Read(byte *buf, uint64 len, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q,
+                       std::atomic_int *done, std::pair<char *, int> &L) {
+                std::pair<char *, int> now;
+                int64 ret;
+                int64 got = 0;
+//                printf("now producer get data from pugz queue\n");
+                if (L.second > 0) {
+                    if (L.second >= len) {
+                        memcpy(buf, L.first, len);
+                        char *tmp = new char[L.second - len];
+                        memcpy(tmp, L.first + len, L.second - len);
+                        memcpy(L.first, tmp, L.second - len);
+                        delete[]tmp;
+                        L.second = L.second - len;
+                        ret = len;
+                        buf += ret;
+                        len -= ret;
+                        got += ret;
+                        return got;
+                    } else {
+                        memcpy(buf, L.first, L.second);
+                        ret = L.second;
+                        L.second = 0;
+                        buf += ret;
+                        len -= ret;
+                        got += ret;
+                    }
+                }
+                bool overWhile = false;
+                while (len > 0) {
+                    while (Q->try_dequeue(now) == 0) {
+                        if (Q->size_approx() == 0 && *done == 1) {
+                            ret = 0;
+                            overWhile = true;
+                            break;
+                        }
+                        usleep(100);
+                    }
+                    if (overWhile) {
+                        ret = 0;
+                        break;
+                    }
+//                    printf("get some data %d\n", now.second);
+                    if (now.second <= len) {
+                        memcpy(buf, now.first, now.second);
+                        delete[] now.first;
+                        ret = now.second;
+                    } else {
+                        int move_last = now.second - len;
+                        memcpy(buf, now.first, len);
+                        memcpy(L.first, now.first + len, move_last);
+                        L.second = move_last;
+                        delete[] now.first;
+                        ret = len;
+                    }
+
+                    buf += ret;
+                    len -= ret;
+                    got += ret;
+                }
+
+                return got;
+            }
+
+
+            /**
              * @brief read data from second source file in pair-end data
              * @param memory_ pointer to store read file
              * @param size_ read size (byte)
@@ -512,6 +594,81 @@ namespace rabbit {
                     return n;
                 }
             }
+
+
+            /**
+            *
+            * @param buf
+            * @param len
+            * @param Q
+            * @param done
+            * @param L
+            * @param num
+            * @return
+            */
+            int64 Read2(byte *buf, uint64 len, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q,
+                        std::atomic_int *done, std::pair<char *, int> &L) {
+                std::pair<char *, int> now;
+                int64 ret;
+                int64 got = 0;
+                if (L.second > 0) {
+                    if (L.second >= len) {
+                        memcpy(buf, L.first, len);
+                        char *tmp = new char[L.second - len];
+                        memcpy(tmp, L.first + len, L.second - len);
+                        memcpy(L.first, tmp, L.second - len);
+                        delete[]tmp;
+                        L.second = L.second - len;
+                        ret = len;
+                        buf += ret;
+                        len -= ret;
+                        got += ret;
+                        return got;
+                    } else {
+                        memcpy(buf, L.first, L.second);
+                        ret = L.second;
+                        L.second = 0;
+                        buf += ret;
+                        len -= ret;
+                        got += ret;
+                    }
+                }
+                bool overWhile = false;
+                while (len > 0) {
+                    while (Q->try_dequeue(now) == 0) {
+                        if (Q->size_approx() == 0 && *done == 1) {
+                            ret = 0;
+                            overWhile = true;
+                            break;
+                        }
+                        usleep(100);
+                    }
+                    if (overWhile) {
+                        ret = 0;
+                        break;
+                    }
+//                    printf("get some data %d\n", now.second);
+                    if (now.second <= len) {
+                        memcpy(buf, now.first, now.second);
+                        delete[] now.first;
+                        ret = now.second;
+                    } else {
+                        int move_last = now.second - len;
+                        memcpy(buf, now.first, len);
+                        memcpy(L.first, now.first + len, move_last);
+                        L.second = move_last;
+                        delete[] now.first;
+                        ret = len;
+                    }
+
+                    buf += ret;
+                    len -= ret;
+                    got += ret;
+                }
+
+                return got;
+            }
+
 
         private:
             core::Buffer swapBuffer;

@@ -22,6 +22,7 @@
 #include "polyx.h"
 #include "umier.h"
 
+
 class SeQc {
 public:
     SeQc(CmdInfo *cmd_info);
@@ -33,6 +34,8 @@ public:
     void ProcessSeFastq();
 
     void ProcessSeTGS();
+
+    void PugzTask();
 
 
 private:
@@ -65,6 +68,11 @@ private:
     gzFile zip_out_stream;
     bool in_is_zip_;
     bool out_is_zip_;
+
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pugzQueue;
+    std::atomic_int pugzDone;
+    std::atomic_int producerDone;
+    std::atomic_int writerDone;
 
 
 };

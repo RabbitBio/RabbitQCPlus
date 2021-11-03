@@ -5,10 +5,6 @@
 #include "cmdinfo.h"
 #include "Globals.h"
 
-void error_exit(string log_info) {
-    cout << log_info << endl;
-    exit(0);
-}
 
 int main(int argc, char **argv) {
 
@@ -76,6 +72,13 @@ int main(int argc, char **argv) {
     //interleaved
     app.add_flag("--interleavedIn", cmd_info.interleaved_in_, "use interleaved input (only for pe data)");
     app.add_flag("--interleavedOut", cmd_info.interleaved_out_, "use interleaved output (only for pe data)");
+
+
+    //parallel gz
+    app.add_flag("--usePugz", cmd_info.use_pugz_, "use pugz to decompress");
+    app.add_flag("--usePigz", cmd_info.use_pigz_, "use pigz to compress");
+    app.add_option("--pugzThread", cmd_info.pugz_threads_, "pugz thread number");
+    app.add_option("--pigzThread", cmd_info.pigz_threads_, "pigz thread number");
 
 
     CLI11_PARSE(app, argc, argv);
@@ -160,6 +163,19 @@ int main(int argc, char **argv) {
 
     if (cmd_info.isPhred64_) {
         printf("now use phred64 input\n");
+    }
+    if (ends_with(cmd_info.in_file_name1_, ".gz") == 0) {
+        cmd_info.use_pugz_ = false;
+    }
+    if (ends_with(cmd_info.out_file_name1_, ".gz") == 0) {
+        cmd_info.use_pigz_ = false;
+    }
+
+    if (cmd_info.use_pugz_) {
+        printf("now use pugz, pugz thread is %d\n", cmd_info.pugz_threads_);
+    }
+    if (cmd_info.use_pigz_) {
+        printf("now use pigz, pigz thread is %d\n", cmd_info.pigz_threads_);
     }
     printf("now use %d thread\n", cmd_info.thread_number_);
 
