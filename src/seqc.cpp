@@ -19,13 +19,22 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != std::string::npos;
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != std::string::npos;
     if (cmd_info1->write_data_) {
-        out_queue_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>
-                (out_block_nums + 1000);
+        out_queue_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>(out_block_nums + 1000);
         if (out_is_zip_) {
-            printf("open gzip stream %s\n", cmd_info1->out_file_name1_.c_str());
-            zip_out_stream = gzopen(cmd_info1->out_file_name1_.c_str(), "w");
-            gzsetparams(zip_out_stream, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
-            gzbuffer(zip_out_stream, 1024 * 1024);
+            if (cmd_info1->use_pigz_) {
+                string out_name1 = cmd_info1->out_file_name1_;
+                out_name1 = out_name1.substr(0, out_name1.find(".gz"));
+                out_stream_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
+                out_stream_.close();
+//                out_stream_ = std::fstream(out_name1 + "_tmp", std::ios::out | std::ios::binary);
+
+                printf("now use pigz to compress output data\n");
+            } else {
+                printf("open gzip stream %s\n", cmd_info1->out_file_name1_.c_str());
+                zip_out_stream = gzopen(cmd_info1->out_file_name1_.c_str(), "w");
+                gzsetparams(zip_out_stream, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
+                gzbuffer(zip_out_stream, 1024 * 1024);
+            }
         } else {
             printf("open stream %s\n", cmd_info1->out_file_name1_.c_str());
             out_stream_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
@@ -41,6 +50,11 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     }
     if (cmd_info1->use_pugz_) {
         pugzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
+    }
+    if (cmd_info1->use_pigz_) {
+        pigzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
+        pigzLast.first = new char[1 << 24];
+        pigzLast.second = 0;
     }
     pugzDone = 0;
     producerDone = 0;
@@ -236,23 +250,38 @@ void SeQc::WriteSeFastqTask() {
             out_queue_->try_dequeue(now);
 //            printf("write thread working, write %d %d\n", now.second, cnt++);
             if (out_is_zip_) {
-                int written = gzwrite(zip_out_stream, now.first, now.second);
-                if (written != now.second) {
-                    printf("GG");
-                    exit(0);
-                }
+                if (cmd_info_->use_pigz_) {
+                    while (pigzQueue->try_enqueue(now) == 0) {
+                        printf("waiting to push a chunk to pigz queue\n");
+                        usleep(100);
+                    }
+//                    out_stream_.write(now.first, now.second);
+//                    printf("writer data to pigzQueue and disk\n");
 
+                } else {
+                    int written = gzwrite(zip_out_stream, now.first, now.second);
+                    if (written != now.second) {
+                        printf("GG");
+                        exit(0);
+                    }
+                    delete[] now.first;
+                }
             } else {
                 out_stream_.write(now.first, now.second);
+                delete[] now.first;
             }
-            delete[] now.first;
         }
     }
     if (out_is_zip_) {
-        if (zip_out_stream) {
-            gzflush(zip_out_stream, Z_FINISH);
-            gzclose(zip_out_stream);
-            zip_out_stream = NULL;
+        if (cmd_info_->use_pigz_) {
+//            out_stream_.close();
+
+        } else {
+            if (zip_out_stream) {
+                gzflush(zip_out_stream, Z_FINISH);
+                gzclose(zip_out_stream);
+                zip_out_stream = NULL;
+            }
         }
     } else {
         out_stream_.close();
@@ -271,6 +300,52 @@ void SeQc::PugzTask() {
     main_pugz(cmd_info_->in_file_name1_, cmd_info_->pugz_threads_, pugzQueue, &producerDone);
     printf("pugz cost %.5f\n", GetTime() - t0);
     pugzDone = 1;
+}
+
+
+void SeQc::PigzTask() {
+    /*
+ argc 9
+argv ./pigz
+argv -p
+argv 16
+argv -k
+argv -4
+argv -f
+argv -b
+argv -4096
+argv p.fq
+ */
+    int cnt = 9;
+
+    char **infos = new char *[9];
+    infos[0] = "./pigz";
+    infos[1] = "-p";
+    int th_num = cmd_info_->pigz_threads_;
+//    printf("th num is %d\n", th_num);
+    string th_num_s = to_string(th_num);
+//    printf("th num s is %s\n", th_num_s.c_str());
+//    printf("th num s len is %d\n", th_num_s.length());
+
+    infos[2] = new char[th_num_s.length() + 1];
+    memcpy(infos[2], th_num_s.c_str(), th_num_s.length());
+    infos[2][th_num_s.length()] = '\0';
+    infos[3] = "-k";
+    infos[4] = "-2";
+    infos[5] = "-f";
+    infos[6] = "-b";
+    infos[7] = "4096";
+    string out_name1 = cmd_info_->out_file_name1_;
+    string out_file = out_name1.substr(0, out_name1.find(".gz"));
+//    printf("th out_file is %s\n", out_file.c_str());
+//    printf("th out_file len is %d\n", out_file.length());
+    infos[8] = new char[out_file.length() + 1];
+    memcpy(infos[8], out_file.c_str(), out_file.length());
+    infos[8][out_file.length()] = '\0';
+
+    main_pigz(cnt, infos, pigzQueue, &writerDone, pigzLast);
+
+    printf("pigz done\n");
 }
 
 
@@ -299,6 +374,11 @@ void SeQc::ProcessSeFastq() {
     if (cmd_info_->write_data_) {
         write_thread = new std::thread(std::bind(&SeQc::WriteSeFastqTask, this));
     }
+    thread *pigzer;
+    if (cmd_info_->use_pigz_) {
+        pigzer = new thread(bind(&SeQc::PigzTask, this));
+    }
+
     //TODO bind ?
     std::thread producer(
             std::bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, std::ref(queue1)));
@@ -317,6 +397,10 @@ void SeQc::ProcessSeFastq() {
     }
     if (cmd_info_->write_data_) {
         write_thread->join();
+        writerDone = 1;
+    }
+    if (cmd_info_->use_pigz_) {
+        pigzer->join();
     }
 
     printf("all thrad done\n");

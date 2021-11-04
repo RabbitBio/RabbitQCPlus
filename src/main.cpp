@@ -82,6 +82,20 @@ int main(int argc, char **argv) {
 
 
     CLI11_PARSE(app, argc, argv);
+
+
+    if (ends_with(cmd_info.in_file_name1_, ".gz") == 0) {
+        cmd_info.use_pugz_ = false;
+    }
+    if (ends_with(cmd_info.out_file_name1_, ".gz") == 0 || cmd_info.pigz_threads_ == 1) {
+        cmd_info.use_pigz_ = false;
+    }
+//    if (cmd_info.use_pigz_) {
+//        string out_name1 = cmd_info.out_file_name1_;
+//        cmd_info.out_file_name1_ = out_name1.substr(0, out_name1.find(".gz"));
+//        string out_name2 = cmd_info.out_file_name2_;
+//        cmd_info.out_file_name2_ = out_name2.substr(0, out_name2.find(".gz"));
+//    }
     if (cmd_info.isStdin_) {
         cmd_info.in_file_name1_ = "/dev/stdin";
     }
@@ -164,12 +178,7 @@ int main(int argc, char **argv) {
     if (cmd_info.isPhred64_) {
         printf("now use phred64 input\n");
     }
-    if (ends_with(cmd_info.in_file_name1_, ".gz") == 0) {
-        cmd_info.use_pugz_ = false;
-    }
-    if (ends_with(cmd_info.out_file_name1_, ".gz") == 0) {
-        cmd_info.use_pigz_ = false;
-    }
+
 
     if (cmd_info.use_pugz_) {
         printf("now use pugz, pugz thread is %d\n", cmd_info.pugz_threads_);

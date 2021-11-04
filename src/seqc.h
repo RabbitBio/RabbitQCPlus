@@ -22,6 +22,7 @@
 #include "polyx.h"
 #include "umier.h"
 #include "pugz.h"
+#include "pigz.h"
 
 
 class SeQc {
@@ -55,6 +56,8 @@ private:
 
     void WriteSeFastqTask();
 
+    void PigzTask();
+
 private:
     CmdInfo *cmd_info_;
 
@@ -72,6 +75,10 @@ private:
 
     moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pugzQueue;
     std::atomic_int pugzDone;
+
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pigzQueue;
+    pair<char *, int> pigzLast;
+
     std::atomic_int producerDone;
     std::atomic_int writerDone;
 

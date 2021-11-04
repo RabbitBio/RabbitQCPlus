@@ -25,6 +25,7 @@
 - [ ] add pac gz in QC
 - [ ] add 3ed function
 - [ ] parallel in producer ??
+- [ ] optimize write part --- reduce approx
 - [ ] 
 
 
@@ -785,4 +786,8 @@ qiao!
 今天加一下pxgz。
 
 首先pugz吧，挺好弄的。
+
+## 1104
+
+今天加一下pigz。淦，delete位置不对。。。找了半天。只加了se的。
 
