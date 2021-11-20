@@ -1,5 +1,5 @@
-//
 // Created by ylf9811 on 2021/7/6.
+//
 //
 
 #include "peqc.h"
@@ -22,20 +22,38 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
 
     if (cmd_info1->write_data_) {
         out_queue1_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>
-                (out_block_nums + 1000);
+            (out_block_nums + 1000);
         if (cmd_info_->interleaved_out_ == 0)
             out_queue2_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>
-                    (out_block_nums + 1000);
+                (out_block_nums + 1000);
 
         if (out_is_zip_) {
-            printf("open gzip stream1 %s\n", cmd_info1->out_file_name1_.c_str());
-            printf("open gzip stream2 %s\n", cmd_info1->out_file_name2_.c_str());
-            zip_out_stream1 = gzopen(cmd_info1->out_file_name1_.c_str(), "w");
-            gzsetparams(zip_out_stream1, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
-            gzbuffer(zip_out_stream1, 1024 * 1024);
-            zip_out_stream2 = gzopen(cmd_info1->out_file_name2_.c_str(), "w");
-            gzsetparams(zip_out_stream2, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
-            gzbuffer(zip_out_stream2, 1024 * 1024);
+            if(cmd_info1->use_pigz_){
+                string out_name1 = cmd_info1->out_file_name1_;
+                out_name1 = out_name1.substr(0, out_name1.find(".gz"));
+                out_stream1_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
+                out_stream1_.close();
+ 
+
+                string out_name2 = cmd_info1->out_file_name2_;
+                out_name2 = out_name2.substr(0, out_name2.find(".gz"));
+                out_stream2_ = std::fstream(out_name2, std::ios::out | std::ios::binary);
+                out_stream2_.close();
+
+
+                printf("now use pigz to compress output data\n");
+
+            }else{
+                printf("open gzip stream1 %s\n", cmd_info1->out_file_name1_.c_str());
+                printf("open gzip stream2 %s\n", cmd_info1->out_file_name2_.c_str());
+                zip_out_stream1 = gzopen(cmd_info1->out_file_name1_.c_str(), "w");
+                gzsetparams(zip_out_stream1, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
+                gzbuffer(zip_out_stream1, 1024 * 1024);
+                zip_out_stream2 = gzopen(cmd_info1->out_file_name2_.c_str(), "w");
+                gzsetparams(zip_out_stream2, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
+                gzbuffer(zip_out_stream2, 1024 * 1024);
+
+            }
         } else {
             printf("open stream1 %s\n", cmd_info1->out_file_name1_.c_str());
             if (cmd_info_->interleaved_out_ == 0)
@@ -57,10 +75,22 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
         pugzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
         pugzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
     }
+    if (cmd_info1->use_pigz_) {
+        pigzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
+        pigzLast1.first = new char[1 << 24];
+        pigzLast1.second = 0;
+        pigzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
+        pigzLast2.first = new char[1 << 24];
+        pigzLast2.second = 0;
+
+
+    }
+
     pugzDone1 = 0;
     pugzDone2 = 0;
     producerDone = 0;
-    writerDone = 0;
+    writerDone1 = 0;
+    writerDone2 = 0;
 
 }
 
@@ -91,9 +121,9 @@ PeQc::~PeQc() {
 
 std::string PeQc::Read2String(neoReference &ref) {
     return std::string((char *) ref.base + ref.pname, ref.lname) + "\n" +
-           std::string((char *) ref.base + ref.pseq, ref.lseq) + "\n" +
-           std::string((char *) ref.base + ref.pstrand, ref.lstrand) + "\n" +
-           std::string((char *) ref.base + ref.pqual, ref.lqual) + "\n";
+        std::string((char *) ref.base + ref.pseq, ref.lseq) + "\n" +
+        std::string((char *) ref.base + ref.pstrand, ref.lstrand) + "\n" +
+        std::string((char *) ref.base + ref.pqual, ref.lqual) + "\n";
 }
 
 void PeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
@@ -112,7 +142,7 @@ void PeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
 }
 
 void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
-                                    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
     double t0 = GetTime();
 
     rabbit::fq::FastqFileReader *fqFileReader;
@@ -136,7 +166,7 @@ void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool 
 
 
 void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
-                               rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
     double t0 = GetTime();
 
     rabbit::fq::FastqFileReader *fqFileReader;
@@ -181,17 +211,25 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
  * @param dq : data queue
  */
 void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
-                               rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
     rabbit::int64 id = 0;
+    int cnt=0;
     rabbit::fq::FastqDataPairChunk *fqdatachunk;
     while (dq.Pop(id, fqdatachunk)) {
         std::vector<neoReference> data1, data2;
         std::vector<neoReference> pass_data1, pass_data2;
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->left_part), data1, true);
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->right_part), data2, true);
-        ASSERT(data1.size() == data2.size());
+        cnt++;
+        if(data1.size() != data2.size()){
+            printf("cnt %d\n",cnt);
+            printf("gg %d %d\n",data1.size(),data2.size());
+        }
+
+//        ASSERT(data1.size() == data2.size());
         int out_len1 = 0, out_len2 = 0;
-        for (int i = 0; i < data1.size(); i++) {
+        int b_size=min(data1.size(),data2.size());
+        for (int i = 0; i < b_size; i++) {
             auto item1 = data1[i];
             auto item2 = data2[i];
             thread_info->pre_state1_->StateInfo(item1);
@@ -219,7 +257,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             OverlapRes overlap_res;
             if (trim_res1 && trim_res2 && cmd_info_->analyze_overlap_) {
                 overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
-                                                      cmd_info_->overlap_require_);
+                        cmd_info_->overlap_require_);
                 int now_size = cmd_info_->max_insert_size_;
                 if (overlap_res.overlapped) {
                     if (overlap_res.offset > 0)
@@ -301,7 +339,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 }
 
 void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
-                                    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;
     neoReference item1, item2;
@@ -318,9 +356,10 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
             item2 = data[i + 1];
             name1 = string(reinterpret_cast<const char *>(item1.base + item1.pname), item1.lname);
             name2 = string(reinterpret_cast<const char *>(item2.base + item2.pname), item2.lname);
+            /*
             if (name1 != name2) {
                 if (i + 2 >= data.size())break;
-//                printf("1 : %s\n%s\n", name1.c_str(), name2.c_str());
+                //                printf("1 : %s\n%s\n", name1.c_str(), name2.c_str());
                 i++;
                 item1 = data[i];
                 item2 = data[i + 1];
@@ -332,7 +371,7 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                     exit(0);
                 }
             }
-
+            */
             thread_info->pre_state1_->StateInfo(item1);
             thread_info->pre_state2_->StateInfo(item2);
             if (cmd_info_->state_duplicate_) {
@@ -358,7 +397,7 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
             OverlapRes overlap_res;
             if (trim_res1 && trim_res2 && cmd_info_->analyze_overlap_) {
                 overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
-                                                      cmd_info_->overlap_require_);
+                        cmd_info_->overlap_require_);
                 int now_size = cmd_info_->max_insert_size_;
                 if (overlap_res.overlapped) {
                     if (overlap_res.offset > 0)
@@ -451,30 +490,43 @@ void PeQc::WriteSeFastqTask1() {
         std::pair<char *, int> now;
         while (out_queue1_->size_approx()) {
             out_queue1_->try_dequeue(now);
-//            printf("write thread working, write %d %d\n", now.second, cnt++);
+            //printf("ready1 to push a data, size is %d\n",now.second);
             if (out_is_zip_) {
-                int written = gzwrite(zip_out_stream1, now.first, now.second);
-                if (written != now.second) {
-                    printf("GG");
-                    exit(0);
+                if(cmd_info_->use_pigz_){
+                    while(pigzQueue1->try_enqueue(now)==0){
+                        printf("waiting to push a chunk to pugz1 queue\n");
+                        usleep(100);
+                    }
+                    //printf("write1 put a data to pigzQeueu1, size %d\n",now.second);
+                }else{
+                    int written = gzwrite(zip_out_stream1, now.first, now.second);
+                    if (written != now.second) {
+                        printf("GG");
+                        exit(0);
+                    }
+                    delete[] now.first;
                 }
-
             } else {
                 out_stream1_.write(now.first, now.second);
+                delete[] now.first;
             }
-            delete[] now.first;
         }
     }
     if (out_is_zip_) {
-        if (zip_out_stream1) {
-            gzflush(zip_out_stream1, Z_FINISH);
-            gzclose(zip_out_stream1);
-            zip_out_stream1 = NULL;
+        if(cmd_info_->use_pigz_){
+
+        }else{
+            if (zip_out_stream1) {
+                gzflush(zip_out_stream1, Z_FINISH);
+                gzclose(zip_out_stream1);
+                zip_out_stream1 = NULL;
+            }
         }
+
     } else {
         out_stream1_.close();
     }
-    printf("write cost %.5f\n", GetTime() - t0);
+    printf("write1 cost %.5f\n", GetTime() - t0);
 }
 
 /**
@@ -493,30 +545,47 @@ void PeQc::WriteSeFastqTask2() {
         std::pair<char *, int> now;
         while (out_queue2_->size_approx()) {
             out_queue2_->try_dequeue(now);
-//            printf("write thread working, write %d %d\n", now.second, cnt++);
+            //printf("ready2 to push a data, size is %d\n",now.second);
             if (out_is_zip_) {
-                int written = gzwrite(zip_out_stream2, now.first, now.second);
-                if (written != now.second) {
-                    printf("GG");
-                    exit(0);
-                }
+                if(cmd_info_->use_pigz_){
+                    while(pigzQueue2->try_enqueue(now)==0){
+                        printf("wait to push a chunk to pigz2 queue\n");
+                        usleep(100);
+                    }
+                    //printf("write2 put a data to pigzQeueu2, size is %d\n",now.second);
+                }else{
+                    int written = gzwrite(zip_out_stream2, now.first, now.second);
+                    if (written != now.second) {
+                        printf("GG");
+                        exit(0);
+                    }
 
+                    delete[] now.first;
+
+                }
             } else {
                 out_stream2_.write(now.first, now.second);
+
+                delete[] now.first;
             }
-            delete[] now.first;
         }
     }
+
     if (out_is_zip_) {
-        if (zip_out_stream2) {
-            gzflush(zip_out_stream2, Z_FINISH);
-            gzclose(zip_out_stream2);
-            zip_out_stream2 = NULL;
+        if(cmd_info_->use_pigz_){
+
+        }else{
+            if (zip_out_stream2) {
+                gzflush(zip_out_stream2, Z_FINISH);
+                gzclose(zip_out_stream2);
+                zip_out_stream2 = NULL;
+            }
         }
+
     } else {
         out_stream2_.close();
     }
-    printf("write cost %.5f\n", GetTime() - t0);
+    printf("write2 cost %.5f\n", GetTime() - t0);
 
 }
 
@@ -537,6 +606,70 @@ void PeQc::PugzTask2() {
 }
 
 
+void PeQc::PigzTask1() {
+    int cnt = 9;
+
+    char **infos = new char *[9];
+    infos[0] = "./pigz";
+    infos[1] = "-p";
+    int th_num = cmd_info_->pigz_threads_;
+    //    printf("th num is %d\n", th_num);
+    string th_num_s = to_string(th_num);
+    //    printf("th num s is %s\n", th_num_s.c_str());
+    //    printf("th num s len is %d\n", th_num_s.length());
+
+    infos[2] = new char[th_num_s.length() + 1];
+    memcpy(infos[2], th_num_s.c_str(), th_num_s.length());
+    infos[2][th_num_s.length()] = '\0';
+    infos[3] = "-k";
+    infos[4] = "-2";
+    infos[5] = "-f";
+    infos[6] = "-b";
+    infos[7] = "4096";
+    string out_name1 = cmd_info_->out_file_name1_;
+    string out_file = out_name1.substr(0, out_name1.find(".gz"));
+    //    printf("th out_file is %s\n", out_file.c_str());
+    //    printf("th out_file len is %d\n", out_file.length());
+    infos[8] = new char[out_file.length() + 1];
+    memcpy(infos[8], out_file.c_str(), out_file.length());
+    infos[8][out_file.length()] = '\0';
+    main_pigz(cnt, infos, pigzQueue1, &writerDone1, pigzLast1);
+
+    printf("pigz1 done\n");
+}
+
+void PeQc::PigzTask2() {
+
+    int cnt = 9;
+
+    char **infos = new char *[9];
+    infos[0] = "./pigz";
+    infos[1] = "-p";
+    int th_num = cmd_info_->pigz_threads_;
+    //    printf("th num is %d\n", th_num);
+    string th_num_s = to_string(th_num);
+    //    printf("th num s is %s\n", th_num_s.c_str());
+    //    printf("th num s len is %d\n", th_num_s.length());
+
+    infos[2] = new char[th_num_s.length() + 1];
+    memcpy(infos[2], th_num_s.c_str(), th_num_s.length());
+    infos[2][th_num_s.length()] = '\0';
+    infos[3] = "-k";
+    infos[4] = "-2";
+    infos[5] = "-f";
+    infos[6] = "-b";
+    infos[7] = "4096";
+    string out_name2 = cmd_info_->out_file_name2_;
+    string out_file = out_name2.substr(0, out_name2.find(".gz"));
+    //    printf("th out_file is %s\n", out_file.c_str());
+    //    printf("th out_file len is %d\n", out_file.length());
+    infos[8] = new char[out_file.length() + 1];
+    memcpy(infos[8], out_file.c_str(), out_file.length());
+    infos[8][out_file.length()] = '\0';
+    main_pigz(cnt, infos, pigzQueue2, &writerDone2, pigzLast2);
+
+    printf("pigz2 done\n");
+}
 /**
  * @brief do QC for pair-end data
  */
@@ -560,7 +693,7 @@ void PeQc::ProcessPeFastq() {
         //TODO bind ?
         std::thread producer(
                 std::bind(&PeQc::ProducerPeInterFastqTask, this, cmd_info_->in_file_name1_, fastqPool,
-                          std::ref(queue1)));
+                    std::ref(queue1)));
         auto **threads = new std::thread *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             threads[t] = new std::thread(
@@ -669,7 +802,7 @@ void PeQc::ProcessPeFastq() {
         }
 
         Repoter::ReportHtmlPe(pre_state1, pre_state2, aft_state1, aft_state2, cmd_info_->in_file_name1_,
-                              cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
+                cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
 
         printf("report done\n");
 
@@ -718,11 +851,17 @@ void PeQc::ProcessPeFastq() {
             if (cmd_info_->interleaved_out_ == 0)
                 write_thread2 = new std::thread(std::bind(&PeQc::WriteSeFastqTask2, this));
         }
-
+        thread *pigzer1;
+        thread *pigzer2;
+        if(cmd_info_->use_pigz_){
+            pigzer1 = new thread(bind(&PeQc::PigzTask1,this));
+            if(cmd_info_->interleaved_out_==0)
+                pigzer2 = new thread(bind(&PeQc::PigzTask2,this));
+        }
         //TODO bind ?
         std::thread producer(
                 std::bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_,
-                          fastqPool, std::ref(queue1)));
+                    fastqPool, std::ref(queue1)));
         auto **threads = new std::thread *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             threads[t] = new std::thread(
@@ -740,8 +879,18 @@ void PeQc::ProcessPeFastq() {
         }
         if (cmd_info_->write_data_) {
             write_thread1->join();
-            if (cmd_info_->interleaved_out_ == 0)
+            writerDone1=1;
+            if (cmd_info_->interleaved_out_ == 0){
+
                 write_thread2->join();
+                writerDone2=1;
+            }
+        }
+
+        if(cmd_info_->use_pigz_){
+            pigzer1->join();
+            if(cmd_info_->interleaved_out_==0)
+                pigzer2->join();
         }
 
         printf("all thrad done\n");
@@ -839,7 +988,7 @@ void PeQc::ProcessPeFastq() {
         }
 
         Repoter::ReportHtmlPe(pre_state1, pre_state2, aft_state1, aft_state2, cmd_info_->in_file_name1_,
-                              cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
+                cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
 
         printf("report done\n");
 

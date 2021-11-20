@@ -22,7 +22,7 @@
 #include "polyx.h"
 #include "umier.h"
 #include "pugz.h"
-
+#include "pigz.h"
 
 class PeQc {
 public:
@@ -72,6 +72,10 @@ private:
 
     void PugzTask2();
 
+	void PigzTask1();
+
+	void PigzTask2();
+
 
 private:
     CmdInfo *cmd_info_;
@@ -95,8 +99,18 @@ private:
     moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pugzQueue2;
     std::atomic_int pugzDone1;
     std::atomic_int pugzDone2;
-    std::atomic_int producerDone;
-    std::atomic_int writerDone;
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pigzQueue1;
+    pair<char *, int> pigzLast1;
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pigzQueue2;
+    pair<char *, int> pigzLast2;
+
+
+	std::atomic_int producerDone;
+
+ 	std::atomic_int writerDone1;
+
+  	std::atomic_int writerDone2;
+
 };
 
 

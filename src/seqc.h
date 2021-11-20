@@ -37,7 +37,6 @@ public:
 
     void ProcessSeTGS();
 
-    void PugzTask();
 
 
 private:
@@ -56,7 +55,9 @@ private:
 
     void WriteSeFastqTask();
 
-    void PigzTask();
+    void PugzTask();
+    
+	void PigzTask();
 
 private:
     CmdInfo *cmd_info_;

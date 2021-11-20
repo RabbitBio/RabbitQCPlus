@@ -1015,9 +1015,12 @@ local size_t
 readFromQueue(moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, atomic_int *wDone,
               pair<char *, int> &L, unsigned char *buf, size_t len) {
 
+    //std::cout<<"read now pid is "<<std::this_thread::get_id()<<endl;
+
+//    printf("read now pid is %d\n",std::this_thread::get_id());
     ssize_t ret;
     size_t got;
-
+    //printf("now pigz get data from %p\n",Q);
     got = 0;
     pair<char *, int> now;
 
@@ -4755,6 +4758,7 @@ int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, 
     for (int i = 0; i < argc; i++) {
         printf("argv %s\n", argv[i]);
     }
+    //std::cout<<"now pid is "<<std::this_thread::get_id()<<endl;
     int n;                          // general index
     int nop;                        // index before which "-" means stdin
     int done;                       // number of named files processed
