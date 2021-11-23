@@ -797,3 +797,12 @@ pigz pe的时候出了很多问题，因为两个thread的全局变量都是共�
 然后华大那边说测新数据的时候有问题，数据发过来看了看，是结尾的地方有问题，虽然r1 r2的reads数目一样，但是如果大小差的很多，就可能倒数第二次read的时候，r1一下子全部读完了，但是r2还没有，就会导致直接退出，统计的reads数目就会少一点点。
 
 解决方案就是分别开了两个eof，根据自己的eof判断要做什么。
+
+## 1121
+now still attemp to add pigz
+let's define tnum = pigz thread numbers, for every global variable, we new tnum times, and define tid = {0,1,2...}, when call a function A(), we now call A(tid), when use a globa variable x, now use x[tid]. The only problem is when create pthread, we should padd tid to it.
+It seems that this way it's ok, try try try.
+
+##1123
+好啊，终于把pigz pe数据弄好了，但是可能有问题，因为只是把全局变量开了副本，但是两个线程似乎还是共用一套thread的，就比如joinall好像是等待所有的两个线程以及子线程完成才行。
+//TODO replace all threads
