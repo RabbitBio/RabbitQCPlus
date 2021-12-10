@@ -156,11 +156,11 @@ bool TGSStats::isLongRead() {
 int TGSStats::base2num(std::string base) {
     if (base == "A")
         return 0;
-    else if (base == "C")
-        return 1;
-    else if (base == "G")
-        return 2;
     else if (base == "T")
+        return 1;
+    else if (base == "C")
+        return 2;
+    else if (base == "G")
         return 3;
 
     return -1;//fix warning (no ACGT)

@@ -483,6 +483,13 @@ void SeQc::ProcessSeFastq() {
 }
 
 void SeQc::ProcessSeTGS() {
+
+    thread *pugzer;
+    if(cmd_info_->use_pugz_){
+        pugzer=new thread(bind(&::SeQc::PugzTask, this));
+    }
+
+
     auto *fastqPool = new rabbit::fq::FastqDataPool(128, 1 << 22);
     //TODO replace this queue
     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(128, 1);
@@ -499,6 +506,11 @@ void SeQc::ProcessSeTGS() {
         threads[t] = new std::thread(
                 std::bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info[t], fastqPool, std::ref(queue1)));
     }
+
+    if (cmd_info_->use_pugz_){
+        pugzer->join();
+    }
+
     producer.join();
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         threads[t]->join();

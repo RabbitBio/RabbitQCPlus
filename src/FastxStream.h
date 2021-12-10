@@ -556,12 +556,13 @@ namespace rabbit {
                             break;
                         }
                         usleep(100);
+                        //printf("producer waiting pugz...\n");
                     }
                     if (overWhile) {
                         ret = 0;
                         break;
                     }
-//                    printf("get some data %d\n", now.second);
+                    printf("get some data %d\n", now.second);
                     if (now.second <= len) {
                         memcpy(buf, now.first, now.second);
                         delete[] now.first;
