@@ -19,20 +19,18 @@
 - [ ] ~~split the output to multiple files~~
 - [x] Insert size estimation
 - [x] support zip input output
-- [ ] optimize gzip
+- [x] optimize gzip
 - [ ] optimize memory use when out is zip
 - [x] Phred64
-- [ ] add pac gz in QC
+- [x] add pac gz in QC
 - [ ] add 3ed function
 - [ ] parallel in producer ??
 - [ ] optimize write part --- reduce approx
-- [ ] 
-
 
 
 ### QC的几个问题
 
--6 👇 
+👇 
 
 ## AfterQC
 
@@ -803,6 +801,65 @@ now still attemp to add pigz
 let's define tnum = pigz thread numbers, for every global variable, we new tnum times, and define tid = {0,1,2...}, when call a function A(), we now call A(tid), when use a globa variable x, now use x[tid]. The only problem is when create pthread, we should padd tid to it.
 It seems that this way it's ok, try try try.
 
-##1123
+## 1123
 好啊，终于把pigz pe数据弄好了，但是可能有问题，因为只是把全局变量开了副本，但是两个线程似乎还是共用一套thread的，就比如joinall好像是等待所有的两个线程以及子线程完成才行。
 //TODO replace all threads
+
+## 1208
+捣鼓了好几天的课设和比对算法，该干干正事了，着手看forg和写paper的书吧，给QC加点三代的玩意，改改画图，读读paper，弄弄fastp里面那个新的duplicate部分。
+
+## 1209
+干活干活，先把minion里面关于三代数据的质控研究一下看看能不能加进去。
+
+## 1210 
+把TGS的pugz部分加上了
+
+## 1212
+时光飞逝啊，功能都差不多了，看看之前大师兄发的综述里面提到的QC的paper们吧，找找思路。
+
+## 1213
+昨晚读了读那个综述，这篇paper讨论了ONT三代数据在长度、准确率和吞度量上的提升，以及现有的基于该类数据的各种方法和软件，最后讨论了存在的限制和解决方案。
+今天上午简单过了一下NanoPack这个软件，它是python开发的，里面大致有几个脚本，能够对三代数据进行QC，有几个图还是值得参考的，具体的可以看补充材料。
+然后SQANTI这个软件，paper太长了，没咋读懂，感觉是和转录组有关的//TODO
+LongQC
+
+
+## 1217
+因为要写专利啥的，需要全面测一测性能的提升。
+
+| data type & function & thread num | RabbitQC | RabbitQCPlus |
+| --------------------------------- | -------- | ------------ |
+| se 7.5G & all & thread 1          | 1.7+83.1 | 0.4+30.7     |
+| se 7.5G & all & thread 2          | 1.7+43.3 | 0.4+16.7     |
+| se 7.5G & all & thread 4          | 1.7+22.6 | 0.4+9.3      |
+| se 7.5G & all & thread 8          | 1.7+12.1 | 0.4+5.0      |
+| se 7.5G & all & thread 16         | 1.7+6.9  | 0.4+4.5      |
+| se 7.5G & all & thread 32         | 1.7+6.4  |              |
+|                                   |          |              |
+| pe 3.3+3.3G & all & thread 1      | 100.8    | 29.1         |
+| pe 3.3+3.3G & all & thread 2      | 51       | 15.2         |
+| pe 3.3+3.3G & all & thread 4      | 25.7     | 8.5          |
+| pe 3.3+3.3G & all & thread 8      | 13.8     | 6.0          |
+| pe 3.3+3.3G & all & thread 16     | 7.9      |              |
+| pe 3.3+3.3G & all & thread 32     | 7.6(20)  |              |
+|                                   |          |              |
+| se 7.5G & overrep & thread 1      | 2180     | 360          |
+|                                   |          |              |
+|                                   |          |              |
+| se 7.5G & gz all & thread 1       | 96.8884  | 33           |
+|                                   |          |              |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
