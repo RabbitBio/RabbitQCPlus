@@ -4,7 +4,7 @@
 
 #include "state.h"
 
-#define mod 9999991
+#define mod 1000000007
 #ifdef Vec512
 
 #include <immintrin.h>
@@ -53,7 +53,7 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
     hash_num_ = 0;
 
     if (do_over_represent_analyze_) {
-        int maxn = 1e7;
+        int maxn = 1e9+10;
         head_hash_graph_ = new int[maxn];
         for (int i = 0; i < maxn; i++)head_hash_graph_[i] = -1;
         if (is_read2_) {

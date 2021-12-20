@@ -180,7 +180,7 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
     double t0 = GetTime();
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool, "",
-                                                        file_name.find(".gz") != std::string::npos);
+            file_name.find(".gz") != std::string::npos);
     int64_t n_chunks = 0;
     const long BASE_LIMIT = 151 * 10000;
     long records = 0;
@@ -215,21 +215,21 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
                 break;
         }
     }
-    printf("part0 cost %.5f\n", GetTime() - t0);
+    //printf("part0 cost %.5f\n", GetTime() - t0);
     t0 = GetTime();
 
     int seqlen = 0;
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < loadedReads.size(); i++) {
         auto item = loadedReads[i];
         seqlen = std::max(seqlen, int(item.lseq));
     }
-    printf("seqlen is %d\n", seqlen);
+    //printf("seqlen is %d\n", seqlen);
     eva_len = seqlen;
     int threadNumber = omp_get_num_procs();
 
-    printf("now use %d threads\n", threadNumber);
+    //printf("now use %d threads\n", threadNumber);
 
-//#pragma omp parallel for num_threads(threadNumber)
+    //#pragma omp parallel for num_threads(threadNumber)
     for (int it = 0; it < loadedReads.size(); it++) {
         auto item = loadedReads[it];
         int rlen = item.lseq;
@@ -250,7 +250,7 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
                 for (int i = head[ha]; i != -1; i = pre[i]) {
                     if (now == v[i]) {
                         ok_find = 1;
-//#pragma omp critical
+                        //#pragma omp critical
                         {
                             cnt[i]++;
                         }
@@ -258,7 +258,7 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
                     }
                 }
                 if (ok_find == 0) {
-//#pragma omp critical
+                    //#pragma omp critical
                     {
                         v[num] = now;
                         pre[num] = head[ha];
@@ -275,10 +275,10 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
             }
         }
     }
-    printf("part1 cost %.5f\n", GetTime() - t0);
+    //printf("part1 cost %.5f\n", GetTime() - t0);
     t0 = GetTime();
-    printf("total hot seqs num is %d\n", num);
-    printf("now get hotseqs\n");
+    //printf("total hot seqs num is %d\n", num);
+    //printf("now get hotseqs\n");
 
     std::vector<std::pair<std::string, int>> hot_s;
 
@@ -306,10 +306,10 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
         }
     }
 
-    printf("part2 cost %.5f\n", GetTime() - t0);
+    //printf("part2 cost %.5f\n", GetTime() - t0);
     t0 = GetTime();
-    printf("now remove substrings\n");
-    printf("before size %d\n", hot_s.size());
+    //printf("now remove substrings\n");
+    //printf("before size %d\n", hot_s.size());
     // remove substrings
 #pragma omp parallel for num_threads(threadNumber)
     for (int i = 0; i < hot_s.size(); i++) {
@@ -333,13 +333,13 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
         }
 
     }
-    printf("part3 cost %.5f\n", GetTime() - t0);
+    //printf("part3 cost %.5f\n", GetTime() - t0);
     t0 = GetTime();
-    printf("after size %d\n", hot_seqs.size());
+    //printf("after size %d\n", hot_seqs.size());
     // output for test
-//    for (auto iter = hot_seqs.begin(); iter != hot_seqs.end(); iter++) {
-//        std::cout << iter->first << ": " << iter->first.size() << " , " << iter->second << std::endl;
-//    }
+    //    for (auto iter = hot_seqs.begin(); iter != hot_seqs.end(); iter++) {
+    //        std::cout << iter->first << ": " << iter->first.size() << " , " << iter->second << std::endl;
+    //    }
     std::ofstream ofs;
     ofs.open("ORP.log", std::ifstream::out);
     for (auto item:hot_seqs) {
@@ -347,7 +347,7 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
         ofs << item << "\n";
     }
     ofs.close();
-    printf("part4 cost %.5f\n", GetTime() - t0);
+    //printf("part4 cost %.5f\n", GetTime() - t0);
     t0 = GetTime();
     for (auto item:chunks)
         fastq_data_pool->Release(item);
@@ -358,15 +358,15 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
     delete[]v;
     delete[]cnt;
     delete[]seqs;
-    printf("part5 cost %.5f\n", GetTime() - t0);
+    //printf("part5 cost %.5f\n", GetTime() - t0);
 
 }
 
 std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
-
+    //printf("now auto find adapter...\n");
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool, "",
-                                                        file_name.find(".gz") != std::string::npos);
+            file_name.find(".gz") != std::string::npos);
     int64_t n_chunks = 0;
     // stat up to 256K reads
     const long READ_LIMIT = 256 * 1024;
@@ -386,7 +386,7 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
         std::vector<neoReference> data;
         rabbit::fq::chunkFormat(fqdatachunk, data, true);
         chunks.push_back(fqdatachunk);
-//        fastq_data_pool->Release(fqdatachunk);
+        //        fastq_data_pool->Release(fqdatachunk);
         for (auto item:data) {
             bases += item.lseq;
             loadedReads.push_back(item);
@@ -411,7 +411,7 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
     unsigned int *counts = new unsigned int[size];
     memset(counts, 0, sizeof(unsigned int) * size);
 
-//TODO omp ? maybe not need
+    //TODO omp ? maybe not need
     for (int i = 0; i < records; i++) {
         neoReference r = loadedReads[i];
         int key = -1;
@@ -422,6 +422,7 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
             }
         }
     }
+    //printf("111\n");
     counts[0] = 0;
 
     // get the top N
@@ -469,7 +470,7 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
             }
         }
     }
-
+    //printf("222\n");
     const int FOLD_THRESHOLD = 20;
     for (int t = 0; t < topnum; t++) {
         int key = topkeys[t];
@@ -509,14 +510,14 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
 
 std::string
 Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, long records, int keylen,
-                            int trim_tail) {
+        int trim_tail) {
     // we have to shift last cycle for evaluation since it is so noisy, especially for Illumina data
     const int shiftTail = std::max(1, trim_tail);
     NucleotideTree *forwardTree = new NucleotideTree();
     NucleotideTree *backwardTree = new NucleotideTree();
-
+    //printf("333\n");
     std::vector<AdapterSeedInfo> vec;
-#pragma omp parallel for
+//#pragma omp parallel for
     for (int i = 0; i < records; i++) {
         neoReference r = loadedReads[i];
         struct AdapterSeedInfo seedInfo;
@@ -526,21 +527,21 @@ Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, lon
             if (key == seed) {
                 seedInfo.recordsID = i;
                 seedInfo.pos = pos;
-#pragma omp critical
+//#pragma omp critical
                 {
                     vec.push_back(seedInfo);
                 }
             }
         }
     }
-
+    //printf("444\n");
     std::vector<AdapterSeedInfo>::iterator it;
     for (it = vec.begin(); it != vec.end(); it++) {
 
         auto now_it = loadedReads[it->recordsID];
         forwardTree->addSeq(
                 std::string(reinterpret_cast<const char *>(now_it.base + now_it.pseq + it->pos + keylen),
-                            now_it.lseq - keylen - shiftTail - it->pos));
+                    now_it.lseq - keylen - shiftTail - it->pos));
         std::string seq = std::string(reinterpret_cast<const char *>(now_it.base + now_it.pseq), it->pos);
         std::string rcseq = Reverse(seq);
         backwardTree->addSeq(rcseq);
@@ -971,18 +972,18 @@ bool Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2
             std::string adapter = adapter_seq.substr(0, alen + pos);
             ref.lseq = 0;
             ref.lqual = 0;
-//            if (fr) {
-//                fr->addAdapterTrimmed(adapter, isR2);
-//            }
+            //            if (fr) {
+            //                fr->addAdapterTrimmed(adapter, isR2);
+            //            }
 
         } else {
             std::string new_adapter_seq = std::string(reinterpret_cast<const char *>(ref.base + ref.pseq + pos),
-                                                      rlen - pos);
+                    rlen - pos);
             ref.lseq = pos;
             ref.lqual = pos;
-//            if (fr) {
-//                fr->addAdapterTrimmed(adapter, isR2);
-//            }
+            //            if (fr) {
+            //                fr->addAdapterTrimmed(adapter, isR2);
+            //            }
         }
         return true;
     }
@@ -999,33 +1000,33 @@ bool Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2
  * @return true if successfully trim adapter, false else
  */
 bool Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int overlap_len) {
-//    if(ov.diff<=5 && ov.overlapped && ov.offset < 0 && ol > r1->length()/3)
+    //    if(ov.diff<=5 && ov.overlapped && ov.offset < 0 && ol > r1->length()/3)
 
     if (overlap_len > 0 && offset < 0) {
         std::string adapter1 = std::string(reinterpret_cast<const char *>(r1.base + r1.pseq + overlap_len),
-                                           r1.lseq - overlap_len);
+                r1.lseq - overlap_len);
         std::string adapter2 = std::string(reinterpret_cast<const char *>(r2.base + r1.pseq + overlap_len),
-                                           r2.lseq - overlap_len);
+                r2.lseq - overlap_len);
 
-//        printf("adapter1 %s\n", adapter1.c_str());
-//        printf("adapter2 %s\n", adapter2.c_str());
-//        printf("overlap : %d , %d\n", offset, overlap_len);
-//        PrintRef(r1);
-//        Reference tmp = GetRevRef(r2);
-//        PrintRef(tmp);
-//        printf("\n");
+        //        printf("adapter1 %s\n", adapter1.c_str());
+        //        printf("adapter2 %s\n", adapter2.c_str());
+        //        printf("overlap : %d , %d\n", offset, overlap_len);
+        //        PrintRef(r1);
+        //        Reference tmp = GetRevRef(r2);
+        //        PrintRef(tmp);
+        //        printf("\n");
         r1.lseq = overlap_len;
         r1.lqual = overlap_len;
         r2.lseq = overlap_len;
         r2.lqual = overlap_len;
-//        printf("after trim adapter:\n");
-//        PrintRef(r1);
-//        tmp = GetRevRef(r2);
-//        PrintRef(tmp);
-//        printf("\n");
+        //        printf("after trim adapter:\n");
+        //        PrintRef(r1);
+        //        tmp = GetRevRef(r2);
+        //        PrintRef(tmp);
+        //        printf("\n");
 
-//TODO add adapters to some ....
-//        fr->addAdapterTrimmed(adapter1, adapter2);
+        //TODO add adapters to some ....
+        //        fr->addAdapterTrimmed(adapter1, adapter2);
         return true;
     }
     return false;
@@ -1053,8 +1054,8 @@ int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap
     const char GOOD_QUAL = 30 + phredSub;//30
     const char BAD_QUAL = 14 + phredSub;//14
 
-//    printf("GOOD_QUAL %d\n", GOOD_QUAL);
-//    printf("BAD_QUAL %d\n", BAD_QUAL);
+    //    printf("GOOD_QUAL %d\n", GOOD_QUAL);
+    //    printf("BAD_QUAL %d\n", BAD_QUAL);
 
 
     int corrected = 0;
@@ -1073,9 +1074,9 @@ int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap
                 corrected++;
                 r2Corrected = true;
                 //TODO add to filter result
-//                if (fr) {
-//                    fr->addCorrection(seq2[p2], complement(seq1[p1]));
-//                }
+                //                if (fr) {
+                //                    fr->addCorrection(seq2[p2], complement(seq1[p1]));
+                //                }
             } else if (qual2[p2] >= GOOD_QUAL && qual1[p1] <= BAD_QUAL) {
                 // use R2
 
@@ -1083,9 +1084,9 @@ int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap
                 qual1[p1] = qual2[p2];
                 corrected++;
                 r1Corrected = true;
-//                if (fr) {
-//                    fr->addCorrection(seq1[p1], complement(seq2[p2]));
-//                }
+                //                if (fr) {
+                //                    fr->addCorrection(seq1[p1], complement(seq2[p2]));
+                //                }
             } else {
                 uncorrected++;
             }
@@ -1101,12 +1102,12 @@ int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap
         }
     }
 
-//    if (corrected > 0 && fr) {
-//        if (r1Corrected && r2Corrected)
-//            fr->incCorrectedReads(2);
-//        else
-//            fr->incCorrectedReads(1);
-//    }
+    //    if (corrected > 0 && fr) {
+    //        if (r1Corrected && r2Corrected)
+    //            fr->incCorrectedReads(2);
+    //        else
+    //            fr->incCorrectedReads(1);
+    //    }
 
     return corrected;
 }
