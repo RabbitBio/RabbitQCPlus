@@ -419,7 +419,7 @@ buffers to about the same number.
 
 #ifndef NOTHREAD
 
-#  include "yarn.h"     // threadPigz, launch_pigz(), join_pigz(), join_all(), lock_pigz,
+#  include "yarn.h"     // threadPigz, launch_pigz(), join_pigz(), join_all_pigz(), lock_pigz,
     // new_lock_pigz(), possess_pigz(), twist_pigz(), wait_for_pigz(),
     // release_pigz(), peek_lock(), free_lock_pigz(), yarn_name
 #endif
@@ -527,6 +527,7 @@ buffers to about the same number.
     }
 
 int small_map[100];
+static int threadCnt=0;
 // Globals (modified by main threadPigz only when it's the only threadPigz).
 local struct {
     int volatile ret;       // pigz return code
@@ -623,15 +624,15 @@ local struct mem_track_s {
     size_t tot;         // maximum number of allocations
     size_t max;         // maximum size of allocations
 #ifndef NOTHREAD
-    lock_pigz *lock_pigz;         // lock_pigz for access across threads
+    lock_pigz *lock_pigz_in_mem;         // lock_pigz for access across threads
 #endif
     size_t have;        // number in array (possibly != num)
     void *mem[MAXMEM];  // sorted array of allocated pointers
 } mem_track[MAX_PIGZTHREAD_T_NUMBER];
 
 #ifndef NOTHREAD
-#  define mem_track_grab(m) possess_pigz((m)->lock_pigz)
-#  define mem_track_drop(m) release_pigz((m)->lock_pigz)
+#  define mem_track_grab(m) possess_pigz((m)->lock_pigz_in_mem)
+#  define mem_track_drop(m) release_pigz((m)->lock_pigz_in_mem)
 #else
 #  define mem_track_grab(m)
 #  define mem_track_drop(m)
@@ -726,11 +727,11 @@ local void yarn_free(void *ptr) {
 #endif
 
 local voidpf zlib_alloc(voidpf opaque, uInt items, uInt size) {
-    return malloc_track(opaque, items * (size_t)size);
+    return malloc_track(static_cast<struct mem_track_s *>(opaque), items * (size_t)size);
 }
 
 local void zlib_free(voidpf opaque, voidpf address) {
-    free_track(opaque, address);
+    free_track(static_cast<struct mem_track_s *>(opaque), address);
 }
 
 #define REALLOC(p, s) realloc_track(&mem_track[small_map[*((int*)(pthread_getspecific(gtid)))]], p, s)
@@ -786,7 +787,7 @@ local void log_init(void) {
         mem_track[small_map[*((int*)(pthread_getspecific(gtid)))]].max = 0;
         mem_track[small_map[*((int*)(pthread_getspecific(gtid)))]].have = 0;
 #ifndef NOTHREAD
-        mem_track[small_map[*((int*)(pthread_getspecific(gtid)))]].lock_pigz = new_lock_pigz(0);
+        mem_track[small_map[*((int*)(pthread_getspecific(gtid)))]].lock_pigz_in_mem = new_lock_pigz(0);
         //yarn_mem(yarn_malloc, yarn_free);
         yarn_mem(malloc, free);
         log_lock[small_map[*((int*)(pthread_getspecific(gtid)))]] = new_lock_pigz(0);
@@ -804,12 +805,12 @@ local void log_add(char *fmt, ...) {
     char msg[MAXMSG];
 
     gettimeofday(&now, NULL);
-    me = alloc(NULL, sizeof(struct log));
+    me = static_cast< struct log *>(alloc(NULL, sizeof(struct log)));
     me->when = now;
     va_start(ap, fmt);
     vsnprintf(msg, MAXMSG, fmt, ap);
     va_end(ap);
-    me->msg = alloc(NULL, strlen(msg) + 1);
+    me->msg = static_cast<char *>(alloc(NULL, strlen(msg) + 1));
     strcpy(me->msg, msg);
     me->next = NULL;
 #ifndef NOTHREAD
@@ -878,7 +879,7 @@ local void log_free(void) {
         free_lock_pigz(log_lock[small_map[*((int*)(pthread_getspecific(gtid)))]]);
         log_lock[small_map[*((int*)(pthread_getspecific(gtid)))]]= NULL;
         yarn_mem(malloc, free);
-        free_lock_pigz(mem_track[small_map[*((int*)(pthread_getspecific(gtid)))]].lock_pigz);
+        free_lock_pigz(mem_track[small_map[*((int*)(pthread_getspecific(gtid)))]].lock_pigz_in_mem);
 #endif
         log_tail[small_map[*((int*)(pthread_getspecific(gtid)))]] = NULL;
     }
@@ -1752,9 +1753,12 @@ local void finish_jobs(void) {
     twist_pigz(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]], BY, +1);       // will wake them all up
 
     // join_pigz all of the compress threads, verify they all came back
-    //caught = join_all();
+    printf("threadCnt is %d\n",threadCnt);
+    if(threadCnt==1)
+        caught = join_all_pigz();
     Trace(("-- joined %d compress threads", caught));
-    //assert(caught == cthreads[small_map[*((int*)(pthread_getspecific(gtid)))]]);
+    if(threadCnt==1)
+        assert(caught == cthreads[small_map[*((int*)(pthread_getspecific(gtid)))]]);
     cthreads[small_map[*((int *) (pthread_getspecific(gtid)))]] = 0;
 
     // free the resources
@@ -1798,9 +1802,9 @@ local void deflate_engine(z_stream *strm, struct space *out, int flush) {
 // sequence number of -1 (leave that job in the list for other incarnations to
 // find).
 local void compress_thread(void *dummy) {
-    printf("compress_thread gettid = %u\n", syscall(SYS_gettid));
+    //printf("compress_thread gettid = %u\n", syscall(SYS_gettid));
     int fa_id = *(int *) dummy;
-    printf("compress_thread fa_id %d\n",fa_id);
+    //printf("compress_thread fa_id %d\n",fa_id);
     pthread_setspecific(gtid, &fa_id);
     struct job *job;                // job pulled and working on
     struct job *here, **prior;      // pointers for inserting in write list
@@ -2077,7 +2081,7 @@ local void compress_thread(void *dummy) {
 // compressed data until the last chunk is written. Also write the header and
 // trailer and combine the individual check values of the input buffers.
 local void write_thread(void *dummy) {
-    printf("write_thread gettid = %u\n", syscall(SYS_gettid));
+    //printf("write_thread gettid = %u\n", syscall(SYS_gettid));
 
     long seq;                       // next sequence number looking for
     struct job *job;                // job pulled and working on
@@ -2090,7 +2094,7 @@ local void write_thread(void *dummy) {
     ball_t err;                     // error information from throw()
 
     int fa_id = *(int *) dummy;
-    printf("write_thread get fa_id is %d\n", fa_id);
+    //printf("write_thread get fa_id is %d\n", fa_id);
     pthread_setspecific(gtid, &fa_id);
     try
     {
@@ -2678,10 +2682,10 @@ local void single_compress(int reset) {
 // Parallel read threadPigz. If the state is 1, then read a buffer and set the
 // state to 0 when done, if the state is > 1, then end this threadPigz.
 local void load_read(void *dummy) {
-    printf("now load_read\n");
-    printf("load_read gettid = %u\n", syscall(SYS_gettid));
+    //printf("now load_read\n");
+    //printf("load_read gettid = %u\n", syscall(SYS_gettid));
     int fa_id = *(int *) dummy;
-    printf("load_read fa_id %d\n", fa_id);
+    //printf("load_read fa_id %d\n", fa_id);
     pthread_setspecific(gtid, &fa_id);
     size_t len;
     ball_t err;                     // error information from throw()
@@ -3544,9 +3548,9 @@ local lock_pigz *outb_check_more[MAX_PIGZTHREAD_T_NUMBER];
 
 // Output write threadPigz.
 local void outb_write(void *dummy) {
-    printf("outb_write gettid = %u\n", syscall(SYS_gettid));
+    //printf("outb_write gettid = %u\n", syscall(SYS_gettid));
     int fa_id = *(int *) dummy;
-    printf("outb_write fa_id %d\n", fa_id);
+    //printf("outb_write fa_id %d\n", fa_id);
     pthread_setspecific(gtid, &fa_id);
     size_t len;
     ball_t err;                     // error information from throw()
@@ -3575,9 +3579,9 @@ local void outb_write(void *dummy) {
 
 // Output check threadPigz.
 local void outb_check(void *dummy) {
-    printf("outb_check gettid = %u\n", syscall(SYS_gettid));
+    //printf("outb_check gettid = %u\n", syscall(SYS_gettid));
     int fa_id = *(int *) dummy;
-    printf("outb_check fa_id %d\n", fa_id);
+    //printf("outb_check fa_id %d\n", fa_id);
     pthread_setspecific(gtid, &fa_id);
 
     size_t len;
@@ -3615,7 +3619,7 @@ threadPigz *wr[MAX_PIGZTHREAD_T_NUMBER], *ch[MAX_PIGZTHREAD_T_NUMBER];
 local int outb(void *desc, unsigned char *buf, unsigned len) {
     (void) desc;
 
-    printf("now outb\n");
+    //printf("now outb\n");
 #ifndef NOTHREAD
 
     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].procs > 1) {
@@ -4956,18 +4960,17 @@ pthread_mutex_t mutexPigz;
 // Process command line arguments.
 int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q,
               atomic_int *wDone, pair<char *, int> &L) {
-    printf("pigz* gettid = %u\n", syscall(SYS_gettid));
+    //printf("pigz* gettid = %u\n", syscall(SYS_gettid));
     int tid = small_hash(syscall(SYS_gettid));
-    printf("pigz* tid = %d\n", tid);
+    //printf("pigz* tid = %d\n", tid);
 
 
 
-    static int threadCnt = 0;
     pthread_mutex_lock(&mutexPigz);
     small_map[tid] = threadCnt;
     threadCnt++;
     if(threadCnt==1){
-        printf("init...\n");
+        //printf("init...\n");
         for (int i = 0; i < MAX_PIGZTHREAD_T_NUMBER; i++) {
             compress_have[i] = NULL;
             getPigz[i] = 0;
@@ -4989,12 +4992,12 @@ int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, 
 
 
     pthread_setspecific(gtid, &tid);
-    printf("gtid is %d\n", *((int *) (pthread_getspecific(gtid))));
+    //printf("gtid is %d\n", *((int *) (pthread_getspecific(gtid))));
 
 
-    printf("%d argc %d\n", tid, argc);
+    //printf("%d argc %d\n", tid, argc);
     for (int i = 0; i < argc; i++) {
-        printf("%d argv %s\n", tid, argv[i]);
+        //printf("%d argv %s\n", tid, argv[i]);
     }
     int n;                          // general index
     int nop;                        // index before which "-" means stdin
@@ -5110,6 +5113,9 @@ int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, 
             } else if (option(argv[n]))   // process argument
                 argv[n] = NULL;         // remove if option
         option(NULL);                   // check for missing parameter
+            
+
+        //printf("verbose is %d\n", g[small_map[*((int *) (pthread_getspecific(gtid)))]].verbosity);
 
         // process command-line filenames
         done = 0;
@@ -5144,4 +5150,3 @@ int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, 
     log_dump();
     return g[small_map[*((int *) (pthread_getspecific(gtid)))]].ret;
 }
-

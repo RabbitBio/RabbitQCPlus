@@ -607,9 +607,9 @@ void PeQc::PugzTask2() {
 
 
 void PeQc::PigzTask1() {
-    int cnt = 9;
+    int cnt = 10;
 
-    char **infos = new char *[9];
+    char **infos = new char *[10];
     infos[0] = "./pigz";
     infos[1] = "-p";
     int th_num = cmd_info_->pigz_threads_;
@@ -633,6 +633,7 @@ void PeQc::PigzTask1() {
     infos[8] = new char[out_file.length() + 1];
     memcpy(infos[8], out_file.c_str(), out_file.length());
     infos[8][out_file.length()] = '\0';
+    infos[9]="-v";
     main_pigz(cnt, infos, pigzQueue1, &writerDone1, pigzLast1);
 
     printf("pigz1 done\n");
@@ -640,9 +641,9 @@ void PeQc::PigzTask1() {
 
 void PeQc::PigzTask2() {
 
-    int cnt = 9;
+    int cnt = 10;
 
-    char **infos = new char *[9];
+    char **infos = new char *[10];
     infos[0] = "./pigz";
     infos[1] = "-p";
     int th_num = cmd_info_->pigz_threads_;
@@ -666,6 +667,7 @@ void PeQc::PigzTask2() {
     infos[8] = new char[out_file.length() + 1];
     memcpy(infos[8], out_file.c_str(), out_file.length());
     infos[8][out_file.length()] = '\0';
+    infos[9]="-v";
     main_pigz(cnt, infos, pigzQueue2, &writerDone2, pigzLast2);
 
     printf("pigz2 done\n");
