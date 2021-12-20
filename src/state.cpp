@@ -4,7 +4,9 @@
 
 #include "state.h"
 
-#define mod 1000000007
+//#define mod 1000000007
+#define mod 99349
+#define hash_maxn 100000
 #ifdef Vec512
 
 #include <immintrin.h>
@@ -53,21 +55,30 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
     hash_num_ = 0;
 
     if (do_over_represent_analyze_) {
-        int maxn = 1e9+10;
+        //int maxn = 1e9+10;
+        double t0=GetTime();
+		int maxn = hash_maxn;
         head_hash_graph_ = new int[maxn];
         for (int i = 0; i < maxn; i++)head_hash_graph_[i] = -1;
         if (is_read2_) {
             hash_graph_ = new node[cmd_info->hot_seqs2_.size()];
+			//printf("new cost %.4f\n",GetTime()-t0);
+			t0=GetTime();
             for (auto item:cmd_info->hot_seqs2_) {
                 HashInsert(item.c_str(), item.length(), cmd_info->eva_len2_);
             }
+			//printf("insert cost %.4f\n",GetTime()-t0);
         } else {
             hash_graph_ = new node[cmd_info->hot_seqs_.size()];
+			//printf("new cost %.4f\n",GetTime()-t0);
+			t0=GetTime();
             for (auto item:cmd_info->hot_seqs_) {
                 HashInsert(item.c_str(), item.length(), cmd_info->eva_len_);
             }
+			//printf("insert cost %.4f\n",GetTime()-t0);
         }
-
+		
+	//	HashState();
     }
 
 }
@@ -107,6 +118,24 @@ void State::HashInsert(const char *seq, int len, int eva_len) {
     hash_num_++;
 }
 
+void State::HashState(){
+	int cntTotal[100];
+	for(int i=0;i<100;i++)cntTotal[i]=0;
+	for(int ha=0;ha<hash_maxn;ha++){
+		int cnt=0;
+		for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre){
+			cnt++;
+		}
+		cntTotal[cnt]++;
+		
+	}
+	printf("print hash table state info ===========================\n");
+	for(int i=1;i<100;i++){
+		if(cntTotal[i])printf("%d %d\n",i,cntTotal[i]);
+	}
+	printf("=======================================================\n");
+
+}
 
 void State::HashQueryAndAdd(const char *seq, int offset, int len, int eva_len) {
     int64_t now = 0;

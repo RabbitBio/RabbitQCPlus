@@ -827,50 +827,50 @@ LongQC
 ## 1217
 因为要写专利啥的，需要全面测一测性能的提升。
 
-| data type & function & thread num | RabbitQC      | RabbitQCPlus | fastp | FASTQC |
-| --------------------------------- | ------------- | ------------ | ----- | ------ |
-| se 7.5G & all & thread 1          | 1.7+83.1      | 0.4+30.7     | 113   | 105    |
-| se 7.5G & all & thread 2          | 1.7+43.3      | 0.4+16.7     |       |        |
-| se 7.5G & all & thread 4          | 1.7+22.6      | 0.4+9.3      |       |        |
-| se 7.5G & all & thread 8          | 1.7+12.1      | 0.4+5.0      |       |        |
-| se 7.5G & all & thread 16         | 1.7+6.9       | 0.4+4.5      |       |        |
-| se 7.5G & all & thread 32         | 1.7+6.4       |              |       |        |
-|                                   |               |              |       |        |
-| pe 3.3+3.3G & all & thread 1      | 100.8         | 29.1         | 107   |        |
-| pe 3.3+3.3G & all & thread 2      | 51            | 15.2         |       |        |
-| pe 3.3+3.3G & all & thread 4      | 25.7          | 8.5          |       |        |
-| pe 3.3+3.3G & all & thread 8      | 13.8          | 6.0          |       |        |
-| pe 3.3+3.3G & all & thread 16     | 7.9           | 6            |       |        |
-| pe 3.3+3.3G & all & thread 32     | 7.6(20)       | 6            |       |        |
-|                                   |               |              |       |        |
-| se 7.5G & overrep & thread 1      | 2100+80=2180  | 330+30=360   |       |        |
-| se 7.5G & overrep & thread 2      | 1100+45=1145  | 186+17=203   |       |        |
-| se 7.5G & overrep & thread 4      | 580+24=604    | 90+10=100    |       |        |
-| se 7.5G & overrep & thread 8      | 305+14=319    | 48+5=53      |       |        |
-| se 7.5G & overrep & thread 16     | 164+8=172     | 27+5=32      |       |        |
-| se 7.5G & overrep & thread 32     | 90+8=98       | 15+5=20      |       |        |
-|                                   |               |              |       |        |
-| pe 3.3+3.3G & overrep & thread 1  | 1724+100=1824 | 326+29=355   |       |        |
-| pe 3.3+3.3G  & overrep & thread 2 | 874+51=925    | 163+15=178   |       |        |
-| pe 3.3+3.3G & overrep & thread 4  | 444+26=470    | 84+9=93      |       |        |
-| pe 3.3+3.3G & overrep & thread 8  | 232+14=246    | 45+6=51      |       |        |
-| pe 3.3+3.3G & overrep & thread 16 | 132+8=140     | 23+6=29      |       |        |
-| pe 3.3+3.3G & overrep & thread 32 | 76+8=84       | 13+6=19      |       |        |
-|                                   |               |              |       |        |
-|                                   |               |              |       |        |
-| se 7.5G & gz all & thread 1       | 100           | 33           | 128   | 126    |
-| se 7.5G & gz all & thread 2       | 100           | 18           | 106   | 132    |
-| se 7.5G & gz all & thread 4       | 100           | 11           | 108   | 128    |
-| se 7.5G & gz all & thread 8       | 100           | 10           | 107   | 129    |
-| se 7.5G & gz all & thread 16      | 100           | 10           | 105   | 128    |
-| se 7.5G & gz all & thread 32      | 100           | 10           | 110   | 130    |
-|                                   |               |              |       |        |
-| pe 3.3+3.3G & gz all & thread 1   | 100           | 34           | 115   |        |
-| pe 3.3+3.3G & gz all & thread 2   | 50            | 17           |       |        |
-| pe 3.3+3.3G & gz all & thread 4   | 45            | 9            |       |        |
-| pe 3.3+3.3G & gz all & thread 8   | 45            | 6            |       |        |
-| pe 3.3+3.3G & gz all & thread 16  | 45            | 6            |       |        |
-| pe 3.3+3.3G & gz all & thread 32  | 45            | 6            |       |        |
+| data type & function & thread num | RabbitQC      | RabbitQCPlus            | fastp | FASTQC |
+| --------------------------------- | ------------- | ----------------------- | ----- | ------ |
+| se 7.5G & all & thread 1          | 1.7+83.1      | 0.4+30.7                | 113   | 105    |
+| se 7.5G & all & thread 2          | 1.7+43.3      | 0.4+16.7                |       |        |
+| se 7.5G & all & thread 4          | 1.7+22.6      | 0.4+9.3                 |       |        |
+| se 7.5G & all & thread 8          | 1.7+12.1      | 0.4+5.0                 |       |        |
+| se 7.5G & all & thread 16         | 1.7+6.9       | 0.4+4.5                 |       |        |
+| se 7.5G & all & thread 32         | 1.7+6.4       |                         |       |        |
+|                                   |               |                         |       |        |
+| pe 3.3+3.3G & all & thread 1      | 100.8         | 29.1                    | 107   |        |
+| pe 3.3+3.3G & all & thread 2      | 51            | 15.2                    |       |        |
+| pe 3.3+3.3G & all & thread 4      | 25.7          | 8.5                     |       |        |
+| pe 3.3+3.3G & all & thread 8      | 13.8          | 6.0                     |       |        |
+| pe 3.3+3.3G & all & thread 16     | 7.9           | 6                       |       |        |
+| pe 3.3+3.3G & all & thread 32     | 7.6(20)       | 6                       |       |        |
+|                                   |               |                         |       |        |
+| se 7.5G & overrep & thread 1      | 2100+80=2180  | 270+30=300              |       |        |
+| se 7.5G & overrep & thread 2      | 1100+45=1145  | 138+17=155              |       |        |
+| se 7.5G & overrep & thread 4      | 580+24=604    | 68+10=78                |       |        |
+| se 7.5G & overrep & thread 8      | 305+14=319    | 37+5=42                 |       |        |
+| se 7.5G & overrep & thread 16     | 164+8=172     | 19+5=24                 |       |        |
+| se 7.5G & overrep & thread 32     | 90+8=98       | 10+4.5=14.5             |       |        |
+|                                   |               |                         |       |        |
+| pe 3.3+3.3G & overrep & thread 1  | 1724+100=1824 | not optimize 326+29=355 |       |        |
+| pe 3.3+3.3G  & overrep & thread 2 | 874+51=925    | 163+15=178              |       |        |
+| pe 3.3+3.3G & overrep & thread 4  | 444+26=470    | 84+9=93                 |       |        |
+| pe 3.3+3.3G & overrep & thread 8  | 232+14=246    | 45+6=51                 |       |        |
+| pe 3.3+3.3G & overrep & thread 16 | 132+8=140     | 23+6=29                 |       |        |
+| pe 3.3+3.3G & overrep & thread 32 | 76+8=84       | 13+6=19                 |       |        |
+|                                   |               |                         |       |        |
+|                                   |               |                         |       |        |
+| se 7.5G & gz all & thread 1       | 100           | 33                      | 128   | 126    |
+| se 7.5G & gz all & thread 2       | 100           | 18                      | 106   | 132    |
+| se 7.5G & gz all & thread 4       | 100           | 11                      | 108   | 128    |
+| se 7.5G & gz all & thread 8       | 100           | 10                      | 107   | 129    |
+| se 7.5G & gz all & thread 16      | 100           | 10                      | 105   | 128    |
+| se 7.5G & gz all & thread 32      | 100           | 10                      | 110   | 130    |
+|                                   |               |                         |       |        |
+| pe 3.3+3.3G & gz all & thread 1   | 100           | 34                      | 115   |        |
+| pe 3.3+3.3G & gz all & thread 2   | 50            | 17                      |       |        |
+| pe 3.3+3.3G & gz all & thread 4   | 45            | 9                       |       |        |
+| pe 3.3+3.3G & gz all & thread 8   | 45            | 6                       |       |        |
+| pe 3.3+3.3G & gz all & thread 16  | 45            | 6                       |       |        |
+| pe 3.3+3.3G & gz all & thread 32  | 45            | 6                       |       |        |
 
 
 

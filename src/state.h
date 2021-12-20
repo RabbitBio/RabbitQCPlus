@@ -42,6 +42,8 @@ public:
     static std::string list2string(double *list, int size);
 
     void HashInsert(const char *seq, int len, int eva_len);
+	
+	void HashState();
 
     void HashQueryAndAdd(const char *seq, int offset, int len, int eva_len);
 

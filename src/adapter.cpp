@@ -517,7 +517,7 @@ Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, lon
     NucleotideTree *backwardTree = new NucleotideTree();
     //printf("333\n");
     std::vector<AdapterSeedInfo> vec;
-//#pragma omp parallel for
+#pragma omp parallel for
     for (int i = 0; i < records; i++) {
         neoReference r = loadedReads[i];
         struct AdapterSeedInfo seedInfo;
@@ -527,7 +527,7 @@ Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, lon
             if (key == seed) {
                 seedInfo.recordsID = i;
                 seedInfo.pos = pos;
-//#pragma omp critical
+#pragma omp critical
                 {
                     vec.push_back(seedInfo);
                 }
