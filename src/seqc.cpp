@@ -528,10 +528,10 @@ void SeQc::ProcessSeTGS() {
 
     printf("merge done\n");
     printf("\nprint TGS state info :\n");
-    mer_state->print();
+    //mer_state->print();
 
 //    report3(mer_state);
-
+    mer_state->CalReadsLens();
     Repoter::ReportHtmlTGS(mer_state, cmd_info_->in_file_name1_);
 
     delete fastqPool;

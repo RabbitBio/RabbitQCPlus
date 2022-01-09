@@ -15,59 +15,91 @@
 #include "Reference.h"
 
 class TGSStats {
-public:
-    TGSStats(int minLen);
+    public:
+        TGSStats(int minLen);
 
-    ~TGSStats();
+        ~TGSStats();
 
-    static TGSStats *merge(std::vector<TGSStats *> &list);
+        static TGSStats *merge(std::vector<TGSStats *> &list);
 
-    void print();
+        void print();
 
-    void tgsStatRead(neoReference &ref, bool isPhred64);
+        void tgsStatRead(neoReference &ref, bool isPhred64);
 
-    // a port of HTML report
-    void reportHtml(std::ofstream &ofs, std::string filteringType, std::string readName);
+        void CalReadsLens();
 
-    void reportHtmlQuality(std::ofstream &ofs, std::string seqFileName, bool isTail, std::string xAxisName,
-                           std::string yAxisName, double *statsData);
+        bool isLongRead();
 
-    void reportHtmlContents(std::ofstream &ofs, std::string seqFileName, bool isTail, std::string xAxisName,
-                            std::string yAxisName, double **statsData);
+        static std::string list2string(double *list, int size);
 
-    void reportHistogram(std::ofstream &ofs);
+        static std::string list2string(double *list, int size, int64_t *coords);
 
-    bool isLongRead();
+        static std::string list2string(int64_t *list, int size);
 
-    static std::string list2string(double *list, int size);
+        static std::string list2stringReversedOrder(int64_t *list, int size);
 
-    static std::string list2string(double *list, int size, int64_t *coords);
+        int base2num(std::string base);
 
-    static std::string list2string(int64_t *list, int size);
+    private:
+        int mMinlen;
 
-    static std::string list2stringReversedOrder(int64_t *list, int size);
+        int mHalfMinlen;
 
-    int base2num(std::string base);
+        std::vector<int> mLengths;
 
-private:
-    int mMinlen;
-    int mHalfMinlen;
-    std::vector<int> mLengths;
-    std::vector<int> mTotalReadsLen;
-    int64_t *head_seq_pos_count[4];
-    int64_t *tail_seq_pos_count[4];
-    int64_t *head_qual_sum;
-public:
-    int64_t *const *GetHeadSeqPosCount() const;
+        std::vector<int> mTotalReadsLen;
 
-    int64_t *const *GetTailSeqPosCount() const;
+        int64_t *head_seq_pos_count[4];
 
-    int64_t *GetHeadQualSum() const;
+        int64_t *tail_seq_pos_count[4];
 
-    int64_t *GetTailQualSum() const;
+        int64_t *head_qual_sum;
 
-private:
-    int64_t *tail_qual_sum;
+        int64_t *tail_qual_sum;
+
+        int *readsLens;
+
+        int mMaxReadsLen;
+
+        double mAvgReadsLen;
+
+        int64_t mReadsNum;
+
+        int64_t mBasesNum;
+
+        int64_t *mBases51015Num;
+
+        std::pair<double,int>* mTop5QualReads;
+
+        std::pair<int,double>* mTop5LengReads;
+
+        void updateTop5(int rlen,double avgQual);
+
+    public:
+        int64_t *const *GetHeadSeqPosCount() const;
+
+        int64_t *const *GetTailSeqPosCount() const;
+
+        const int64_t *GetHeadQualSum() const;
+
+        const int64_t *GetTailQualSum() const;
+
+        const int GetMaxReadsLen() const;
+
+        const double GetAvgReadsLen() const;
+
+        const int64_t GetReadsNum() const;
+
+        const int64_t GetBasesNum() const;
+
+        const int64_t* GetBases51015Num() const;
+
+        const std::pair<double,int>* GetTop5QualReads() const;
+
+        const std::pair<int,double>* GetTop5LengReads() const;
+
+        int *GetReadsLens() const;
+
 };
 
 

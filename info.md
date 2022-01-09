@@ -26,7 +26,8 @@
 - [ ] add 3ed function
 - [ ] parallel in producer ??
 - [ ] optimize write part --- reduce approx
-
+- [ ] add comparison between muti datasets
+- [ ] add N50 ?
 
 ### QC的几个问题
 
@@ -874,15 +875,7 @@ LongQC
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+## 0109
+考完试了，生病也好的差不多了，这两天加一加三代数据的新指标
+ - 长度-含量
+ - 一些基本的统计量

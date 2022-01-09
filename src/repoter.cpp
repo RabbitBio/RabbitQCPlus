@@ -480,20 +480,66 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     outhtml.append(HTMLHeader());
     outhtml.append(HTMLCss());
     //Basic Status
+    auto avgReadsLen=tgs_stats->GetAvgReadsLen();
+    auto readsNum=tgs_stats->GetReadsNum();
+    auto basesNum=tgs_stats->GetBasesNum();
+    auto base51015Num=tgs_stats->GetBases51015Num();
+    auto top5QualReads=tgs_stats->GetTop5QualReads();
+    auto top5LengReads=tgs_stats->GetTop5LengReads();
+
+
+
     outhtml.append(insertTableBegin());
-    outhtml.append(insertTableTitle("General(TGS)", ""));
+    outhtml.append(insertTableTitle("", "General(TGS)"));
     outhtml.append(insertTableTbobyBegin());
     outhtml.append(insertTableTr("RabbitQC version:", "0.0.2"));
-    outhtml.append(insertTableTr("FileName", file_name));
+    outhtml.append(insertTableTr("FileName", file_name)); 
+    outhtml.append(insertTableTr("ReadsNumber", std::to_string(readsNum)));
+    outhtml.append(insertTableTr("BasesNumber", std::to_string(basesNum)));
+    outhtml.append(insertTableTr(">Q5 BasesNuimber", std::to_string(base51015Num[0])));
+    outhtml.append(insertTableTr(">Q10 BasesNumber", std::to_string(base51015Num[1])));
+    outhtml.append(insertTableTr(">Q15 BasesNumber", std::to_string(base51015Num[2])));
+    outhtml.append(insertTableTr("AvgReadsLen", std::to_string(avgReadsLen)));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
+ 
+
+    outhtml.append(insertTableBegin());
+    outhtml.append(insertTableTitle("", "Top 5 quality reads and their length"));
+    outhtml.append(insertTableTbobyBegin());
+    outhtml.append(insertTableTr("1", std::to_string(top5QualReads[0].first)+"( "+std::to_string(top5QualReads[0].second)+" )"));
+    outhtml.append(insertTableTr("2", std::to_string(top5QualReads[1].first)+"( "+std::to_string(top5QualReads[1].second)+" )"));
+    outhtml.append(insertTableTr("3", std::to_string(top5QualReads[2].first)+"( "+std::to_string(top5QualReads[2].second)+" )"));
+    outhtml.append(insertTableTr("4", std::to_string(top5QualReads[3].first)+"( "+std::to_string(top5QualReads[3].second)+" )"));
+    outhtml.append(insertTableTr("5", std::to_string(top5QualReads[4].first)+"( "+std::to_string(top5QualReads[4].second)+" )"));
+    outhtml.append(insertTableTbobyEnd());
+    outhtml.append(insertTableEnd());
+
+ 
+ 
+
+    outhtml.append(insertTableBegin());
+    outhtml.append(insertTableTitle("", "Top 5 length reads and their quality"));
+    outhtml.append(insertTableTbobyBegin());
+    outhtml.append(insertTableTr("1", std::to_string(top5LengReads[0].first)+"( "+std::to_string(top5LengReads[0].second)+" )"));
+    outhtml.append(insertTableTr("2", std::to_string(top5LengReads[1].first)+"( "+std::to_string(top5LengReads[1].second)+" )"));
+    outhtml.append(insertTableTr("3", std::to_string(top5LengReads[2].first)+"( "+std::to_string(top5LengReads[2].second)+" )"));
+    outhtml.append(insertTableTr("4", std::to_string(top5LengReads[3].first)+"( "+std::to_string(top5LengReads[3].second)+" )"));
+    outhtml.append(insertTableTr("5", std::to_string(top5LengReads[4].first)+"( "+std::to_string(top5LengReads[4].second)+" )"));
+    outhtml.append(insertTableTbobyEnd());
+    outhtml.append(insertTableEnd());
+
+ 
+
+    std::string LengthNumber("LengthNumber");
 
     std::string PositionQuality1("PositionQuality1");
     std::string PositionQuality2("PositionQuality2");
     std::string PositionContent1("PositionContent1");
     std::string PositionContent2("PositionContent2");
 
+    outhtml.append(insertDiv(LengthNumber));
     outhtml.append(insertDiv(PositionQuality1));
     outhtml.append(insertDiv(PositionQuality2));
     outhtml.append(insertDiv(PositionContent1));
@@ -503,6 +549,31 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
 
     //js
     outhtml.append("<script type=\"text/javascript\">\n");
+
+    // Length Number
+    outhtml.append(insertChart(LengthNumber));
+    outhtml.append(insertOptionBegin(LengthNumber));
+    outhtml.append(insertTitle("Reads Length Distribution"));
+    outhtml.append(insertTooltip());
+    outhtml.append(insertDataZoom());
+
+    auto readsLens=tgs_stats->GetReadsLens();
+    auto maxReadsLen=tgs_stats->GetMaxReadsLen();
+    int maxCnt=0;
+    for(int i=0;i<maxReadsLen;i++){
+        maxCnt=max(maxCnt,readsLens[i]);
+    }
+
+    outhtml.append(insertxAxis("Length (bp)", maxReadsLen + 1,10));
+    outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(maxCnt)));
+    outhtml.append(insertSeriesBegin());
+    outhtml.append(insertSeriesData("bar", readsLens, maxReadsLen));
+    outhtml.append(insertSeriesEnd());
+    outhtml.append(insertOptionEnd());
+    outhtml.append(insertChartOption(LengthNumber));
+
+
+
 
     // Quality Scores cross all bases
 
@@ -643,7 +714,7 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
 
     outhtml.append("</script>");
     outhtml.append("</html>");
-    std::fstream fout = std::fstream("TGS.html", std::ios::out | std::ios::binary);
+    std::fstream fout = std::fstream("RabbitQC.html", std::ios::out | std::ios::binary);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
 
