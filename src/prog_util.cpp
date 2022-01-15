@@ -64,7 +64,7 @@ do_msg(const char* format, bool with_errno, va_list va)
 {
     int saved_errno = errno;
 
-    fprintf(stderr, "%" TS ": ", program_invocation_name);
+    fprintf(stderr, "%" TS ": ", _program_invocation_name);
     vfprintf(stderr, format, va);
     if (with_errno)
         fprintf(stderr, ": %s\n", strerror(saved_errno));
@@ -262,7 +262,7 @@ retry:
             fprintf(stderr,
                     "%" TS ": %" TS " already exists; "
                     "overwrite? (y/n) ",
-                    program_invocation_name,
+                    _program_invocation_name,
                     strm->name);
             if (getchar() != 'y') {
                 msg("Not overwriting.");

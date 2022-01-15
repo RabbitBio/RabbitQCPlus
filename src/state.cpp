@@ -4,8 +4,9 @@
 
 #include "state.h"
 
-//#define mod 1000000007
+#define mod_big 500009
 #define mod 99349
+#define hash_maxn_big 500111
 #define hash_maxn 100000
 #ifdef Vec512
 
@@ -53,32 +54,35 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
     head_hash_graph_ = NULL;
     hash_graph_ = NULL;
     hash_num_ = 0;
-
+    over_representation_qcnt_=0;
+    over_representation_pcnt_=0;
     if (do_over_represent_analyze_) {
-        //int maxn = 1e9+10;
+        int maxn_big = hash_maxn_big;
         double t0=GetTime();
-		int maxn = hash_maxn;
+        int maxn = hash_maxn;
         head_hash_graph_ = new int[maxn];
+        bf_zone_=new int64_t[hash_maxn_big/64+100];
         for (int i = 0; i < maxn; i++)head_hash_graph_[i] = -1;
+        for (int i=0;i<hash_maxn_big/64+10;i++)bf_zone_[i]=0;
         if (is_read2_) {
             hash_graph_ = new node[cmd_info->hot_seqs2_.size()];
-			//printf("new cost %.4f\n",GetTime()-t0);
-			t0=GetTime();
+            //printf("new cost %.4f\n",GetTime()-t0);
+            t0=GetTime();
             for (auto item:cmd_info->hot_seqs2_) {
                 HashInsert(item.c_str(), item.length(), cmd_info->eva_len2_);
             }
-			//printf("insert cost %.4f\n",GetTime()-t0);
+            //printf("insert cost %.4f\n",GetTime()-t0);
         } else {
             hash_graph_ = new node[cmd_info->hot_seqs_.size()];
-			//printf("new cost %.4f\n",GetTime()-t0);
-			t0=GetTime();
+            //printf("new cost %.4f\n",GetTime()-t0);
+            t0=GetTime();
             for (auto item:cmd_info->hot_seqs_) {
                 HashInsert(item.c_str(), item.length(), cmd_info->eva_len_);
             }
-			//printf("insert cost %.4f\n",GetTime()-t0);
+            //printf("insert cost %.4f\n",GetTime()-t0);
         }
-		
-	//	HashState();
+
+        //	HashState();
     }
 
 }
@@ -108,6 +112,8 @@ void State::HashInsert(const char *seq, int len, int eva_len) {
         now += valAGCT2[seq[i] & 0x07];
     }
     int ha = (now % mod + mod) % mod;
+    int ha_big=(now%mod_big+mod_big)%mod_big;
+    bf_zone_[ha_big>>6]|=(1ll<<(ha_big&(0x3f)));
     hash_graph_[hash_num_].v = now;
     hash_graph_[hash_num_].pre = head_hash_graph_[ha];
     head_hash_graph_[ha] = hash_num_;
@@ -119,21 +125,21 @@ void State::HashInsert(const char *seq, int len, int eva_len) {
 }
 
 void State::HashState(){
-	int cntTotal[100];
-	for(int i=0;i<100;i++)cntTotal[i]=0;
-	for(int ha=0;ha<hash_maxn;ha++){
-		int cnt=0;
-		for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre){
-			cnt++;
-		}
-		cntTotal[cnt]++;
-		
-	}
-	printf("print hash table state info ===========================\n");
-	for(int i=1;i<100;i++){
-		if(cntTotal[i])printf("%d %d\n",i,cntTotal[i]);
-	}
-	printf("=======================================================\n");
+    int cntTotal[100];
+    for(int i=0;i<100;i++)cntTotal[i]=0;
+    for(int ha=0;ha<hash_maxn;ha++){
+        int cnt=0;
+        for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre){
+            cnt++;
+        }
+        cntTotal[cnt]++;
+
+    }
+    printf("print hash table state info ===========================\n");
+    for(int i=1;i<100;i++){
+        if(cntTotal[i])printf("%d %d\n",i,cntTotal[i]);
+    }
+    printf("=======================================================\n");
 
 }
 
@@ -143,15 +149,24 @@ void State::HashQueryAndAdd(const char *seq, int offset, int len, int eva_len) {
         now = now * 5;
         now += valAGCT2[seq[offset + i] & 0x07];
     }
+    over_representation_qcnt_++;
     int ha = (now % mod + mod) % mod;
-    for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre)
+    int ha_big=(now%mod_big+mod_big)%mod_big;
+    bool pass_bf=bf_zone_[ha_big>>6]&(1ll<<(ha_big&0x3f));
+    if(!pass_bf)return;
+    else over_representation_pcnt_++;
+    for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre){
+        //over_representation_pcnt_++;
         if (hash_graph_[i].v == now) {
+            //over_representation_pcnt_++;
             for (int p = offset; p < offset + len && p < eva_len; p++) {
                 hash_graph_[i].dist[p]++;
             }
             hash_graph_[i].cnt++;
             return;
         }
+
+    }
 }
 
 
@@ -200,8 +215,8 @@ void State::StateInfo(neoReference &ref) {
     if (slen > malloc_seq_len_) {
 
         ExtendBuffer(malloc_seq_len_, std::max(slen + 100, slen * 2));
-//        printf("exit because sequence length is too long, malloc_seq_len_ is %d, slen is %d\n", malloc_seq_len_, slen);
-//        exit(0);
+        //        printf("exit because sequence length is too long, malloc_seq_len_ is %d, slen is %d\n", malloc_seq_len_, slen);
+        //        exit(0);
     }
     real_seq_len_ = std::max(real_seq_len_, slen);
     len_cnt_[slen - 1]++;
@@ -363,13 +378,13 @@ void State::Summarize() {
     kmer_min_ = kmer_[0];
     kmer_max_ = kmer_[0];
     for (int i = 0; i < kmer_buf_len_; i++) {
-//        printf("%d ", kmer_[i]);
+        //        printf("%d ", kmer_[i]);
         if (kmer_[i] > kmer_max_)
             kmer_max_ = kmer_[i];
         if (kmer_[i] < kmer_min_)
             kmer_min_ = kmer_[i];
     }
-//    printf("\n");
+    //    printf("\n");
 
     has_summarize_ = true;
 }
@@ -417,6 +432,8 @@ State *State::MergeStates(const std::vector<State *> &states) {
         if (res_state->do_over_represent_analyze_) {
             // merge over rep seq
             int hash_num = res_state->hash_num_;
+            res_state->over_representation_qcnt_+=item->over_representation_qcnt_;
+            res_state->over_representation_pcnt_+=item->over_representation_pcnt_;
             for (int i = 0; i < hash_num; i++) {
                 res_state->hash_graph_[i].cnt += item->hash_graph_[i].cnt;
                 for (int j = 0; j < eva_len; j++) {
@@ -442,30 +459,33 @@ void State::PrintStates(const State *state) {
     printf("lines %lld\n", state->lines_);
     printf("kmer max is %lld\n", state->kmer_max_);
     printf("kmer min is %lld\n", state->kmer_min_);
-
-//    int now_seq_len = state->real_seq_len_;
-//    printf("position--quality :\n");
-//    for (int i = 0; i < now_seq_len; i++) {
-//        int64_t tot_cnt = 0;
-//        int64_t tot_qul = 0;
-//        for (int j = 0; j < 8; j++) {
-//            tot_cnt += state->pos_cnt_[i * 8 + j];
-//            tot_qul += state->pos_qul_[i * 8 + j];
-//        }
-//        printf("pos %d, quality %.5f\n", i, 1.0 * tot_qul / tot_cnt);
-//    }
-//    printf("mean_quality--ref_number :\n");
-//    for (int i = 0; i < state->qul_range_; i++) {
-//        printf("quality %d, ref_number %lld\n", i, state->qul_cnt_[i]);
-//    }
-//    printf("gc%%--ref_number :\n");
-//    for (int i = 0; i <= 100; i++) {
-//        printf("gc%% %d, ref_number %lld\n", i, state->gc_cnt_[i]);
-//    }
-//    printf("seq_len--ref_number :\n");
-//    for (int i = 0; i < state->real_seq_len_; i++) {
-//        printf("seq_len %d, ref_number %lld\n", i + 1, state->len_cnt_[i]);
-//    }
+    if(state->do_over_represent_analyze_){
+        printf("orp qcnt %d\n",state->over_representation_qcnt_);
+        printf("orp pcnt %d\n",state->over_representation_pcnt_);
+    }
+    //    int now_seq_len = state->real_seq_len_;
+    //    printf("position--quality :\n");
+    //    for (int i = 0; i < now_seq_len; i++) {
+    //        int64_t tot_cnt = 0;
+    //        int64_t tot_qul = 0;
+    //        for (int j = 0; j < 8; j++) {
+    //            tot_cnt += state->pos_cnt_[i * 8 + j];
+    //            tot_qul += state->pos_qul_[i * 8 + j];
+    //        }
+    //        printf("pos %d, quality %.5f\n", i, 1.0 * tot_qul / tot_cnt);
+    //    }
+    //    printf("mean_quality--ref_number :\n");
+    //    for (int i = 0; i < state->qul_range_; i++) {
+    //        printf("quality %d, ref_number %lld\n", i, state->qul_cnt_[i]);
+    //    }
+    //    printf("gc%%--ref_number :\n");
+    //    for (int i = 0; i <= 100; i++) {
+    //        printf("gc%% %d, ref_number %lld\n", i, state->gc_cnt_[i]);
+    //    }
+    //    printf("seq_len--ref_number :\n");
+    //    for (int i = 0; i < state->real_seq_len_; i++) {
+    //        printf("seq_len %d, ref_number %lld\n", i + 1, state->len_cnt_[i]);
+    //    }
 
 
 }
