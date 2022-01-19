@@ -4,9 +4,9 @@
 
 #include "state.h"
 
-#define mod_big 500009
+#define mod_big 1000003
 #define mod 99349
-#define hash_maxn_big 500111
+#define hash_maxn_big 1000010
 #define hash_maxn 100000
 #ifdef Vec512
 
@@ -104,12 +104,15 @@ State::~State() {
 
 }
 
-
+#define BB 233ll
+#define MM 1000000000000000003ll
 void State::HashInsert(const char *seq, int len, int eva_len) {
     int64_t now = 0;
     for (int i = 0; i < len; i++) {
-        now = now * 5;
+        //now = now * BB;
+        now = now * 6;
         now += valAGCT2[seq[i] & 0x07];
+        //now %= MM;
     }
     int ha = (now % mod + mod) % mod;
     int ha_big=(now%mod_big+mod_big)%mod_big;
@@ -146,15 +149,17 @@ void State::HashState(){
 void State::HashQueryAndAdd(const char *seq, int offset, int len, int eva_len) {
     int64_t now = 0;
     for (int i = 0; i < len; i++) {
-        now = now * 5;
+        //now = now * BB;
+        now = now * 6;
         now += valAGCT2[seq[offset + i] & 0x07];
+        //now %= MM;
     }
     over_representation_qcnt_++;
-    int ha = (now % mod + mod) % mod;
     int ha_big=(now%mod_big+mod_big)%mod_big;
     bool pass_bf=bf_zone_[ha_big>>6]&(1ll<<(ha_big&0x3f));
     if(!pass_bf)return;
-    else over_representation_pcnt_++;
+    else over_representation_pcnt_++; 
+    int ha = (now % mod + mod) % mod;
     for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre){
         //over_representation_pcnt_++;
         if (hash_graph_[i].v == now) {
@@ -460,8 +465,8 @@ void State::PrintStates(const State *state) {
     printf("kmer max is %lld\n", state->kmer_max_);
     printf("kmer min is %lld\n", state->kmer_min_);
     if(state->do_over_represent_analyze_){
-        printf("orp qcnt %d\n",state->over_representation_qcnt_);
-        printf("orp pcnt %d\n",state->over_representation_pcnt_);
+        printf("orp qcnt %lld\n",state->over_representation_qcnt_);
+        printf("orp pcnt %lld\n",state->over_representation_pcnt_);
     }
     //    int now_seq_len = state->real_seq_len_;
     //    printf("position--quality :\n");

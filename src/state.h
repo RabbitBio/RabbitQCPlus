@@ -118,8 +118,8 @@ private:
     bool is_read2_;
     bool do_over_represent_analyze_;
     int over_representation_sampling_;
-    int over_representation_qcnt_;
-    int over_representation_pcnt_;
+    int64_t over_representation_qcnt_;
+    int64_t over_representation_pcnt_;
     int64_t *bf_zone_;
 };
 

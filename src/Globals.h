@@ -59,7 +59,7 @@ inline double GetTime() {
 }
 
 static int valAGCT[8] = {-1, 0, -1, 2, 1, -1, -1, 3};
-static int valAGCT2[8] = {-1, 0, -1, 2, 1, -1, 4, 3};
+static int valAGCT2[8] = {-1, 1, -1, 3, 2, -1, 5, 4};
 
 
 namespace rabbit {

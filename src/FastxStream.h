@@ -350,6 +350,7 @@ namespace rabbit {
                     std::cout << "now reader" << std::endl;
 
                     mFile = FOPEN(fileName_.c_str(), "rb");
+                    std::cout << "now reader done" << std::endl;
                     if (fileName2_ != "") {
                         mFile2 = FOPEN(fileName2_.c_str(), "rb");
                         if (mFile2 == NULL)

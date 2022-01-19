@@ -90,6 +90,7 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
     rabbit::fq::FastqFileReader *fqFileReader;
     fqFileReader = new rabbit::fq::FastqFileReader(file, fastq_data_pool, "", in_is_zip_);
     int64_t n_chunks = 0;
+    std:cout << "new FastqFileReader done" <<std::endl;
 
     if (cmd_info_->use_pugz_) {
         pair<char *, int> last_info;
