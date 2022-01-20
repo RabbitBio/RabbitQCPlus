@@ -29,6 +29,8 @@ public:
 
     void StateInfo(neoReference &ref);
 
+    void StateORP(neoReference &ref);
+
     void ExtendBuffer(int old_len, int new_len);
 
     void Summarize();
@@ -45,7 +47,7 @@ public:
 	
 	void HashState();
 
-    void HashQueryAndAdd(const char *seq, int offset, int len, int eva_len);
+    void HashQueryAndAdd(int64_t now, int offset, int len, int eva_len);
 
     int *GetHeadHashGraph() const;
 

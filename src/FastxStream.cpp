@@ -315,6 +315,7 @@ namespace rabbit {
 
         int64 count_line(uchar *contenx, int64 read_bytes) {
             int64 count_n = 0;
+/*
 #ifdef Vec512
             int i = 0;
             __m512i conx;
@@ -330,11 +331,12 @@ namespace rabbit {
                 if (contenx[i] == '\n') count_n++;
             }
 #else
+*/
             for (int i = 0; i < read_bytes; ++i) {
                 // printf("%c",contenx[i]);
                 if (contenx[i] == '\n') count_n++;
             }
-#endif
+//#endif
 
             return count_n;
         }

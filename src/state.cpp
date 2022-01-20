@@ -146,14 +146,7 @@ void State::HashState(){
 
 }
 
-void State::HashQueryAndAdd(const char *seq, int offset, int len, int eva_len) {
-    int64_t now = 0;
-    for (int i = 0; i < len; i++) {
-        //now = now * BB;
-        now = now * 6;
-        now += valAGCT2[seq[offset + i] & 0x07];
-        //now %= MM;
-    }
+inline void State::HashQueryAndAdd(int64_t now, int offset, int len, int eva_len) {
     over_representation_qcnt_++;
     int ha_big=(now%mod_big+mod_big)%mod_big;
     bool pass_bf=bf_zone_[ha_big>>6]&(1ll<<(ha_big&0x3f));
@@ -326,7 +319,28 @@ void State::StateInfo(neoReference &ref) {
 
 
 #elif Vec256
-    print("pending...");
+    //print("pending...");
+    for (int i = 0; i < slen; i++) {
+        char b = bases[i] & 0x07;
+        if (b == 3 || b == 7)gc_cnt++;
+        int q = std::max(0, quals[i] - phredSub);
+
+        qul_tot += q;
+        if (q >= 30) {
+            q20bases_++;
+            q30bases_++;
+        } else if (q >= 20) {
+            q20bases_++;
+        }
+        pos_cnt_[i * 8 + b]++;
+        pos_qul_[i * 8 + b] += q;
+        if (bases[i] == 'N')flag = 5;
+        int val = valAGCT[b];
+        kmer = ((kmer << 2) & 0x3FC) | val;
+        if (flag <= 0)kmer_[kmer]++;
+        flag--;
+
+    }
 #else
     for (int i = 0; i < slen; i++) {
         char b = bases[i] & 0x07;
@@ -355,27 +369,56 @@ void State::StateInfo(neoReference &ref) {
     gc_bases_ += gc_cnt;
     gc_cnt_[int(100.0 * gc_cnt / slen)]++;
     qul_cnt_[int(1.0 * qul_tot / slen)]++;
-
-
     // do overrepresentation analysis for 1 of every 20 reads
-    if (do_over_represent_analyze_) {
-        if (lines_ % over_representation_sampling_ == 0) {
-            int eva_len = 0;
-            if (is_read2_)eva_len = cmd_info_->eva_len2_;
-            else eva_len = cmd_info_->eva_len_;
-            const int steps[5] = {10, 20, 40, 100, std::min(150, eva_len - 2)};
-            for (int i = 0; i < slen; i++) {
-                char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
-                for (int s = 0; s < 5; s++) {
-                    if (i + steps[s] < slen)HashQueryAndAdd(seq, i, steps[s], eva_len);
-                }
-            }
-
-        }
+    if (do_over_represent_analyze_){
+        StateORP(ref);
     }
     lines_++;
 }
 
+void State::StateORP(neoReference &ref){
+    if (lines_ % over_representation_sampling_ == 0) {
+        int slen = ref.lseq;
+        int eva_len = 0;
+        if (is_read2_)eva_len = cmd_info_->eva_len2_;
+        else eva_len = cmd_info_->eva_len_;
+        int steps[5] = {10, 20, 40, 100, std::min(150, eva_len - 2)};
+        sort(steps,steps+5);
+        int max_step=steps[4];
+
+        for (int i = 0; i < slen; i++) {
+            char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
+            int64_t now = 0;
+            int now_pos=0;
+            for(int j=0;j<max_step;j++){
+                if(i+j>=slen)break;
+                if(j==steps[now_pos]){
+                    HashQueryAndAdd(now, i, steps[now_pos], eva_len);
+                    now_pos++;
+                }
+                now = now * 6;
+                now += valAGCT2[seq[i + j] & 0x07];
+            }
+        }
+
+        /*
+           for (int i = 0; i < slen; i++) {
+           char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
+           for (int s = 0; s < 5; s++) {
+           if (i + steps[s] < slen){
+           int64_t now=0;
+           for(int j=0;j<steps[s];j++){
+           now = now * 6;
+           now += valAGCT2[seq[i + j] & 0x07];
+           }
+           HashQueryAndAdd(now, i, steps[s], eva_len);
+           }
+           }
+           }
+           */
+    }
+
+}
 
 void State::Summarize() {
     if (has_summarize_)return;
