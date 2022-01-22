@@ -371,52 +371,52 @@ void State::StateInfo(neoReference &ref) {
     qul_cnt_[int(1.0 * qul_tot / slen)]++;
     // do overrepresentation analysis for 1 of every 20 reads
     if (do_over_represent_analyze_){
-        StateORP(ref);
+        if (lines_ % over_representation_sampling_ == 0) {
+            StateORP(ref);
+        }
     }
     lines_++;
 }
 
 void State::StateORP(neoReference &ref){
-    if (lines_ % over_representation_sampling_ == 0) {
-        int slen = ref.lseq;
-        int eva_len = 0;
-        if (is_read2_)eva_len = cmd_info_->eva_len2_;
-        else eva_len = cmd_info_->eva_len_;
-        int steps[5] = {10, 20, 40, 100, std::min(150, eva_len - 2)};
-        sort(steps,steps+5);
-        int max_step=steps[4];
+    int slen = ref.lseq;
+    int eva_len = 0;
+    if (is_read2_)eva_len = cmd_info_->eva_len2_;
+    else eva_len = cmd_info_->eva_len_;
+    int steps[5] = {10, 20, 40, 100, std::min(150, eva_len - 2)};
+    sort(steps,steps+5);
+    int max_step=steps[4];
 
-        for (int i = 0; i < slen; i++) {
-            char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
-            int64_t now = 0;
-            int now_pos=0;
-            for(int j=0;j<max_step;j++){
-                if(i+j>=slen)break;
-                if(j==steps[now_pos]){
-                    HashQueryAndAdd(now, i, steps[now_pos], eva_len);
-                    now_pos++;
-                }
-                now = now * 6;
-                now += valAGCT2[seq[i + j] & 0x07];
+    for (int i = 0; i < slen; i++) {
+        char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
+        int64_t now = 0;
+        int now_pos=0;
+        for(int j=0;j<max_step;j++){
+            if(i+j>=slen)break;
+            if(j==steps[now_pos]){
+                HashQueryAndAdd(now, i, steps[now_pos], eva_len);
+                now_pos++;
             }
+            now = now * 6;
+            now += valAGCT2[seq[i + j] & 0x07];
         }
-
-        /*
-           for (int i = 0; i < slen; i++) {
-           char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
-           for (int s = 0; s < 5; s++) {
-           if (i + steps[s] < slen){
-           int64_t now=0;
-           for(int j=0;j<steps[s];j++){
-           now = now * 6;
-           now += valAGCT2[seq[i + j] & 0x07];
-           }
-           HashQueryAndAdd(now, i, steps[s], eva_len);
-           }
-           }
-           }
-           */
     }
+
+    /*
+       for (int i = 0; i < slen; i++) {
+       char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
+       for (int s = 0; s < 5; s++) {
+       if (i + steps[s] < slen){
+       int64_t now=0;
+       for(int j=0;j<steps[s];j++){
+       now = now * 6;
+       now += valAGCT2[seq[i + j] & 0x07];
+       }
+       HashQueryAndAdd(now, i, steps[s], eva_len);
+       }
+       }
+       }
+       */
 
 }
 
