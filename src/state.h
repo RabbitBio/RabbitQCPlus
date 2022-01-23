@@ -13,10 +13,10 @@
 #include "Globals.h"
 #include "Reference.h"
 #include "cmdinfo.h"
-
+#include "ntHashIterator.hpp"
 struct node {
     int pre, cnt;
-    int64_t v;
+    uint64_t v;
     std::string seq;
     int64_t *dist;
 };
@@ -44,10 +44,12 @@ public:
     static std::string list2string(double *list, int size);
 
     void HashInsert(const char *seq, int len, int eva_len);
-	
+
+    void HashInsert(const std::string seq, int len, int eva_len);
+
 	void HashState();
 
-    void HashQueryAndAdd(int64_t now, int offset, int len, int eva_len);
+    void HashQueryAndAdd(uint64_t now, int offset, int len, int eva_len);
 
     int *GetHeadHashGraph() const;
 
