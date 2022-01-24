@@ -17,6 +17,7 @@
 struct node {
     int pre, cnt;
     uint64_t v;
+    int slen;
     std::string seq;
     int64_t *dist;
 };

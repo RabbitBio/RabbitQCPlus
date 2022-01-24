@@ -116,7 +116,7 @@ void State::HashInsert(const char *seq, int len, int eva_len) {
     hash_graph_[hash_num_].pre = head_hash_graph_[ha];
     head_hash_graph_[ha] = hash_num_;
     hash_graph_[hash_num_].cnt = 0;
-    hash_graph_[hash_num_].seq = std::string(seq, len);
+    hash_graph_[hash_num_].seq = std::string(seq,len);
     hash_graph_[hash_num_].dist = new int64_t[eva_len];
     memset(hash_graph_[hash_num_].dist, 0, sizeof(int64_t) * eva_len);
     hash_num_++;
@@ -150,7 +150,7 @@ inline void State::HashQueryAndAdd(uint64_t now, int offset, int len, int eva_le
     int ha = (now % mod + mod) % mod;
     for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre){
         //over_representation_pcnt_++;
-        if (hash_graph_[i].v == now) {
+        if (hash_graph_[i].v == now && hash_graph_[i].seq.length() == len) {
             //over_representation_pcnt_++;
             for (int p = offset; p < offset + len && p < eva_len; p++) {
                 hash_graph_[i].dist[p]++;
