@@ -69,9 +69,8 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
             //printf("new cost %.4f\n",GetTime()-t0);
             t0=GetTime();
             for (auto item:cmd_info->hot_seqs2_) {
-                if(item.find("N")==item.npos)
-                    HashInsert(item, item.length(), cmd_info->eva_len2_);
-                else HashInsert(item.c_str(), item.length(), cmd_info->eva_len2_);
+                HashInsert(item, item.length(), cmd_info->eva_len2_);
+
             }
             //printf("insert cost %.4f\n",GetTime()-t0);
         } else {
@@ -79,9 +78,7 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
             //printf("new cost %.4f\n",GetTime()-t0);
             t0=GetTime();
             for (auto item:cmd_info->hot_seqs_) {
-                if(item.find("N")==item.npos)
-                    HashInsert(item, item.length(), cmd_info->eva_len2_);
-                else HashInsert(item.c_str(), item.length(), cmd_info->eva_len2_);
+                HashInsert(item, item.length(), cmd_info->eva_len2_);
             }
             //printf("insert cost %.4f\n",GetTime()-t0);
         }
@@ -111,19 +108,12 @@ State::~State() {
 #define BB 233ll
 #define MM 1000000000000000003ll
 void State::HashInsert(const std::string seq, int len, int eva_len){
-    ntHashIterator itr(seq, 1, len);
-    uint64_t now=(*itr)[0];
-    if(now==11484551103103516342){
-        printf("get seq %s\n",seq.c_str());
-    }
+    std::vector<bool> seed;
+    for(int i=0;i<len;i++)seed.push_back(1);
+    ssHashIterator ssitr(seq, seed, seed.size());
+    uint64_t now=*ssitr;
     int ha = (now % mod + mod) % mod;
-    if(now==11484551103103516342){
-        printf("get ha %d\n",ha);
-    }
     int ha_big=(now%mod_big+mod_big)%mod_big;
-    if(now==11484551103103516342){
-        printf("get ha_big %d\n",ha_big);
-    }
     bf_zone_[ha_big>>6]|=(1ll<<(ha_big&(0x3f)));
     hash_graph_[hash_num_].v = now;
     hash_graph_[hash_num_].pre = head_hash_graph_[ha];
@@ -179,12 +169,10 @@ void State::HashState(){
 inline void State::HashQueryAndAdd(uint64_t now, int offset, int len, int eva_len) {
     over_representation_qcnt_++;
     int ha_big=(now%mod_big+mod_big)%mod_big;
-    if(now==11484551103103516342)printf("ha_big %d\n",ha_big);
     bool pass_bf=bf_zone_[ha_big>>6]&(1ll<<(ha_big&0x3f));
     if(!pass_bf)return;
     else over_representation_pcnt_++; 
     int ha = (now % mod + mod) % mod;
-    if(now==11484551103103516342)printf("ha %d\n",ha);
     for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre){
         //over_representation_pcnt_++;
         if (hash_graph_[i].v == now) {
@@ -418,42 +406,57 @@ void State::StateORP(neoReference &ref){
     sort(steps,steps+5);
     int max_step=steps[4];
     std::string seq=std::string((char*)ref.base + ref.pseq,ref.lseq);
-    if(seq.find("N")==seq.npos){
-        int ok=0;
-        if(seq=="CAAAAAAGGACCGACCACCAGATACAGCCAGGCCCCCGTGCCCTCCCCACCAGAATAGCACCTGTATGGCCGAGCCCAGGTAAGCCTTGATGTCCACACG"){
-            ok=1;
-        } 
-        for(int s=0;s<5;s++){
-            unsigned k=steps[s];
-            unsigned h=1;
-            ntHashIterator itr(seq, h, k);
-            int i=0;
-            while (itr != itr.end()) {
-                //if(ok&&s==2&&i==3)printf("(*itr)[0] %llud %s\n",(*itr)[0],(seq.substr(3,40)).c_str());
-                if((*itr)[0]==11484551103103516342){
-                   printf("seq %d %s\n",i,seq.substr(i,steps[s]).c_str());
-                }
-                HashQueryAndAdd((*itr)[0], i, steps[s], eva_len);
-                ++itr;
-                i++;
-            }
-        }
+    for(int s=0;s<5;s++){
+        if(steps[s]>slen)continue;
+        unsigned k=steps[s];
+        std::vector<bool> seed;
+        for(int i=0;i<k;i++)seed.push_back(1);
+        ssHashIterator ssitr(seq, seed, seed.size());
+        int cntt=0;
+        while (ssitr != ssitr.end()){
+            HashQueryAndAdd(*ssitr, cntt, steps[s], eva_len);
+            ++ssitr;
+            cntt++;
+        }  
+    }
+    /*
+       if(seq.find("N")==seq.npos){
+       int ok=0;
+       if(seq=="CAAAAAAGGACCGACCACCAGATACAGCCAGGCCCCCGTGCCCTCCCCACCAGAATAGCACCTGTATGGCCGAGCCCAGGTAAGCCTTGATGTCCACACG"){
+       ok=1;
+       } 
+       for(int s=0;s<5;s++){
+       unsigned k=steps[s];
+       unsigned h=1;
+       ntHashIterator itr(seq, h, k);
+       int i=0;
+       while (itr != itr.end()) {
+    //if(ok&&s==2&&i==3)printf("(*itr)[0] %llud %s\n",(*itr)[0],(seq.substr(3,40)).c_str());
+    if((*itr)[0]==11484551103103516342){
+    printf("seq %d %s\n",i,seq.substr(i,steps[s]).c_str());
+    }
+    HashQueryAndAdd((*itr)[0], i, steps[s], eva_len);
+    ++itr;
+    i++;
+    }
+    }
     }else{
-        for (int i = 0; i < slen; i++) {
-            char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
-            for (int s = 0; s < 5; s++) {
-                if (i + steps[s] <= slen){
-                    uint64_t now=0;
-                    for(int j=0;j<steps[s];j++){
-                        now = now * 6;
-                        now += valAGCT2[seq[i + j] & 0x07];
-                    }
-                    HashQueryAndAdd(now, i, steps[s], eva_len);
-                }
-            }
-        }
+    for (int i = 0; i < slen; i++) {
+    char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
+    for (int s = 0; s < 5; s++) {
+    if (i + steps[s] <= slen){
+    uint64_t now=0;
+    for(int j=0;j<steps[s];j++){
+    now = now * 6;
+    now += valAGCT2[seq[i + j] & 0x07];
+    }
+    HashQueryAndAdd(now, i, steps[s], eva_len);
+    }
+    }
+    }
 
     }
+    */
     /*
        for (int i = 0; i < slen; i++) {
        char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);

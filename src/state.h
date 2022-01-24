@@ -14,6 +14,8 @@
 #include "Reference.h"
 #include "cmdinfo.h"
 #include "ntHashIterator.hpp"
+#include "ssHashIterator.hpp"
+#include "nthash.hpp"
 struct node {
     int pre, cnt;
     uint64_t v;

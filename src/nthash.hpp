@@ -760,6 +760,19 @@ inline uint64_t NTS64(const char * kmerSeq, const std::vector<bool> &seed, const
     return sVal;
 }
 
+// a sample ntHash for base kmer, i.e. fhval(kmer_0) to replace NTF64
+inline uint64_t NT64(const char * kmerSeq, const unsigned k) {
+    uint64_t hVal = 0;
+    for(unsigned i=0; i<k; i++) {
+        hVal = rol1(hVal);
+        hVal = swapbits033(hVal);
+        hVal ^= seedTab[(unsigned char)kmerSeq[i]];
+    }
+    return hVal;
+}
+
+
+
 // spaced seed ntHash for sliding k-mers
 inline uint64_t NTS64(const char * kmerSeq, const std::vector<bool> &seed, const unsigned char charOut, const unsigned char charIn, const unsigned k, uint64_t &hVal) {
     hVal = NTF64(hVal,k,charOut,charIn);
