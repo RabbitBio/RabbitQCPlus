@@ -13,8 +13,6 @@
 #include "Globals.h"
 #include "Reference.h"
 #include "cmdinfo.h"
-#include "ntHashIterator.hpp"
-#include "ssHashIterator.hpp"
 #include "nthash.hpp"
 struct node {
     int pre, cnt;
@@ -46,8 +44,6 @@ public:
     static std::string list2string(double *list, int size);
 
     void HashInsert(const char *seq, int len, int eva_len);
-
-    void HashInsert(const std::string seq, int len, int eva_len);
 
 	void HashState();
 

@@ -69,8 +69,7 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
             //printf("new cost %.4f\n",GetTime()-t0);
             t0=GetTime();
             for (auto item:cmd_info->hot_seqs2_) {
-                HashInsert(item, item.length(), cmd_info->eva_len2_);
-
+                HashInsert(item.c_str(), item.length(), cmd_info->eva_len2_);
             }
             //printf("insert cost %.4f\n",GetTime()-t0);
         } else {
@@ -78,7 +77,7 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
             //printf("new cost %.4f\n",GetTime()-t0);
             t0=GetTime();
             for (auto item:cmd_info->hot_seqs_) {
-                HashInsert(item, item.length(), cmd_info->eva_len2_);
+                HashInsert(item.c_str(), item.length(), cmd_info->eva_len2_);
             }
             //printf("insert cost %.4f\n",GetTime()-t0);
         }
@@ -107,33 +106,9 @@ State::~State() {
 
 #define BB 233ll
 #define MM 1000000000000000003ll
-void State::HashInsert(const std::string seq, int len, int eva_len){
-    std::vector<bool> seed;
-    for(int i=0;i<len;i++)seed.push_back(1);
-    ssHashIterator ssitr(seq, seed, seed.size());
-    uint64_t now=*ssitr;
-    int ha = (now % mod + mod) % mod;
-    int ha_big=(now%mod_big+mod_big)%mod_big;
-    bf_zone_[ha_big>>6]|=(1ll<<(ha_big&(0x3f)));
-    hash_graph_[hash_num_].v = now;
-    hash_graph_[hash_num_].pre = head_hash_graph_[ha];
-    head_hash_graph_[ha] = hash_num_;
-    hash_graph_[hash_num_].cnt = 0;
-    hash_graph_[hash_num_].seq = seq;
-    hash_graph_[hash_num_].dist = new int64_t[eva_len];
-    memset(hash_graph_[hash_num_].dist, 0, sizeof(int64_t) * eva_len);
-    hash_num_++;
-}
 
 void State::HashInsert(const char *seq, int len, int eva_len) {
-    uint64_t now = 0;
-    for (int i = 0; i < len; i++) {
-        //now = now * BB;
-        now = now * 6;
-        now += valAGCT2[seq[i] & 0x07];
-        //now %= MM;
-    }
-
+    uint64_t now = NT64(seq, len);
     int ha = (now % mod + mod) % mod;
     int ha_big=(now%mod_big+mod_big)%mod_big;
     bf_zone_[ha_big>>6]|=(1ll<<(ha_big&(0x3f)));
@@ -403,92 +378,18 @@ void State::StateORP(neoReference &ref){
     if (is_read2_)eva_len = cmd_info_->eva_len2_;
     else eva_len = cmd_info_->eva_len_;
     int steps[5] = {10, 20, 40, 100, std::min(150, eva_len - 2)};
-    sort(steps,steps+5);
-    int max_step=steps[4];
-    std::string seq=std::string((char*)ref.base + ref.pseq,ref.lseq);
+    char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
+    std::string seqs=std::string(seq,slen);
     for(int s=0;s<5;s++){
         if(steps[s]>slen)continue;
         unsigned k=steps[s];
-        std::vector<bool> seed;
-        for(int i=0;i<k;i++)seed.push_back(1);
-        ssHashIterator ssitr(seq, seed, seed.size());
-        int cntt=0;
-        while (ssitr != ssitr.end()){
-            HashQueryAndAdd(*ssitr, cntt, steps[s], eva_len);
-            ++ssitr;
-            cntt++;
-        }  
+        uint64_t hVal = NT64(seq, k);
+        HashQueryAndAdd(hVal, 0, steps[s], eva_len);
+        for (size_t i = 0; i < slen - k; i++){
+            hVal = NTF64(hVal,k, seq[i], seq[i+k]);
+            HashQueryAndAdd(hVal, i+1, steps[s], eva_len);
+        }
     }
-    /*
-       if(seq.find("N")==seq.npos){
-       int ok=0;
-       if(seq=="CAAAAAAGGACCGACCACCAGATACAGCCAGGCCCCCGTGCCCTCCCCACCAGAATAGCACCTGTATGGCCGAGCCCAGGTAAGCCTTGATGTCCACACG"){
-       ok=1;
-       } 
-       for(int s=0;s<5;s++){
-       unsigned k=steps[s];
-       unsigned h=1;
-       ntHashIterator itr(seq, h, k);
-       int i=0;
-       while (itr != itr.end()) {
-    //if(ok&&s==2&&i==3)printf("(*itr)[0] %llud %s\n",(*itr)[0],(seq.substr(3,40)).c_str());
-    if((*itr)[0]==11484551103103516342){
-    printf("seq %d %s\n",i,seq.substr(i,steps[s]).c_str());
-    }
-    HashQueryAndAdd((*itr)[0], i, steps[s], eva_len);
-    ++itr;
-    i++;
-    }
-    }
-    }else{
-    for (int i = 0; i < slen; i++) {
-    char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
-    for (int s = 0; s < 5; s++) {
-    if (i + steps[s] <= slen){
-    uint64_t now=0;
-    for(int j=0;j<steps[s];j++){
-    now = now * 6;
-    now += valAGCT2[seq[i + j] & 0x07];
-    }
-    HashQueryAndAdd(now, i, steps[s], eva_len);
-    }
-    }
-    }
-
-    }
-    */
-    /*
-       for (int i = 0; i < slen; i++) {
-       char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
-       uint64_t now = 0;
-       int now_pos=0;
-       for(int j=0;j<max_step;j++){
-       if(i+j>=slen)break;
-       if(j==steps[now_pos]){
-       HashQueryAndAdd(now, i, steps[now_pos], eva_len);
-       now_pos++;
-       }
-       now = now * 6;
-       now += valAGCT2[seq[i + j] & 0x07];
-       }
-       }
-       */
-    /*
-       for (int i = 0; i < slen; i++) {
-       char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
-       for (int s = 0; s < 5; s++) {
-       if (i + steps[s] < slen){
-       uint64_t now=0;
-       for(int j=0;j<steps[s];j++){
-       now = now * 6;
-       now += valAGCT2[seq[i + j] & 0x07];
-       }
-       HashQueryAndAdd(now, i, steps[s], eva_len);
-       }
-       }
-       }
-       */
-
 }
 
 void State::Summarize() {
