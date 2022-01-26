@@ -430,7 +430,7 @@ void SeQc::ProcessSeFastq() {
         auto hash_graph2 = aft_state->GetHashGraph();
         int hash_num2 = aft_state->GetHashNum();
 
-/*
+
         ofstream ofs;
         ofs.open("ORP2.log", ifstream::out);
         for (int i = 0; i < hash_num1; i++) {
@@ -442,7 +442,6 @@ void SeQc::ProcessSeFastq() {
             ofs << hash_graph2[i].seq << " " << hash_graph2[i].cnt << "\n";
         }
         ofs.close();
-*/
     }
 
 

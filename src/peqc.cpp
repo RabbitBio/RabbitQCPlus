@@ -213,20 +213,13 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
 void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
         rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
     rabbit::int64 id = 0;
-    int cnt=0;
     rabbit::fq::FastqDataPairChunk *fqdatachunk;
     while (dq.Pop(id, fqdatachunk)) {
         std::vector<neoReference> data1, data2;
         std::vector<neoReference> pass_data1, pass_data2;
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->left_part), data1, true);
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->right_part), data2, true);
-        cnt++;
-        if(data1.size() != data2.size()){
-            printf("cnt %d\n",cnt);
-            printf("gg %d %d\n",data1.size(),data2.size());
-        }
-
-//        ASSERT(data1.size() == data2.size());
+        ASSERT(data1.size() == data2.size());
         int out_len1 = 0, out_len2 = 0;
         int b_size=min(data1.size(),data2.size());
         for (int i = 0; i < b_size; i++) {

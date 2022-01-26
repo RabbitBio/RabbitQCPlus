@@ -315,7 +315,7 @@ namespace rabbit {
 
         int64 count_line(uchar *contenx, int64 read_bytes) {
             int64 count_n = 0;
-/*
+
 #ifdef Vec512
             int i = 0;
             __m512i conx;
@@ -331,12 +331,12 @@ namespace rabbit {
                 if (contenx[i] == '\n') count_n++;
             }
 #else
-*/
+
             for (int i = 0; i < read_bytes; ++i) {
                 // printf("%c",contenx[i]);
                 if (contenx[i] == '\n') count_n++;
             }
-//#endif
+#endif
 
             return count_n;
         }
@@ -452,141 +452,6 @@ namespace rabbit {
 
         }
 
-        //        FastqDataPairChunk *FastqFileReader::readNextPairChunk() {
-        //            FastqDataPairChunk *pair = new FastqDataPairChunk;
-        //
-        //            FastqDataChunk *leftPart = NULL;
-        //            recordsPool->Acquire(leftPart);  // song: all in one datapool
-        //
-        //            FastqDataChunk *rightPart = NULL;
-        //            recordsPool->Acquire(rightPart);
-        //
-        //            int64 left_line_count = 0;
-        //            int64 right_line_count = 0;
-        //            int64 chunkEnd = 0;
-        //            int64 chunkEnd_right = 0;
-        //
-        //            //---------read left chunk------------
-        //            if (eof) {
-        //                leftPart->size = 0;
-        //                rightPart->size = 0;
-        //                // return false;
-        //                recordsPool->Release(leftPart);
-        //                recordsPool->Release(rightPart);
-        //                return NULL;
-        //            }
-        //
-        //            // flush the data from previous incomplete chunk
-        //            uchar *data = leftPart->data.Pointer();
-        //            const uint64 cbufSize = leftPart->data.Size();
-        //            leftPart->size = 0;
-        //            int64 toRead;
-        //            toRead = cbufSize - bufferSize;
-        //            if (bufferSize > 0) {
-        //                std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
-        //                leftPart->size = bufferSize;
-        //                bufferSize = 0;
-        //            }
-        //            int64 r;
-        //            r = Read(data + leftPart->size, toRead);
-        //            if (r > 0) {
-        //                if (r == toRead) {
-        //                    chunkEnd = cbufSize - GetNxtBuffSize;
-        //                    chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
-        //                } else {
-        //                    // chunkEnd = r;
-        //                    leftPart->size += r - 1;
-        //                    if (usesCrlf) leftPart->size -= 1;
-        //                    eof = true;
-        //                }
-        //            } else {
-        //                eof = true;
-        //                return NULL;
-        //            }
-        //            //------read left chunk end------//
-        //
-        //            //-----------------read right chunk---------------------//
-        //            uchar *data_right = rightPart->data.Pointer();
-        //            const uint64 cbufSize_right = rightPart->data.Size();
-        //            rightPart->size = 0;
-        //            toRead = cbufSize_right - bufferSize2;
-        //            if (bufferSize2 > 0) {
-        //                std::copy(swapBuffer2.Pointer(), swapBuffer2.Pointer() + bufferSize2, data_right);
-        //                rightPart->size = bufferSize2;
-        //                bufferSize2 = 0;
-        //            }
-        //            r = Read2(data_right + rightPart->size, toRead);
-        //            if (r > 0) {
-        //                if (r == toRead) {
-        //                    chunkEnd_right = cbufSize_right - GetNxtBuffSize;
-        //                    chunkEnd_right = GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
-        //                } else {
-        //                    // chunkEnd_right += r;
-        //                    rightPart->size += r - 1;
-        //                    if (usesCrlf) rightPart->size -= 1;
-        //                    eof = true;
-        //                }
-        //            } else {
-        //                eof = true;
-        //                return NULL;
-        //            }
-        //            //--------------read right chunk end---------------------//
-        //
-        //            if (!eof) {
-        //                left_line_count = count_line(data, chunkEnd);
-        //                right_line_count = count_line(data_right, chunkEnd_right);
-        //                int64 difference = left_line_count - right_line_count;
-        //                if (difference > 0) {
-        //                    // move rightPart difference lines before
-        //                    // std::cout << "difference > 0 "<< left_line_count <<" " << right_line_count << " " << difference <<std::endl;
-        //                    //std::cout << "start: " << chunkEnd_right << std::endl;
-        //                    while (chunkEnd_right < cbufSize) {
-        //                        if (data_right[chunkEnd_right] == '\n') {
-        //                            difference--;
-        //                            if (difference == 0) {
-        //                                chunkEnd_right++;
-        //                                break;
-        //                            }
-        //                        }
-        //                        chunkEnd_right++;
-        //                    }
-        //
-        //                } else if (difference < 0) {
-        //                    // move leftPart difference lines before
-        //                    //std::cout << "difference < 0 "  <<left_line_count <<" " <<right_line_count << " " << difference << std::endl;
-        //                    while (chunkEnd < cbufSize) {
-        //                        if (data[chunkEnd] == '\n') {
-        //                            difference++;
-        //                            if (difference == 0) {
-        //                                chunkEnd++;
-        //                                break;
-        //                            }
-        //                        }
-        //                        chunkEnd++;
-        //                    }
-        //                }
-        //
-        //                if (difference != 0) {
-        //                    std::cerr << "difference still != 0, paired chunk too difference" << std::endl;
-        //                    exit(0);
-        //                }
-        //
-        //                leftPart->size = chunkEnd - 1;
-        //                if (usesCrlf) leftPart->size -= 1;
-        //
-        //                std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
-        //                bufferSize = cbufSize - chunkEnd;
-        //
-        //                rightPart->size = chunkEnd_right - 1;
-        //                if (usesCrlf) rightPart->size -= 1;
-        //                std::copy(data_right + chunkEnd_right, data_right + cbufSize_right, swapBuffer2.Pointer());
-        //                bufferSize2 = cbufSize_right - chunkEnd_right;
-        //            }
-        //            pair->left_part = leftPart;
-        //            pair->right_part = rightPart;
-        //            return pair;
-        //        }
-
         FastqDataPairChunk *FastqFileReader::readNextPairChunk() {
             bool eof1 = false;
             bool eof2 = false;
@@ -620,18 +485,7 @@ namespace rabbit {
             int64 toRead;
             toRead = cbufSize - bufferSize;
             if (bufferSize > 0) {
-                /*     int cntt = 0;
-                       int pos = 0;
-                       printf("===========OOOOOOL========\n");
-                       while (pos < bufferSize && cntt < 4) {
-                       printf("%c", swapBuffer.Pointer()[pos]);
-                       if (swapBuffer.Pointer()[pos] == '\n')cntt++;
-                       pos++;
-
-                       }
-                       printf("==========================\n");
-                       */
-                std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
+               std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
                 leftPart->size = bufferSize;
                 bufferSize = 0;
             }
@@ -667,25 +521,12 @@ namespace rabbit {
             rightPart->size = 0;
             toRead = cbufSize_right - bufferSize2;
             if (bufferSize2 > 0) {
-                /* int cntt = 0;
-                   int pos = 0;
-                   printf("===========OOOOOOR========\n");
-                   while (pos < bufferSize2 && cntt < 4) {
-                   printf("%c", swapBuffer2.Pointer()[pos]);
-                   if (swapBuffer2.Pointer()[pos] == '\n')cntt++;
-                   pos++;
-
-                   }
-                   printf("==========================\n");
-                   */
-                std::copy(swapBuffer2.Pointer(), swapBuffer2.Pointer() + bufferSize2, data_right);
+               std::copy(swapBuffer2.Pointer(), swapBuffer2.Pointer() + bufferSize2, data_right);
                 rightPart->size = bufferSize2;
                 bufferSize2 = 0;
             }
             r = Read2(data_right + rightPart->size, toRead);
             if (r > 0) {
-                //TODO when number of read1 and read2 is diff
-                //                if (!eof && r == toRead) {
                 if (r == toRead) {
                     chunkEnd_right = cbufSize_right - GetNxtBuffSize;
                     chunkEnd_right = GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
@@ -714,7 +555,6 @@ namespace rabbit {
                 left_line_count = count_line(data, chunkEnd);
                 right_line_count = count_line(data_right, chunkEnd_right);
                 int64 difference = left_line_count - right_line_count;
-                //if(difference!=0)printf("diff %d\n",difference);
                 if (difference > 0) {
                     while (chunkEnd >= 0) {
                         if (data[chunkEnd] == '\n') {
@@ -726,8 +566,6 @@ namespace rabbit {
                         }
                         chunkEnd--;
                     }
-
-
                 } else if (difference < 0) {
                     while (chunkEnd_right >= 0) {
                         if (data_right[chunkEnd_right] == '\n') {
@@ -740,29 +578,20 @@ namespace rabbit {
                         chunkEnd_right--;
                     }
                 }
-                //static long cntt=0;
-
-                left_line_count = count_line(data, chunkEnd);
-                right_line_count = count_line(data_right, chunkEnd_right);
-
-                //cntt+=left_line_count;
-                //printf("cntt %lld\n",cntt);
-                difference = left_line_count - right_line_count;
-                if(difference!=0){
-                    printf("GG,diff is %d\n",difference);
-                }
-
+                //left_line_count = count_line(data, chunkEnd);
+                //right_line_count = count_line(data_right, chunkEnd_right);
+                //difference = left_line_count - right_line_count;
+                //if(difference!=0){
+                //    printf("GG,diff is %d\n",difference);
+                //}
                 leftPart->size = chunkEnd - 1;
                 if (usesCrlf) leftPart->size -= 1;
                 std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
                 bufferSize = cbufSize - chunkEnd;
-                //printf("now copy %d to buff1\n",bufferSize);
-
                 rightPart->size = chunkEnd_right - 1;
                 if (usesCrlf) rightPart->size -= 1;
                 std::copy(data_right + chunkEnd_right, data_right + cbufSize_right, swapBuffer2.Pointer());
                 bufferSize2 = cbufSize_right - chunkEnd_right;
-                //printf("now copy %d to buff2\n",bufferSize2);
             }
             pair->left_part = leftPart;
             pair->right_part = rightPart;
@@ -848,8 +677,6 @@ namespace rabbit {
                     }
                     r = Read2(data_right + rightPart->size, toRead, q2, d2, last2);
                     if (r > 0) {
-                        //TODO when number of read1 and read2 is diff
-                        //                if (!eof && r == toRead) {
                         if (r == toRead) {
                             chunkEnd_right = cbufSize_right - GetNxtBuffSize;
                             chunkEnd_right = GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
@@ -889,8 +716,6 @@ namespace rabbit {
                                 }
                                 chunkEnd--;
                             }
-
-
                         } else if (difference < 0) {
                             while (chunkEnd_right >= 0) {
                                 if (data_right[chunkEnd_right] == '\n') {

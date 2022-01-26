@@ -302,7 +302,7 @@ namespace rabbit {
         class FastqFileReader {
         private:
             static const uint32 SwapBufferSize = 1 << 22;
-            static const uint32 GetNxtBuffSize = 1 << 20;  // the longest FASTQ sequence todate is no longer than 1Mbp.
+            static const uint32 GetNxtBuffSize = 1 << 12;  // the longest FASTQ sequence todate is no longer than 1Mbp.
 
         public:
             /**
