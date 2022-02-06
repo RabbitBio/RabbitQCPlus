@@ -72,14 +72,14 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
         umier_ = new Umier(cmd_info1);
     }
     if (cmd_info1->use_pugz_) {
-        pugzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
-        pugzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
+        pugzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 8);
+        pugzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 8);
     }
     if (cmd_info1->use_pigz_) {
-        pigzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
+        pigzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 8);
         pigzLast1.first = new char[1 << 24];
         pigzLast1.second = 0;
-        pigzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
+        pigzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 8);
         pigzLast2.first = new char[1 << 24];
         pigzLast2.second = 0;
 

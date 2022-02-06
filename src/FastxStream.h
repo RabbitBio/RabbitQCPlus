@@ -302,7 +302,7 @@ namespace rabbit {
         class FastqFileReader {
         private:
             static const uint32 SwapBufferSize = 1 << 22;
-            static const uint32 GetNxtBuffSize = 1 << 12;  // the longest FASTQ sequence todate is no longer than 1Mbp.
+            static const uint32 GetNxtBuffSize = 1 << 20;  // the longest FASTQ sequence todate is no longer than 1Mbp.
 
         public:
             /**
@@ -350,7 +350,6 @@ namespace rabbit {
                     std::cout << "now reader" << std::endl;
 
                     mFile = FOPEN(fileName_.c_str(), "rb");
-                    std::cout << "now reader done" << std::endl;
                     if (fileName2_ != "") {
                         mFile2 = FOPEN(fileName2_.c_str(), "rb");
                         if (mFile2 == NULL)

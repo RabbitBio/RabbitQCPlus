@@ -49,10 +49,10 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
         umier_ = new Umier(cmd_info1);
     }
     if (cmd_info1->use_pugz_) {
-        pugzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
+        pugzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 8);
     }
     if (cmd_info1->use_pigz_) {
-        pigzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
+        pigzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 8);
         pigzLast.first = new char[1 << 24];
         pigzLast.second = 0;
     }
