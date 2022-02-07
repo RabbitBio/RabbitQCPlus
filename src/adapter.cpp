@@ -362,6 +362,38 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
 
 }
 
+int Adapter::EvalMaxLen(std::string file_name){
+    auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
+    auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool, "",
+            file_name.find(".gz") != std::string::npos);
+    int64_t n_chunks = 0;
+    // stat up to 256K reads
+    const long READ_LIMIT = 256 * 1024;
+    const long BASE_LIMIT = 151 * READ_LIMIT;
+    long records = 0;
+    long bases = 0;
+    int mx_len=0;
+    while (records < READ_LIMIT && bases < BASE_LIMIT) {
+        rabbit::fq::FastqDataChunk *fqdatachunk;
+        fqdatachunk = fqFileReader->readNextChunk();
+        if (fqdatachunk == NULL) break;
+        n_chunks++;
+        std::vector<neoReference> data;
+        rabbit::fq::chunkFormat(fqdatachunk, data, true);
+        fastq_data_pool->Release(fqdatachunk);
+        for (auto item:data) {
+            bases += item.lseq;
+            mx_len=max(mx_len,(int)item.lseq);
+            records++;
+            if (records >= READ_LIMIT || bases >= BASE_LIMIT)
+                break;
+        }
+    }
+    return mx_len;
+
+
+}
+
 std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
     //printf("now auto find adapter...\n");
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
@@ -422,7 +454,6 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
             }
         }
     }
-    //printf("111\n");
     counts[0] = 0;
 
     // get the top N
@@ -470,7 +501,6 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
             }
         }
     }
-    //printf("222\n");
     const int FOLD_THRESHOLD = 20;
     for (int t = 0; t < topnum; t++) {
         int key = topkeys[t];

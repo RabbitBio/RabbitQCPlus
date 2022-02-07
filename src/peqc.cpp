@@ -146,6 +146,8 @@ void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool 
     double t0 = GetTime();
 
     rabbit::fq::FastqFileReader *fqFileReader;
+    rabbit::uint32 tmpSize=1<<20;
+    if(cmd_info_->seq_len_<=200)tmpSize=1<<14;
     fqFileReader = new rabbit::fq::FastqFileReader(file, fastq_data_pool, "", in_is_zip_);
     int64_t n_chunks = 0;
     while (true) {
@@ -170,7 +172,9 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
     double t0 = GetTime();
 
     rabbit::fq::FastqFileReader *fqFileReader;
-    fqFileReader = new rabbit::fq::FastqFileReader(file, fastqPool, file2, in_is_zip_);
+    rabbit::uint32 tmpSize=1<<20;
+    if(cmd_info_->seq_len_<=200)tmpSize=1<<14;
+    fqFileReader = new rabbit::fq::FastqFileReader(file, fastqPool, file2, in_is_zip_, tmpSize);
     int n_chunks = 0;
 
     rabbit::fq::FastqDataPairChunk *fqdatachunk;

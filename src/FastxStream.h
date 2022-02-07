@@ -301,8 +301,9 @@ namespace rabbit {
     namespace fq {
         class FastqFileReader {
         private:
-            static const uint32 SwapBufferSize = 1 << 22;
-            static const uint32 GetNxtBuffSize = 1 << 20;  // the longest FASTQ sequence todate is no longer than 1Mbp.
+            uint32 SwapBufferSize = 1 << 22;
+            uint32 GetNxtBuffSize = 1 << 20; 
+            // the longest FASTQ sequence todate is no longer than 1Mbp.
 
         public:
             /**
@@ -312,8 +313,7 @@ namespace rabbit {
              * @param fileName2_ the second file name if source file is pair-end sequence
              * @param isZippedNew if true, it will use gzopen to read fileName_ and fileName2_
              */
-            FastqFileReader(const std::string &fileName_, FastqDataPool *pool_, std::string fileName2_ = "",
-                            bool isZippedNew = false)
+            FastqFileReader(const std::string &fileName_, FastqDataPool *pool_, std::string fileName2_ = "", bool isZippedNew = false, uint32 mxLen_=1<<20)
                     : swapBuffer(SwapBufferSize),
                       swapBuffer2(SwapBufferSize),
                       bufferSize(0),
@@ -323,6 +323,9 @@ namespace rabbit {
                       isZipped(isZippedNew),
                       numParts(0),
                       recordsPool(pool_) {
+                printf("now construct FastqFileReader with mx len %d\n",mxLen_);
+                GetNxtBuffSize=mxLen_;
+                printf("now construct FastqFileReader with GetNxtBuffSize %d\n",GetNxtBuffSize);
                 // if(ends_with(fileName_,".gz"))
                 if (isZipped) {
                     std::cout << "now zip reader" << std::endl;
@@ -363,6 +366,7 @@ namespace rabbit {
                     }
                 }
             }
+
 
             FastqFileReader(const std::string &fileName_, FastqDataPool *pool_, FastqDataPool *pool2_,
                             std::string fileName2_ = "",

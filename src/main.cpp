@@ -187,7 +187,11 @@ int main(int argc, char **argv) {
         printf("now use pigz, pigz thread is %d\n", cmd_info.pigz_threads_);
     }
     printf("now use %d thread\n", cmd_info.thread_number_);
-
+    int mx_len=Adapter::EvalMaxLen(cmd_info.in_file_name1_);
+    printf("eval max read len is %d\n",mx_len);
+    printf("before cmd seq_len is %d\n",cmd_info.seq_len_);
+    cmd_info.seq_len_=mx_len;
+    printf("after cmd seq_len is %d\n",cmd_info.seq_len_);
     double t1 = GetTime();
     if (cmd_info.in_file_name2_.length() || cmd_info.interleaved_in_) {
         if ((cmd_info.out_file_name1_.length() > 0 && cmd_info.out_file_name2_.length() > 0) ||
@@ -197,13 +201,13 @@ int main(int argc, char **argv) {
         }
         if (cmd_info.in_file_name1_ != "/dev/stdin") {
             //calculate file size and estimate reads number
-            FILE *p_file;
-            p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
-            fseek(p_file, 0, SEEK_END);
-            int64_t total_size = ftell(p_file);
-            cmd_info.in_file_size1_ = total_size;
-            printf("in file total size is %lld\n", total_size);
-            printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
+//            FILE *p_file;
+//            p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
+//            fseek(p_file, 0, SEEK_END);
+//            int64_t total_size = ftell(p_file);
+//            cmd_info.in_file_size1_ = total_size;
+//            printf("in file total size is %lld\n", total_size);
+//            printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
         }
 
         //adapter
@@ -289,13 +293,13 @@ int main(int argc, char **argv) {
         }
         if (cmd_info.in_file_name1_ != "/dev/stdin") {
             //calculate file size and estimate reads number
-            FILE *p_file;
-            p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
-            fseek(p_file, 0, SEEK_END);
-            int64_t total_size = ftell(p_file);
-            cmd_info.in_file_size1_ = total_size;
-            printf("in file total size is %lld\n", total_size);
-            printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
+ //           FILE *p_file;
+ //           p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
+ //           fseek(p_file, 0, SEEK_END);
+ //           int64_t total_size = ftell(p_file);
+ //           cmd_info.in_file_size1_ = total_size;
+ //           printf("in file total size is %lld\n", total_size);
+ //           printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
         }
 
         //adapter

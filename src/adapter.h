@@ -40,6 +40,8 @@ public:
     static void PreOverAnalyze(std::string file_name, std::vector<std::string> &ho_seqs, int &eva_len);
 
     static std::string AutoDetect(std::string file_name, int trim_tail);
+    
+    static int EvalMaxLen(std::string file_name);
 
     static std::string
     getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, long records, int keylen, int trim_tail);
