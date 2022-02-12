@@ -19,7 +19,7 @@ OBJ += $(patsubst %.c,${DIR_OBJ}/%.o,$(notdir ${SRC2}))
 #$(info OBJ $(OBJ))
 
 
-TARGET := ReRabbitQC
+TARGET := RabbitQCPlus
 
 BIN_TARGET := ${TARGET}
 

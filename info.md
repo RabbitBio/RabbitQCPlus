@@ -1175,15 +1175,20 @@ AVX512带来的降频还是有影响。
 
 下面测测pugz加RQCP协同使用的效果和直接RQCP的pugz模块
 
-| data/pugz/RQCP/pigz/1:hdd 2:mem | pugz+RQCP | RQCP |
-| ------------------------------- | --------- | ---- |
-| se/4/8/16/1                     |           |      |
-| se/4/8/16/2                     |           |      |
-|                                 |           |      |
-|                                 |           |      |
-|                                 |           |      |
-|                                 |           |      |
-|                                 |           |      |
+```bash
+rm -rf /dev/shm/in_se.fq && rm -rf /dev/shm/out_se.fq && rm
+ -rf /dev/shm/out_se.fq.gz && time pugz -t 4 ~/qcdata/SRR2496699_1.fastq.gz  > /dev/shm/in_se.fq && time memusg ./RabbitQCPlus -w 8 -i /dev/shm/in_se.fq -o /dev/shm/out_se.fq && time pigz -k -2 -p 16 -b 4096 /dev/shm/out_se.fq
+ 
+ rm -rf in_se.fq && rm -rf out_se.fq && rm -rf out_se.fq.gz && time pugz -t 4 ~/qcdata/SRR2496699_1.fastq.gz  > in_se.fq && time memusg ./RabbitQCPlus -w 8 -i in_se.fq -o out_se.fq && time pigz -k -2 -p 16 -b 4096 out_se.fq
+```
+
+
+
+| data/pugz/RQCP/pigz/1:hdd 2:mem | pugz+RQCP+pigz   | RQCP |
+| ------------------------------- | ---------------- | ---- |
+| SRR2496699_1.fastq.gz/4/8/16/1  | 7.8+5.1+3.6=16.5 | 6.3  |
+| SRR2496699_1.fastq.gz/4/8/16/2  | 6.8+4.3+3.7=14.8 | 6.3  |
+|                                 |                  |      |
 
 ## 0207
 
@@ -1196,14 +1201,15 @@ AVX512带来的降频还是有影响。
 - [ ] 调查其他软件ORP模块的速度
 - [x] 软件名在论文中怎么表示，在句首要大写吗 fastp
 - [x] 论文中写几倍几倍？
-- [ ] 把methods中的性能部分挪到results里面
-- [ ] results里面加具体的实验数据是啥，补充results的内容
+- [x] 把methods中的性能部分挪到results里面
+- [x] results里面加具体的实验数据是啥，补充results的内容
 - [x] 软件名在句首写？
-- [ ] gz部分要不要加上 用pugz解压到内存（硬盘上）再读写这种策略
+- [x] gz部分要不要加上 用pugz解压到内存（硬盘上）再读写这种策略
 - [ ] 加上⬆️
 - [x] 加上参考文献
 - [ ] 加表格
 - [x] add bf filter in paper
+- [ ] PC机测试
 
 
 
@@ -1214,3 +1220,113 @@ c++中的函数参数允许设置缺省值，但只能是最后几个连续的�
 重载的定义都很熟了。
 
 晚上改代码的时候对于一个含有缺省参数的函数进行了重载，并且把多加的参数放在了最后，显然调用的时候就会有歧义，导致编译出错。
+
+
+
+## 0208
+
+fat暂时还是不能用，先继续改改paper，加加实验环境和数据。
+
+在ncbi下载了要用的几个数据，解析sra的时候一开始用fastq-dump太慢太慢了，换成fasterq-dump他老是生成两个文件，后来发现这都是中间文件，他最后会弄成一个。
+
+而且，fasterq-dump等一直cpu占用率很低，经常不到5%，很奇怪。
+
+## 0209
+
+GG气死，dump的时候默认居然是从网上下的，怪不得贼慢。。。。
+
+## 0210 0211 0212
+
+ohoh 机器空出来了，赶紧测数据。先接着0206的把RQCP+pugz/pigz的方式测了，更新👆
+
+| data/pugz/RQCP/pigz/1:hdd 2:mem | pugz+RQCP+pigz   | RQCP | fastp | SOA  | Trim | RQC  |
+| ------------------------------- | ---------------- | ---- | ----- | ---- | ---- | ---- |
+| SRR2496699_1.fastq.gz/4/8/16/1  | 7.8+5.1+3.6=16.5 | 6.3  | 42    | 26.3 | 99   | 74   |
+| SRR2496699_1.fastq.gz/4/8/16/2  | 6.8+4.3+3.7=14.8 | 6.3  |       |      |      |      |
+|                                 |                  |      |       |      |      |      |
+
+压缩模块测起来还是不错的。测测新的数据下不同软件的情况：（带输出，hdd）
+
+| data type & function & thread num | RabbitQCPlus | RabbitQC 0.0.1   | fastp 0.23.2 | FASTQC 0.11.9 | SOAPunke 2.1.7 | Trimmomatic 0.3.9 | AfterQC 0.9.6 |
+| --------------------------------- | ------------ | ---------------- | ------------ | ------------- | -------------- | ----------------- | ------------- |
+| SRR2496699_1 & all & thread 1     | 0.2+24.0     | 0.36+69.2（2.9） | 59.6（2.5）  | 55.5          | 61.0（2.5）    | 69.7（2.9）       | ～600         |
+| SRR2496699_1 & all & thread 2     | 0.2+14.0     | 0.36+36.2        | 40.0         |               | 35.5           | 31.2              |               |
+| SRR2496699_1 & all & thread 4     | 0.2+6.8      | 0.36+19.4        | 24.5（5.8）  |               | 25.2           | 27.4              |               |
+| SRR2496699_1 & all & thread 8     | 0.2+4.0      | 0.36+10.6        |              |               | 19.8           | 26（6.2）         |               |
+| SRR2496699_1 & all & thread 16    |              | 0.36+6.3         |              |               | 14.8（3.5）    |                   |               |
+| SRR2496699_1 & all & thread 32    |              | 0.36+6.4（1.6）  |              |               |                |                   |               |
+|                                   |              |                  |              |               |                |                   |               |
+| SRR2496709 & all & thread 1       | 29.5         | 96.2（3.3）      | 79.1（2.7）  |               | 84.6（2.9）    | 67（2.3）         | ～1700        |
+| SRR2496709 & all & thread 2       | 15.6         | 49.5             | 51.7         |               | 50.1           | 27.7              |               |
+| SRR2496709 & all & thread 4       | 8.5          | 25.9             | 28.9         |               | 33.9           | 20.0              |               |
+| SRR2496709 & all & thread 8       | 4.3          | 13.2             | 17.5（4.0）  |               | 23.7           | 16.9              |               |
+| SRR2496709 & all & thread 16      |              | 7.8              |              |               | 18.7（4.3）    | 15.0（3.5）       |               |
+| SRR2496709 & all & thread 32      |              | 7.0（20）（1.6） |              |               |                |                   |               |
+|                                   |              |                  |              |               |                |                   |               |
+| SRR2496699_1 & ORP & thread 1     | 93-23=70     | 1380-70=1310（） | 1409-60=1349 |               |                |                   |               |
+| SRR2496699_1 & ORP & thread 2     | 48           | 700              |              |               |                |                   |               |
+| SRR2496699_1 & ORP & thread 4     | 25           | 354              |              |               |                |                   |               |
+| SRR2496699_1 & ORP & thread 8     | 13           | 185              | 199          |               |                |                   |               |
+| SRR2496699_1 & ORP & thread 16    | 7.3          | 102              | 106          |               |                |                   |               |
+| SRR2496699_1 & ORP & thread 32    | 5.6-2.6=3.0  | 62-4=58          | 106-24=82    |               |                |                   |               |
+|                                   |              |                  |              |               |                |                   |               |
+
+```
+\begin{table}[]
+
+\caption{Performance comparison of different QC software.}
+\label{tab::performance}
+
+
+\begin{tabular}{ccccc}
+\hline
+Dataset       & Thread        & Tool                  & Time(s)       & Speedup    \\
+\hline
+              &               &                       &               &            \\
+\multicolumn{5}{c}{Basic QC modules}                                               \\
+              &               & \textbf{RabbitQCPlus} & \textbf{24.2} & \textbf{-} \\
+Illumina      &               & RabbitQC              & 69.5          & 2.9        \\
+SE            & single-thread & fastp                 & 59.6          & 2.5        \\
+SRR2496699\_1 &               & SOAPunke              & 61            & 2.5        \\
+              &               & Trimmomatic           & 69.7          & 2.9        \\
+              \hdashline[0.5pt/5pt]
+              &               & \textbf{RabbitQCPlus} & \textbf{4.3}  & \textbf{-} \\
+Illumina      &               & RabbitQC              & 6.7           & 1.6        \\
+SE            & muti-thread   & fastp                 & 24.5          & 5.8        \\
+SRR2496699\_1 &               & SOAPunke              & 14.8          & 3.5        \\
+              &               & Trimmomatic           & 26            & 6.2        \\
+              \hdashline[0.5pt/5pt]
+              &               & \textbf{RabbitQCPlus} & \textbf{29.5} & \textbf{-} \\
+Illumina      &               & RabbitQC              & 96.2          & 3.3        \\
+PE            & single-thread & fastp                 & 79.1          & 2.7        \\
+SRR2496709    &               & SOAPunke              & 84.6          & 2.9        \\
+              &               & Trimmomatic           & 67            & 2.3        \\
+              \hdashline[0.5pt/5pt]
+              &               & \textbf{RabbitQCPlus} & \textbf{4.3}  & \textbf{-} \\
+Illumina      &               & RabbitQC              & 7             & 1.6        \\
+PE            & muti-thread   & fastp                 & 17.5          & 4          \\
+SRR2496709    &               & SOAPunke              & 18.7          & 4.3        \\
+              &               & Trimmomatic           & 15            & 3.5        \\
+\hline
+              &               &                       &               &            \\
+\multicolumn{5}{c}{Over-representation module(only)}                               \\
+Illumina      &               & \textbf{RabbitQCPlus} & \textbf{3}    & \textbf{-} \\
+SE            & muti-thread   & RabbitQC              & 58            & 19.3       \\
+SRR2496699\_1 &               & fastp                 & 82            & 27.3       \\
+\hline
+              &               &                       &               &            \\
+\multicolumn{5}{c}{Read and write in gz format(basic QC modules)}                  \\
+              &               & \textbf{RabbitQCPlus} & \textbf{6.3}  & \textbf{-} \\
+              &               & RQCP+pxgz             & 16.8          & 2.7        \\
+Illumina      &               & RabbitQC              & 74            & 11.7       \\
+SE            & muti-thread   & fastp                 & 42            & 6.7        \\
+SRR2496699\_1 &               & SOAPunke              & 26.3          & 4.1        \\
+              &               & Trimmomatic           & 99            & 15.7 \\
+              \hline
+\end{tabular}
+\end{table}
+
+```
+
+
+

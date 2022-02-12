@@ -714,7 +714,7 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
 
     outhtml.append("</script>");
     outhtml.append("</html>");
-    std::fstream fout = std::fstream("RabbitQC.html", std::ios::out | std::ios::binary);
+    std::fstream fout = std::fstream("RabbitQCPlus.html", std::ios::out | std::ios::binary);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
 
@@ -1238,7 +1238,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 
     outhtml.append("</script>");
     outhtml.append("</html>");
-    std::fstream fout = std::fstream("RabbitQC.html", std::ios::out | std::ios::binary);
+    std::fstream fout = std::fstream("RabbitQCPlus.html", std::ios::out | std::ios::binary);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
 
@@ -1835,7 +1835,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
 
     outhtml.append("</script>");
     outhtml.append("</html>");
-    std::fstream fout = std::fstream("RabbitQC.html", std::ios::out | std::ios::binary);
+    std::fstream fout = std::fstream("RabbitQCPlus.html", std::ios::out | std::ios::binary);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
 }
