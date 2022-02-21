@@ -49,7 +49,7 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
         umier_ = new Umier(cmd_info1);
     }
     if (cmd_info1->use_pugz_) {
-        pugzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 8);
+        pugzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 15);
     }
     if (cmd_info1->use_pigz_) {
         pigzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 8);
@@ -85,7 +85,6 @@ SeQc::~SeQc() {
 
 void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
-    double t0 = GetTime();
 
     rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize=1<<20;
@@ -120,8 +119,6 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
 
     dq.SetCompleted();
     delete fqFileReader;
-    std::cout << "file " << file << " has " << n_chunks << " chunks" << std::endl;
-    printf("producer cost %.3f\n", GetTime() - t0);
     producerDone = 1;
 
 }
@@ -334,7 +331,7 @@ argv p.fq
     memcpy(infos[2], th_num_s.c_str(), th_num_s.length());
     infos[2][th_num_s.length()] = '\0';
     infos[3] = "-k";
-    infos[4] = "-2";
+    infos[4] = "-4";
     infos[5] = "-f";
     infos[6] = "-b";
     infos[7] = "4096";
@@ -358,6 +355,7 @@ argv p.fq
 
 void SeQc::ProcessSeFastq() {
 
+    double t0=GetTime();
     thread *pugzer;
 
     if (cmd_info_->use_pugz_) {
@@ -395,9 +393,11 @@ void SeQc::ProcessSeFastq() {
     }
 
     producer.join();
+    printf("producer cost %.4f\n",GetTime()-t0);
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         threads[t]->join();
     }
+    printf("consumer cost %.4f\n",GetTime()-t0);
     if (cmd_info_->write_data_) {
         write_thread->join();
         writerDone = 1;

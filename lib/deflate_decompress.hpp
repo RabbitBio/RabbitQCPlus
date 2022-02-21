@@ -1356,25 +1356,14 @@ struct OutputConsumer {
         if (*pDone == 1) {
             return;
         }
-//        printf("ready to put data to memory111\n");
         char *utmp = new char[data.size()];
         memcpy(utmp, data.begin(), data.size());
-
-//        printf("ready to put data to memory222\n");
-//        int cntt = 0;
         while (P->try_enqueue({utmp, data.size()}) == 0) {
             if (*pDone == 1) {
                 return;
             }
-//            printf("pugz waitint\n");
-//            cout << "pugz " << num << " wait producer" << " queue size " << P->size_approx() << endl;
             usleep(100);
-//            cout << "sleep " << cntt++ << endl;
         }
-//        if (cntt)cout << "sleep done" << endl;
-//        if (P->size_approx() % 100 == 0) {
-//            cout << " queue " << num << " size " << P->size_approx() << endl;
-//        }
     }
 
     moodycamel::ReaderWriterQueue<std::pair<char *, int>> *P;

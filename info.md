@@ -1241,7 +1241,7 @@ ohoh 机器空出来了，赶紧测数据。先接着0206的把RQCP+pugz/pigz的
 
 | data/pugz/RQCP/pigz/1:hdd 2:mem | pugz+RQCP+pigz   | RQCP | fastp | SOA  | Trim | RQC  |
 | ------------------------------- | ---------------- | ---- | ----- | ---- | ---- | ---- |
-| SRR2496699_1.fastq.gz/4/8/16/1  | 7.8+5.1+3.6=16.5 | 6.3  | 42    | 26.3 | 99   | 74   |
+| SRR2496699_1.fastq.gz/4/8/16/1  | 7.8+5.1+3.6=16.5 | 6.3  | 42    | 31.3 | 99   | 74   |
 | SRR2496699_1.fastq.gz/4/8/16/2  | 6.8+4.3+3.7=14.8 | 6.3  |       |      |      |      |
 |                                 |                  |      |       |      |      |      |
 
@@ -1272,61 +1272,103 @@ ohoh 机器空出来了，赶紧测数据。先接着0206的把RQCP+pugz/pigz的
 |                                   |              |                  |              |               |                |                   |               |
 
 ```
-\begin{table}[]
-
+\begin{table*}[]
 \caption{Performance comparison of different QC software.}
 \label{tab::performance}
-
-
-\begin{tabular}{ccccc}
+\begin{tabular}{cccccccc}
 \hline
-Dataset       & Thread        & Tool                  & Time(s)       & Speedup    \\
+Module             & Dataset       & Tool                  & Thread 1 time (s) & Thread 1 speedup & Thread n time (s) & Thread n speedup & Best thread number \\
 \hline
-              &               &                       &               &            \\
-\multicolumn{5}{c}{Basic QC modules}                                               \\
-              &               & \textbf{RabbitQCPlus} & \textbf{24.2} & \textbf{-} \\
-Illumina      &               & RabbitQC              & 69.5          & 2.9        \\
-SE            & single-thread & fastp                 & 59.6          & 2.5        \\
-SRR2496699\_1 &               & SOAPunke              & 61            & 2.5        \\
-              &               & Trimmomatic           & 69.7          & 2.9        \\
-              \hdashline[0.5pt/5pt]
-              &               & \textbf{RabbitQCPlus} & \textbf{4.3}  & \textbf{-} \\
-Illumina      &               & RabbitQC              & 6.7           & 1.6        \\
-SE            & muti-thread   & fastp                 & 24.5          & 5.8        \\
-SRR2496699\_1 &               & SOAPunke              & 14.8          & 3.5        \\
-              &               & Trimmomatic           & 26            & 6.2        \\
-              \hdashline[0.5pt/5pt]
-              &               & \textbf{RabbitQCPlus} & \textbf{29.5} & \textbf{-} \\
-Illumina      &               & RabbitQC              & 96.2          & 3.3        \\
-PE            & single-thread & fastp                 & 79.1          & 2.7        \\
-SRR2496709    &               & SOAPunke              & 84.6          & 2.9        \\
-              &               & Trimmomatic           & 67            & 2.3        \\
-              \hdashline[0.5pt/5pt]
-              &               & \textbf{RabbitQCPlus} & \textbf{4.3}  & \textbf{-} \\
-Illumina      &               & RabbitQC              & 7             & 1.6        \\
-PE            & muti-thread   & fastp                 & 17.5          & 4          \\
-SRR2496709    &               & SOAPunke              & 18.7          & 4.3        \\
-              &               & Trimmomatic           & 15            & 3.5        \\
-\hline
-              &               &                       &               &            \\
-\multicolumn{5}{c}{Over-representation module(only)}                               \\
-Illumina      &               & \textbf{RabbitQCPlus} & \textbf{3}    & \textbf{-} \\
-SE            & muti-thread   & RabbitQC              & 58            & 19.3       \\
-SRR2496699\_1 &               & fastp                 & 82            & 27.3       \\
-\hline
-              &               &                       &               &            \\
-\multicolumn{5}{c}{Read and write in gz format(basic QC modules)}                  \\
-              &               & \textbf{RabbitQCPlus} & \textbf{6.3}  & \textbf{-} \\
-              &               & RQCP+pxgz             & 16.8          & 2.7        \\
-Illumina      &               & RabbitQC              & 74            & 11.7       \\
-SE            & muti-thread   & fastp                 & 42            & 6.7        \\
-SRR2496699\_1 &               & SOAPunke              & 26.3          & 4.1        \\
-              &               & Trimmomatic           & 99            & 15.7 \\
-              \hline
+                   &               & \textbf{RabbitQCPlus} & \textbf{24.2}     & \textbf{-}       & \textbf{4.2}      & -                & 8                  \\
+                   & Illumina      & RabbitQC              & 69.5              & 2.9              & 6.7               & 1.6              & 20                 \\
+                   & SE            & fastp                 & 59.6              & 2.5              & 24.5              & 5.8              & 8                  \\
+                   & SRR2496699\_1 & SOAPnuke              & 61                & 2.5              & 14.8              & 3.5              & 16                 \\
+                   &               & Trimmomatic           & 69.7              & 2.9              & 26                & 6.2              & 16                 \\
+Basic              &               & FASTQC                & 55.5              & 3.3              & 55.5              & 13.2             & 1                  \\
+QC                 &               & AfterQC               & 600               & 24.8             & 600               & 142.9            & 1                  \\
+\cdashline{2-8}[0.5pt/5pt]
+modules            &               & \textbf{RabbitQCPlus} & \textbf{29.5}     & \textbf{-}       & \textbf{4.3}      & \textbf{-}       & 8                  \\
+                   & Illumina      & RabbitQC              & 96.2              & 3.3              & 7                 & 1.6              & 20                 \\
+                   & PE            & fastp                 & 79.1              & 2.7              & 17.5              & 4                & 8                  \\
+                   & SRR2496709    & SOAPnuke              & 84.6              & 2.9              & 18.7              & 4.3              & 16                 \\
+                   &               & Trimmomatic           & 67                & 2.3              & 15                & 3.5              & 16                 \\
+                   &               & AfterQC               & 1700              & 70.2             & 1700              & 404.8            & 1                  \\
+                   \hline
+                   &               & \textbf{RabbitQCPlus} & \textbf{6.3}      & \textbf{-}       & \textbf{6.3}      & \textbf{-}       & 24                 \\
+                   &               & RQCP+pxgz             & 16.8              & 2.7              & 16.8              & 2.7              & 16                 \\
+Read and write     & Illumina      & RabbitQC              & 74                & 11.7             & 74                & 11.7             & 16                 \\
+in gz format       & SE            & \textbf{fastp}        & \textbf{42}       & \textbf{6.7}     & \textbf{42}       & \textbf{6.7}     & 16                 \\
+(basic QC modules) & SRR2496699\_1 & SOAPnuke              & 26.3              & 4.1              & 26.3              & 4.1              & 16                 \\
+                   &               & Trimmomatic           & 99                & 15.7             & 99                & 15.7             & 16                 \\
+                   &               & FASTQC                & 69.2              & 11               & 69.2              & 11               & 1                  \\
+                   \hline
+Over               & Illumina      & \textbf{RabbitQCPlus} & \textbf{93}       & \textbf{-}       & \textbf{5.2}      & \textbf{-}       & 32                 \\
+-representation    & SE            & RabbitQC              & 1380              & 14.8             & 62                & 11.9             & 32                 \\
+module             & SRR2496699\_1 & fastp                 & 1409              & 15.2             & 106               & 20.4             & 16                
 \end{tabular}
-\end{table}
+\end{table*}
 
 ```
 
+好啊，表暂时就这样吧，突然发现SOA压缩文件好快啊，简单看了看，大概可能是因为他是类似bgzip分块压缩的吧，用pugz只能解压几MB的东西。
 
+## 0214
+
+- [x] 改一下表，改成横的，加几列
+- [x] 找一个大点的，真实数据
+- [ ] 三代数据也加上，gz文件
+- [x] 改错误的单词
+- [x] 把ORP改成所有的时间
+- [x] 加上FASTQC
+- [x] gz 把RQCP+pxgz改成RQC+pxgz
+
+测测新的数据下不同软件的情况：（带输出，ssd）
+
+| data type & function & thread num     | RabbitQCPlus | RabbitQC 0.0.1 | fastp 0.23.2 | FASTQC 0.11.9 | SOAPunke 2.1.7 | Trimmomatic 0.3.9 | AfterQC 0.9.6                                                |
+| ------------------------------------- | ------------ | -------------- | ------------ | ------------- | -------------- | ----------------- | ------------------------------------------------------------ |
+| SRR2496699_1 & all & thread 1         | 518          | 1345/2.6       | 1094/2.1     | 2244/4.3      | 2057/4.0       | 3415/6.6          | ？                                                           |
+| SRR2496699_1 & all & thread 2         |              |                | 820          |               |                |                   |                                                              |
+| SRR2496699_1 & all & thread 4         | 151          | 360            | 534          |               |                |                   |                                                              |
+| SRR2496699_1 & all & thread 8         | 136          | 185            | 511/3.8      |               | 493            | 513               |                                                              |
+| SRR2496699_1 & all & thread 16        |              | 211            |              |               | 312            | 510               |                                                              |
+| SRR2496699_1 & all & thread 32        |              | 205/1.5        |              |               | 247/1.8        | 507/3.7           |                                                              |
+|                                       |              |                |              |               |                |                   |                                                              |
+| SRR2496709 & all & thread 1           | 1331         | 6904/5.2       | 5657/4.3     |               | 4298/3.2       | 14581/11          |                                                              |
+| SRR2496709 & all & thread 2           |              | 3268           | 3310         |               | 2224           | 6686              |                                                              |
+| SRR2496709 & all & thread 4           | 395          | 1633           | 1699         |               | 1434           | 3451              |                                                              |
+| SRR2496709 & all & thread 8           | 196          | 830            | 875          |               | 867            | 1833              |                                                              |
+| SRR2496709 & all & thread 16          |              | 419/2.1        | 496/2.5      |               | 596            | 1429/7.3          |                                                              |
+| SRR2496709 & all & thread 32          |              |                |              |               | 485/2.5        |                   |                                                              |
+|                                       |              |                |              |               |                |                   |                                                              |
+| SRR2496699 & ORP & thread 1           | 6055         |                |              |               |                |                   |                                                              |
+| SRR2496699 & ORP & thread 2           | 3051         |                |              |               |                |                   |                                                              |
+| SRR2496699 & ORP & thread 4           | 1658         |                |              |               |                |                   |                                                              |
+| SRR2496699 & ORP & thread 8           | 806          |                |              |               |                |                   |                                                              |
+| SRR2496699 & ORP & thread 16          | 422          |                |              |               |                |                   |                                                              |
+| SRR2496699 & ORP & thread 32          | 253          |                |              |               |                |                   |                                                              |
+|                                       |              |                |              |               |                |                   |                                                              |
+|                                       |              |                |              |               |                |                   |                                                              |
+| SRR2496699_1 & ORP & thread 1         | 2847         | 18712          | 19838        |               |                |                   |                                                              |
+| SRR2496699_1 & ORP & thread 2         | 1440         |                |              |               |                |                   |                                                              |
+| SRR2496699_1 & ORP & thread 4         | 739          |                |              |               |                |                   |                                                              |
+| SRR2496699_1 & ORP & thread 8         | 387          | 2513           | 2793         |               |                |                   |                                                              |
+| SRR2496699_1 & ORP & thread 16        | 206          | 1282           | 1385         |               |                |                   |                                                              |
+| SRR2496699_1 & ORP & thread 32        | (144-136)166 | 685-205(709)   |              |               |                |                   |                                                              |
+|                                       |              |                |              |               |                |                   | pxgz+RQC                                                     |
+| SRR2496699_1.gz && all && thread 1    |              |                |              |               |                |                   |                                                              |
+| SRR2496699_1.gz && all && thread best | 135/8-8-20   |                |              |               |                |                   | (4-32-16) 212+179+139 173+131+139   (8-32-20)   159+147+111 201+185+112 |
+|                                       |              |                |              |               |                |                   |                                                              |
+|                                       |              |                |              |               |                |                   |                                                              |
+|                                       |              |                |              |               |                |                   |                                                              |
+
+```
+rm -rf /home/ssd/ylfdata/p1.fq && rm -rf /home/ssd/ylfdata/p2.fq && rm -rf /home/ssd/ylfdata/result && time memusg ~/someGit/SOAPnuke/SOAPnuke filter -1 /home/ssd/ylfdata/SRR7963242_1.fastq -2 /home/ssd/ylfdata/SRR7963242_2.fastq -C p1.fq -D p2.fq -o /home/ssd/ylfdata/result -T 1 && ls -lh /home/ssd/ylfdata/result/ &&
+
+
+rm -rf /home/ssd/ylfdata/result && time memusg java -jar /home/user_home/ylf/someGit/Trimmomatic-0.39/trimmomatic-0.39.jar PE -threads 1 -phred33 /home/ssd/ylfdata/SRR7963242_1.fastq /home/ssd/ylfdata/SRR7963242_2.fastq p1.fq p2.fq p3.fq p4.fq ILLUMINACLIP:/home/user_home/ylf/someGit/Trimmomatic-0.39/adapters/TruSeq2-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 HEADCROP:8 MINLEN:36
+
+
+cd ~/RabbitQCPlus/ && rm -rf /home/sssd/ylf_data/p.fq.gz && time memusg ./RabbitQCPlus -i /home/sssd/ylf_data
+/SRR7963242_1.fastq.gz -o /home/sssd/ylf_data/p.fq.gz -w 1 --usePugz --pugzThread 1 --usePigz --pigzThread 1 && cd ~/RabbitQC/ && rm -rf /home/sssd/ylf_data/p.fq.gz && time memusg ./rabbit_qc -i /home/sssd/ylf_data/SRR7963242_1.fastq.gz -o /home/sssd/ylf_data/p.fq.gz -w 1 && cd ~/RabbitQC/ && rm -rf /home/sssd/ylf_data/p.fq.gz && time memusg ./rabbit_qc -i /home/sssd/ylf_data/SRR7963242_1.fastq.gz -o /home/sssd/ylf_data/p.fq.gz -w 32 && cd ~/fastp/ && rm -rf /home/sssd/ylf_data/p.fq.gz && time memusg ./fastp -i /home/sssd/ylf_data/SRR7963242_1.fastq.gz -o /home/sssd/ylf_data/p.fq.gz -w 1 && cd ~/fastp/ && rm -rf /home/sssd/ylf_data/p.fq.gz && time memusg ./fastp -i /home/sssd/ylf_data/SRR7963242_1.fastq.gz -o /home/sssd/ylf_data/p.fq.gz -w 16 && cd ~/someGit/SOAPnuke/ && rm -rf /home/sssd/ylf_data/p.fq.gz && rm -rf /home/sssd/ylf_data/result && time memusg ./SOAPnuke filter -1 /home/sssd/ylf_data/SRR7963242_1.fastq.gz  -C p.fq.gz -o /home/sssd/ylf_data/result -T 1 && rm -rf /home/sssd/ylf_data/p.fq.gz && rm -rf /home/sssd/ylf_data/result && time memusg ./SOAPnuke filter -1 /home/sssd/ylf_data/SRR7963242_1.fastq.gz  -C p.fq.gz -o /home/sssd/ylf_data/result -T 16 && rm -rf /home/sssd/ylfdata/result && rm -rf /home/sssd/ylf_data/p.fq.gz && time memusg java -jar /home/user_home/ylf/someGit/Trimmomatic-0.39/trimmomatic-0.39.jar SE -threads 1 -phred33 /home/sssd/ylf_data/SRR7963242_1.fastq.gz /home/ssd/ylfdata/p.fq.gz ILLUMINACLIP:/home/user_home/ylf/someGit/Trimmomatic-0.39/adapters/TruSeq2-SE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 HEADCROP:8 MINLEN:36 && rm -rf /home/sssd/ylfdata/result && rm -rf /home/sssd/ylf_data/p.fq.gz && time memusg java -jar /home/user_home/ylf/someGit/Trimmomatic-0.39/trimmomatic-0.39.jar SE -threads 16 -phred33 /home/sssd/ylf_data/SRR7963242_1.fastq.gz /home/ssd/ylfdata/p.fq.gz ILLUMINACLIP:/home/user_home/ylf/someGit/Trimmomatic-0.39/adapters/TruSeq2-SE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 HEADCROP:8 MINLEN:36
+```
 

@@ -72,8 +72,8 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
         umier_ = new Umier(cmd_info1);
     }
     if (cmd_info1->use_pugz_) {
-        pugzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 8);
-        pugzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 8);
+        pugzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 15);
+        pugzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 15);
     }
     if (cmd_info1->use_pigz_) {
         pigzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 8);
@@ -619,7 +619,7 @@ void PeQc::PigzTask1() {
     memcpy(infos[2], th_num_s.c_str(), th_num_s.length());
     infos[2][th_num_s.length()] = '\0';
     infos[3] = "-k";
-    infos[4] = "-2";
+    infos[4] = "-4";
     infos[5] = "-f";
     infos[6] = "-b";
     infos[7] = "4096";
@@ -653,7 +653,7 @@ void PeQc::PigzTask2() {
     memcpy(infos[2], th_num_s.c_str(), th_num_s.length());
     infos[2][th_num_s.length()] = '\0';
     infos[3] = "-k";
-    infos[4] = "-2";
+    infos[4] = "-4";
     infos[5] = "-f";
     infos[6] = "-b";
     infos[7] = "4096";
