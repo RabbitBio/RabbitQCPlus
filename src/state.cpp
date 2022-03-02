@@ -4,10 +4,6 @@
 
 #include "state.h"
 
-#define mod_big 1000003
-#define mod 99349
-#define hash_maxn_big 1000010
-#define hash_maxn 100000
 #ifdef Vec512
 
 #include <immintrin.h>
@@ -18,6 +14,17 @@
 #include <immintrin.h>
 
 #endif
+
+
+int bst_mod_big=1000003;
+int bst_mod=99349;
+int hash_maxn_big=1000010;
+int hash_maxn=100000;
+int bst_mod_bigs[5]={103,1003,10003,100003,1000003};
+int bst_mods[5]={7,97,949,9349,99349};
+int hash_maxn_bigs[5]={110,1010,10010,100010,1000010};
+int hash_maxns[5]={10,110,1010,10010,100010};
+
 
 State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
     is_read2_ = is_read2;
@@ -57,12 +64,23 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
     over_representation_qcnt_=0;
     over_representation_pcnt_=0;
     if (do_over_represent_analyze_) {
-        int maxn_big = hash_maxn_big;
+		int best_id=4;
+		int hots_num=cmd_info->hot_seqs_.size();
+		for(int i=0;i<5;i++){
+			if(hots_num*100<=hash_maxn_bigs[i]){
+				best_id=i;
+				break;
+			}
+		}
+		bst_mod_big=bst_mod_bigs[best_id];
+		bst_mod=bst_mods[best_id];
+		hash_maxn_big=hash_maxn_bigs[best_id];
+		hash_maxn=hash_maxns[best_id];
+		printf("bst_mod_big %d; bst_mod %d; hash_maxn_big %d; hash_maxn %d\n",bst_mod_big,bst_mod,hash_maxn_big,hash_maxn);	
         double t0=GetTime();
-        int maxn = hash_maxn;
-        head_hash_graph_ = new int[maxn];
+        head_hash_graph_ = new int[hash_maxn];
         bf_zone_=new int64_t[hash_maxn_big/64+100];
-        for (int i = 0; i < maxn; i++)head_hash_graph_[i] = -1;
+        for (int i = 0; i < hash_maxn; i++)head_hash_graph_[i] = -1;
         for (int i=0;i<hash_maxn_big/64+10;i++)bf_zone_[i]=0;
         if (is_read2_) {
             hash_graph_ = new node[cmd_info->hot_seqs2_.size()];
@@ -109,8 +127,8 @@ State::~State() {
 
 void State::HashInsert(const char *seq, int len, int eva_len) {
     uint64_t now = NT64(seq, len);
-    int ha = (now % mod + mod) % mod;
-    int ha_big=(now%mod_big+mod_big)%mod_big;
+    int ha = now % bst_mod;
+    int ha_big = now % bst_mod_big;
     bf_zone_[ha_big>>6]|=(1ll<<(ha_big&(0x3f)));
     hash_graph_[hash_num_].v = now;
     hash_graph_[hash_num_].pre = head_hash_graph_[ha];
@@ -143,11 +161,11 @@ void State::HashState(){
 
 inline void State::HashQueryAndAdd(uint64_t now, int offset, int len, int eva_len) {
     over_representation_qcnt_++;
-    int ha_big=(now%mod_big+mod_big)%mod_big;
+    int ha_big=now%bst_mod_big;
     bool pass_bf=bf_zone_[ha_big>>6]&(1ll<<(ha_big&0x3f));
     if(!pass_bf)return;
     else over_representation_pcnt_++; 
-    int ha = (now % mod + mod) % mod;
+    int ha=now%bst_mod;
     for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre){
         //over_representation_pcnt_++;
         if (hash_graph_[i].v == now && hash_graph_[i].seq.length() == len) {
