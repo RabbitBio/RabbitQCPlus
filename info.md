@@ -1137,7 +1137,7 @@ AVX512带来的降频还是有影响。
 | pe 3.3+3.3G & all & thread 32     | 6.4（28）                    |               |       |        |
 | pe 3.3+3.3G & all & thread 48     |                              |               |       |        |
 
-这个版本是生产者1<<12偏移量，好像改变block的大小还能更快，但是要事先检测reads的长度是不是正常的二代reads，如果是的话，就可以把偏移量和块大小弄小点，这样应该是最快的版本。困了，明天写吧。
+这个版本是生产者1<<12偏移量，好像改变block的大小还能更快，但是要事先检测reads的长度是不是正常的二代reads，如果是的话，就可以把 偏移量和块大小弄小点，这样应该是最快的版本。困了，明天写吧。
 
 此外，最新的RQC版本中的init adapter过程似乎也挺快的，RQCP中的还需要优化。
 
@@ -1197,17 +1197,17 @@ rm -rf /dev/shm/in_se.fq && rm -rf /dev/shm/out_se.fq && rm
 上午改改论文中大师兄昨天说的
 
 - [ ] 过度表示模块的生物学意义
-- [ ] 一些软件的现在版本性能情况，NanoQC、AfterQC、FASTQC、fastp等
-- [ ] 调查其他软件ORP模块的速度
+- [x] 一些软件的现在版本性能情况，NanoQC、AfterQC、FASTQC、fastp等
+- [x] 调查其他软件ORP模块的速度
 - [x] 软件名在论文中怎么表示，在句首要大写吗 fastp
 - [x] 论文中写几倍几倍？
 - [x] 把methods中的性能部分挪到results里面
 - [x] results里面加具体的实验数据是啥，补充results的内容
 - [x] 软件名在句首写？
 - [x] gz部分要不要加上 用pugz解压到内存（硬盘上）再读写这种策略
-- [ ] 加上⬆️
+- [x] 加上⬆️
 - [x] 加上参考文献
-- [ ] 加表格
+- [x] 加表格
 - [x] add bf filter in paper
 - [ ] PC机测试
 
@@ -1316,7 +1316,7 @@ module             & SRR2496699\_1 & fastp                 & 1409              &
 
 - [x] 改一下表，改成横的，加几列
 - [x] 找一个大点的，真实数据
-- [ ] 三代数据也加上，gz文件
+- [x] 三代数据也加上，gz文件
 - [x] 改错误的单词
 - [x] 把ORP改成所有的时间
 - [x] 加上FASTQC
@@ -1324,42 +1324,47 @@ module             & SRR2496699\_1 & fastp                 & 1409              &
 
 测测新的数据下不同软件的情况：（带输出，ssd）
 
-| data type & function & thread num     | RabbitQCPlus | RabbitQC 0.0.1 | fastp 0.23.2 | FASTQC 0.11.9 | SOAPunke 2.1.7 | Trimmomatic 0.3.9 | AfterQC 0.9.6                                                |
-| ------------------------------------- | ------------ | -------------- | ------------ | ------------- | -------------- | ----------------- | ------------------------------------------------------------ |
-| SRR2496699_1 & all & thread 1         | 518          | 1345/2.6       | 1094/2.1     | 2244/4.3      | 2057/4.0       | 3415/6.6          | ？                                                           |
-| SRR2496699_1 & all & thread 2         |              |                | 820          |               |                |                   |                                                              |
-| SRR2496699_1 & all & thread 4         | 151          | 360            | 534          |               |                |                   |                                                              |
-| SRR2496699_1 & all & thread 8         | 136          | 185            | 511/3.8      |               | 493            | 513               |                                                              |
-| SRR2496699_1 & all & thread 16        |              | 211            |              |               | 312            | 510               |                                                              |
-| SRR2496699_1 & all & thread 32        |              | 205/1.5        |              |               | 247/1.8        | 507/3.7           |                                                              |
-|                                       |              |                |              |               |                |                   |                                                              |
-| SRR2496709 & all & thread 1           | 1331         | 6904/5.2       | 5657/4.3     |               | 4298/3.2       | 14581/11          |                                                              |
-| SRR2496709 & all & thread 2           |              | 3268           | 3310         |               | 2224           | 6686              |                                                              |
-| SRR2496709 & all & thread 4           | 395          | 1633           | 1699         |               | 1434           | 3451              |                                                              |
-| SRR2496709 & all & thread 8           | 196          | 830            | 875          |               | 867            | 1833              |                                                              |
-| SRR2496709 & all & thread 16          |              | 419/2.1        | 496/2.5      |               | 596            | 1429/7.3          |                                                              |
-| SRR2496709 & all & thread 32          |              |                |              |               | 485/2.5        |                   |                                                              |
-|                                       |              |                |              |               |                |                   |                                                              |
-| SRR2496699 & ORP & thread 1           | 6055         |                |              |               |                |                   |                                                              |
-| SRR2496699 & ORP & thread 2           | 3051         |                |              |               |                |                   |                                                              |
-| SRR2496699 & ORP & thread 4           | 1658         |                |              |               |                |                   |                                                              |
-| SRR2496699 & ORP & thread 8           | 806          |                |              |               |                |                   |                                                              |
-| SRR2496699 & ORP & thread 16          | 422          |                |              |               |                |                   |                                                              |
-| SRR2496699 & ORP & thread 32          | 253          |                |              |               |                |                   |                                                              |
-|                                       |              |                |              |               |                |                   |                                                              |
-|                                       |              |                |              |               |                |                   |                                                              |
-| SRR2496699_1 & ORP & thread 1         | 2847         | 18712          | 19838        |               |                |                   |                                                              |
-| SRR2496699_1 & ORP & thread 2         | 1440         |                |              |               |                |                   |                                                              |
-| SRR2496699_1 & ORP & thread 4         | 739          |                |              |               |                |                   |                                                              |
-| SRR2496699_1 & ORP & thread 8         | 387          | 2513           | 2793         |               |                |                   |                                                              |
-| SRR2496699_1 & ORP & thread 16        | 206          | 1282           | 1385         |               |                |                   |                                                              |
-| SRR2496699_1 & ORP & thread 32        | (144-136)166 | 685-205(709)   |              |               |                |                   |                                                              |
-|                                       |              |                |              |               |                |                   | pxgz+RQC                                                     |
-| SRR2496699_1.gz && all && thread 1    |              |                |              |               |                |                   |                                                              |
-| SRR2496699_1.gz && all && thread best | 135/8-8-20   |                |              |               |                |                   | (4-32-16) 212+179+139 173+131+139   (8-32-20)   159+147+111 201+185+112 |
-|                                       |              |                |              |               |                |                   |                                                              |
-|                                       |              |                |              |               |                |                   |                                                              |
-|                                       |              |                |              |               |                |                   |                                                              |
+| data type & function & thread num         | RabbitQCPlus      | RabbitQC 0.0.1 | fastp 0.23.2 | FASTQC 0.11.9 | SOAPunke 2.1.7                        | Trimmomatic 0.3.9 | AfterQC 0.9.6                                                |
+| ----------------------------------------- | ----------------- | -------------- | ------------ | ------------- | ------------------------------------- | ----------------- | ------------------------------------------------------------ |
+| SRR2496699_1 & all & thread 1             | 518               | 1345/2.6       | 1094/2.1     | 2244/4.3      | 2057/4.0                              | 3415/6.6          | ？                                                           |
+| SRR2496699_1 & all & thread 2             |                   |                | 820          |               |                                       |                   |                                                              |
+| SRR2496699_1 & all & thread 4             | 151               | 360            | 534          |               |                                       |                   |                                                              |
+| SRR2496699_1 & all & thread 8             | 136               | 185            | 511/3.8      |               | 493                                   | 513               |                                                              |
+| SRR2496699_1 & all & thread 16            |                   | 211            |              |               | 312                                   | 510               |                                                              |
+| SRR2496699_1 & all & thread 32            |                   | 205/1.5        |              |               | 247/1.8                               | 507/3.7           |                                                              |
+|                                           |                   |                |              |               |                                       |                   |                                                              |
+| SRR2496709 & all & thread 1               | 1331              | 6904/5.2       | 5657/4.3     |               | 4298/3.2                              | 14581/11          |                                                              |
+| SRR2496709 & all & thread 2               |                   | 3268           | 3310         |               | 2224                                  | 6686              |                                                              |
+| SRR2496709 & all & thread 4               | 395               | 1633           | 1699         |               | 1434                                  | 3451              |                                                              |
+| SRR2496709 & all & thread 8               | 181               | 830            | 875          |               | 867                                   | 1833              |                                                              |
+| SRR2496709 & all & thread 16              | 159               | 419/2.1        | 496/2.5      |               | 596                                   | 1429/7.3          |                                                              |
+| SRR2496709 & all & thread 32              |                   |                |              |               | 485/2.5                               |                   |                                                              |
+|                                           |                   |                |              |               |                                       |                   |                                                              |
+| SRR2496699 & ORP & thread 1               | 6055              |                |              |               |                                       |                   |                                                              |
+| SRR2496699 & ORP & thread 2               | 3051              |                |              |               |                                       |                   |                                                              |
+| SRR2496699 & ORP & thread 4               | 1658              |                |              |               |                                       |                   |                                                              |
+| SRR2496699 & ORP & thread 8               | 806               |                |              |               |                                       |                   |                                                              |
+| SRR2496699 & ORP & thread 16              | 422               |                |              |               |                                       |                   |                                                              |
+| SRR2496699 & ORP & thread 32              | 253               |                |              |               |                                       |                   |                                                              |
+|                                           |                   |                |              |               |                                       |                   |                                                              |
+|                                           |                   |                |              |               |                                       |                   |                                                              |
+| SRR2496699_1 & ORP & thread 1             | 2095              | 18712          | 19838        |               |                                       |                   |                                                              |
+| SRR2496699_1 & ORP & thread 2             | 1068              |                |              |               |                                       |                   |                                                              |
+| SRR2496699_1 & ORP & thread 4             | 545               |                |              |               |                                       |                   |                                                              |
+| SRR2496699_1 & ORP & thread 8             | 288               | 2513           | 2793         |               |                                       |                   |                                                              |
+| SRR2496699_1 & ORP & thread 16            | 153               | 1282           | 1385         |               |                                       |                   |                                                              |
+| SRR2496699_1 & ORP & thread 32            | (144-136)166。156 | 685-205        |              |               |                                       |                   |                                                              |
+|                                           |                   |                |              |               |                                       |                   | pxgz+RQC                                                     |
+| SRR2496699_1.gz && all && thread 1        | 1687              | 2169           | 1284         | 2667          | 3706                                  | 15168             | 310+1345+1911                                                |
+| SRR2496699_1.gz && all && thread best     | 135/8-8-20        | 2196/32        | 1353/16      | 2667          | 718/16                                | 12313/16          | (4-32-16) 212+179+139 173+131+139   (8-32-20)   159+147+111 201+185+112 |
+|                                           |                   |                | FastQC       | nanoQC        | pxgz+RQC                              |                   |                                                              |
+| SRR5349175.fastq.gz && TGS && thread 1    | 760/1-1           | 892            | 12840        | 27820         | 865+250/ 1-1                          |                   |                                                              |
+| SRR5349175.fastq.gz && TGS && thread best | 238/8-8           | 925/32         | 12840        | 27820         | 289+89/  8-16                         |                   |                                                              |
+| SRR9588287.fastq.gz && TGS && thread 1    | 14.6/1-1          | 20             |              | 495           | 14.7+6.0/ 1-1          15.5+6.8/ 1-1  |                   |                                                              |
+| SRR9588287.fastq.gz && TGS && thread best | 5.4/8-8           | 20             |              | 495           | 6.0+2.4/  8-16         6.6+2.8/  8-16 |                   |                                                              |
+|                                           |                   |                |              |               |                                       |                   |                                                              |
+| SRR2496699_1 & all & fastest fq-gz        | 66/12-36 level 1  |                |              |               |                                       |                   |                                                              |
+|                                           |                   |                |              |               |                                       |                   |                                                              |
 
 ```
 rm -rf /home/ssd/ylfdata/p1.fq && rm -rf /home/ssd/ylfdata/p2.fq && rm -rf /home/ssd/ylfdata/result && time memusg ~/someGit/SOAPnuke/SOAPnuke filter -1 /home/ssd/ylfdata/SRR7963242_1.fastq -2 /home/ssd/ylfdata/SRR7963242_2.fastq -C p1.fq -D p2.fq -o /home/ssd/ylfdata/result -T 1 && ls -lh /home/ssd/ylfdata/result/ &&
@@ -1372,3 +1377,8 @@ cd ~/RabbitQCPlus/ && rm -rf /home/sssd/ylf_data/p.fq.gz && time memusg ./Rabbit
 /SRR7963242_1.fastq.gz -o /home/sssd/ylf_data/p.fq.gz -w 1 --usePugz --pugzThread 1 --usePigz --pigzThread 1 && cd ~/RabbitQC/ && rm -rf /home/sssd/ylf_data/p.fq.gz && time memusg ./rabbit_qc -i /home/sssd/ylf_data/SRR7963242_1.fastq.gz -o /home/sssd/ylf_data/p.fq.gz -w 1 && cd ~/RabbitQC/ && rm -rf /home/sssd/ylf_data/p.fq.gz && time memusg ./rabbit_qc -i /home/sssd/ylf_data/SRR7963242_1.fastq.gz -o /home/sssd/ylf_data/p.fq.gz -w 32 && cd ~/fastp/ && rm -rf /home/sssd/ylf_data/p.fq.gz && time memusg ./fastp -i /home/sssd/ylf_data/SRR7963242_1.fastq.gz -o /home/sssd/ylf_data/p.fq.gz -w 1 && cd ~/fastp/ && rm -rf /home/sssd/ylf_data/p.fq.gz && time memusg ./fastp -i /home/sssd/ylf_data/SRR7963242_1.fastq.gz -o /home/sssd/ylf_data/p.fq.gz -w 16 && cd ~/someGit/SOAPnuke/ && rm -rf /home/sssd/ylf_data/p.fq.gz && rm -rf /home/sssd/ylf_data/result && time memusg ./SOAPnuke filter -1 /home/sssd/ylf_data/SRR7963242_1.fastq.gz  -C p.fq.gz -o /home/sssd/ylf_data/result -T 1 && rm -rf /home/sssd/ylf_data/p.fq.gz && rm -rf /home/sssd/ylf_data/result && time memusg ./SOAPnuke filter -1 /home/sssd/ylf_data/SRR7963242_1.fastq.gz  -C p.fq.gz -o /home/sssd/ylf_data/result -T 16 && rm -rf /home/sssd/ylfdata/result && rm -rf /home/sssd/ylf_data/p.fq.gz && time memusg java -jar /home/user_home/ylf/someGit/Trimmomatic-0.39/trimmomatic-0.39.jar SE -threads 1 -phred33 /home/sssd/ylf_data/SRR7963242_1.fastq.gz /home/ssd/ylfdata/p.fq.gz ILLUMINACLIP:/home/user_home/ylf/someGit/Trimmomatic-0.39/adapters/TruSeq2-SE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 HEADCROP:8 MINLEN:36 && rm -rf /home/sssd/ylfdata/result && rm -rf /home/sssd/ylf_data/p.fq.gz && time memusg java -jar /home/user_home/ylf/someGit/Trimmomatic-0.39/trimmomatic-0.39.jar SE -threads 16 -phred33 /home/sssd/ylf_data/SRR7963242_1.fastq.gz /home/ssd/ylfdata/p.fq.gz ILLUMINACLIP:/home/user_home/ylf/someGit/Trimmomatic-0.39/adapters/TruSeq2-SE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 HEADCROP:8 MINLEN:36
 ```
 
+
+
+- [ ] do some test on PC
+- [ ] muti-thread ??  single thread??
+- [ ] use new ORP module to fine more ORP sequences
