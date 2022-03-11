@@ -1,6 +1,6 @@
 DIR_INC := ./inc
 DIR_SRC := ./src
-DIR_OBJ := ./obj
+DIR_OBJ := ./src
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
@@ -38,7 +38,8 @@ LIBS := -lz -lpthread  -fopenmp -lm -lrt
 #LIBS := -std=c++11 -I. -Icommon -w -Wextra -Weffc++ -Wpedantic -Wundef -Wuseless-cast -Wconversion -Wshadow -Wdisabled-optimization -Wparentheses -Wpointer-arith   -O3 -flto=jobserver -march=native -mtune=native -g -D_POSIX_C_SOURCE=200809L -D_FILE_OFFSET_BITS=64 -lz -lpthread  -fopenmp -lrt -lm 
 #-L/home/user_home/ylf/someGit/libdeflate -ldeflate
 
-LD_FLAGS := $(LIBS)
+#LD_FLAGS := $(LIBS)
+LD_FLAGS := $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir)) $(LIBS)
 
 
 
@@ -55,14 +56,8 @@ ${DIR_OBJ}/%.o:${DIR_SRC}/%.c
 
 .PHONY:clean
 clean:
-	rm obj/*.o
+	rm $(DIR_OBJ)/*.o
 	rm $(TARGET)
-
-make_obj_dir:
-	@if test ! -d $(DIR_OBJ) ; \
-	then \
-		mkdir $(DIR_OBJ) ; \
-	fi
 
 install:
 	install $(TARGET) $(BINDIR)/$(TARGET)
