@@ -17,9 +17,9 @@ int main(int argc, char **argv) {
 
     app.add_flag("--phred64", cmd_info.isPhred64_, "input is using phred64 scoring");
     app.add_flag("--stdin", cmd_info.isStdin_,
-                 "input from stdin, or -i /dev/stdin, only for se data or interleaved in pe data(which means use --interleavedIn)");
+            "input from stdin, or -i /dev/stdin, only for se data or interleaved in pe data(which means use --interleavedIn)");
     app.add_flag("--stdout", cmd_info.isStdout_,
-                 "output to stdout, or -o /dev/stdout, only for se data or interleaved out pe data(which means use --interleavedOut)");
+            "output to stdout, or -o /dev/stdout, only for se data or interleaved out pe data(which means use --interleavedOut)");
 
 
     app.add_flag("-a,--noTrimAdapter", cmd_info.no_trim_adapter_, "no trim adapter");
@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
     //overrepresentation
     app.add_flag("-p,--doOverrepresentation", cmd_info.do_overrepresentation_, "do overrepresentation");
     app.add_option("-P,--overrepresentationSampling", cmd_info.overrepresentation_sampling_,
-                   "do overrepresentation every [] reads");
+            "do overrepresentation every [] reads");
 
     //insert size analyze
     app.add_flag("--noInsertSize", cmd_info.no_insert_size_, "no insert size analyze");
@@ -90,12 +90,12 @@ int main(int argc, char **argv) {
     if (ends_with(cmd_info.out_file_name1_, ".gz") == 0 || cmd_info.pigz_threads_ == 1) {
         cmd_info.use_pigz_ = false;
     }
-//    if (cmd_info.use_pigz_) {
-//        string out_name1 = cmd_info.out_file_name1_;
-//        cmd_info.out_file_name1_ = out_name1.substr(0, out_name1.find(".gz"));
-//        string out_name2 = cmd_info.out_file_name2_;
-//        cmd_info.out_file_name2_ = out_name2.substr(0, out_name2.find(".gz"));
-//    }
+    //    if (cmd_info.use_pigz_) {
+    //        string out_name1 = cmd_info.out_file_name1_;
+    //        cmd_info.out_file_name1_ = out_name1.substr(0, out_name1.find(".gz"));
+    //        string out_name2 = cmd_info.out_file_name2_;
+    //        cmd_info.out_file_name2_ = out_name2.substr(0, out_name2.find(".gz"));
+    //    }
     if (cmd_info.isStdin_) {
         cmd_info.in_file_name1_ = "/dev/stdin";
     }
@@ -110,8 +110,14 @@ int main(int argc, char **argv) {
     printf("in1 is %s\n", cmd_info.in_file_name1_.c_str());
     if (cmd_info.isStdout_)cmd_info.out_file_name1_ = "/dev/stdout";
     if (cmd_info.in_file_name2_.length())printf("in2 is %s\n", cmd_info.in_file_name2_.c_str());
-    if (cmd_info.out_file_name1_.length())printf("out1 is %s\n", cmd_info.out_file_name1_.c_str());
-    if (cmd_info.out_file_name2_.length())printf("out2 is %s\n", cmd_info.out_file_name2_.c_str());
+    if (cmd_info.out_file_name1_.length()){
+        remove(cmd_info.out_file_name1_.c_str());
+        printf("out1 is %s\n", cmd_info.out_file_name1_.c_str());
+    }	    
+    if (cmd_info.out_file_name2_.length()){
+        remove(cmd_info.out_file_name2_.c_str());
+        printf("out2 is %s\n", cmd_info.out_file_name2_.c_str());
+    }
 
     if (cmd_info.no_trim_adapter_)cmd_info.trim_adapter_ = false;
     ASSERT(cmd_info.no_trim_adapter_ != cmd_info.trim_adapter_);
@@ -147,7 +153,7 @@ int main(int argc, char **argv) {
         if (umiLoc.empty())
             error_exit("You've enabled UMI by (--addUmi), you should specify the UMI location by (--umiLoc)");
         if (umiLoc != "index1" && umiLoc != "index2" && umiLoc != "read1" && umiLoc != "read2" &&
-            umiLoc != "per_index" && umiLoc != "per_read") {
+                umiLoc != "per_index" && umiLoc != "per_read") {
             error_exit("UMI location can only be index1/index2/read1/read2/per_index/per_read");
         }
         if (cmd_info.in_file_name2_.length() == 0 && (umiLoc == "index2" || umiLoc == "read2"))
@@ -192,19 +198,19 @@ int main(int argc, char **argv) {
     double t1 = GetTime();
     if (cmd_info.in_file_name2_.length() || cmd_info.interleaved_in_) {
         if ((cmd_info.out_file_name1_.length() > 0 && cmd_info.out_file_name2_.length() > 0) ||
-            cmd_info.interleaved_out_) {
+                cmd_info.interleaved_out_) {
             cmd_info.write_data_ = true;
             printf("auto set write_data_ 1\n");
         }
         if (cmd_info.in_file_name1_ != "/dev/stdin") {
             //calculate file size and estimate reads number
-//            FILE *p_file;
-//            p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
-//            fseek(p_file, 0, SEEK_END);
-//            int64_t total_size = ftell(p_file);
-//            cmd_info.in_file_size1_ = total_size;
-//            printf("in file total size is %lld\n", total_size);
-//            printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
+            //            FILE *p_file;
+            //            p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
+            //            fseek(p_file, 0, SEEK_END);
+            //            int64_t total_size = ftell(p_file);
+            //            cmd_info.in_file_size1_ = total_size;
+            //            printf("in file total size is %lld\n", total_size);
+            //            printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
         }
 
         //adapter
@@ -290,13 +296,13 @@ int main(int argc, char **argv) {
         }
         if (cmd_info.in_file_name1_ != "/dev/stdin") {
             //calculate file size and estimate reads number
- //           FILE *p_file;
- //           p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
- //           fseek(p_file, 0, SEEK_END);
- //           int64_t total_size = ftell(p_file);
- //           cmd_info.in_file_size1_ = total_size;
- //           printf("in file total size is %lld\n", total_size);
- //           printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
+            //           FILE *p_file;
+            //           p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
+            //           fseek(p_file, 0, SEEK_END);
+            //           int64_t total_size = ftell(p_file);
+            //           cmd_info.in_file_size1_ = total_size;
+            //           printf("in file total size is %lld\n", total_size);
+            //           printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
         }
 
         //adapter
