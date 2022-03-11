@@ -27,7 +27,7 @@
 
 #ifndef PROGRAMS_PROG_UTIL_H
 #define PROGRAMS_PROG_UTIL_H
-#include "libdeflatePugz.h"
+#include "lib/libdeflatePugz.h"
 
 #include <limits.h>
 #include <stdio.h>

@@ -103,56 +103,7 @@ int Adapter::seq2int(const char *seq, int pos, int keylen, int lastVal) {
         return key;
     }
 }
-//int Adapter::seq2int(std::string &seq, int pos, int keylen, int lastVal) {
-//    int rlen = seq.length();
-//    if (lastVal >= 0) {
-//        const int mask = (1 << (keylen * 2)) - 1;
-//        int key = (lastVal << 2) & mask;
-//        char base = seq[pos + keylen - 1];
-//        switch (base) {
-//            case 'A':
-//                key += 0;
-//                break;
-//            case 'T':
-//                key += 1;
-//                break;
-//            case 'C':
-//                key += 2;
-//                break;
-//            case 'G':
-//                key += 3;
-//                break;
-//            default:
-//                // N or anything else
-//                return -1;
-//        }
-//        return key;
-//    } else {
-//        int key = 0;
-//        for (int i = pos; i < keylen + pos; i++) {
-//            key = (key << 2);
-//            char base = seq[i];
-//            switch (base) {
-//                case 'A':
-//                    key += 0;
-//                    break;
-//                case 'T':
-//                    key += 1;
-//                    break;
-//                case 'C':
-//                    key += 2;
-//                    break;
-//                case 'G':
-//                    key += 3;
-//                    break;
-//                default:
-//                    // N or anything else
-//                    return -1;
-//            }
-//        }
-//        return key;
-//    }
-//}
+
 
 
 std::string Adapter::matchKnownAdapter(std::string seq) {

@@ -3,7 +3,7 @@
 
 #include "assert.hpp"
 #include "lib/deflate_constants.h"
-#include "libdeflatePugz.h"
+#include "lib/libdeflatePugz.h"
 
 /*
  * Each TABLEBITS number is the base-2 logarithm of the number of entries in the
