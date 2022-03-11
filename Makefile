@@ -1,6 +1,6 @@
 DIR_INC := ./inc
 DIR_SRC := ./src
-DIR_OBJ := ./src
+DIR_OBJ := ./obj
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
