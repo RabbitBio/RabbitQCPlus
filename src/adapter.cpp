@@ -496,7 +496,6 @@ Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, lon
     const int shiftTail = std::max(1, trim_tail);
     NucleotideTree *forwardTree = new NucleotideTree();
     NucleotideTree *backwardTree = new NucleotideTree();
-    //printf("333\n");
     std::vector<AdapterSeedInfo> vec;
 //#pragma omp parallel for
     for (int i = 0; i < records; i++) {
@@ -515,7 +514,6 @@ Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, lon
             }
         }
     }
-    //printf("444\n");
     std::vector<AdapterSeedInfo>::iterator it;
     for (it = vec.begin(); it != vec.end(); it++) {
 
@@ -540,11 +538,11 @@ Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, lon
     std::string matchedAdapter = matchKnownAdapter(adapter);
     if (!matchedAdapter.empty()) {
         std::map<std::string, std::string> knownAdapters = getKnownAdapter();
-        std::cout << knownAdapters[matchedAdapter] << ": " << matchedAdapter << std::endl;
+        //std::cout << knownAdapters[matchedAdapter] << ": " << matchedAdapter << std::endl;
         return matchedAdapter;
     } else {
         if (reachedLeaf) {
-            std::cout << adapter << std::endl;
+            //std::cout << adapter << std::endl;
             return adapter;
         } else {
             return "";

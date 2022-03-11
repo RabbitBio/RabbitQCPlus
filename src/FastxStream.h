@@ -323,12 +323,9 @@ namespace rabbit {
                       isZipped(isZippedNew),
                       numParts(0),
                       recordsPool(pool_) {
-                printf("now construct FastqFileReader with mx len %d\n",mxLen_);
                 GetNxtBuffSize=mxLen_;
-                printf("now construct FastqFileReader with GetNxtBuffSize %d\n",GetNxtBuffSize);
                 // if(ends_with(fileName_,".gz"))
                 if (isZipped) {
-                    std::cout << "now zip reader" << std::endl;
                     mZipFile = gzopen(fileName_.c_str(), "r");
                     if (mZipFile == NULL) {
                         throw RioException(
@@ -338,7 +335,6 @@ namespace rabbit {
                     gzrewind(mZipFile);
 
                     if (fileName2_ != "") {
-                        std::cout << " fileName2_ " << fileName2_ << std::endl;
                         mZipFile2 = gzopen(fileName2_.c_str(), "r");
                         if (mZipFile2 == NULL) {
                             throw RioException(
@@ -350,7 +346,6 @@ namespace rabbit {
                     // isZipped=true;
 
                 } else {
-                    std::cout << "now reader" << std::endl;
 
                     mFile = FOPEN(fileName_.c_str(), "rb");
                     if (fileName2_ != "") {

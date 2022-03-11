@@ -91,7 +91,6 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
     if(cmd_info_->seq_len_<=200)tmpSize=1<<14;
     fqFileReader = new rabbit::fq::FastqFileReader(file, fastq_data_pool, "", in_is_zip_,tmpSize);
     int64_t n_chunks = 0;
-    std:cout << "new FastqFileReader done" <<std::endl;
 
     if (cmd_info_->use_pugz_) {
         pair<char *, int> last_info;
@@ -424,7 +423,7 @@ void SeQc::ProcessSeFastq() {
     State::PrintStates(pre_state);
     printf("\nprint aft state info :\n");
     State::PrintStates(aft_state);
-
+    printf("\n");
     if (cmd_info_->do_overrepresentation_) {
         auto hash_graph1 = pre_state->GetHashGraph();
         int hash_num1 = pre_state->GetHashNum();

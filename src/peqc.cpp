@@ -729,14 +729,18 @@ void PeQc::ProcessPeFastq() {
 
 
         printf("merge done\n");
-        printf("print pre state1 info :\n\n");
+        printf("\nprint pre state1 info :\n");
         State::PrintStates(pre_state1);
-        printf("print pre state2 info :\n\n");
+        printf("\n");
+        printf("\nprint pre state2 info :\n");
         State::PrintStates(pre_state2);
-        printf("print aft state1 info :\n\n");
+        printf("\n");
+        printf("\nprint aft state1 info :\n");
         State::PrintStates(aft_state1);
-        printf("print aft state2 info :\n\n");
+        printf("\n");
+        printf("\nprint aft state2 info :\n");
         State::PrintStates(aft_state2);
+        printf("\n");
 
         if (cmd_info_->do_overrepresentation_) {
 
@@ -917,12 +921,13 @@ void PeQc::ProcessPeFastq() {
         State::PrintStates(pre_state1);
         printf("\nprint aft state1 info :\n");
         State::PrintStates(aft_state1);
-
+        printf("\n");
 
         printf("\nprint pre state2 info :\n");
         State::PrintStates(pre_state2);
         printf("\nprint aft state2 info :\n");
         State::PrintStates(aft_state2);
+        printf("\n");
 
         if (cmd_info_->do_overrepresentation_) {
 

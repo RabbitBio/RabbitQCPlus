@@ -843,10 +843,6 @@ std::string GetOver(State *state, bool isAfter, bool isRead2, int eva_len) {
 std::string GetInsertSize(int64_t *size_info, int size_len_mx, int size_len_l, int size_len_r) {
     std::stringstream ofs;
 
-    printf("size_len_mx is %d\n", size_len_mx);
-    printf("size_len_l is %d\n", size_len_l);
-    printf("size_len_r is %d\n", size_len_r);
-
 
     int total = std::min(size_len_mx, size_len_r);
     int64_t *x = new int64_t[total];
@@ -911,14 +907,15 @@ std::string GetInsertSize(int64_t *size_info, int size_len_mx, int size_len_l, i
 
 void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, double dup) {
 
-
+    /*
     printf("tot bases %lld\n", state1->GetTotBases());
     printf("gc bases %lld\n", state1->GetGcBases());
     printf("tot bases %lld\n", state2->GetTotBases());
     printf("gc bases %lld\n", state2->GetGcBases());
 
-    printf("report html se data\n");
+    */
 
+    printf("report html se data\n");
     std::string outhtml;
 
     int mx_len1 = state1->GetRealSeqLen();
@@ -929,8 +926,6 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     int64_t *qul_cnt;
     int64_t *gc_cnt;
 
-    printf("mx len1 is %d\n", mx_len1);
-    printf("mx len2 is %d\n", mx_len2);
 
     double *tmp_double = new double[std::max(std::max(mx_len1, mx_len2), 1010)];
 
@@ -1266,11 +1261,6 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     int64_t *qul_cnt;
 
 
-    printf("pre mx len1 is %d\n", pre_mx_len1);
-    printf("pre mx len2 is %d\n", pre_mx_len2);
-
-    printf("aft mx len1 is %d\n", aft_mx_len1);
-    printf("aft mx len2 is %d\n", aft_mx_len2);
 
     int mx_malloc_size = size_len_mx + 1;
     mx_malloc_size = std::max(mx_malloc_size,

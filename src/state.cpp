@@ -473,8 +473,8 @@ void State::PrintStates(const State *state) {
     printf("q20bases %lld\n", state->q20bases_);
     printf("q30bases %lld\n", state->q30bases_);
     printf("lines %lld\n", state->lines_);
-    printf("kmer max is %lld\n", state->kmer_max_);
-    printf("kmer min is %lld\n", state->kmer_min_);
+    //printf("kmer max is %lld\n", state->kmer_max_);
+    //printf("kmer min is %lld\n", state->kmer_min_);
     if(state->do_over_represent_analyze_){
         printf("orp qcnt %lld\n",state->over_representation_qcnt_);
         printf("orp pcnt %lld\n",state->over_representation_pcnt_);
