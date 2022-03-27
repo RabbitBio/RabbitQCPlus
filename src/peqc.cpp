@@ -21,13 +21,13 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != std::string::npos;
 
     if (cmd_info1->write_data_) {
-        out_queue1_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>(1<<8);
+        out_queue1_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>;
         queueNumNow1=0;
-        queueSizeLim1=0;
+        queueSizeLim1=1<<8;
         if (cmd_info_->interleaved_out_ == 0){
-            out_queue2_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>(1<<8);
+            out_queue2_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>;
             queueNumNow2=0;
-            queueSizeLim2=0;
+            queueSizeLim2=1<<8;
         }
         if (out_is_zip_) {
             if(cmd_info1->use_pigz_){
