@@ -13,20 +13,22 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     filter_ = new Filter(cmd_info1);
     done_thread_number_ = 0;
     int out_block_nums = int(1.0 * cmd_info1->in_file_size1_ / cmd_info1->out_block_size_);
-    printf("out_block_nums %d\n", out_block_nums);
+    //printf("out_block_nums %d\n", out_block_nums);
     out_queue_ = NULL;
 
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != std::string::npos;
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != std::string::npos;
     if (cmd_info1->write_data_) {
-        out_queue_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>(out_block_nums + 1000);
+        out_queue_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>;
+        queueNumNow=0;
+        queueSizeLim=1<<8;
         if (out_is_zip_) {
             if (cmd_info1->use_pigz_) {
                 string out_name1 = cmd_info1->out_file_name1_;
                 out_name1 = out_name1.substr(0, out_name1.find(".gz"));
                 out_stream_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
                 out_stream_.close();
-//                out_stream_ = std::fstream(out_name1 + "_tmp", std::ios::out | std::ios::binary);
+                //                out_stream_ = std::fstream(out_name1 + "_tmp", std::ios::out | std::ios::binary);
 
                 printf("now use pigz to compress output data\n");
             } else {
@@ -84,7 +86,7 @@ SeQc::~SeQc() {
  */
 
 void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
-                               rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
 
     rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize=1<<20;
@@ -131,9 +133,9 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
 
 std::string SeQc::Read2String(neoReference &ref) {
     return std::string((char *) ref.base + ref.pname, ref.lname) + "\n" +
-           std::string((char *) ref.base + ref.pseq, ref.lseq) + "\n" +
-           std::string((char *) ref.base + ref.pstrand, ref.lstrand) + "\n" +
-           std::string((char *) ref.base + ref.pqual, ref.lqual) + "\n";
+        std::string((char *) ref.base + ref.pseq, ref.lseq) + "\n" +
+        std::string((char *) ref.base + ref.pstrand, ref.lstrand) + "\n" +
+        std::string((char *) ref.base + ref.pqual, ref.lqual) + "\n";
 }
 
 void SeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
@@ -158,7 +160,7 @@ void SeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
  * @param dq : data queue
  */
 void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastq_data_pool,
-                               rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;
 
@@ -219,7 +221,14 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                         Read2Chars(item, out_data, pos);
                     }
                     ASSERT(pos == out_len);
-                    out_queue_->enqueue({out_data, out_len});
+                    while(queueNumNow>queueSizeLim){
+#ifdef Verbose
+                        printf("waiting to push a chunk to out queue %d\n",out_len);
+#endif
+                        usleep(100);
+                    }
+                    out_queue_->enqueue(make_pair(out_data, out_len));
+                    queueNumNow++;
                 }
             }
 
@@ -237,43 +246,49 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 void SeQc::WriteSeFastqTask() {
     double t0 = GetTime();
     int cnt = 0;
-    while (true) {
-        if (out_queue_->size_approx() == 0 && done_thread_number_ == cmd_info_->thread_number_) {
-            break;
-        }
-        if (out_queue_->size_approx() == 0) {
+    bool overWhile=0;
+    std::pair<char *, int> now;
+    while(true){
+        while (out_queue_->try_dequeue(now) == 0) {
+            if (done_thread_number_ == cmd_info_->thread_number_) {
+                if (out_queue_->size_approx() == 0) {
+                    overWhile=1;
+                    break;
+                }
+            }
             usleep(100);
         }
-        std::pair<char *, int> now;
-        while (out_queue_->size_approx()) {
-            out_queue_->try_dequeue(now);
-//            printf("write thread working, write %d %d\n", now.second, cnt++);
-            if (out_is_zip_) {
-                if (cmd_info_->use_pigz_) {
-                    while (pigzQueue->try_enqueue(now) == 0) {
-                        printf("waiting to push a chunk to pigz queue\n");
-                        usleep(100);
-                    }
-//                    out_stream_.write(now.first, now.second);
-//                    printf("writer data to pigzQueue and disk\n");
-
-                } else {
-                    int written = gzwrite(zip_out_stream, now.first, now.second);
-                    if (written != now.second) {
-                        printf("GG");
-                        exit(0);
-                    }
-                    delete[] now.first;
+        if(overWhile)break;
+        queueNumNow--;
+        if (out_is_zip_) {
+            if (cmd_info_->use_pigz_) {
+                while (pigzQueue->try_enqueue(now) == 0) {
+#ifdef Verbose
+                    printf("waiting to push a chunk to pigz queue\n");
+#endif
+                    usleep(100);
                 }
+                //                    out_stream_.write(now.first, now.second);
+                //                    printf("writer data to pigzQueue and disk\n");
+
             } else {
-                out_stream_.write(now.first, now.second);
+                int written = gzwrite(zip_out_stream, now.first, now.second);
+                if (written != now.second) {
+                    printf("GG");
+                    exit(0);
+                }
                 delete[] now.first;
             }
+        } else {
+            out_stream_.write(now.first, now.second);
+            delete[] now.first;
         }
+
     }
+
     if (out_is_zip_) {
         if (cmd_info_->use_pigz_) {
-//            out_stream_.close();
+            //            out_stream_.close();
 
         } else {
             if (zip_out_stream) {
@@ -304,27 +319,27 @@ void SeQc::PugzTask() {
 
 void SeQc::PigzTask() {
     /*
- argc 9
-argv ./pigz
-argv -p
-argv 16
-argv -k
-argv -4
-argv -f
-argv -b
-argv -4096
-argv p.fq
- */
+       argc 9
+       argv ./pigz
+       argv -p
+       argv 16
+       argv -k
+       argv -4
+       argv -f
+       argv -b
+       argv -4096
+       argv p.fq
+       */
     int cnt = 9;
 
     char **infos = new char *[9];
     infos[0] = "./pigz";
     infos[1] = "-p";
     int th_num = cmd_info_->pigz_threads_;
-//    printf("th num is %d\n", th_num);
+    //    printf("th num is %d\n", th_num);
     string th_num_s = to_string(th_num);
-//    printf("th num s is %s\n", th_num_s.c_str());
-//    printf("th num s len is %d\n", th_num_s.length());
+    //    printf("th num s is %s\n", th_num_s.c_str());
+    //    printf("th num s len is %d\n", th_num_s.length());
 
     infos[2] = new char[th_num_s.length() + 1];
     memcpy(infos[2], th_num_s.c_str(), th_num_s.length());
@@ -336,8 +351,8 @@ argv p.fq
     infos[7] = "4096";
     string out_name1 = cmd_info_->out_file_name1_;
     string out_file = out_name1.substr(0, out_name1.find(".gz"));
-//    printf("th out_file is %s\n", out_file.c_str());
-//    printf("th out_file len is %d\n", out_file.length());
+    //    printf("th out_file is %s\n", out_file.c_str());
+    //    printf("th out_file len is %d\n", out_file.length());
     infos[8] = new char[out_file.length() + 1];
     memcpy(infos[8], out_file.c_str(), out_file.length());
     infos[8][out_file.length()] = '\0';
@@ -532,7 +547,7 @@ void SeQc::ProcessSeTGS() {
     printf("\nprint TGS state info :\n");
     //mer_state->print();
 
-//    report3(mer_state);
+    //    report3(mer_state);
     mer_state->CalReadsLens();
     Repoter::ReportHtmlTGS(mer_state, cmd_info_->in_file_name1_);
 

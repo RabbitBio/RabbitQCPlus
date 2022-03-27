@@ -82,6 +82,8 @@ private:
 
     std::atomic_int producerDone;
     std::atomic_int writerDone;
+    std::atomic_int queueNumNow;
+    std::atomic_int queueSizeLim;
 
 
 };

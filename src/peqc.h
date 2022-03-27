@@ -106,10 +106,14 @@ private:
 
 
 	std::atomic_int producerDone;
-
  	std::atomic_int writerDone1;
-
+    std::atomic_int queueNumNow1;
+    std::atomic_int queueSizeLim1;
   	std::atomic_int writerDone2;
+    std::atomic_int queueNumNow2;
+    std::atomic_int queueSizeLim2;
+
+
 
 };
 
