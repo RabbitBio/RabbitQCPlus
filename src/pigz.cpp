@@ -1012,7 +1012,7 @@ local size_t readn(int desc, unsigned char *buf, size_t len) {
 // Add by ylf
 local size_t
 readFromQueue(moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, atomic_int *wDone,
-        pair<char *, int> &L, unsigned char *buf, size_t len) {
+        pair<char *, int> &L,atomic_int *qNum, unsigned char *buf, size_t len) {
 
     ssize_t ret;
     size_t got;
@@ -1062,7 +1062,7 @@ readFromQueue(moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, atomic_int *w
             ret = 0;
             break;
         }
-        //        printf("get a chunk from pigz queue, now queue size is %zu\n", Q->size_approx());
+        (*qNum)--;
         int getSize = now.second;
         char *getPos = now.first;
         //        printf("getSize is %d, len is %zu, tag is %d\n", getSize, len, tag);
@@ -2199,7 +2199,7 @@ local void append_len(struct job *job, size_t len) {
 // threads will be launched and left running (waiting actually) to support
 // subsequent calls of parallel_compress().
 local void parallel_compress(moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, atomic_int *wDone,
-        pair<char *, int> &L) {
+        pair<char *, int> &L, atomic_int *qNum) {
     long seq;                       // sequence number
     struct space *curr;             // input data to compress
     struct space *next;             // input data that follows curr
@@ -2225,7 +2225,7 @@ local void parallel_compress(moodycamel::ReaderWriterQueue<pair<char *, int>> *Q
     // the output of the compress threads)
     seq = 0;
     next = get_space(&in_pool[small_map[*((int *) (pthread_getspecific(gtid)))]]);
-    next->len = readFromQueue(Q, wDone, L, next->buf, next->size);
+    next->len = readFromQueue(Q, wDone, L, qNum, next->buf, next->size);
     hold = NULL;
     dict = NULL;
     scan = next->buf;
@@ -2244,7 +2244,7 @@ local void parallel_compress(moodycamel::ReaderWriterQueue<pair<char *, int>> *Q
         // get more input if we don't already have some
         if (next == NULL) {
             next = get_space(&in_pool[small_map[*((int *) (pthread_getspecific(gtid)))]]);
-            next->len = readFromQueue(Q, wDone, L, next->buf, next->size);
+            next->len = readFromQueue(Q, wDone, L, qNum, next->buf, next->size);
         }
 
         // if rsyncable, generate block lengths and prepare curr for job to
@@ -4150,7 +4150,7 @@ local void out_push(void) {
 // Process provided input file, or stdin if path is NULL. process() can call
 // itself for recursive directory processing[small_map[*((int*)(pthread_getspecific(gtid)))]].
 void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, atomic_int *wDone,
-        pair<char *, int> &L) {
+        pair<char *, int> &L, atomic_int *qNum) {
 
 
     volatile int method = -1;       // get_header() return value
@@ -4253,7 +4253,7 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
             for (off = 0; roll[off]; off += strlen(roll + off) + 1) {
                 vstrcpy(&g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,
                         &g[small_map[*((int *) (pthread_getspecific(gtid)))]].inz, base, roll + off);
-                process(g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf, Q, wDone, L);
+                process(g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf, Q, wDone, L ,qNum);
             }
             g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf[len] = 0;
 
@@ -4470,7 +4470,7 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
     }
 #ifndef NOTHREAD
     else if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].procs > 1)
-        parallel_compress( Q, wDone, L );
+        parallel_compress( Q, wDone, L, qNum);
 #endif
     else
         single_compress(0);
@@ -4959,7 +4959,7 @@ pthread_mutex_t mutexPigz;
 
 // Process command line arguments.
 int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q,
-              atomic_int *wDone, pair<char *, int> &L) {
+              atomic_int *wDone,  pair<char *, int> &L, atomic_int *qNum) {
     //printf("pigz* gettid = %u\n", syscall(SYS_gettid));
     int tid = small_hash(syscall(SYS_gettid));
     //printf("pigz* tid = %d\n", tid);
@@ -5128,12 +5128,12 @@ int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, 
                 //                    complain("warning: output will be concatenated zip files"
                 //                             " -- %s will not be able to extract",
                 //                             g[small_map[*((int *) (pthread_getspecific(gtid)))]].prog);
-                process(n < nop && strcmp(argv[n], "-") == 0 ? NULL : argv[n],Q,wDone,L);
+                process(n < nop && strcmp(argv[n], "-") == 0 ? NULL : argv[n],Q,wDone,L,qNum);
                 done++;
             }
         // list stdin or compress stdin to stdout if no file names provided
         if (done == 0)
-            process(NULL,Q,wDone,L);
+            process(NULL,Q,wDone,L,qNum);
     }
     always
     {

@@ -717,7 +717,7 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     std::fstream fout = std::fstream("RabbitQCPlus.html", std::ios::out | std::ios::binary);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
-
+    delete []tmp_double;
 }
 
 
@@ -1236,7 +1236,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     std::fstream fout = std::fstream("RabbitQCPlus.html", std::ios::out | std::ios::binary);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
-
+    delete []tmp_double;
 }
 
 void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_state1, State *aft_state2,
@@ -1828,4 +1828,5 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     std::fstream fout = std::fstream("RabbitQCPlus.html", std::ios::out | std::ios::binary);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
+    delete []tmp_double;
 }

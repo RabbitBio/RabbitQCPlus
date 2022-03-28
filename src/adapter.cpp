@@ -340,6 +340,8 @@ int Adapter::EvalMaxLen(std::string file_name){
                 break;
         }
     }
+    delete fastq_data_pool;
+    delete fqFileReader;
     return mx_len;
 
 
@@ -574,7 +576,7 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
     int len1 = r1.lseq;
     int len2 = r2.lseq;
 
-    char tmpRev[len2];
+    char *tmpRev=new char[len2];
     const char *str2 = reinterpret_cast<const char *>(r2.base + r2.pseq);
 
     for (int i = 0; i < len2; i++) {
@@ -608,6 +610,7 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
         }
 
         if (diff_num <= overlap_diff_limit) {
+            delete [] tmpRev;
             return {true, offset, overlap_len, diff_num};
         }
         offset += 1;
@@ -636,11 +639,12 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
             if (diff_num > overlap_diff_limit)break;
         }
         if (diff_num <= overlap_diff_limit) {
+            delete [] tmpRev;
             return {true, offset, overlap_len, diff_num};
         }
         offset -= 1;
     }
-
+    delete [] tmpRev;
     return {false, 0, 0, 0};
 
 }
@@ -695,6 +699,7 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
         }
 
         if (diff_num <= overlap_diff_limit) {
+            delete [] tmpRev;
             return {true, offset, overlap_len, diff_num};
         }
         offset += 1;
@@ -729,12 +734,12 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
             if (diff_num > overlap_diff_limit)break;
         }
         if (diff_num <= overlap_diff_limit) {
+            delete [] tmpRev;
             return {true, offset, overlap_len, diff_num};
         }
         offset -= 1;
     }
     delete[] tmpRev;
-
     return {false, 0, 0, 0};
 
 }

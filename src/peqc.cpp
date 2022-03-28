@@ -23,20 +23,23 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
     if (cmd_info1->write_data_) {
         out_queue1_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>;
         queueNumNow1=0;
-        queueSizeLim1=1<<8;
+        queueSizeLim1=1 << 6;
         if (cmd_info_->interleaved_out_ == 0){
             out_queue2_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>;
             queueNumNow2=0;
-            queueSizeLim2=1<<8;
+            queueSizeLim2=1 << 6;
         }
         if (out_is_zip_) {
             if(cmd_info1->use_pigz_){
+                pigzQueueNumNow1=0;
+                pigzQueueSizeLim1=1<<6;
                 string out_name1 = cmd_info1->out_file_name1_;
                 out_name1 = out_name1.substr(0, out_name1.find(".gz"));
                 out_stream1_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
                 out_stream1_.close();
 
-
+                pigzQueueNumNow2=0;
+                pigzQueueSizeLim2=1<<6;
                 string out_name2 = cmd_info1->out_file_name2_;
                 out_name2 = out_name2.substr(0, out_name2.find(".gz"));
                 out_stream2_ = std::fstream(out_name2, std::ios::out | std::ios::binary);
@@ -74,14 +77,14 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
         umier_ = new Umier(cmd_info1);
     }
     if (cmd_info1->use_pugz_) {
-        pugzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 15);
-        pugzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 15);
+        pugzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 6);
+        pugzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 6);
     }
     if (cmd_info1->use_pigz_) {
-        pigzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 8);
+        pigzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>;
         pigzLast1.first = new char[1 << 24];
         pigzLast1.second = 0;
-        pigzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 8);
+        pigzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>;
         pigzLast2.first = new char[1 << 24];
         pigzLast2.second = 0;
 
@@ -149,7 +152,7 @@ void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool 
 
     rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize=1<<20;
-    if(cmd_info_->seq_len_<=200)tmpSize=1<<14;
+    //if(cmd_info_->seq_len_<=200)tmpSize=1<<14;
     fqFileReader = new rabbit::fq::FastqFileReader(file, fastq_data_pool, "", in_is_zip_);
     int64_t n_chunks = 0;
     while (true) {
@@ -179,7 +182,6 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
     fqFileReader = new rabbit::fq::FastqFileReader(file, fastqPool, file2, in_is_zip_, tmpSize);
     int n_chunks = 0;
 
-    rabbit::fq::FastqDataPairChunk *fqdatachunk;
 
     if (cmd_info_->use_pugz_) {
         pair<char *, int> last1;
@@ -189,13 +191,17 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
         last2.first = new char[1 << 20];
         last2.second = 0;
         while (true) {
+            rabbit::fq::FastqDataPairChunk *fqdatachunk;
             fqdatachunk = fqFileReader->readNextPairChunk(pugzQueue1, pugzQueue2, &pugzDone1, &pugzDone2, last1, last2);
             if (fqdatachunk == NULL) break;
             n_chunks++;
             dq.Push(n_chunks, fqdatachunk);
         }
+        delete []last1.first;
+        delete []last2.first;
     } else {
         while (true) {
+            rabbit::fq::FastqDataPairChunk *fqdatachunk;
             fqdatachunk = fqFileReader->readNextPairChunk();
             if (fqdatachunk == NULL) break;
             n_chunks++;
@@ -315,6 +321,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     usleep(100);
                 }
                 out_queue1_->enqueue({out_data, pos});
+                queueNumNow1++;
             } else {
                 if (pass_data1.size() > 0) {
                     char *out_data1 = new char[out_len1];
@@ -330,6 +337,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                         usleep(100);
                     }
                     out_queue1_->enqueue({out_data1, out_len1});
+                    queueNumNow1++;
                 }
                 if (pass_data2.size() > 0) {
                     char *out_data2 = new char[out_len2];
@@ -345,6 +353,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                         usleep(100);
                     }
                     out_queue2_->enqueue({out_data2, out_len2});
+                    queueNumNow2++;
                 }
             }
 
@@ -455,6 +464,7 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                 usleep(100);
             }
             out_queue1_->enqueue({out_data, pos});
+            queueNumNow1++;
         } else {
             if (pass_data1.size() > 0) {
                 char *out_data1 = new char[out_len1];
@@ -470,6 +480,7 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                     usleep(100);
                 }
                 out_queue1_->enqueue({out_data1, out_len1});
+                queueNumNow1++;
             }
             if (pass_data2.size() > 0) {
                 char *out_data2 = new char[out_len2];
@@ -485,6 +496,7 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                     usleep(100);
                 }
                 out_queue2_->enqueue({out_data2, out_len2});
+                queueNumNow2++;
             }
         }
         fastqPool->Release(fqdatachunk);
@@ -499,7 +511,6 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
 void PeQc::WriteSeFastqTask1() {
     double t0 = GetTime();
     int cnt = 0;
-
     bool overWhile=0;
     std::pair<char *, int> now;
     while (true) {
@@ -516,13 +527,15 @@ void PeQc::WriteSeFastqTask1() {
         queueNumNow1--;
         if (out_is_zip_) {
             if(cmd_info_->use_pigz_){
-                while(pigzQueue1->try_enqueue(now)==0){
-#ifdef Vecbose
-                    printf("waiting to push a chunk to pugz1 queue\n");
+                while(pigzQueueNumNow1>pigzQueueSizeLim1){
+
+#ifdef Verbose
+                    printf("waiting to push a chunk to pigz queue1\n");
 #endif
                     usleep(100);
                 }
-                //printf("write1 put a data to pigzQeueu1, size %d\n",now.second);
+                pigzQueue1->enqueue(now);
+                pigzQueueNumNow1++;
             }else{
                 int written = gzwrite(zip_out_stream1, now.first, now.second);
                 if (written != now.second) {
@@ -576,13 +589,15 @@ void PeQc::WriteSeFastqTask2() {
 
         if (out_is_zip_) {
             if(cmd_info_->use_pigz_){
-                while(pigzQueue2->try_enqueue(now)==0){
+                while(pigzQueueNumNow2>pigzQueueSizeLim2){
+
 #ifdef Verbose
-                    printf("wait to push a chunk to pigz2 queue\n");
+                    printf("waiting to push a chunk to pigz queue2\n");
 #endif
-                    usleep(100);
+                    usleep(1000000);
                 }
-                //printf("write2 put a data to pigzQeueu2, size is %d\n",now.second);
+                pigzQueue2->enqueue(now);
+                pigzQueueNumNow2++;
             }else{
                 int written = gzwrite(zip_out_stream2, now.first, now.second);
                 if (written != now.second) {
@@ -594,8 +609,8 @@ void PeQc::WriteSeFastqTask2() {
 
             }
         } else {
-            out_stream2_.write(now.first, now.second);
 
+            out_stream2_.write(now.first, now.second);
             delete[] now.first;
         }
     }
@@ -663,7 +678,7 @@ void PeQc::PigzTask1() {
     memcpy(infos[8], out_file.c_str(), out_file.length());
     infos[8][out_file.length()] = '\0';
     infos[9]="-v";
-    main_pigz(cnt, infos, pigzQueue1, &writerDone1, pigzLast1);
+    main_pigz(cnt, infos, pigzQueue1, &writerDone1, pigzLast1, &pigzQueueNumNow1);
 
     printf("pigz1 done\n");
 }
@@ -697,7 +712,7 @@ void PeQc::PigzTask2() {
     memcpy(infos[8], out_file.c_str(), out_file.length());
     infos[8][out_file.length()] = '\0';
     infos[9]="-v";
-    main_pigz(cnt, infos, pigzQueue2, &writerDone2, pigzLast2);
+    main_pigz(cnt, infos, pigzQueue2, &writerDone2, pigzLast2, &pigzQueueNumNow2);
 
     printf("pigz2 done\n");
 }
@@ -706,9 +721,9 @@ void PeQc::PigzTask2() {
  */
 void PeQc::ProcessPeFastq() {
     if (cmd_info_->interleaved_in_) {
-        auto *fastqPool = new rabbit::fq::FastqDataPool(256, 1 << 22);
+        auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
         //TODO replace this queue
-        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(128, 1);
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(64, 1);
         auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             p_thread_info[t] = new ThreadInfo(cmd_info_, true);
@@ -872,9 +887,9 @@ void PeQc::ProcessPeFastq() {
         }
 
 
-        auto *fastqPool = new rabbit::fq::FastqDataPool(256, 1 << 22);
+        auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
         //TODO replace this queue
-        rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(128, 1);
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(64, 1);
         auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             p_thread_info[t] = new ThreadInfo(cmd_info_, true);

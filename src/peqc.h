@@ -109,9 +109,14 @@ private:
  	std::atomic_int writerDone1;
     std::atomic_int queueNumNow1;
     std::atomic_int queueSizeLim1;
+    std::atomic_int pigzQueueNumNow1;
+    std::atomic_int pigzQueueSizeLim1;
+
   	std::atomic_int writerDone2;
     std::atomic_int queueNumNow2;
     std::atomic_int queueSizeLim2;
+    std::atomic_int pigzQueueNumNow2;
+    std::atomic_int pigzQueueSizeLim2;
 
 
 

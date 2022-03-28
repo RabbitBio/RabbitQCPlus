@@ -21,14 +21,15 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     if (cmd_info1->write_data_) {
         out_queue_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>;
         queueNumNow=0;
-        queueSizeLim=1<<8;
+        queueSizeLim=1 << 6;
         if (out_is_zip_) {
             if (cmd_info1->use_pigz_) {
+                pigzQueueNumNow=0;
+                pigzQueueSizeLim=1 << 6;
                 string out_name1 = cmd_info1->out_file_name1_;
                 out_name1 = out_name1.substr(0, out_name1.find(".gz"));
                 out_stream_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
                 out_stream_.close();
-                //                out_stream_ = std::fstream(out_name1 + "_tmp", std::ios::out | std::ios::binary);
 
                 printf("now use pigz to compress output data\n");
             } else {
@@ -51,10 +52,10 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
         umier_ = new Umier(cmd_info1);
     }
     if (cmd_info1->use_pugz_) {
-        pugzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 15);
+        pugzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 12);
     }
     if (cmd_info1->use_pigz_) {
-        pigzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 8);
+        pigzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 6);
         pigzLast.first = new char[1 << 24];
         pigzLast.second = 0;
     }
@@ -91,6 +92,7 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
     rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize=1<<20;
     if(cmd_info_->seq_len_<=200)tmpSize=1<<14;
+    //printf("tmpSize %d\n",tmpSize);
     fqFileReader = new rabbit::fq::FastqFileReader(file, fastq_data_pool, "", in_is_zip_,tmpSize);
     int64_t n_chunks = 0;
 
@@ -106,6 +108,7 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
             //std::cout << "readed chunk: " << n_chunks << std::endl;
             dq.Push(n_chunks, fqdatachunk);
         }
+        delete []last_info.first;
     } else {
         while (true) {
             rabbit::fq::FastqDataChunk *fqdatachunk;
@@ -262,15 +265,14 @@ void SeQc::WriteSeFastqTask() {
         queueNumNow--;
         if (out_is_zip_) {
             if (cmd_info_->use_pigz_) {
-                while (pigzQueue->try_enqueue(now) == 0) {
+                while(pigzQueueNumNow>pigzQueueSizeLim){
 #ifdef Verbose
                     printf("waiting to push a chunk to pigz queue\n");
 #endif
                     usleep(100);
                 }
-                //                    out_stream_.write(now.first, now.second);
-                //                    printf("writer data to pigzQueue and disk\n");
-
+                pigzQueue->enqueue(now);
+                pigzQueueNumNow++;
             } else {
                 int written = gzwrite(zip_out_stream, now.first, now.second);
                 if (written != now.second) {
@@ -356,9 +358,7 @@ void SeQc::PigzTask() {
     infos[8] = new char[out_file.length() + 1];
     memcpy(infos[8], out_file.c_str(), out_file.length());
     infos[8][out_file.length()] = '\0';
-
-    main_pigz(cnt, infos, pigzQueue, &writerDone, pigzLast);
-
+    main_pigz(cnt, infos, pigzQueue, &writerDone, pigzLast, &pigzQueueNumNow);
     printf("pigz done\n");
 }
 
@@ -377,9 +377,9 @@ void SeQc::ProcessSeFastq() {
     }
 
 
-    auto *fastqPool = new rabbit::fq::FastqDataPool(128, 1 << 22);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
     //TODO replace this queue
-    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(128, 1);
+    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(64, 1);
 
     auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
@@ -507,9 +507,9 @@ void SeQc::ProcessSeTGS() {
     }
 
 
-    auto *fastqPool = new rabbit::fq::FastqDataPool(128, 1 << 22);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
     //TODO replace this queue
-    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(128, 1);
+    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(64, 1);
 
     auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {

@@ -83,7 +83,9 @@ private:
     std::atomic_int producerDone;
     std::atomic_int writerDone;
     std::atomic_int queueNumNow;
+    std::atomic_int pigzQueueNumNow;
     std::atomic_int queueSizeLim;
+    std::atomic_int pigzQueueSizeLim;
 
 
 };
