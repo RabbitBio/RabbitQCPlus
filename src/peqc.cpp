@@ -32,14 +32,14 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
         if (out_is_zip_) {
             if(cmd_info1->use_pigz_){
                 pigzQueueNumNow1=0;
-                pigzQueueSizeLim1=1<<6;
+                pigzQueueSizeLim1=1 << 6;
                 string out_name1 = cmd_info1->out_file_name1_;
                 out_name1 = out_name1.substr(0, out_name1.find(".gz"));
                 out_stream1_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
                 out_stream1_.close();
 
                 pigzQueueNumNow2=0;
-                pigzQueueSizeLim2=1<<6;
+                pigzQueueSizeLim2=1 << 6;
                 string out_name2 = cmd_info1->out_file_name2_;
                 out_name2 = out_name2.substr(0, out_name2.find(".gz"));
                 out_stream2_ = std::fstream(out_name2, std::ios::out | std::ios::binary);
@@ -77,8 +77,8 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
         umier_ = new Umier(cmd_info1);
     }
     if (cmd_info1->use_pugz_) {
-        pugzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 6);
-        pugzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 6);
+        pugzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 10);
+        pugzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 10);
     }
     if (cmd_info1->use_pigz_) {
         pigzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>;
@@ -151,8 +151,8 @@ void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool 
     double t0 = GetTime();
 
     rabbit::fq::FastqFileReader *fqFileReader;
-    rabbit::uint32 tmpSize=1<<20;
-    //if(cmd_info_->seq_len_<=200)tmpSize=1<<14;
+    rabbit::uint32 tmpSize=1 << 20;
+    if(cmd_info_->seq_len_<=200)tmpSize=1 << 14;
     fqFileReader = new rabbit::fq::FastqFileReader(file, fastq_data_pool, "", in_is_zip_);
     int64_t n_chunks = 0;
     while (true) {
@@ -177,8 +177,8 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
     double t0 = GetTime();
 
     rabbit::fq::FastqFileReader *fqFileReader;
-    rabbit::uint32 tmpSize=1<<20;
-    if(cmd_info_->seq_len_<=200)tmpSize=1<<14;
+    rabbit::uint32 tmpSize=1 << 20;
+    if(cmd_info_->seq_len_<=200)tmpSize=1 << 14;
     fqFileReader = new rabbit::fq::FastqFileReader(file, fastqPool, file2, in_is_zip_, tmpSize);
     int n_chunks = 0;
 

@@ -52,10 +52,10 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
         umier_ = new Umier(cmd_info1);
     }
     if (cmd_info1->use_pugz_) {
-        pugzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 12);
+        pugzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 10);
     }
     if (cmd_info1->use_pigz_) {
-        pigzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 6);
+        pigzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>;
         pigzLast.first = new char[1 << 24];
         pigzLast.second = 0;
     }
@@ -90,8 +90,8 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
         rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
 
     rabbit::fq::FastqFileReader *fqFileReader;
-    rabbit::uint32 tmpSize=1<<20;
-    if(cmd_info_->seq_len_<=200)tmpSize=1<<14;
+    rabbit::uint32 tmpSize=1 << 20;
+    if(cmd_info_->seq_len_<=200)tmpSize=1 << 14;
     //printf("tmpSize %d\n",tmpSize);
     fqFileReader = new rabbit::fq::FastqFileReader(file, fastq_data_pool, "", in_is_zip_,tmpSize);
     int64_t n_chunks = 0;
