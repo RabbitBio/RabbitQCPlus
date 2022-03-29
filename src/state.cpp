@@ -137,11 +137,11 @@ void State::HashState(){
 
 }
 
-inline void State::HashQueryAndAdd(uint64_t now, int offset, int len, int eva_len) {
+inline bool State::HashQueryAndAdd(uint64_t now, int offset, int len, int eva_len) {
     over_representation_qcnt_++;
     int ha_big=now&((1<<MODB)-1);
     bool pass_bf=bf_zone_[ha_big>>6]&(1ll<<(ha_big&0x3f));
-    if(!pass_bf)return;
+    if(!pass_bf)return 0;
     else over_representation_pcnt_++; 
     int ha=now&((1<<MODB)-1);
     for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre){
@@ -152,9 +152,10 @@ inline void State::HashQueryAndAdd(uint64_t now, int offset, int len, int eva_le
                 hash_graph_[i].dist[p]++;
             }
             hash_graph_[i].cnt++;
-            return;
+            return 1;
         }
     }
+    return 0;
 }
 
 
@@ -368,6 +369,9 @@ void State::StateInfo(neoReference &ref) {
     lines_++;
 }
 
+/*
+//this function is seems to be moew accurate.
+//however change to the next function to ensure that the output is exactly the same as fastp.
 void State::StateORP(neoReference &ref){
     int slen = ref.lseq;
     int eva_len = 0;
@@ -384,6 +388,36 @@ void State::StateORP(neoReference &ref){
         for (size_t i = 0; i < slen - k; i++){
             hVal = NTF64(hVal,k, seq[i], seq[i+k]);
             HashQueryAndAdd(hVal, i+1, steps[s], eva_len);
+
+        }
+
+    }
+
+}
+*/
+
+void State::StateORP(neoReference &ref){
+    int slen = ref.lseq;
+    int eva_len = 0;
+    if (is_read2_)eva_len = cmd_info_->eva_len2_;
+    else eva_len = cmd_info_->eva_len_;
+    int steps[5] = {10, 20, 40, 100, std::min(150, eva_len - 2)};
+    char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
+    std::string seqs=std::string(seq,slen);
+    for(int s=0;s<5;s++){
+        if(steps[s]>slen)continue;
+        int k=steps[s];
+        uint64_t hVal = NT64(seq, k);
+        int lim=0;
+        bool res=HashQueryAndAdd(hVal, 0, steps[s], eva_len);
+        if(res)lim=k;
+        for (int i = 0; i < slen - k - 1; i++){
+            hVal = NTF64(hVal,k, seq[i], seq[i+k]);
+            if(lim==0){
+                res=HashQueryAndAdd(hVal, i+1, steps[s], eva_len);
+                if(res)lim=k;
+            }
+            else lim--;
         }
     }
 }

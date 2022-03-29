@@ -48,7 +48,9 @@ public:
 
 	void HashState();
 
-    void HashQueryAndAdd(uint64_t now, int offset, int len, int eva_len);
+    //void HashQueryAndAdd(uint64_t now, int offset, int len, int eva_len);
+
+    bool HashQueryAndAdd(uint64_t now, int offset, int len, int eva_len);
 
     int *GetHeadHashGraph() const;
 
