@@ -16,7 +16,7 @@
 #endif
 
 #define MODB 20
-
+#define gcMax 100000
 State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
 	is_read2_ = is_read2;
 	cmd_info_ = cmd_info;
@@ -35,8 +35,8 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
 	memset(pos_qul_, 0, pos_seq_len * sizeof(int64_t));
 	len_cnt_ = new int64_t[malloc_seq_len_];
 	memset(len_cnt_, 0, malloc_seq_len_ * sizeof(int64_t));
-	gc_cnt_ = new int64_t[101];
-	memset(gc_cnt_, 0, 101 * sizeof(int64_t));
+	gc_cnt_ = new int64_t[gcMax+100];
+	memset(gc_cnt_, 0, (gcMax+1) * sizeof(int64_t));
 	qul_cnt_ = new int64_t[qul_range_];
 	memset(qul_cnt_, 0, qul_range_ * sizeof(int64_t));
 
@@ -140,10 +140,10 @@ void State::HashState(){
 
 inline bool State::HashQueryAndAdd(uint64_t now, int offset, int len, int eva_len) {
 	over_representation_qcnt_++;
-	//int ha_big=now&((1<<MODB)-1);
-	//bool pass_bf=bf_zone_[ha_big>>6]&(1ll<<(ha_big&0x3f));
-	//if(!pass_bf)return 0;
-	//else over_representation_pcnt_++; 
+	int ha_big=now&((1<<MODB)-1);
+	bool pass_bf=bf_zone_[ha_big>>6]&(1ll<<(ha_big&0x3f));
+	if(!pass_bf)return 0;
+	else over_representation_pcnt_++; 
 	int ha=now&((1<<MODB)-1);
 	for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre){
 		//over_representation_pcnt_++;
@@ -359,7 +359,7 @@ void State::StateInfo(neoReference &ref) {
 
 	tot_bases_ += slen;
 	gc_bases_ += gc_cnt;
-	gc_cnt_[int(100.0 * gc_cnt / slen)]++;
+	gc_cnt_[int(1.0 * gcMax * gc_cnt / slen)]++;
 	qul_cnt_[int(1.0 * qul_tot / slen)]++;
 	// do overrepresentation analysis for 1 of every 20 reads
 	double t0=GetTime();
@@ -476,8 +476,14 @@ State *State::MergeStates(const std::vector<State *> &states) {
 		for (int i = 0; i < res_state->qul_range_; i++) {
 			res_state->qul_cnt_[i] += item->qul_cnt_[i];
 		}
-		for (int i = 0; i <= 100; i++) {
-			res_state->gc_cnt_[i] += item->gc_cnt_[i];
+        //TODO find a better method to get smoother line
+        int gcPart=gcMax/100;
+		for (int i = 0; i < 100; i++) {
+            double sum=0;
+            for(int j=i*gcPart;j<(i+1)*gcPart;j++){
+                sum=max(sum,1.0*item->gc_cnt_[j]);
+            }
+			res_state->gc_cnt_[i] += sum/gcPart;
 		}
 		for (int i = 0; i < res_state->kmer_buf_len_; i++) {
 			res_state->kmer_[i] += item->kmer_[i];

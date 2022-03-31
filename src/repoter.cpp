@@ -338,6 +338,18 @@ std::string insertSeriesEnd() {
     return "],\n";
 }
 
+std::string insertSeriesSmoothData(std::string type, int64_t *data, int len, int interval = 1) {
+    std::string out("{\n"
+                    "            type: \'" + type + "\',\n"
+                                                    "            data: [\n");
+    for (int i = 0; i < len; i += interval) {
+        out.append(std::to_string(data[i]) + ',');
+    }
+    out.append("\n],smooth:'true'},\n");
+    return out;
+}
+
+
 std::string insertSeriesData(std::string type, int *data, int len, int interval = 1) {
     std::string out("{\n"
                     "            type: \'" + type + "\',\n"
@@ -477,6 +489,7 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     std::string outhtml;
     int mx_len = 100;
     double *tmp_double = new double[mx_len];
+    int64_t *tmp_int64 = new int64_t[mx_len];
     outhtml.append(HTMLHeader());
     outhtml.append(HTMLCss());
     //Basic Status
@@ -929,7 +942,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 
     double *tmp_double = new double[std::max(std::max(mx_len1, mx_len2), 1010)];
 
-
+    int64_t *tmp_int64 = new int64_t[110];
 
     outhtml.append(HTMLHeader());
     outhtml.append(HTMLCss());
@@ -1204,8 +1217,8 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         outhtml.append(insertyAxis("value"));
         outhtml.append(insertSeriesBegin());
         gc_cnt = state1->GetGcCnt();
-        for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
-        outhtml.append(insertSeriesData("line", tmp_double, 101));
+        for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
+        outhtml.append(insertSeriesSmoothData("line", tmp_int64, 101));
         outhtml.append(insertSeriesEnd());
         outhtml.append(insertOptionEnd());
         outhtml.append(insertChartOption(GCContent1));
@@ -1222,8 +1235,8 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         outhtml.append(insertyAxis("value"));
         outhtml.append(insertSeriesBegin());
         gc_cnt = state2->GetGcCnt();
-        for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
-        outhtml.append(insertSeriesData("line", tmp_double, 101));
+        for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
+        outhtml.append(insertSeriesSmoothData("line", tmp_int64, 101));
         outhtml.append(insertSeriesEnd());
         outhtml.append(insertOptionEnd());
         outhtml.append(insertChartOption(GCContent2));
@@ -1267,6 +1280,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
                               std::max(std::max(pre_mx_len1, pre_mx_len2), std::max(aft_mx_len1, aft_mx_len2)));
 
     tmp_double = new double[mx_malloc_size];
+    int64_t *tmp_int64 = new int64_t[110];
 
 
     outhtml.append(HTMLHeader());
@@ -1763,8 +1777,8 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertyAxis("value"));
         outhtml.append(insertSeriesBegin());
         int64_t *gc_cnt = pre_state1->GetGcCnt();
-        for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
-        outhtml.append(insertSeriesData("line", tmp_double, 101));
+        for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
+        outhtml.append(insertSeriesSmoothData("line", tmp_int64, 101));
         outhtml.append(insertSeriesEnd());
         outhtml.append(insertOptionEnd());
         outhtml.append(insertChartOption(PreGCContent1));
@@ -1780,8 +1794,8 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertyAxis("value"));
         outhtml.append(insertSeriesBegin());
         gc_cnt = pre_state2->GetGcCnt();
-        for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
-        outhtml.append(insertSeriesData("line", tmp_double, 101));
+        for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
+        outhtml.append(insertSeriesSmoothData("line", tmp_int64, 101));
         outhtml.append(insertSeriesEnd());
         outhtml.append(insertOptionEnd());
         outhtml.append(insertChartOption(PreGCContent2));
@@ -1798,8 +1812,8 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertyAxis("value"));
         outhtml.append(insertSeriesBegin());
         int64_t *gc_cnt = aft_state1->GetGcCnt();
-        for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
-        outhtml.append(insertSeriesData("line", tmp_double, 101));
+        for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
+        outhtml.append(insertSeriesSmoothData("line", tmp_int64, 101));
         outhtml.append(insertSeriesEnd());
         outhtml.append(insertOptionEnd());
         outhtml.append(insertChartOption(AftGCContent1));
@@ -1815,8 +1829,8 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertyAxis("value"));
         outhtml.append(insertSeriesBegin());
         gc_cnt = aft_state2->GetGcCnt();
-        for (int i = 0; i <= 100; i++)tmp_double[i] = gc_cnt[i];
-        outhtml.append(insertSeriesData("line", tmp_double, 101));
+        for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
+        outhtml.append(insertSeriesSmoothData("line", tmp_int64, 101));
         outhtml.append(insertSeriesEnd());
         outhtml.append(insertOptionEnd());
         outhtml.append(insertChartOption(AftGCContent2));

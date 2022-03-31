@@ -58,6 +58,10 @@ For more help information, please refer to `./RabbitQCPlus -h`.
 cd RabbitQCPlus && make clean && make
 ```
 
+You can modify the compilation parameters in the Makefile to select the instruction set used for vectorization. 
+
+``-DVec512`` means using the avx512 instruction set, and ``-DVec256`` means using the avx2 instruction set; otherwise, let the compiler choose.
+
 **For Windows:**
 
 //TODO
