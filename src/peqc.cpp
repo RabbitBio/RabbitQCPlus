@@ -962,7 +962,9 @@ void PeQc::ProcessPeFastq() {
         auto aft_state1 = State::MergeStates(aft_vec_state1);
         auto aft_state2 = State::MergeStates(aft_vec_state2);
 
-
+        if(cmd_info_->do_overrepresentation_){
+            printf("orp cost %f\n",pre_state1->GetOrpCost()+pre_state2->GetOrpCost()+aft_state1->GetOrpCost()+aft_state2->GetOrpCost());
+        }
         printf("merge done\n");
         printf("\nprint pre state1 info :\n");
         State::PrintStates(pre_state1);

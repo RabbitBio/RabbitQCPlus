@@ -433,6 +433,9 @@ void SeQc::ProcessSeFastq() {
     auto pre_state = State::MergeStates(pre_vec_state);
     auto aft_state = State::MergeStates(aft_vec_state);
 
+	if(cmd_info_->do_overrepresentation_){
+		printf("orp cost %lf\n",pre_state->GetOrpCost()+aft_state->GetOrpCost());
+	}  
     printf("merge done\n");
     printf("\nprint pre state info :\n");
     State::PrintStates(pre_state);

@@ -94,6 +94,8 @@ public:
 
     int64_t GetGcBases() const;
 
+	double GetOrpCost() const;
+
     CmdInfo *GetCmdInfo() const;
 
 private:
@@ -126,6 +128,7 @@ private:
     int64_t over_representation_qcnt_;
     int64_t over_representation_pcnt_;
     int64_t *bf_zone_;
+	double orpCost; 
 };
 
 
