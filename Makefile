@@ -14,10 +14,6 @@ OBJ := $(patsubst %.cpp,${DIR_OBJ}/%.o,$(notdir ${SRC}))
 SRC2 := $(wildcard ${DIR_SRC}/*.c)
 OBJ += $(patsubst %.c,${DIR_OBJ}/%.o,$(notdir ${SRC2}))
 
-#$(info SRC $(SRC))
-#$(info SRC2 $(SRC2))
-#$(info OBJ $(OBJ))
-
 
 TARGET := RabbitQCPlus
 
@@ -26,19 +22,21 @@ BIN_TARGET := ${TARGET}
 
 CXX = g++
 
-CXXFLAGS := -DVec512 -std=c++11 -I./ -I./common -march=native -mtune=native -g -O3  -w -fopenmp
+# -DVec512 means using avx512 instruction set
+# -DVec256 means using avx2 instruction set
+# otherwise, let the compiler choose
 
-#CXXFLAGS :=  -std=c++11 -I. -Icommon  -w -Wextra -Weffc++ -Wpedantic -Wundef -Wuseless-cast -Wconversion -Wshadow -Wdisabled-optimization -Wparentheses -Wpointer-arith   -O3 -flto=jobserver -march=native -mtune=native -g -D_POSIX_C_SOURCE=200809L -D_FILE_OFFSET_BITS=64 -fopenmp
+# you can add -DVerbose to print more log information
+
+CXXFLAGS := -DVec512  -std=c++11 -I./ -I./common -march=native -mtune=native -g -O3  -w -fopenmp
+
 
 CXX2 = gcc
-CXXFLAGS2 :=  -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
+CXXFLAGS2 := -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
 
 LIBS := -lz -lpthread  -fopenmp -lm -lrt
 
-#LIBS := -std=c++11 -I. -Icommon -w -Wextra -Weffc++ -Wpedantic -Wundef -Wuseless-cast -Wconversion -Wshadow -Wdisabled-optimization -Wparentheses -Wpointer-arith   -O3 -flto=jobserver -march=native -mtune=native -g -D_POSIX_C_SOURCE=200809L -D_FILE_OFFSET_BITS=64 -lz -lpthread  -fopenmp -lrt -lm 
-#-L/home/user_home/ylf/someGit/libdeflate -ldeflate
 
-#LD_FLAGS := $(LIBS)
 LD_FLAGS := $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir)) $(LIBS)
 
 
