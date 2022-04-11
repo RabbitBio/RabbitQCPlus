@@ -698,11 +698,8 @@ bool FastqFileReader::ReadNextChunk_(FastqDataChunk *chunk_) {
 
     // if (r > 0) {
     if (!mFqReader->FinishRead()) {
-        // uint64 chunkEnd = cbufSize - SwapBufferSize;  // Swapbuffersize: 1 << 13
         cbufSize = r + chunk_->size;
-        // uint64 chunkEnd = cbufSize - SwapBufferSize;
-        // chunkEnd_right = cbufSize_right - (cbufSize_right < SwapBufferSize ? cbufSize_right : SwapBufferSize);
-        uint64 chunkEnd = cbufSize - (cbufSize < SwapBufferSize ? cbufSize : SwapBufferSize);
+        uint64 chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize : GetNxtBuffSize);
         chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
         chunk_->size = chunkEnd - 1;
         if (usesCrlf) chunk_->size -= 1;
@@ -745,11 +742,8 @@ atomic_int *d, pair<char *, int> &l) {
 
     // if (r > 0) {
     if (!mFqReader->FinishRead()) {
-        // uint64 chunkEnd = cbufSize - SwapBufferSize;  // Swapbuffersize: 1 << 13
         cbufSize = r + chunk_->size;
-        // uint64 chunkEnd = cbufSize - SwapBufferSize;
-        // chunkEnd_right = cbufSize_right - (cbufSize_right < SwapBufferSize ? cbufSize_right : SwapBufferSize);
-        uint64 chunkEnd = cbufSize - (cbufSize < SwapBufferSize ? cbufSize : SwapBufferSize);
+        uint64 chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize : GetNxtBuffSize);
         chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
         chunk_->size = chunkEnd - 1;
         if (usesCrlf) chunk_->size -= 1;

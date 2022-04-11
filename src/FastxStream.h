@@ -301,7 +301,7 @@ namespace rabbit {
     namespace fq {
         class FastqFileReader {
         private:
-            uint32 SwapBufferSize = 1 << 20;
+            uint32 SwapBufferSize = 1 << 22;
             uint32 GetNxtBuffSize = 1 << 20;
             static const uint32 IGZIP_IN_BUF_SIZE = 1 << 22; // 4M gziped file onece fetch
 
