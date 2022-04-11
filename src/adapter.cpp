@@ -130,7 +130,7 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
 
     double t0 = GetTime();
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
-    auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool, "",
+    auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
             file_name.find(".gz") != std::string::npos);
     int64_t n_chunks = 0;
     const long BASE_LIMIT = 151 * 10000;
@@ -302,8 +302,11 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
     t0 = GetTime();
     for (auto item:chunks)
         fastq_data_pool->Release(item);
+    printf("release\n");
     delete fastq_data_pool;
+    printf("delete pool\n");
     delete fqFileReader;
+    printf("fqReader\n");
     delete[]head;
     delete[]pre;
     delete[]v;
@@ -315,7 +318,7 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
 
 int Adapter::EvalMaxLen(std::string file_name){
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
-    auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool, "",
+    auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
             file_name.find(".gz") != std::string::npos);
     int64_t n_chunks = 0;
     // stat up to 256K reads
@@ -324,6 +327,8 @@ int Adapter::EvalMaxLen(std::string file_name){
     long records = 0;
     long bases = 0;
     int mx_len=0;
+    std::vector<rabbit::fq::FastqDataChunk *> chunks;
+
     while (records < READ_LIMIT && bases < BASE_LIMIT) {
         rabbit::fq::FastqDataChunk *fqdatachunk;
         fqdatachunk = fqFileReader->readNextChunk();
@@ -331,7 +336,7 @@ int Adapter::EvalMaxLen(std::string file_name){
         n_chunks++;
         std::vector<neoReference> data;
         rabbit::fq::chunkFormat(fqdatachunk, data, true);
-        fastq_data_pool->Release(fqdatachunk);
+        chunks.push_back(fqdatachunk);
         for (auto item:data) {
             bases += item.lseq;
             mx_len=max(mx_len,(int)item.lseq);
@@ -340,17 +345,19 @@ int Adapter::EvalMaxLen(std::string file_name){
                 break;
         }
     }
+
+    for (auto item:chunks)
+        fastq_data_pool->Release(item);
     delete fastq_data_pool;
     delete fqFileReader;
     return mx_len;
-
 
 }
 
 std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
     //printf("now auto find adapter...\n");
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
-    auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, fastq_data_pool, "",
+    auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
             file_name.find(".gz") != std::string::npos);
     int64_t n_chunks = 0;
     // stat up to 256K reads

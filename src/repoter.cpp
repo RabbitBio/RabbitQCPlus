@@ -577,7 +577,7 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
         maxCnt=max(maxCnt,readsLens[i]);
     }
 
-    outhtml.append(insertxAxis("Length (bp)", maxReadsLen + 1,10));
+    outhtml.append(insertxAxis("Length (bp)", maxReadsLen*10,10));
     outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(maxCnt)));
     outhtml.append(insertSeriesBegin());
     outhtml.append(insertSeriesData("bar", readsLens, maxReadsLen));

@@ -18,9 +18,9 @@
 #include "utils.h"
 #include <iostream>
 #include <string>
-#include <cstring>
 #include <zlib.h>  //support gziped files, functional but inefficient
 #include "Reference.h"
+#include "FileReader.h"
 
 #if defined(_WIN32)
 #define _CRT_SECURE_NO_WARNINGS
@@ -301,9 +301,9 @@ namespace rabbit {
     namespace fq {
         class FastqFileReader {
         private:
-            uint32 SwapBufferSize = 1 << 22;
-            uint32 GetNxtBuffSize = 1 << 20; 
-            // the longest FASTQ sequence todate is no longer than 1Mbp.
+            uint32 SwapBufferSize = 1 << 20;
+            uint32 GetNxtBuffSize = 1 << 20;
+            static const uint32 IGZIP_IN_BUF_SIZE = 1 << 22; // 4M gziped file onece fetch
 
         public:
             /**
@@ -313,7 +313,8 @@ namespace rabbit {
              * @param fileName2_ the second file name if source file is pair-end sequence
              * @param isZippedNew if true, it will use gzopen to read fileName_ and fileName2_
              */
-            FastqFileReader(const std::string &fileName_, FastqDataPool *pool_, std::string fileName2_ = "", bool isZippedNew = false, uint32 mxLen_=1<<20)
+            FastqFileReader(const std::string &fileName_, FastqDataPool &pool_,
+            std::string fileName2_ = "", bool isZippedNew = false, uint32 mxLen_=1<<20)
                     : swapBuffer(SwapBufferSize),
                       swapBuffer2(SwapBufferSize),
                       bufferSize(0),
@@ -324,82 +325,9 @@ namespace rabbit {
                       numParts(0),
                       recordsPool(pool_) {
                 GetNxtBuffSize=mxLen_;
-                // if(ends_with(fileName_,".gz"))
-                if (isZipped) {
-                    mZipFile = gzopen(fileName_.c_str(), "r");
-                    if (mZipFile == NULL) {
-                        throw RioException(
-                                ("Can not open file to read: " +
-                                 fileName_).c_str());  //--------------need to change----------//
-                    }
-                    gzrewind(mZipFile);
-
-                    if (fileName2_ != "") {
-                        mZipFile2 = gzopen(fileName2_.c_str(), "r");
-                        if (mZipFile2 == NULL) {
-                            throw RioException(
-                                    ("Can not open file to read: " +
-                                     fileName2_).c_str());  //--------------need to change----------//
-                        }
-                        gzrewind(mZipFile2);
-                    }
-                    // isZipped=true;
-
-                } else {
-
-                    mFile = FOPEN(fileName_.c_str(), "rb");
-                    if (fileName2_ != "") {
-                        mFile2 = FOPEN(fileName2_.c_str(), "rb");
-                        if (mFile2 == NULL)
-                            throw RioException(
-                                    "Can not open file to read: ");  //--------------need to change----------//
-                    }
-                    if (mFile == NULL) {
-                        throw RioException(
-                                ("Can not open file to read: " +
-                                 fileName_).c_str());  //--------------need to change----------//
-                    }
-                }
-            }
-
-
-            FastqFileReader(const std::string &fileName_, FastqDataPool *pool_, FastqDataPool *pool2_,
-                            std::string fileName2_ = "",
-                            bool isZippedNew = false)
-                    : swapBuffer(SwapBufferSize),
-                      swapBuffer2(SwapBufferSize),
-                      bufferSize(0),
-                      bufferSize2(0),
-                      eof(false),
-                      usesCrlf(false),
-                      isZipped(isZippedNew),
-                      numParts(0),
-                      recordsPool(pool_),
-                      recordsPool2(pool2_) {
-                // if(ends_with(fileName_,".gz"))
-                if (isZipped) {
-                    mZipFile = gzopen(fileName_.c_str(), "r");
-                    if (mZipFile == NULL) {
-                        throw RioException(
-                                ("Can not open file to read: " +
-                                 fileName_).c_str());  //--------------need to change----------//
-                    }
-                    // isZipped=true;
-                    gzrewind(mZipFile);
-
-                } else {
-                    mFile = FOPEN(fileName_.c_str(), "rb");
-                    if (fileName2_ != "") {
-                        mFile2 = FOPEN(fileName2_.c_str(), "rb");
-                        if (mFile2 == NULL)
-                            throw RioException(
-                                    "Can not open file to read: ");  //--------------need to change----------//
-                    }
-                    if (mFile == NULL) {
-                        throw RioException(
-                                ("Can not open file to read: " +
-                                 fileName_).c_str());  //--------------need to change----------//
-                    }
+                mFqReader = new FileReader(fileName_, isZipped);
+                if (fileName2_ != "") {
+                    mFqReader2 = new FileReader(fileName2_, isZipped);
                 }
             }
 
@@ -410,7 +338,7 @@ namespace rabbit {
              * @param fileName2_ the second file descriptor if source file is pair-end sequence
              * @param isZippedNew if true, it will use gzopen to read fd and fd2
              */
-            FastqFileReader(int fd, FastqDataPool *pool_, int fd2 = -1, bool isZippedNew = false)
+            FastqFileReader(int fd, FastqDataPool &pool_, int fd2 = -1, bool isZippedNew = false)
                     : swapBuffer(SwapBufferSize),
                       swapBuffer2(SwapBufferSize),
                       bufferSize(0),
@@ -420,40 +348,24 @@ namespace rabbit {
                       isZipped(isZippedNew),
                       numParts(0),
                       recordsPool(pool_) {
-                // if(ends_with(fileName_,".gz"))
-                if (isZipped) {
-                    mZipFile = gzdopen(fd, "r");
-                    // isZipped=true;
-                    if (mZipFile == NULL) {
-                        throw RioException("Can not open file to read: ");  //--------------need to change----------//
-                    }
-
-                    gzrewind(mZipFile);
-
+                if (isZippedNew) {
                 } else {
                     mFile = FDOPEN(fd, "rb");
                     if (fd != -1) {
                         mFile2 = FDOPEN(fd2, "rb");
                         if (mFile2 == NULL)
-                            throw RioException(
-                                    "Can not open file to read: ");  //--------------need to change----------//
+                            throw RioException("Can not open file to read: ");
                     }
                     if (mFile == NULL) {
-                        throw RioException("Can not open file to read: ");  //--------------need to change----------//
+                        throw RioException("Can not open file to read: ");
                     }
                 }
             }
 
             ~FastqFileReader() {
-                // if( mFile != NULL )
-                if (mFile != NULL || mZipFile != NULL) Close();
-                // if(mFile != NULL)
-                //	delete mFile;
-                // if(mZipFile != NULL)
-                //	delete mZipFile;
+                if(mFqReader!=NULL)delete mFqReader;
+                if(mFqReader2!=NULL)delete mFqReader2;
             }
-
-            bool Eof() const { return eof; }
 
             // added from fastxIO.h
             FastqDataChunk *readNextChunk();
@@ -475,7 +387,7 @@ namespace rabbit {
                                                   atomic_int *d1, atomic_int *d2,
                                                   pair<char *, int> &last1, pair<char *, int> &last2);
 
-            FastqDataChunk *readNextPairChunkInterleaved();
+            //FastqDataChunk *readNextPairChunkInterleaved();
 
 
             bool ReadNextPairedChunk_(FastqDataChunk *chunk_);
@@ -485,195 +397,13 @@ namespace rabbit {
                     FCLOSE(mFile);
                     mFile = NULL;
                 }
-                if (mZipFile != NULL && isZipped) {
-                    gzclose(mZipFile);
-                    mZipFile = NULL;
-                }
-            }
-
-            /**
-             * @brief read data from first source file
-             * @param memory_ pointer to store read file
-             * @param size_ read size (byte)
-             */
-            int64 Read(byte *memory_, uint64 size_) {
                 if (isZipped) {
-                    int64 n = gzread(mZipFile, memory_, size_);
-                    if (n == -1) std::cerr << "Error to read gzip file" << std::endl;
-                    return n;
-                } else {
-
-                    int64 n = fread(memory_, 1, size_, mFile);
-                    return n;
+                    if (mZipFile != NULL) {
+                        gzclose(mZipFile);
+                        mZipFile = NULL;
+                    }
                 }
             }
-
-            /**
-             *
-             * @param buf
-             * @param len
-             * @param Q
-             * @param done
-             * @param L
-             * @param num
-             * @return
-             */
-            int64 Read(byte *buf, uint64 len, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q,
-                       std::atomic_int *done, std::pair<char *, int> &L) {
-                std::pair<char *, int> now;
-                int64 ret;
-                int64 got = 0;
-//                printf("now producer get data from pugz queue\n");
-                if (L.second > 0) {
-                    if (L.second >= len) {
-                        memcpy(buf, L.first, len);
-                        char *tmp = new char[L.second - len];
-                        memcpy(tmp, L.first + len, L.second - len);
-                        memcpy(L.first, tmp, L.second - len);
-                        delete[]tmp;
-                        L.second = L.second - len;
-                        ret = len;
-                        buf += ret;
-                        len -= ret;
-                        got += ret;
-                        return got;
-                    } else {
-                        memcpy(buf, L.first, L.second);
-                        ret = L.second;
-                        L.second = 0;
-                        buf += ret;
-                        len -= ret;
-                        got += ret;
-                    }
-                }
-                bool overWhile = false;
-                while (len > 0) {
-                    while (Q->try_dequeue(now) == 0) {
-                        if (Q->size_approx() == 0 && *done == 1) {
-                            ret = 0;
-                            overWhile = true;
-                            break;
-                        }
-                        usleep(100);
-                        //printf("producer waiting pugz...\n");
-                    }
-                    if (overWhile) {
-                        ret = 0;
-                        break;
-                    }
-                    //printf("get some data %d\n", now.second);
-                    if (now.second <= len) {
-                        memcpy(buf, now.first, now.second);
-                        delete[] now.first;
-                        ret = now.second;
-                    } else {
-                        int move_last = now.second - len;
-                        memcpy(buf, now.first, len);
-                        memcpy(L.first, now.first + len, move_last);
-                        L.second = move_last;
-                        delete[] now.first;
-                        ret = len;
-                    }
-
-                    buf += ret;
-                    len -= ret;
-                    got += ret;
-                }
-
-                return got;
-            }
-
-
-            /**
-             * @brief read data from second source file in pair-end data
-             * @param memory_ pointer to store read file
-             * @param size_ read size (byte)
-             */
-            int64 Read2(byte *memory_, uint64 size_) {
-                if (isZipped) {
-                    int64 n = gzread(mZipFile2, memory_, size_);
-                    if (n == -1) std::cerr << "Error to read gzip file2" << std::endl;
-                    return n;
-                } else {
-                    int64 n = fread(memory_, 1, size_, mFile2);
-                    return n;
-                }
-            }
-
-
-            /**
-            *
-            * @param buf
-            * @param len
-            * @param Q
-            * @param done
-            * @param L
-            * @param num
-            * @return
-            */
-            int64 Read2(byte *buf, uint64 len, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q,
-                        std::atomic_int *done, std::pair<char *, int> &L) {
-                std::pair<char *, int> now;
-                int64 ret;
-                int64 got = 0;
-                if (L.second > 0) {
-                    if (L.second >= len) {
-                        memcpy(buf, L.first, len);
-                        char *tmp = new char[L.second - len];
-                        memcpy(tmp, L.first + len, L.second - len);
-                        memcpy(L.first, tmp, L.second - len);
-                        delete[]tmp;
-                        L.second = L.second - len;
-                        ret = len;
-                        buf += ret;
-                        len -= ret;
-                        got += ret;
-                        return got;
-                    } else {
-                        memcpy(buf, L.first, L.second);
-                        ret = L.second;
-                        L.second = 0;
-                        buf += ret;
-                        len -= ret;
-                        got += ret;
-                    }
-                }
-                bool overWhile = false;
-                while (len > 0) {
-                    while (Q->try_dequeue(now) == 0) {
-                        if (Q->size_approx() == 0 && *done == 1) {
-                            ret = 0;
-                            overWhile = true;
-                            break;
-                        }
-                        usleep(100);
-                    }
-                    if (overWhile) {
-                        ret = 0;
-                        break;
-                    }
-//                    printf("get some data %d\n", now.second);
-                    if (now.second <= len) {
-                        memcpy(buf, now.first, now.second);
-                        delete[] now.first;
-                        ret = now.second;
-                    } else {
-                        int move_last = now.second - len;
-                        memcpy(buf, now.first, len);
-                        memcpy(L.first, now.first + len, move_last);
-                        L.second = move_last;
-                        delete[] now.first;
-                        ret = len;
-                    }
-
-                    buf += ret;
-                    len -= ret;
-                    got += ret;
-                }
-
-                return got;
-            }
-
 
         private:
             core::Buffer swapBuffer;
@@ -681,17 +411,20 @@ namespace rabbit {
             // just for pair-end usage
             core::Buffer swapBuffer2;
             uint64 bufferSize2;
+            FILE *mFile2 = NULL;
+
             bool eof;
             bool usesCrlf;
             bool isZipped;
+
             FILE *mFile = NULL;
-            FILE *mFile2 = NULL;
             gzFile mZipFile = NULL;
-            gzFile mZipFile2 = NULL;
+
+            FileReader *mFqReader=NULL;
+            FileReader *mFqReader2=NULL;
 
             // added from fastxIO.h
-            FastqDataPool *recordsPool = NULL;
-            FastqDataPool *recordsPool2 = NULL;
+            FastqDataPool &recordsPool;
             uint32 numParts;
 
             uint64 lastOneReadPos;
@@ -701,55 +434,9 @@ namespace rabbit {
 
             uint64 GetPreviousRecordPos_(uchar *data_, uint64 pos_, const uint64 size_);
 
-            /**
-             * @brief Skip to end of line
-             * @param data_ base pointer
-             * @param pos_ start position to skip
-             * @param size_ data_ size
-             */
-            void SkipToEol(uchar *data_, uint64 &pos_, const uint64 size_) {
-                // std::cout << "SkipToEol " << pos_ << " " << size_ << std::endl;
-                ASSERT(pos_ < size_);
+            void SkipToSol(uchar *data_, uint64 &pos_, const uint64 size_);
 
-                while (data_[pos_] != '\n' && data_[pos_] != '\r' && pos_ < size_) ++pos_;
-
-                if (data_[pos_] == '\r' && pos_ < size_) {
-                    if (data_[pos_ + 1] == '\n') {
-                        usesCrlf = true;
-                        ++pos_;
-                    }
-                }
-            }
-
-            /**
-             * @brief Skip to start of line
-             * @param data_ base pointer
-             * @param pos_ start position to skip
-             * @param size_ data_ size
-             */
-            void SkipToSol(uchar *data_, uint64 &pos_, const uint64 size_) {
-                // std::cout<<"SkipToSol:"<<data_[pos_]<<std::endl;
-                ASSERT(pos_ < size_);
-                if (data_[pos_] == '\n') {
-                    --pos_;
-                }
-                if (data_[pos_] == '\r') {
-                    usesCrlf = true;
-                    pos_--;
-                }
-                // find next '\n' or \n\r
-                while (data_[pos_] != '\n' && data_[pos_] != '\r') {
-                    // std::cout<<"pos_;"<<pos_<<std::endl;
-                    --pos_;
-                }
-                if (data_[pos_] == '\n') {
-                    --pos_;
-                }
-                if (data_[pos_] == '\r') {
-                    usesCrlf = true;
-                    pos_--;
-                }
-            }
+            void SkipToEol(uchar *data_, uint64 &pos_, const uint64 size_);
         };
 
     }  // namespace fq

@@ -77,6 +77,7 @@ void TGSStats::tgsStatRead(neoReference &ref, bool isPhred64) {
     const char *seq = reinterpret_cast<const char *>(ref.base + ref.pseq);
     const char *quality = reinterpret_cast<const char *>(ref.base + ref.pqual);
     int size_range = mMinlen >> 1;
+    size_range=min(size_range,rlen);
     int i;
     mReadsNum++;
     mBasesNum+=rlen;
@@ -85,15 +86,15 @@ void TGSStats::tgsStatRead(neoReference &ref, bool isPhred64) {
     int phredSub = 33;
     if (isPhred64)phredSub = 64;
     int sumQual=0;
- //   for(int i=0;i<rlen;i++){
- //       int qual=(quality[i] - phredSub);
- //       sumQual+=qual;
- //       if(qual>=5)mBases51015Num[0]++;
- //       if(qual>=10)mBases51015Num[1]++;
- //       if(qual>=15)mBases51015Num[2]++;
- //   }
- //   updateTop5(rlen,1.0*sumQual/rlen);
-    if (rlen > mMinlen) {
+    for(int i=0;i<rlen;i++){
+        int qual=(quality[i] - phredSub);
+        sumQual+=qual;
+        if(qual>=5)mBases51015Num[0]++;
+        if(qual>=10)mBases51015Num[1]++;
+        if(qual>=15)mBases51015Num[2]++;
+    }
+    updateTop5(rlen,1.0*sumQual/rlen);
+    //if (rlen > mMinlen) {
         //[1] stats lengths
         mLengths.push_back(rlen);
         //--head
@@ -128,7 +129,7 @@ void TGSStats::tgsStatRead(neoReference &ref, bool isPhred64) {
                 tail_seq_pos_count[3][i - (rlen - size_range)]++;
             }
         }
-    }
+    //}
 }
 
 void TGSStats::print() {
@@ -220,9 +221,8 @@ void TGSStats::CalReadsLens(){
     for(auto item:mTotalReadsLen){
         readsLens[(item+Ppre)/Ppre]++;
     }
-
-
 }
+
 
 //generate html data
 

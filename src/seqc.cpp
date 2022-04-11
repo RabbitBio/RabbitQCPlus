@@ -93,7 +93,7 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
     rabbit::uint32 tmpSize=1 << 20;
     if(cmd_info_->seq_len_<=200)tmpSize=1 << 14;
     //printf("tmpSize %d\n",tmpSize);
-    fqFileReader = new rabbit::fq::FastqFileReader(file, fastq_data_pool, "", in_is_zip_,tmpSize);
+    fqFileReader = new rabbit::fq::FastqFileReader(file, *fastq_data_pool, "", in_is_zip_,tmpSize);
     int64_t n_chunks = 0;
 
     if (cmd_info_->use_pugz_) {
