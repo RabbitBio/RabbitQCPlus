@@ -60,7 +60,6 @@ namespace rabbit {
 
     class FileReader {
     private:
-        static const uint32 SwapBufferSize = 1 << 20;  // the longest FASTQ sequence todate is no longer than 1Mbp.
         static const uint32 IGZIP_IN_BUF_SIZE = 1 << 22; // 4M gziped file onece fetch
         static const uint32 GZIP_HEADER_BYTES_REQ = 1 << 16;
     public:

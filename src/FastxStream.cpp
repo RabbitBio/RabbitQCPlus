@@ -718,7 +718,7 @@ bool FastqFileReader::ReadNextChunk_(FastqDataChunk *chunk_) {
 }
 bool FastqFileReader::ReadNextChunk_(FastqDataChunk *chunk_, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q,
 atomic_int *d, pair<char *, int> &l) {
-    if (mFqReader->FinishRead() && bufferSize == 0) {
+    if ((mFqReader->FinishRead()||mFqReader->Eof()) && bufferSize == 0) {
         chunk_->size = 0;
         return false;
     }
@@ -741,7 +741,7 @@ atomic_int *d, pair<char *, int> &l) {
     // std::cout << "r is :" << r << std::endl;
 
     // if (r > 0) {
-    if (!mFqReader->FinishRead()) {
+    if (!mFqReader->FinishRead()&&!mFqReader->Eof()) {
         cbufSize = r + chunk_->size;
         uint64 chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize : GetNxtBuffSize);
         chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
@@ -753,6 +753,9 @@ atomic_int *d, pair<char *, int> &l) {
     } else {                  // at the end of file
         chunk_->size += r - 1;  // skip the last EOF symbol
         if (usesCrlf) chunk_->size -= 1;
+        mFqReader->setEof();
+    }
+    if(r!=toRead){
         mFqReader->setEof();
     }
     //}else {
