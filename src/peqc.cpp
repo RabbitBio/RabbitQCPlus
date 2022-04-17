@@ -155,14 +155,14 @@ void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool 
     if(cmd_info_->seq_len_<=200)tmpSize=1 << 14;
     fqFileReader = new rabbit::fq::FastqFileReader(file, *fastq_data_pool, "", in_is_zip_);
     int64_t n_chunks = 0;
-//    while (true) {
-//        rabbit::fq::FastqDataChunk *fqdatachunk;
-//        fqdatachunk = fqFileReader->readNextPairChunkInterleaved();
-//        if (fqdatachunk == NULL) break;
-//        n_chunks++;
-//        //std::cout << "readed chunk: " << n_chunks << std::endl;
-//        dq.Push(n_chunks, fqdatachunk);
-//    }
+    while (true) {
+        rabbit::fq::FastqDataChunk *fqdatachunk;
+        //fqdatachunk = fqFileReader->readNextPairChunkInterleaved();
+        if (fqdatachunk == NULL) break;
+        n_chunks++;
+        //std::cout << "readed chunk: " << n_chunks << std::endl;
+        dq.Push(n_chunks, fqdatachunk);
+    }
 
     dq.SetCompleted();
     delete fqFileReader;
@@ -192,7 +192,7 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
         last2.second = 0;
         while (true) {
             rabbit::fq::FastqDataPairChunk *fqdatachunk;
-            fqdatachunk = fqFileReader->readNextPairChunk(pugzQueue1, pugzQueue2, &pugzDone1, &pugzDone2, last1, last2);
+            fqdatachunk = fqFileReader->readNextPairChunkParallel(pugzQueue1, pugzQueue2, &pugzDone1, &pugzDone2, last1, last2);
             if (fqdatachunk == NULL) break;
             n_chunks++;
             dq.Push(n_chunks, fqdatachunk);
@@ -202,7 +202,7 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
     } else {
         while (true) {
             rabbit::fq::FastqDataPairChunk *fqdatachunk;
-            fqdatachunk = fqFileReader->readNextPairChunk();
+            fqdatachunk = fqFileReader->readNextPairChunkParallel();
             if (fqdatachunk == NULL) break;
             n_chunks++;
             dq.Push(n_chunks, fqdatachunk);
