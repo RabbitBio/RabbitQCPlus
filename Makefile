@@ -22,19 +22,21 @@ BIN_TARGET := ${TARGET}
 
 CXX = g++
 
+# you can add -DUSE_IGZIP to CXXFLAGS and -lisal to LIBS, to use igzip by default
+
 # -DVec512 means using avx512 instruction set
 # -DVec256 means using avx2 instruction set
 # otherwise, let the compiler choose
 
 # you can add -DVerbose to print more log information
 
-CXXFLAGS := -DVec512 -DUSE_IGZIP -std=c++11 -I./ -I./common -march=native -mtune=native -g -O3  -w -fopenmp
+CXXFLAGS := -DVec512 -DUSE_IGZIP  -std=c++11 -I./ -I./common -march=native  -g -O3  -w -fopenmp
 
 
 CXX2 = gcc
 CXXFLAGS2 := -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
 
-LIBS := -lz -lpthread  -fopenmp -lm -lrt -lisal
+LIBS := -lz -lpthread  -fopenmp  -lrt -lisal
 
 
 LD_FLAGS := $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir)) $(LIBS)
