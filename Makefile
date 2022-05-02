@@ -30,13 +30,13 @@ CXX = g++
 
 # you can add -DVerbose to print more log information
 
-CXXFLAGS := -DVec512 -DUSE_IGZIP  -std=c++11 -I./ -I./common -march=native  -g -O3  -w -fopenmp
+CXXFLAGS := -DVec512 -std=c++11 -I./ -I./common -march=native  -g -O3  -w -fopenmp
 
 
 CXX2 = gcc
 CXXFLAGS2 := -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
 
-LIBS := -lz -lpthread  -fopenmp  -lrt -lisal
+LIBS := -lz -lpthread  -fopenmp  -lrt 
 
 
 LD_FLAGS := $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir)) $(LIBS)
