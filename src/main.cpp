@@ -80,9 +80,15 @@ int main(int argc, char **argv) {
     app.add_option("--pugzThread", cmd_info.pugz_threads_, "pugz thread number");
     app.add_option("--pigzThread", cmd_info.pigz_threads_, "pigz thread number");
 
+    bool quVersion=false;
+    app.add_flag("-V,--version",quVersion,"application version");
 
     CLI11_PARSE(app, argc, argv);
 
+    if(quVersion){
+        printf("0.0.2\n");
+        return 0;
+    }
 
     if (ends_with(cmd_info.in_file_name1_, ".gz") == 0) {
         cmd_info.use_pugz_ = false;
@@ -104,19 +110,19 @@ int main(int argc, char **argv) {
         cmd_info.pe_auto_detect_adapter_ = false;
         cmd_info.do_overrepresentation_ = false;
     }
-    if (cmd_info.in_file_name1_.length() == 0) {
-        error_exit("in1 can't be null");
+    if (!quVersion && cmd_info.in_file_name1_.length() == 0) {
+        error_exit("-i/--inFile1 can't be null");
     }
-    printf("in1 is %s\n", cmd_info.in_file_name1_.c_str());
+    printf("inFile1 is %s\n", cmd_info.in_file_name1_.c_str());
     if (cmd_info.isStdout_)cmd_info.out_file_name1_ = "/dev/stdout";
-    if (cmd_info.in_file_name2_.length())printf("in2 is %s\n", cmd_info.in_file_name2_.c_str());
+    if (cmd_info.in_file_name2_.length())printf("inFile2 is %s\n", cmd_info.in_file_name2_.c_str());
     if (cmd_info.out_file_name1_.length()){
         remove(cmd_info.out_file_name1_.c_str());
-        printf("out1 is %s\n", cmd_info.out_file_name1_.c_str());
+        printf("outFile1 is %s\n", cmd_info.out_file_name1_.c_str());
     }	    
     if (cmd_info.out_file_name2_.length()){
         remove(cmd_info.out_file_name2_.c_str());
-        printf("out2 is %s\n", cmd_info.out_file_name2_.c_str());
+        printf("outFile2 is %s\n", cmd_info.out_file_name2_.c_str());
     }
 
     if (cmd_info.no_trim_adapter_)cmd_info.trim_adapter_ = false;

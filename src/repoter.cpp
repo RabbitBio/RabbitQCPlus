@@ -997,20 +997,21 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 
 
     outhtml.append(insertDiv(PositionQuality1));
-    outhtml.append(insertDiv(PositionQuality2));
     outhtml.append(insertDiv(PositionContent1));
-    outhtml.append(insertDiv(PositionContent2));
-
-
     outhtml.append(insertDiv(MeanQuality1));
-    outhtml.append(insertDiv(MeanQuality2));
-
     outhtml.append(insertDiv(GCContent1));
-    outhtml.append(insertDiv(GCContent2));
-
     if (state1->GetCmdInfo()->do_overrepresentation_) {
         outhtml.append(GetOver(state1, 0, 0, state1->GetCmdInfo()->eva_len_));
-        outhtml.append(GetOver(state2, 1, 0, state1->GetCmdInfo()->eva_len_));
+    }
+
+
+
+    outhtml.append(insertDiv(PositionQuality2));
+    outhtml.append(insertDiv(PositionContent2));
+    outhtml.append(insertDiv(MeanQuality2));
+    outhtml.append(insertDiv(GCContent2));
+    if (state1->GetCmdInfo()->do_overrepresentation_) {
+        outhtml.append(GetOver(state2, 1, 0, state2->GetCmdInfo()->eva_len_));
     }
 
     outhtml.append("</body>\n");
@@ -1375,8 +1376,8 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     outhtml.append(insertDiv(AftGCContent2));
 
     if (pre_state1->GetCmdInfo()->do_overrepresentation_) {
-        outhtml.append(GetOver(aft_state1, 1, 0, pre_state1->GetCmdInfo()->eva_len_));
-        outhtml.append(GetOver(aft_state2, 1, 1, pre_state2->GetCmdInfo()->eva_len2_));
+        outhtml.append(GetOver(aft_state1, 1, 0, aft_state1->GetCmdInfo()->eva_len_));
+        outhtml.append(GetOver(aft_state2, 1, 1, aft_state2->GetCmdInfo()->eva_len2_));
     }
 
     outhtml.append("</body>\n");
