@@ -183,7 +183,7 @@ int main(int argc, char **argv) {
     }
 
     if (cmd_info.do_overrepresentation_) {
-        printf("now overrepresentation\n");
+        printf("now doing overrepresentation\n");
         printf("overrepresentation sampling is %d\n", cmd_info.overrepresentation_sampling_);
     }
 
@@ -205,7 +205,9 @@ int main(int argc, char **argv) {
     int mx_len=Adapter::EvalMaxLen(cmd_info.in_file_name1_);
     cmd_info.seq_len_=mx_len;
     double t1 = GetTime();
+    
     if (cmd_info.in_file_name2_.length() || cmd_info.interleaved_in_) {
+        //PE
         if ((cmd_info.out_file_name1_.length() > 0 && cmd_info.out_file_name2_.length() > 0) ||
                 cmd_info.interleaved_out_) {
             cmd_info.write_data_ = true;
@@ -228,16 +230,16 @@ int main(int argc, char **argv) {
             cmd_info.adapter_seq1_ = Adapter::AutoDetect(cmd_info.in_file_name1_, cmd_info.trim_tail1_);
             cmd_info.adapter_seq2_ = Adapter::AutoDetect(cmd_info.in_file_name2_, cmd_info.trim_tail1_);
             if (cmd_info.adapter_seq1_.length()) {
-                printf("find adapter %s\n", cmd_info.adapter_seq1_.c_str());
+                printf("find adapter %s in read1\n", cmd_info.adapter_seq1_.c_str());
                 cmd_info.detect_adapter1_ = true;
             } else {
-                printf("not find adapter\n");
+                printf("not find adapter in read1\n");
             }
             if (cmd_info.adapter_seq2_.length()) {
-                printf("find adapter %s\n", cmd_info.adapter_seq2_.c_str());
+                printf("find adapter %s in read2\n", cmd_info.adapter_seq2_.c_str());
                 cmd_info.detect_adapter2_ = true;
             } else {
-                printf("not find adapter\n");
+                printf("not find adapter in read2\n");
             }
 #ifdef Verbose
             printf("detect adapter cost %.5f\n", GetTime() - t2);
@@ -291,6 +293,7 @@ int main(int argc, char **argv) {
         delete pe_qc;
 
     } else {
+        //SE
         cmd_info.no_insert_size_ = 1;
         if (cmd_info.out_file_name1_.length() > 0) {
             cmd_info.write_data_ = true;
@@ -314,7 +317,6 @@ int main(int argc, char **argv) {
 #ifdef Verbose
             printf("detect adapter cost %.5f\n", GetTime() - t2);
 #endif
-
         }
         if (cmd_info.trim_front1_) {
             printf("trim front %d bases\n", cmd_info.trim_front1_);

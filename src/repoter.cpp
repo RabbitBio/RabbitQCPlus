@@ -485,7 +485,7 @@ std::string insertTableTr(std::string str1, std::string str2) {
 }
 
 void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
-    printf("report TGS html data\n");
+    printf("report TGS html data in RabbitQCPlus.html\n");
     std::string outhtml;
     int mx_len = 100;
     double *tmp_double = new double[mx_len];
@@ -928,7 +928,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 
     */
 
-    printf("report se html data\n");
+    printf("report se html data in RabbitQCPlus.html\n");
     std::string outhtml;
 
     int mx_len1 = state1->GetRealSeqLen();
@@ -953,7 +953,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertTableTr("RabbitQC version:", "0.0.2"));
     outhtml.append(insertTableTr("FileName", file_name));
     outhtml.append(
-            insertTableTr("duplication rate:", std::to_string(dup) + "(may be overestimated since this is SE data)"));
+            insertTableTr("duplication rate:", std::to_string(dup) + "%" + "(may be overestimated since this is SE data)"));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
@@ -967,7 +967,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertTableTr("total bases:", std::to_string(state1->GetTotBases())));
     outhtml.append(insertTableTr("Q20 bases:", std::to_string(state1->GetQ20Bases())));
     outhtml.append(insertTableTr("Q30 bases:", std::to_string(state1->GetQ30Bases())));
-    outhtml.append(insertTableTr("%GC", std::to_string(1.0 * state1->GetGcBases() / state1->GetTotBases())));
+    outhtml.append(insertTableTr("GC", std::to_string(1.0 * state1->GetGcBases() / state1->GetTotBases()) + "%"));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
@@ -980,7 +980,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertTableTr("total bases:", std::to_string(state2->GetTotBases())));
     outhtml.append(insertTableTr("Q20 bases:", std::to_string(state2->GetQ20Bases())));
     outhtml.append(insertTableTr("Q30 bases:", std::to_string(state2->GetQ30Bases())));
-    outhtml.append(insertTableTr("%GC", std::to_string(1.0 * state2->GetGcBases() / state2->GetTotBases())));
+    outhtml.append(insertTableTr("GC", std::to_string(1.0 * state2->GetGcBases() / state2->GetTotBases()) + "%"));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
@@ -1259,7 +1259,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     int size_len_mx = cmd_info->max_insert_size_;
     int size_require = cmd_info->overlap_require_;
 
-    printf("report pe html data\n");
+    printf("report pe html data in RabbitQCPlus.html\n");
 
     std::string outhtml;
     double *tmp_double;
@@ -1293,7 +1293,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     outhtml.append(insertTableTr("RabbitQC version:", "0.0.2"));
     outhtml.append(insertTableTr("FileName", file_name1 + "," + file_name2));
     outhtml.append(
-            insertTableTr("duplication rate:", std::to_string(dup)));
+            insertTableTr("duplication rate:", std::to_string(dup) + "%"));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
@@ -1306,8 +1306,8 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
             insertTableTr("total bases:", std::to_string(pre_state1->GetTotBases() + pre_state2->GetTotBases())));
     outhtml.append(insertTableTr("Q20 bases:", std::to_string(pre_state1->GetQ20Bases() + pre_state2->GetQ20Bases())));
     outhtml.append(insertTableTr("Q30 bases:", std::to_string(pre_state1->GetQ30Bases() + pre_state2->GetQ30Bases())));
-    outhtml.append(insertTableTr("%GC", std::to_string(1.0 * (pre_state1->GetGcBases() + pre_state2->GetGcBases()) /
-                                                       (pre_state1->GetTotBases() + pre_state2->GetTotBases()))));
+    outhtml.append(insertTableTr("GC", std::to_string(1.0 * (pre_state1->GetGcBases() + pre_state2->GetGcBases()) /
+                                                       (pre_state1->GetTotBases() + pre_state2->GetTotBases()))+"%"));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
@@ -1321,8 +1321,8 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
             insertTableTr("total bases:", std::to_string(aft_state1->GetTotBases() + aft_state2->GetTotBases())));
     outhtml.append(insertTableTr("Q20 bases:", std::to_string(aft_state1->GetQ20Bases() + aft_state2->GetQ20Bases())));
     outhtml.append(insertTableTr("Q30 bases:", std::to_string(+aft_state1->GetQ30Bases() + aft_state2->GetQ30Bases())));
-    outhtml.append(insertTableTr("%GC", std::to_string(1.0 * (aft_state1->GetGcBases() + aft_state2->GetGcBases()) /
-                                                       (aft_state1->GetTotBases() + aft_state2->GetTotBases()))));
+    outhtml.append(insertTableTr("GC", std::to_string(1.0 * (aft_state1->GetGcBases() + aft_state2->GetGcBases()) /
+                                                       (aft_state1->GetTotBases() + aft_state2->GetTotBases()))+"%"));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 

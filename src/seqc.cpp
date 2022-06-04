@@ -527,14 +527,12 @@ void SeQc::ProcessSeTGS() {
 
 
     auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
-    //TODO replace this queue
     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(64, 1);
 
     auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, false);
     }
-    //TODO bind ?
     std::thread producer(
             std::bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, std::ref(queue1)));
     auto **threads = new std::thread *[cmd_info_->thread_number_];
@@ -565,10 +563,11 @@ void SeQc::ProcessSeTGS() {
     printf("merge done\n");
 #endif
     printf("\nprint TGS state info :\n");
-    //mer_state->print();
 
     //    report3(mer_state);
     mer_state->CalReadsLens();
+
+    mer_state->print();
     Repoter::ReportHtmlTGS(mer_state, cmd_info_->in_file_name1_);
 
     delete fastqPool;

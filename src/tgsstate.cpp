@@ -132,7 +132,19 @@ void TGSStats::tgsStatRead(neoReference &ref, bool isPhred64) {
     //}
 }
 
+
 void TGSStats::print() {
+
+
+    auto res3 = this->GetBases51015Num();
+    printf("total bases %lld\n", this->GetBasesNum());
+    printf("q5 bases %lld\n", res3[0]);
+    printf("q10 bases %lld\n", res3[1]);
+    printf("q15 bases %lld\n", res3[2]);
+    printf("read number %lld\n", this->GetReadsNum());
+    printf("average read length %.3f\n", this->GetAvgReadsLen());
+    printf("\n");
+    /*
     //cerr << "nothing here" << std::endl;
     int i;
     std::cout << "head A    T   C   G" << std::endl;
@@ -157,7 +169,7 @@ void TGSStats::print() {
         std::cout << head_qual_sum[i] << " " << tail_qual_sum[i];
         std::cout << std::endl;
     }
-
+    */
 }
 
 TGSStats *TGSStats::merge(std::vector<TGSStats *> &list) {
