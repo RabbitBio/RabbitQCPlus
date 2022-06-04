@@ -1293,7 +1293,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     outhtml.append(insertTableTr("RabbitQC version:", "0.0.2"));
     outhtml.append(insertTableTr("FileName", file_name1 + "," + file_name2));
     outhtml.append(
-            insertTableTr("duplication rate:", std::to_string(dup) + "(may be overestimated since this is SE data)"));
+            insertTableTr("duplication rate:", std::to_string(dup)));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
