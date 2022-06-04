@@ -1753,7 +1753,7 @@ local void finish_jobs(void) {
     twist_pigz(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]], BY, +1);       // will wake them all up
 
     // join_pigz all of the compress threads, verify they all came back
-    printf("threadCnt is %d\n",threadCnt);
+    //printf("threadCnt is %d\n",threadCnt);
     if(threadCnt==1)
         caught = join_all_pigz();
     Trace(("-- joined %d compress threads", caught));
@@ -4440,8 +4440,7 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
     SET_BINARY_MODE(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd);
     // process ind to outd
     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].verbosity > 1)
-        fprintf(stderr, "%s to %s ", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf);
+        //fprintf(stderr, "%s to %s ", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf);
     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode) {
         try
         {

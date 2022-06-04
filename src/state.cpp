@@ -63,20 +63,16 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
 		for (int i=0;i<(1<<MODB)/64+10;i++)bf_zone_[i]=0;
 		if (is_read2_) {
 			hash_graph_ = new node[cmd_info->hot_seqs2_.size()];
-			//printf("new cost %.4f\n",GetTime()-t0);
 			t0=GetTime();
 			for (auto item:cmd_info->hot_seqs2_) {
 				HashInsert(item.c_str(), item.length(), cmd_info->eva_len2_);
 			}
-			//printf("insert cost %.4f\n",GetTime()-t0);
 		} else {
 			hash_graph_ = new node[cmd_info->hot_seqs_.size()];
-			//printf("new cost %.4f\n",GetTime()-t0);
 			t0=GetTime();
 			for (auto item:cmd_info->hot_seqs_) {
 				HashInsert(item.c_str(), item.length(), cmd_info->eva_len2_);
 			}
-			//printf("insert cost %.4f\n",GetTime()-t0);
 		}
 
 		//	HashState();
@@ -195,18 +191,17 @@ void State::StateInfo(neoReference &ref) {
 	int slen = ref.lseq;
 	int qlen = ref.lqual;
 	if (slen != qlen) {
-		std::cout << slen << " " << qlen << std::endl;
+        printf("read sequence length != read quality length\n");
 		printf("%s\n", std::string((char *) ref.base + ref.pname, ref.lname).c_str());
 		printf("%s\n", std::string((char *) ref.base + ref.pseq, ref.lseq).c_str());
 		printf("%s\n", std::string((char *) ref.base + ref.pstrand, ref.lstrand).c_str());
 		printf("%s\n", std::string((char *) ref.base + ref.pqual, ref.lqual).c_str());
+        exit(0);
 	}
 	ASSERT(slen == qlen);
 	if (slen > malloc_seq_len_) {
 
 		ExtendBuffer(malloc_seq_len_, std::max(slen + 100, slen * 2));
-		//        printf("exit because sequence length is too long, malloc_seq_len_ is %d, slen is %d\n", malloc_seq_len_, slen);
-		//        exit(0);
 	}
 	real_seq_len_ = std::max(real_seq_len_, slen);
 	len_cnt_[slen - 1]++;
@@ -516,13 +511,13 @@ State *State::MergeStates(const std::vector<State *> &states) {
 void State::PrintStates(const State *state) {
 	printf("q20bases %lld\n", state->q20bases_);
 	printf("q30bases %lld\n", state->q30bases_);
-	printf("lines %lld\n", state->lines_);
+	printf("read number %lld\n", state->lines_);
 	//printf("kmer max is %lld\n", state->kmer_max_);
 	//printf("kmer min is %lld\n", state->kmer_min_);
-	if(state->do_over_represent_analyze_){
-		printf("orp qcnt %lld\n",state->over_representation_qcnt_);
-		printf("orp pcnt %lld\n",state->over_representation_pcnt_);
-	}
+	//if(state->do_over_represent_analyze_){
+	//	printf("orp qcnt %lld\n",state->over_representation_qcnt_);
+	//	printf("orp pcnt %lld\n",state->over_representation_pcnt_);
+	//}
 	//    int now_seq_len = state->real_seq_len_;
 	//    printf("position--quality :\n");
 	//    for (int i = 0; i < now_seq_len; i++) {

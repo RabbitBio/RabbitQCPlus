@@ -494,7 +494,6 @@ namespace rabbit {
                         chunkEnd = cbufSize - GetNxtBuffSize;
                         chunkEnd = this->GetNextRecordPos_(data, chunkEnd, cbufSize);
                         } else {
-                        printf("read1 r!=toRead\n");
                         leftPart->size += r - 1;
                         if (usesCrlf) leftPart->size -= 1;
                         eof1 = true;
@@ -502,7 +501,6 @@ namespace rabbit {
                         cbufSize = leftPart->size + 1;
                         }
                         } else {
-                            printf("read1 r <= 0\n");
                             eof1 = true;
                             chunkEnd = leftPart->size + 1;
                             cbufSize = leftPart->size + 1;
@@ -533,7 +531,6 @@ namespace rabbit {
                         chunkEnd_right = cbufSize_right - GetNxtBuffSize;
                         chunkEnd_right = this->GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
                         } else {
-                        printf("read2 r_right!=toRead_right\n");
                         rightPart->size += r_right - 1;
                         if (usesCrlf) rightPart->size -= 1;
                         eof2 = true;
@@ -541,7 +538,6 @@ namespace rabbit {
                         cbufSize_right = rightPart->size + 1;
                         }
                         } else {
-                            printf("read2 r_right>=0\n");
                             eof2 = true;
                             chunkEnd_right = rightPart->size + 1;
                             cbufSize_right = rightPart->size + 1;
@@ -556,7 +552,6 @@ namespace rabbit {
                 if(r_right == 0 && rightPart->size == 0)return NULL;
 
                 if (eof1 && eof2)eof = true;
-                if (eof1 || eof2)printf("eofs : %d %d %d\n", eof1, eof2, eof);
                 if (!eof) {
                     left_line_count = count_line(data, chunkEnd);
                     right_line_count = count_line(data_right, chunkEnd_right);
@@ -644,7 +639,6 @@ namespace rabbit {
                     chunkEnd = cbufSize - GetNxtBuffSize;
                     chunkEnd = this->GetNextRecordPos_(data, chunkEnd, cbufSize);
                     } else {
-                    printf("read1 r!=toRead\n");
                     leftPart->size += r - 1;
                     if (usesCrlf) leftPart->size -= 1;
                     eof1 = true;
@@ -652,7 +646,6 @@ namespace rabbit {
                     cbufSize = leftPart->size + 1;
                     }
                     } else {
-                        printf("read1 r <= 0\n");
                         eof1 = true;
                         chunkEnd = leftPart->size + 1;
                         cbufSize = leftPart->size + 1;
@@ -683,7 +676,6 @@ namespace rabbit {
                     chunkEnd_right = cbufSize_right - GetNxtBuffSize;
                     chunkEnd_right = this->GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
                     } else {
-                    printf("read2 r_right!=toRead_right\n");
                     rightPart->size += r_right - 1;
                     if (usesCrlf) rightPart->size -= 1;
                     eof2 = true;
@@ -691,7 +683,6 @@ namespace rabbit {
                     cbufSize_right = rightPart->size + 1;
                     }
                     } else {
-                        printf("read2 r_right>=0\n");
                         eof2 = true;
                         chunkEnd_right = rightPart->size + 1;
                         cbufSize_right = rightPart->size + 1;
@@ -706,7 +697,6 @@ namespace rabbit {
             if(r_right == 0 && rightPart->size == 0)return NULL;
 
             if (eof1 && eof2)eof = true;
-            if (eof1 || eof2)printf("eofs : %d %d %d\n", eof1, eof2, eof);
             if (!eof) {
                 left_line_count = count_line(data, chunkEnd);
                 right_line_count = count_line(data_right, chunkEnd_right);
@@ -799,7 +789,6 @@ namespace rabbit {
                     chunkEnd = cbufSize - GetNxtBuffSize;
                     chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
                 } else {
-                    printf("read1 r!=toRead\n");
                     // chunkEnd = r;
                     leftPart->size += r - 1;
                     if (usesCrlf) leftPart->size -= 1;
@@ -808,7 +797,6 @@ namespace rabbit {
                     cbufSize = leftPart->size + 1;
                 }
             } else {
-                printf("read1 r <= 0\n");
                 eof1 = true;
                 chunkEnd = leftPart->size + 1;
                 cbufSize = leftPart->size + 1;
@@ -834,7 +822,6 @@ namespace rabbit {
                     chunkEnd_right = cbufSize_right - GetNxtBuffSize;
                     chunkEnd_right = GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
                 } else {
-                    printf("read2 r!=toRead\n");
                     // chunkEnd_right += r;
                     rightPart->size += r - 1;
                     if (usesCrlf) rightPart->size -= 1;
@@ -843,7 +830,6 @@ namespace rabbit {
                     cbufSize_right = rightPart->size + 1;
                 }
             } else {
-                printf("read2 r>=0\n");
                 eof2 = true;
                 chunkEnd_right = rightPart->size + 1;
                 cbufSize_right = rightPart->size + 1;
@@ -853,7 +839,6 @@ namespace rabbit {
             }
             //--------------read right chunk end---------------------//
             if (eof1 && eof2)eof = true;
-            if (eof1 || eof2)printf("eofs : %d %d %d\n", eof1, eof2, eof);
             if (!eof) {
                 left_line_count = count_line(data, chunkEnd);
                 right_line_count = count_line(data_right, chunkEnd_right);
@@ -988,7 +973,6 @@ namespace rabbit {
                     }
                 }
                 if (eof1 && eof2)eof = true;
-                if (eof1 || eof2)printf("eofs : %d %d %d\n", eof1, eof2, eof);
                 if (!eof) {
                     left_line_count = count_line(data, chunkEnd);
                     right_line_count = count_line(data_right, chunkEnd_right);

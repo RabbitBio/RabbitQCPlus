@@ -485,7 +485,7 @@ std::string insertTableTr(std::string str1, std::string str2) {
 }
 
 void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
-    printf("report html TGS data\n");
+    printf("report TGS html data\n");
     std::string outhtml;
     int mx_len = 100;
     double *tmp_double = new double[mx_len];
@@ -928,7 +928,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 
     */
 
-    printf("report html se data\n");
+    printf("report se html data\n");
     std::string outhtml;
 
     int mx_len1 = state1->GetRealSeqLen();
@@ -1259,7 +1259,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     int size_len_mx = cmd_info->max_insert_size_;
     int size_require = cmd_info->overlap_require_;
 
-    printf("report html pe data\n");
+    printf("report pe html data\n");
 
     std::string outhtml;
     double *tmp_double;

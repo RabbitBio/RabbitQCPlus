@@ -19,7 +19,6 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
     out_queue2_ = NULL;
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != std::string::npos;
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != std::string::npos;
-
     if (cmd_info1->write_data_) {
         out_queue1_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>;
         queueNumNow1=0;
@@ -44,13 +43,15 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
                 out_name2 = out_name2.substr(0, out_name2.find(".gz"));
                 out_stream2_ = std::fstream(out_name2, std::ios::out | std::ios::binary);
                 out_stream2_.close();
-
-
+#ifdef Verbose
                 printf("now use pigz to compress output data\n");
+#endif
 
             }else{
+#ifdef Verbose
                 printf("open gzip stream1 %s\n", cmd_info1->out_file_name1_.c_str());
                 printf("open gzip stream2 %s\n", cmd_info1->out_file_name2_.c_str());
+#endif
                 zip_out_stream1 = gzopen(cmd_info1->out_file_name1_.c_str(), "w");
                 gzsetparams(zip_out_stream1, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
                 gzbuffer(zip_out_stream1, 1024 * 1024);
@@ -60,9 +61,11 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
 
             }
         } else {
+#ifdef Verbose
             printf("open stream1 %s\n", cmd_info1->out_file_name1_.c_str());
             if (cmd_info_->interleaved_out_ == 0)
                 printf("open stream2 %s\n", cmd_info1->out_file_name2_.c_str());
+#endif
             out_stream1_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
             if (cmd_info_->interleaved_out_ == 0)
                 out_stream2_ = std::fstream(cmd_info1->out_file_name2_, std::ios::out | std::ios::binary);
@@ -87,8 +90,6 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
         pigzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>;
         pigzLast2.first = new char[1 << 24];
         pigzLast2.second = 0;
-
-
     }
 
     pugzDone1 = 0;
@@ -166,9 +167,10 @@ void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool 
 
     dq.SetCompleted();
     delete fqFileReader;
+#ifdef Verbose
     std::cout << "file " << file << " has " << n_chunks << " chunks" << std::endl;
     printf("producer cost %.3f\n", GetTime() - t0);
-
+#endif
 }
 
 
@@ -212,8 +214,10 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
 
     dq.SetCompleted();
     delete fqFileReader;
+#ifdef Verbose
     std::cout << "file " << file << " has " << n_chunks << " chunks" << std::endl;
     printf("producer cost %.3f\n", GetTime() - t0);
+#endif
 }
 
 /**
@@ -316,7 +320,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                 }
                 while (queueNumNow1>queueSizeLim1) {
 #ifdef Verbose
-                    printf("waiting to push a chunk to out queue1\n");
+                    //printf("waiting to push a chunk to out queue1\n");
 #endif
                     usleep(100);
                 }
@@ -332,7 +336,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     ASSERT(pos == out_len1);
                     while (queueNumNow1>queueSizeLim1) {
 #ifdef Verbose
-                        printf("waiting to push a chunk to out queue1\n");
+                        //printf("waiting to push a chunk to out queue1\n");
 #endif
                         usleep(100);
                     }
@@ -348,7 +352,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     ASSERT(pos == out_len2);
                     while (queueNumNow2>queueSizeLim2) {
 #ifdef Verbose
-                        printf("waiting to push a chunk to out queue2\n");
+                        //printf("waiting to push a chunk to out queue2\n");
 #endif
                         usleep(100);
                     }
@@ -459,7 +463,7 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
             }
             while (queueNumNow1>queueSizeLim1) {
 #ifdef Verbose
-                printf("waiting to push a chunk to out queue1\n");
+                //printf("waiting to push a chunk to out queue1\n");
 #endif
                 usleep(100);
             }
@@ -475,7 +479,7 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                 ASSERT(pos == out_len1);
                 while (queueNumNow1>queueSizeLim1) {
 #ifdef Verbose
-                    printf("waiting to push a chunk to out queue1\n");
+                    //printf("waiting to push a chunk to out queue1\n");
 #endif
                     usleep(100);
                 }
@@ -491,7 +495,7 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                 ASSERT(pos == out_len2);
                 while (queueNumNow2>queueSizeLim2) {
 #ifdef Verbose
-                    printf("waiting to push a chunk to out queue2\n");
+                    //printf("waiting to push a chunk to out queue2\n");
 #endif
                     usleep(100);
                 }
@@ -530,7 +534,7 @@ void PeQc::WriteSeFastqTask1() {
                 while(pigzQueueNumNow1>pigzQueueSizeLim1){
 
 #ifdef Verbose
-                    printf("waiting to push a chunk to pigz queue1\n");
+                    //printf("waiting to push a chunk to pigz queue1\n");
 #endif
                     usleep(100);
                 }
@@ -539,7 +543,7 @@ void PeQc::WriteSeFastqTask1() {
             }else{
                 int written = gzwrite(zip_out_stream1, now.first, now.second);
                 if (written != now.second) {
-                    printf("GG");
+                    printf("gzwrite error\n");
                     exit(0);
                 }
                 delete[] now.first;
@@ -563,7 +567,9 @@ void PeQc::WriteSeFastqTask1() {
     } else {
         out_stream1_.close();
     }
+#ifdef Verbose
     printf("write1 cost %.5f\n", GetTime() - t0);
+#endif
 }
 
 /**
@@ -592,7 +598,7 @@ void PeQc::WriteSeFastqTask2() {
                 while(pigzQueueNumNow2>pigzQueueSizeLim2){
 
 #ifdef Verbose
-                    printf("waiting to push a chunk to pigz queue2\n");
+                    //printf("waiting to push a chunk to pigz queue2\n");
 #endif
                     usleep(1000000);
                 }
@@ -629,24 +635,33 @@ void PeQc::WriteSeFastqTask2() {
     } else {
         out_stream2_.close();
     }
+#ifdef Verbose
     printf("write2 cost %.5f\n", GetTime() - t0);
-
+#endif
 }
 
 void PeQc::PugzTask1() {
+#ifdef Verbose
     printf("pugz1 start\n");
+#endif
     double t0 = GetTime();
     main_pugz(cmd_info_->in_file_name1_, cmd_info_->pugz_threads_, pugzQueue1, &producerDone);
     pugzDone1 = 1;
+#ifdef Verbose
     printf("pugz1 done, cost %.6f\n", GetTime() - t0);
+#endif
 }
 
 void PeQc::PugzTask2() {
+#ifdef Verbose
     printf("pugz2 start\n");
+#endif
     double t0 = GetTime();
     main_pugz(cmd_info_->in_file_name2_, cmd_info_->pugz_threads_, pugzQueue2, &producerDone);
     pugzDone2 = 1;
+#ifdef Verbose
     printf("pugz2 done, cost %.6f\n", GetTime() - t0);
+#endif
 }
 
 
@@ -679,8 +694,9 @@ void PeQc::PigzTask1() {
     infos[8][out_file.length()] = '\0';
     infos[9]="-v";
     main_pigz(cnt, infos, pigzQueue1, &writerDone1, pigzLast1, &pigzQueueNumNow1);
-
+#ifdef Verbose
     printf("pigz1 done\n");
+#endif
 }
 
 void PeQc::PigzTask2() {
@@ -713,8 +729,9 @@ void PeQc::PigzTask2() {
     infos[8][out_file.length()] = '\0';
     infos[9]="-v";
     main_pigz(cnt, infos, pigzQueue2, &writerDone2, pigzLast2, &pigzQueueNumNow2);
-
+#ifdef Verbose
     printf("pigz2 done\n");
+#endif
 }
 /**
  * @brief do QC for pair-end data
@@ -722,7 +739,6 @@ void PeQc::PigzTask2() {
 void PeQc::ProcessPeFastq() {
     if (cmd_info_->interleaved_in_) {
         auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
-        //TODO replace this queue
         rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(64, 1);
         auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
@@ -736,7 +752,6 @@ void PeQc::ProcessPeFastq() {
                 write_thread2 = new std::thread(std::bind(&PeQc::WriteSeFastqTask2, this));
         }
 
-        //TODO bind ?
         std::thread producer(
                 std::bind(&PeQc::ProducerPeInterFastqTask, this, cmd_info_->in_file_name1_, fastqPool,
                     std::ref(queue1)));
@@ -754,10 +769,10 @@ void PeQc::ProcessPeFastq() {
             if (cmd_info_->interleaved_out_ == 0)
                 write_thread2->join();
         }
-
+#ifdef Verbose
         printf("all thrad done\n");
         printf("now merge thread info\n");
-
+#endif
         std::vector<State *> pre_vec_state1;
         std::vector<State *> pre_vec_state2;
         std::vector<State *> aft_vec_state1;
@@ -774,18 +789,19 @@ void PeQc::ProcessPeFastq() {
         auto aft_state1 = State::MergeStates(aft_vec_state1);
         auto aft_state2 = State::MergeStates(aft_vec_state2);
 
-
+#ifdef Verbose
         printf("merge done\n");
-        printf("\nprint pre state1 info :\n");
+#endif
+        printf("\nprint read1 (before filter) info :\n");
         State::PrintStates(pre_state1);
         printf("\n");
-        printf("\nprint pre state2 info :\n");
+        printf("\nprint read2 (before filter) info :\n");
         State::PrintStates(pre_state2);
         printf("\n");
-        printf("\nprint aft state1 info :\n");
+        printf("\nprint read1 (after filter) info :\n");
         State::PrintStates(aft_state1);
         printf("\n");
-        printf("\nprint aft state2 info :\n");
+        printf("\nprint read2 (after filter) info :\n");
         State::PrintStates(aft_state2);
         printf("\n");
 
@@ -853,8 +869,9 @@ void PeQc::ProcessPeFastq() {
 
         Repoter::ReportHtmlPe(pre_state1, pre_state2, aft_state1, aft_state2, cmd_info_->in_file_name1_,
                 cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
-
+#ifdef Verbose
         printf("report done\n");
+#endif
 
         delete pre_state1;
         delete pre_state2;
@@ -888,7 +905,6 @@ void PeQc::ProcessPeFastq() {
 
 
         auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
-        //TODO replace this queue
         rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(64, 1);
         auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
@@ -908,7 +924,6 @@ void PeQc::ProcessPeFastq() {
             if(cmd_info_->interleaved_out_==0)
                 pigzer2 = new thread(bind(&PeQc::PigzTask2,this));
         }
-        //TODO bind ?
         std::thread producer(
                 std::bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_,
                     fastqPool, std::ref(queue1)));
@@ -942,10 +957,10 @@ void PeQc::ProcessPeFastq() {
             if(cmd_info_->interleaved_out_==0)
                 pigzer2->join();
         }
-
+#ifdef Verbose
         printf("all thrad done\n");
         printf("now merge thread info\n");
-
+#endif
         std::vector<State *> pre_vec_state1;
         std::vector<State *> pre_vec_state2;
         std::vector<State *> aft_vec_state1;
@@ -961,20 +976,21 @@ void PeQc::ProcessPeFastq() {
         auto pre_state2 = State::MergeStates(pre_vec_state2);
         auto aft_state1 = State::MergeStates(aft_vec_state1);
         auto aft_state2 = State::MergeStates(aft_vec_state2);
-
+#ifdef Verbose
         if(cmd_info_->do_overrepresentation_){
             printf("orp cost %f\n",pre_state1->GetOrpCost()+pre_state2->GetOrpCost()+aft_state1->GetOrpCost()+aft_state2->GetOrpCost());
         }
         printf("merge done\n");
-        printf("\nprint pre state1 info :\n");
+#endif
+        printf("\nprint read1 (before filter) info :\n");
         State::PrintStates(pre_state1);
-        printf("\nprint aft state1 info :\n");
+        printf("\nprint read1 (after filter) :\n");
         State::PrintStates(aft_state1);
         printf("\n");
 
-        printf("\nprint pre state2 info :\n");
+        printf("\nprint read2 (before filter) info :\n");
         State::PrintStates(pre_state2);
-        printf("\nprint aft state2 info :\n");
+        printf("\nprint read2 (after filter) info :\n");
         State::PrintStates(aft_state2);
         printf("\n");
 
@@ -1042,9 +1058,9 @@ void PeQc::ProcessPeFastq() {
 
         Repoter::ReportHtmlPe(pre_state1, pre_state2, aft_state1, aft_state2, cmd_info_->in_file_name1_,
                 cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
-
+#ifdef Verbose
         printf("report done\n");
-
+#endif
         delete pre_state1;
         delete pre_state2;
         delete aft_state1;

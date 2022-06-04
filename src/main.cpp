@@ -193,12 +193,15 @@ int main(int argc, char **argv) {
 
 
     if (cmd_info.use_pugz_) {
-        printf("now use pugz, pugz thread is %d\n", cmd_info.pugz_threads_);
+        printf("now use pugz, pugz thread number is %d\n", cmd_info.pugz_threads_);
     }
     if (cmd_info.use_pigz_) {
-        printf("now use pigz, pigz thread is %d\n", cmd_info.pigz_threads_);
+        printf("now use pigz, pigz thread number is %d\n", cmd_info.pigz_threads_);
     }
-    printf("now use %d thread\n", cmd_info.thread_number_);
+    if(cmd_info.thread_number_==1)
+        printf("now use %d thread to do QC operations\n", cmd_info.thread_number_);
+    else
+        printf("now use %d threads to do QC operations\n", cmd_info.thread_number_);
     int mx_len=Adapter::EvalMaxLen(cmd_info.in_file_name1_);
     cmd_info.seq_len_=mx_len;
     double t1 = GetTime();
@@ -206,19 +209,8 @@ int main(int argc, char **argv) {
         if ((cmd_info.out_file_name1_.length() > 0 && cmd_info.out_file_name2_.length() > 0) ||
                 cmd_info.interleaved_out_) {
             cmd_info.write_data_ = true;
-            printf("auto set write_data_ 1\n");
         }
-        if (cmd_info.in_file_name1_ != "/dev/stdin") {
-            //calculate file size and estimate reads number
-            //            FILE *p_file;
-            //            p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
-            //            fseek(p_file, 0, SEEK_END);
-            //            int64_t total_size = ftell(p_file);
-            //            cmd_info.in_file_size1_ = total_size;
-            //            printf("in file total size is %lld\n", total_size);
-            //            printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
-        }
-
+        
         //adapter
         if (cmd_info.adapter_seq1_.length()) {
             printf("input adapter1 is %s\n", cmd_info.adapter_seq1_.c_str());
@@ -247,38 +239,45 @@ int main(int argc, char **argv) {
             } else {
                 printf("not find adapter\n");
             }
+#ifdef Verbose
             printf("detect adapter cost %.5f\n", GetTime() - t2);
-
+#endif
         }
+#ifdef Verbose
         if (cmd_info.correct_data_) {
             printf("now correct data\n");
         }
+#endif
         if (cmd_info.trim_adapter_ || cmd_info.correct_data_ || !cmd_info.no_insert_size_) {
             cmd_info.analyze_overlap_ = true;
+#ifdef Verbose
             printf("now do overlap analyze\n");
+#endif
         }
 
         if (cmd_info.trim_front1_) {
-            printf("ref1 trim front %d bases\n", cmd_info.trim_front1_);
+            printf("read1 trim front %d bases\n", cmd_info.trim_front1_);
             cmd_info.trim_front2_ = cmd_info.trim_front1_;
-            printf("ref2 trim front %d bases\n", cmd_info.trim_front2_);
+            printf("read2 trim front %d bases\n", cmd_info.trim_front2_);
 
         }
         if (cmd_info.trim_tail1_) {
-            printf("ref1 trim tail %d bases\n", cmd_info.trim_tail1_);
+            printf("read1 trim tail %d bases\n", cmd_info.trim_tail1_);
             cmd_info.trim_tail2_ = cmd_info.trim_tail1_;
-            printf("ref2 trim tail %d bases\n", cmd_info.trim_tail2_);
+            printf("read2 trim tail %d bases\n", cmd_info.trim_tail2_);
         }
 
         if (cmd_info.do_overrepresentation_) {
             double t2 = GetTime();
-            printf("now pre over represent\n");
+            printf("now doing overrepresent preprocessing part\n");
             Adapter::PreOverAnalyze(cmd_info.in_file_name1_, cmd_info.hot_seqs_, cmd_info.eva_len_);
             Adapter::PreOverAnalyze(cmd_info.in_file_name2_, cmd_info.hot_seqs2_, cmd_info.eva_len2_);
-            printf("pre over represent done\n");
-            printf("total %d hot sqes1\n", cmd_info.hot_seqs_.size());
-            printf("total %d hot sqes2\n", cmd_info.hot_seqs2_.size());
+            printf("overrepresent preprocessing part done\n");
+            printf("read1 has %d hot sequence\n", cmd_info.hot_seqs_.size());
+            printf("read2 has %d hot sequence\n", cmd_info.hot_seqs2_.size());
+#ifdef Verbose
             printf("pre over representation cost %.5f\n", GetTime() - t2);
+#endif
         }
 
         if (cmd_info.interleaved_in_) {
@@ -287,30 +286,15 @@ int main(int argc, char **argv) {
         if (cmd_info.interleaved_out_) {
             printf("now output use interleaved pe data\n");
         }
-
-        double tp = GetTime();
         PeQc *pe_qc = new PeQc(&cmd_info);
         pe_qc->ProcessPeFastq();
         delete pe_qc;
-        printf("part %.5f\n", GetTime() - tp);
 
     } else {
         cmd_info.no_insert_size_ = 1;
         if (cmd_info.out_file_name1_.length() > 0) {
             cmd_info.write_data_ = true;
-            printf("auto set write_data_ 1\n");
         }
-        if (cmd_info.in_file_name1_ != "/dev/stdin") {
-            //calculate file size and estimate reads number
-            //           FILE *p_file;
-            //           p_file = fopen(cmd_info.in_file_name1_.c_str(), "r");
-            //           fseek(p_file, 0, SEEK_END);
-            //           int64_t total_size = ftell(p_file);
-            //           cmd_info.in_file_size1_ = total_size;
-            //           printf("in file total size is %lld\n", total_size);
-            //           printf("my evaluate readNum is %lld\n", int64_t(total_size / 200.0));
-        }
-
         //adapter
         if (cmd_info.adapter_seq1_.length()) {
             printf("input adapter is %s\n", cmd_info.adapter_seq1_.c_str());
@@ -327,7 +311,9 @@ int main(int argc, char **argv) {
             } else {
                 printf("not find adapter\n");
             }
+#ifdef Verbose
             printf("detect adapter cost %.5f\n", GetTime() - t2);
+#endif
 
         }
         if (cmd_info.trim_front1_) {
@@ -339,14 +325,14 @@ int main(int argc, char **argv) {
 
         if (cmd_info.do_overrepresentation_) {
             double t2 = GetTime();
-            printf("now pre over represent\n");
+            printf("now doing overrepresent preprocessing part\n");
             Adapter::PreOverAnalyze(cmd_info.in_file_name1_, cmd_info.hot_seqs_, cmd_info.eva_len_);
-            printf("pre over represent done\n");
+            printf("overrepresent preprocessing part done\n");
             printf("total %d hot sqes\n", cmd_info.hot_seqs_.size());
+#ifdef Verbose
             printf("pre over representation cost %.5f\n", GetTime() - t2);
+#endif
         }
-
-        double tp = GetTime();
         SeQc *se_qc = new SeQc(&cmd_info);
         if (cmd_info.is_TGS_) {
             se_qc->ProcessSeTGS();
@@ -354,10 +340,9 @@ int main(int argc, char **argv) {
             se_qc->ProcessSeFastq();
         }
         delete se_qc;
-        printf("part %.5f\n", GetTime() - tp);
-
     }
+#ifdef Verbose
     printf("total cost %.5f\n", GetTime() - t1);
-
+#endif
     return 0;
 }

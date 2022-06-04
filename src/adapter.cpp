@@ -219,7 +219,7 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
                         num++;
                     }
                     if (num >= maxm) {
-                        printf("num is bigger than maxm!\n");
+                        printf("hot sequence is too many\n");
                         exit(0);
                     }
                 }
@@ -302,11 +302,8 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
     t0 = GetTime();
     for (auto item:chunks)
         fastq_data_pool->Release(item);
-    printf("release\n");
     delete fastq_data_pool;
-    printf("delete pool\n");
     delete fqFileReader;
-    printf("fqReader\n");
     delete[]head;
     delete[]pre;
     delete[]v;
@@ -569,16 +566,11 @@ Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, lon
  * @return bool overlaped;int offset;int overlap_len;int diff_num;
  */
 
-static bool cntt = 0;
 
 #ifdef Vec512
 
 OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require) {
 
-    if (cntt == 0) {
-        printf("512\n");
-        cntt++;
-    }
 
     int len1 = r1.lseq;
     int len2 = r2.lseq;
@@ -660,10 +652,6 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
 
 OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require) {
 
-    if(cntt==0){
-        printf("256\n");
-        cntt++;
-    }
     int len1 = r1.lseq;
     int len2 = r2.lseq;
 
@@ -756,10 +744,6 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
 OverlapRes
 Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require) {
 
-    if (cntt == 0) {
-        printf("novec\n");
-        cntt++;
-    }
 
     int len1 = r1.lseq;
     int len2 = r2.lseq;

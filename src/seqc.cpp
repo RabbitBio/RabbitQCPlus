@@ -13,7 +13,6 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     filter_ = new Filter(cmd_info1);
     done_thread_number_ = 0;
     int out_block_nums = int(1.0 * cmd_info1->in_file_size1_ / cmd_info1->out_block_size_);
-    //printf("out_block_nums %d\n", out_block_nums);
     out_queue_ = NULL;
 
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != std::string::npos;
@@ -30,16 +29,21 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
                 out_name1 = out_name1.substr(0, out_name1.find(".gz"));
                 out_stream_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
                 out_stream_.close();
-
+#ifdef Verbose
                 printf("now use pigz to compress output data\n");
+#endif
             } else {
+#ifdef Verbose
                 printf("open gzip stream %s\n", cmd_info1->out_file_name1_.c_str());
+#endif
                 zip_out_stream = gzopen(cmd_info1->out_file_name1_.c_str(), "w");
                 gzsetparams(zip_out_stream, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
                 gzbuffer(zip_out_stream, 1024 * 1024);
             }
         } else {
+#ifdef Verbose
             printf("open stream %s\n", cmd_info1->out_file_name1_.c_str());
+#endif
             out_stream_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
         }
     }
@@ -92,7 +96,6 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
     rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize=1 << 20;
     if(cmd_info_->seq_len_<=200)tmpSize=1 << 14;
-    //printf("tmpSize %d\n",tmpSize);
     fqFileReader = new rabbit::fq::FastqFileReader(file, *fastq_data_pool, "", in_is_zip_,tmpSize);
     int64_t n_chunks = 0;
 
@@ -226,7 +229,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     ASSERT(pos == out_len);
                     while(queueNumNow>queueSizeLim){
 #ifdef Verbose
-                        printf("waiting to push a chunk to out queue %d\n",out_len);
+                        //printf("waiting to push a chunk to out queue %d\n",out_len);
 #endif
                         usleep(100);
                     }
@@ -267,7 +270,7 @@ void SeQc::WriteSeFastqTask() {
             if (cmd_info_->use_pigz_) {
                 while(pigzQueueNumNow>pigzQueueSizeLim){
 #ifdef Verbose
-                    printf("waiting to push a chunk to pigz queue\n");
+                    //printf("waiting to push a chunk to pigz queue\n");
 #endif
                     usleep(100);
                 }
@@ -276,7 +279,7 @@ void SeQc::WriteSeFastqTask() {
             } else {
                 int written = gzwrite(zip_out_stream, now.first, now.second);
                 if (written != now.second) {
-                    printf("GG");
+                    printf("gzwrite error\n");
                     exit(0);
                 }
                 delete[] now.first;
@@ -302,7 +305,9 @@ void SeQc::WriteSeFastqTask() {
     } else {
         out_stream_.close();
     }
+#ifdef Verbose
     printf("write cost %.5f\n", GetTime() - t0);
+#endif
 }
 
 
@@ -311,10 +316,14 @@ void SeQc::WriteSeFastqTask() {
  */
 
 void SeQc::PugzTask() {
+#ifdef Verbose
     printf("pugz start\n");
+#endif
     auto t0 = GetTime();
     main_pugz(cmd_info_->in_file_name1_, cmd_info_->pugz_threads_, pugzQueue, &producerDone);
+#ifdef Verbose
     printf("pugz cost %.5f\n", GetTime() - t0);
+#endif
     pugzDone = 1;
 }
 
@@ -359,7 +368,9 @@ void SeQc::PigzTask() {
     memcpy(infos[8], out_file.c_str(), out_file.length());
     infos[8][out_file.length()] = '\0';
     main_pigz(cnt, infos, pigzQueue, &writerDone, pigzLast, &pigzQueueNumNow);
+#ifdef Verbose
     printf("pigz done\n");
+#endif
 }
 
 
@@ -407,11 +418,15 @@ void SeQc::ProcessSeFastq() {
     }
 
     producer.join();
+#ifdef Verbose
     printf("producer cost %.4f\n",GetTime()-t0);
+#endif
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         threads[t]->join();
     }
+#ifdef Verbose
     printf("consumer cost %.4f\n",GetTime()-t0);
+#endif
     if (cmd_info_->write_data_) {
         write_thread->join();
         writerDone = 1;
@@ -419,10 +434,10 @@ void SeQc::ProcessSeFastq() {
     if (cmd_info_->use_pigz_) {
         pigzer->join();
     }
-
+#ifdef Verbose
     printf("all thrad done\n");
     printf("now merge thread info\n");
-
+#endif
     std::vector<State *> pre_vec_state;
     std::vector<State *> aft_vec_state;
 
@@ -432,14 +447,15 @@ void SeQc::ProcessSeFastq() {
     }
     auto pre_state = State::MergeStates(pre_vec_state);
     auto aft_state = State::MergeStates(aft_vec_state);
-
+#ifdef Verbose
 	if(cmd_info_->do_overrepresentation_){
 		printf("orp cost %lf\n",pre_state->GetOrpCost()+aft_state->GetOrpCost());
 	}  
     printf("merge done\n");
-    printf("\nprint pre state info :\n");
+#endif
+    printf("\nprint read (before filter) info :\n");
     State::PrintStates(pre_state);
-    printf("\nprint aft state info :\n");
+    printf("\nprint read (after filter) info :\n");
     State::PrintStates(aft_state);
     printf("\n");
     if (cmd_info_->do_overrepresentation_) {
@@ -535,18 +551,19 @@ void SeQc::ProcessSeTGS() {
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         threads[t]->join();
     }
-
+#ifdef Verbose
     printf("all thrad done\n");
     printf("now merge thread info\n");
-
+#endif
     std::vector<TGSStats *> vec_state;
 
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         vec_state.push_back(p_thread_info[t]->TGS_state_);
     }
     auto mer_state = TGSStats::merge(vec_state);
-
+#ifdef Verbose
     printf("merge done\n");
+#endif
     printf("\nprint TGS state info :\n");
     //mer_state->print();
 
