@@ -48,7 +48,11 @@ public:
 
     static OverlapRes AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require);
 
+    static int TrimAdapter(neoReference &r1, neoReference &r2, int offset, int overlap_len, std::unordered_map<std::string,int> &mp1, std::unordered_map<std::string,int> &mp2, int adapter_len_lim);
+
     static int TrimAdapter(neoReference &r1, neoReference &r2, int offset, int overlap_len);
+
+    static int TrimAdapter(neoReference &ref, std::string &adapter_seq, std::unordered_map<std::string,int> &mp, int adapter_len_lim, bool isR2);
 
     static int TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2 = false);
 

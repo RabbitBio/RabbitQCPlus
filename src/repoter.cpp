@@ -236,7 +236,7 @@ std::string HTMLCss() {
 }
 
 std::string insertDivFloat(std::string id) {
-    return "<div id=\"" + id + "\" style=\"width: 800px;height:600px;float:left; display:inline;\"></div>\n";
+    return "<div id=\"" + id + "\" style=\"width:40%; height:600px; float:left; display:inline; padding:5%\"></div>\n";
 }
 
 
@@ -503,7 +503,12 @@ std::string insertLegend(std::string data) {
 }
 
 std::string insertTableBeginFloat() {
-    return "<table style='float:left; display:inline;'>\n";
+    return "<table style='float:left; display:inline; width:45%; padding-left:5%'>\n";
+}
+
+
+std::string insertTableBeginFloatBig() {
+    return "<table style='float:left; display:inline; width:95%; padding-left:5%'>\n";
 }
 
 
@@ -606,19 +611,19 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     std::string PositionContent1("PositionContent1");
     std::string PositionContent2("PositionContent2");
 
-    outhtml.append("\n<hr align=\"left\" style=\"width:800px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
     outhtml.append(insertDiv(LengthNumber));
-    outhtml.append("\n<hr align=\"left\" style=\"width:800px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
     outhtml.append(insertDiv(PositionQuality1));
-    outhtml.append("\n<hr align=\"left\" style=\"width:800px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
     outhtml.append(insertDiv(PositionQuality2));
-    outhtml.append("\n<hr align=\"left\" style=\"width:800px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
     outhtml.append(insertDiv(PositionContent1));
-    outhtml.append("\n<hr align=\"left\" style=\"width:800px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
     outhtml.append(insertDiv(PositionContent2));
 
@@ -950,7 +955,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(HTMLHeader());
     outhtml.append(HTMLCss());
     //Basic Status
-    outhtml.append(insertTableBegin());
+    outhtml.append(insertTableBeginFloatBig());
     outhtml.append(insertTableTitle("General", ""));
     outhtml.append(insertTableTbobyBegin());
     outhtml.append(insertTableTr("RabbitQCPlus version:", "0.0.2"));
@@ -959,6 +964,9 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
             insertTableTr("duplication rate:", std::to_string(dup) + "%" + "(may be overestimated since this is SE data)"));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
+    outhtml.append("\n<hr style='width:90%;'>\n");
+    outhtml.append("\n<br/>\n");
+
 
 
 
@@ -974,7 +982,6 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertTableTr("average read length:", std::to_string(state2->GetAvgLen())));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
-    outhtml.append("<div style='width: 200px;float:left; display:inline;'></div>");
     //After filtering information
     outhtml.append(insertTableBeginFloat());
     outhtml.append(insertTableTitle("After filtering", ""));
@@ -1000,27 +1007,27 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     std::string GCContent1("GCContent1");
     std::string GCContent2("GCContent2");
 
-    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
 
     outhtml.append(insertDivFloat(PositionQuality1));
     outhtml.append(insertDivFloat(PositionQuality2));
-    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
 
     outhtml.append(insertDivFloat(PositionContent1));
     outhtml.append(insertDivFloat(PositionContent2));
-    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
 
     outhtml.append(insertDivFloat(MeanQuality1));
     outhtml.append(insertDivFloat(MeanQuality2));
-    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
 
     outhtml.append(insertDivFloat(GCContent1));
     outhtml.append(insertDivFloat(GCContent2));
-    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
 
     if (state1->GetCmdInfo()->do_overrepresentation_) {
@@ -1304,7 +1311,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     outhtml.append(HTMLHeader());
     outhtml.append(HTMLCss());
     //Basic Status
-    outhtml.append(insertTableBegin());
+    outhtml.append(insertTableBeginFloatBig());
     outhtml.append(insertTableTitle("General", ""));
     outhtml.append(insertTableTbobyBegin());
     outhtml.append(insertTableTr("RabbitQCPlus version:", "0.0.2"));
@@ -1334,7 +1341,6 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     outhtml.append(insertTableEnd());
 
     //After filtering information
-    outhtml.append("<div style='width: 200px;float:left; display:inline;'></div>");
     outhtml.append(insertTableBeginFloat());
     outhtml.append(insertTableTitle("After filtering", ""));
     outhtml.append(insertTableTbobyBegin());
@@ -1376,67 +1382,64 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     std::string AftGCContent1("AftGCContent1");
     std::string AftGCContent2("AftGCContent2");
 
-    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
     outhtml.append(insertDivFloat(PrePositionQuality1));
     outhtml.append(insertDivFloat(AftPositionQuality1));
     
-
-    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
     outhtml.append(insertDivFloat(PrePositionQuality2));
     outhtml.append(insertDivFloat(AftPositionQuality2));
 
 
-    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
     outhtml.append(insertDivFloat(PrePositionContent1));
     outhtml.append(insertDivFloat(AftPositionContent1));
 
 
-    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
     outhtml.append(insertDivFloat(PrePositionContent2));
     outhtml.append(insertDivFloat(AftPositionContent2));
 
 
-    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
     outhtml.append(insertDivFloat(PreMeanQuality1));
     outhtml.append(insertDivFloat(AftMeanQuality1));
     
 
 
-    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
     outhtml.append(insertDivFloat(PreMeanQuality2));
     outhtml.append(insertDivFloat(AftMeanQuality2));
 
 
 
-    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
     outhtml.append(insertDivFloat(PreGCContent1));
     outhtml.append(insertDivFloat(AftGCContent1));
 
 
 
-    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
     outhtml.append(insertDivFloat(PreGCContent2));
     outhtml.append(insertDivFloat(AftGCContent2));
-    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+
+    outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
 
-
-
-    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
-    outhtml.append("\n<br/>\n");
     if (pre_state1->GetCmdInfo()->no_insert_size_ == 0){
         outhtml.append(insertDivFloat(InsertSizeInfo));
     }
 
-
+    outhtml.append("\n<hr style='width:90%;'>\n");
+    outhtml.append("\n<br/>\n");
 
     if (pre_state1->GetCmdInfo()->do_overrepresentation_) {
         outhtml.append(GetOver(pre_state1, 0, 0, pre_state1->GetCmdInfo()->eva_len_));

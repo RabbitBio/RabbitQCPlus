@@ -9,6 +9,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <unordered_map>
 
 #include "Globals.h"
 #include "Reference.h"
@@ -41,6 +42,8 @@ public:
     static void PrintStates(const State *state);
 
     static void PrintFilterResults(const State *state);
+
+    static void PrintAdatperToFile(const State *state);
 
     static std::string list2string(int64_t *list, int size);
 
@@ -114,6 +117,8 @@ public:
 
     void AddTrimAdapterBase(int cnt);
 
+    unordered_map<string,int> GetAdapterMap();
+
     CmdInfo *GetCmdInfo() const;
 
 private:
@@ -156,6 +161,8 @@ private:
     int64_t fail_lowq_;
     int64_t trim_adapter_;
     int64_t trim_adapter_bases_;
+public:
+    unordered_map<string,int>adapter_map_;
 };
 
 

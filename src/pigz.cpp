@@ -1049,6 +1049,7 @@ readFromQueue(moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, atomic_int *w
     while (len > 0) {
         //        ret = read(desc, buf, len);
         while (Q->try_dequeue(now) == 0) {
+            //cout<<"wDone "<<*wDone<<endl;
             if (*wDone == 1) {
                 if (Q->size_approx() == 0) {
                     ret = 0;
@@ -2200,6 +2201,7 @@ local void append_len(struct job *job, size_t len) {
 // subsequent calls of parallel_compress().
 local void parallel_compress(moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, atomic_int *wDone,
         pair<char *, int> &L, atomic_int *qNum) {
+    //printf("111\n");
     long seq;                       // sequence number
     struct space *curr;             // input data to compress
     struct space *next;             // input data that follows curr
@@ -4152,7 +4154,7 @@ local void out_push(void) {
 void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, atomic_int *wDone,
         pair<char *, int> &L, atomic_int *qNum) {
 
-
+    //printf("0000\n");
     volatile int method = -1;       // get_header() return value
     size_t len;                     // length of base name (minus suffix)
     struct stat st;                 // to get file type and mod time
@@ -4439,8 +4441,8 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
     }
     SET_BINARY_MODE(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd);
     // process ind to outd
-    if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].verbosity > 1)
-        //fprintf(stderr, "%s to %s ", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf);
+    //if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].verbosity > 1)
+    //    fprintf(stderr, "%s to %s ", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf);
     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode) {
         try
         {
@@ -4969,7 +4971,7 @@ int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, 
     small_map[tid] = threadCnt;
     threadCnt++;
     if(threadCnt==1){
-        //printf("init...\n");
+       // printf("init...\n");
         for (int i = 0; i < MAX_PIGZTHREAD_T_NUMBER; i++) {
             compress_have[i] = NULL;
             getPigz[i] = 0;

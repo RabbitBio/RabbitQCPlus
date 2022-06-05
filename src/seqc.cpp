@@ -206,7 +206,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 
 
                 if (trim_res && cmd_info_->trim_adapter_ && cmd_info_->detect_adapter1_) {
-                    int res = Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);
+                    int res = Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, thread_info->aft_state1_->adapter_map_, cmd_info_->adapter_len_lim_, false);
                     if(res){
                         thread_info->aft_state1_->AddTrimAdapter();
                         thread_info->aft_state1_->AddTrimAdapterBase(res);
@@ -473,6 +473,7 @@ void SeQc::ProcessSeFastq() {
     State::PrintStates(aft_state);
     printf("\n");
 
+    State::PrintAdatperToFile(aft_state);
     State::PrintFilterResults(aft_state);
     printf("\n");
 

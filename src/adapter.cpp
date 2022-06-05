@@ -503,7 +503,7 @@ Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, lon
     NucleotideTree *forwardTree = new NucleotideTree();
     NucleotideTree *backwardTree = new NucleotideTree();
     std::vector<AdapterSeedInfo> vec;
-//#pragma omp parallel for
+    //#pragma omp parallel for
     for (int i = 0; i < records; i++) {
         neoReference r = loadedReads[i];
         struct AdapterSeedInfo seedInfo;
@@ -513,7 +513,7 @@ Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, lon
             if (key == seed) {
                 seedInfo.recordsID = i;
                 seedInfo.pos = pos;
-//#pragma omp critical
+                //#pragma omp critical
                 {
                     vec.push_back(seedInfo);
                 }
@@ -963,6 +963,175 @@ int Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2)
     return false;
 }
 
+
+
+int Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, std::unordered_map<std::string,int> &mp, int adapter_len_lim, bool isR2) {
+    const int matchReq = 4;
+    const int allowOneMismatchForEach = 8;
+
+    int rlen = ref.lseq;
+    int alen = adapter_seq.length();
+
+    const char *adata = adapter_seq.c_str();
+    const char *rdata = reinterpret_cast<const char *>(ref.base + ref.pseq);
+
+    if (alen < matchReq)
+        return false;
+
+    int pos = 0;
+    bool found = false;
+    int start = 0;
+    if (alen >= 16)
+        start = -4;
+    else if (alen >= 12)
+        start = -3;
+    else if (alen >= 8)
+        start = -2;
+
+
+#ifdef Vec512
+    for (pos = start; pos < rlen - matchReq; pos++) {
+        int cmplen = std::min(rlen - pos, alen);
+        int allowedMismatch = cmplen / allowOneMismatchForEach;
+        int mismatch = 0;
+        int l = std::max(0, -pos);
+        for (int i = l; i < cmplen; i += 64) {
+            uint64_t tag = (1ll << std::min(64, cmplen - i)) - 1;
+            __m512i t1 = _mm512_maskz_loadu_epi8(tag, adata + i);
+            __m512i t2 = _mm512_maskz_loadu_epi8(tag, rdata + i + pos);
+            __mmask64 res = _mm512_cmp_epi8_mask(t1, t2, 4);
+            mismatch += _mm_popcnt_u64(res);
+            if (mismatch > allowedMismatch)break;
+        }
+
+
+        if (mismatch <= allowedMismatch) {
+            found = true;
+            break;
+        }
+    }
+#elif Vec256
+    for (pos = start; pos < rlen - matchReq; pos++) {
+        int cmplen = std::min(rlen - pos, alen);
+        int allowedMismatch = cmplen / allowOneMismatchForEach;
+        int mismatch = 0;
+        int l = std::max(0, -pos);
+        int i = l;
+        for (; i + 32 < cmplen; i += 32) {
+            __m256i t1 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(adata + i));
+            __m256i t2 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(rdata + i + pos));
+            __m256i res = _mm256_cmpeq_epi8(t1, t2);
+            unsigned mask = _mm256_movemask_epi8(res);
+            mismatch += 32 - _mm_popcnt_u32(mask);
+            if (mismatch > allowedMismatch)break;
+        }
+        for (; i < cmplen; i++) {
+            mismatch += adata[i] != rdata[i + pos];
+            if (mismatch > allowedMismatch)break;
+        }
+        if (mismatch <= allowedMismatch) {
+            found = true;
+            break;
+        }
+    }
+#elif KK
+
+    for (pos = start; pos < rlen - matchReq; pos++) {
+        int cmplen = min(rlen - pos, alen);
+        int allowedMismatch = cmplen / allowOneMismatchForEach;
+        int ok = 1;
+        for (int i = max(0, -pos), j = 0; i < cmplen && j < 3; i++, j++) {
+            if (adata[i] != rdata[i + pos]) {
+                ok = 0;
+                break;
+            }
+        }
+        if (ok == 0) {
+            for (int i = cmplen - 1, j = 0; i >= max(0, -pos) && j < 3; i--, j++) {
+                if (adata[i] != rdata[i + pos]) {
+                    ok = 0;
+                    break;
+                }
+            }
+        }
+        if (ok == 0) {
+            for (int i = max(0, -pos) + 3, j = 0; i < cmplen && j < 3; i++, j++) {
+                if (adata[i] != rdata[i + pos]) {
+                    ok = 0;
+                    break;
+                }
+            }
+        }
+        if (ok) {
+            int mismatch = 0;
+            for (int i = max(0, -pos); i < cmplen; i++) {
+                mismatch += adata[i] != rdata[i + pos];
+                if (mismatch > allowedMismatch)break;
+            }
+            if (mismatch <= allowedMismatch) {
+                found = true;
+                break;
+            }
+        }
+    }
+#else
+    for (pos = start; pos < rlen - matchReq; pos++) {
+        int cmplen = std::min(rlen - pos, alen);
+        int allowedMismatch = cmplen / allowOneMismatchForEach;
+        int mismatch = 0;
+        bool matched = true;
+        for (int i = std::max(0, -pos); i < cmplen; i++) {
+            mismatch += adata[i] != rdata[i + pos];
+            if (mismatch > allowedMismatch)break;
+        }
+        if (mismatch <= allowedMismatch) {
+            found = true;
+            break;
+        }
+    }
+#endif
+
+
+
+
+    if (found) {
+        int res_len=0;
+        if (pos < 0) {
+            std::string adapter = adapter_seq.substr(0, alen + pos);
+            ref.lseq = 0;
+            ref.lqual = 0;
+            res_len = adapter.length();
+            if(adapter.length()>=adapter_len_lim){
+                if(mp.count(adapter)==0){
+                    mp[adapter]=1;
+                }else {
+                    mp[adapter]++;
+                }
+            }
+
+        } else {
+            std::string new_adapter_seq = std::string(reinterpret_cast<const char *>(ref.base + ref.pseq + pos),
+                    rlen - pos);
+            ref.lseq = pos;
+            ref.lqual = pos;
+            res_len = new_adapter_seq.length();
+
+            if(new_adapter_seq.length()>=adapter_len_lim){
+                if(mp.count(new_adapter_seq)==0){
+                    mp[new_adapter_seq]=1;
+                }else {
+                    mp[new_adapter_seq]++;
+                }
+            }
+        }
+        return res_len;
+    }
+    return false;
+}
+
+
+
+
 /**
  * @brief Trim adapter by overlap information
  * @param r1
@@ -988,6 +1157,38 @@ int Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int ove
     }
     return false;
 }
+
+int Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int overlap_len, std::unordered_map<std::string,int> &mp1, std::unordered_map<std::string,int> &mp2, int adapter_len_lim) {
+    //    if(ov.diff<=5 && ov.overlapped && ov.offset < 0 && ol > r1->length()/3)
+
+    if (overlap_len > 0 && offset < 0) {
+        std::string adapter1 = std::string(reinterpret_cast<const char *>(r1.base + r1.pseq + overlap_len),
+                r1.lseq - overlap_len);
+        std::string adapter2 = std::string(reinterpret_cast<const char *>(r2.base + r1.pseq + overlap_len),
+                r2.lseq - overlap_len);
+        r1.lseq = overlap_len;
+        r1.lqual = overlap_len;
+        r2.lseq = overlap_len;
+        r2.lqual = overlap_len;
+        if(adapter1.length()>=adapter_len_lim){
+            if(mp1.count(adapter1)==0){
+                mp1[adapter1]=1;
+            }else{
+                mp1[adapter1]++;
+            }
+        }
+        if(adapter2.length()>=adapter_len_lim){
+            if(mp2.count(adapter2)==0){
+                mp2[adapter2]=1;
+            }else{
+                mp2[adapter2]++;
+            }
+        }
+        return adapter1.length()+adapter2.length();
+    }
+    return false;
+}
+
 
 int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap_res, bool isPhred64) {
     //TODO check ？
@@ -1030,10 +1231,6 @@ int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap
                 qual2[p2] = qual1[p1];
                 corrected++;
                 r2Corrected = true;
-                //TODO add to filter result
-                //                if (fr) {
-                //                    fr->addCorrection(seq2[p2], complement(seq1[p1]));
-                //                }
             } else if (qual2[p2] >= GOOD_QUAL && qual1[p1] <= BAD_QUAL) {
                 // use R2
 
@@ -1041,9 +1238,6 @@ int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap
                 qual1[p1] = qual2[p2];
                 corrected++;
                 r1Corrected = true;
-                //                if (fr) {
-                //                    fr->addCorrection(seq1[p1], complement(seq2[p2]));
-                //                }
             } else {
                 uncorrected++;
             }
@@ -1059,12 +1253,6 @@ int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap
         }
     }
 
-    //    if (corrected > 0 && fr) {
-    //        if (r1Corrected && r2Corrected)
-    //            fr->incCorrectedReads(2);
-    //        else
-    //            fr->incCorrectedReads(1);
-    //    }
 
     return corrected;
 }

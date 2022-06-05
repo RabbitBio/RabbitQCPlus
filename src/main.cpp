@@ -27,6 +27,7 @@ int main(int argc, char **argv) {
     app.add_flag("--decAdaForPe", cmd_info.pe_auto_detect_adapter_, "detect adapter for pe data");
     app.add_option("--adapterSeq1", cmd_info.adapter_seq1_, "input adapter sequence1");
     app.add_option("--adapterSeq2", cmd_info.adapter_seq2_, "input adapter sequence2");
+    app.add_option("--adapterLengthLimit", cmd_info.adapter_len_lim_, "minimum adapter length when trimming, default is 20");
 
     app.add_flag("-c,--correctData", cmd_info.correct_data_, "correct data");
 
@@ -124,6 +125,8 @@ int main(int argc, char **argv) {
         remove(cmd_info.out_file_name2_.c_str());
         printf("outFile2 is %s\n", cmd_info.out_file_name2_.c_str());
     }
+
+
 
     if (cmd_info.no_trim_adapter_)cmd_info.trim_adapter_ = false;
     ASSERT(cmd_info.no_trim_adapter_ != cmd_info.trim_adapter_);
@@ -286,6 +289,11 @@ int main(int argc, char **argv) {
         if (cmd_info.interleaved_out_) {
             printf("now output use interleaved pe data\n");
         }
+        if(cmd_info.adapter_seq1_.length()>0)
+            cmd_info.adapter_len_lim_=min(cmd_info.adapter_len_lim_,int(cmd_info.adapter_seq1_.length()));
+        if(cmd_info.adapter_seq2_.length()>0)
+            cmd_info.adapter_len_lim_=min(cmd_info.adapter_len_lim_,int(cmd_info.adapter_seq2_.length()));
+
         PeQc *pe_qc = new PeQc(&cmd_info);
         pe_qc->ProcessPeFastq();
         delete pe_qc;
@@ -333,6 +341,8 @@ int main(int argc, char **argv) {
             printf("pre over representation cost %.5f\n", GetTime() - t2);
 #endif
         }
+        if(cmd_info.adapter_seq1_.length()>0)
+            cmd_info.adapter_len_lim_=min(cmd_info.adapter_len_lim_,int(cmd_info.adapter_seq1_.length()));
         SeQc *se_qc = new SeQc(&cmd_info);
         if (cmd_info.is_TGS_) {
             se_qc->ProcessSeTGS();
