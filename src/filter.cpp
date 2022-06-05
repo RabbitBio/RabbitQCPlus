@@ -13,18 +13,21 @@ Filter::Filter(CmdInfo *cmd_info1) {
 	@brief filtering read
 	@return filtering result
     0:pass
-    1:fail because too short
-    2:fail because too long
-    3:fail because too many bases < q15
-    4:fail because too many N
+    1:fail because too many N
+    2:fail because too short
+    3:fail because too long
+    4:fail because too many bases < q15
  */
 int Filter::ReadFiltering(neoReference &ref, bool trim_res, bool isPhred64) {
-    if (!trim_res)return 1;
+    if (!trim_res)return 2;
     int seq_len = ref.lseq;
     int qul_len = ref.lqual;
     ASSERT(seq_len == qul_len);
+    if (seq_len >= cmd_info->length_limit_){
+        return 3;
+    }
     if (seq_len == 0 || seq_len < cmd_info->length_required_) {
-        return 1;
+        return 2;
     }
     int n_number = 0;
     int low_qual_number = 0;// < q15
@@ -42,8 +45,8 @@ int Filter::ReadFiltering(neoReference &ref, bool trim_res, bool isPhred64) {
             n_number++;
         }
     }
-    if (low_qual_number > cmd_info->low_qual_perc_limit_ * seq_len / 100.0)return 3;
-    if (n_number > cmd_info->n_number_limit_)return 4;
+    if (low_qual_number > cmd_info->low_qual_perc_limit_ * seq_len / 100.0)return 4;
+    if (n_number > cmd_info->n_number_limit_)return 1;
     return 0;
 
 }

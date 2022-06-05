@@ -281,12 +281,26 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                 Adapter::CorrectData(item1, item2, overlap_res, cmd_info_->isPhred64_);
             }
             if (trim_res1 && trim_res2 && cmd_info_->trim_adapter_) {
-                bool trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
+                int trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
+                if(trimmed){
+                    thread_info->aft_state1_->AddTrimAdapter();
+                    thread_info->aft_state1_->AddTrimAdapter();
+                    thread_info->aft_state1_->AddTrimAdapterBase(trimmed);
+                }
                 if (!trimmed) {
+                    int res1,res2;
                     if (cmd_info_->detect_adapter1_)
-                        Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, false);
+                        int res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, false);
                     if (cmd_info_->detect_adapter2_)
-                        Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, true);
+                        int res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, true);
+                    if(res1){
+                        thread_info->aft_state1_->AddTrimAdapter();
+                        thread_info->aft_state1_->AddTrimAdapterBase(res1);
+                    }
+                    if(res2){
+                        thread_info->aft_state1_->AddTrimAdapter();
+                        thread_info->aft_state1_->AddTrimAdapterBase(res2);
+                    }
                 }
             }
 
@@ -295,16 +309,34 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             int filter_res1 = filter_->ReadFiltering(item1, trim_res1, cmd_info_->isPhred64_);
             int filter_res2 = filter_->ReadFiltering(item2, trim_res2, cmd_info_->isPhred64_);
 
-            if (filter_res1 == 0 && filter_res2 == 0) {
+            int filter_res = max(filter_res1,filter_res2);
+
+
+            if (filter_res == 0) {
                 thread_info->aft_state1_->StateInfo(item1);
                 thread_info->aft_state2_->StateInfo(item2);
+                thread_info->aft_state1_->AddPassReads();
+                thread_info->aft_state1_->AddPassReads();
                 if (cmd_info_->write_data_) {
                     pass_data1.push_back(item1);
                     pass_data2.push_back(item2);
                     out_len1 += item1.lname + item1.lseq + item1.lstrand + item1.lqual + 4;
                     out_len2 += item2.lname + item2.lseq + item2.lstrand + item2.lqual + 4;
                 }
+            }else if(filter_res == 2){
+                thread_info->aft_state1_->AddFailShort();
+                thread_info->aft_state1_->AddFailShort();
+            }else if(filter_res == 3){
+                thread_info->aft_state1_->AddFailLong();
+                thread_info->aft_state1_->AddFailLong();
+            }else if(filter_res == 4){
+                thread_info->aft_state1_->AddFailLowq();
+                thread_info->aft_state1_->AddFailLowq();
+            }else if(filter_res == 1){
+                thread_info->aft_state1_->AddFailN();
+                thread_info->aft_state1_->AddFailN();
             }
+
         }
         if (cmd_info_->write_data_) {
 
@@ -804,6 +836,8 @@ void PeQc::ProcessPeFastq() {
         printf("\nprint read2 (after filter) info :\n");
         State::PrintStates(aft_state2);
         printf("\n");
+        State::PrintFilterResults(aft_state1);
+        printf("\n");
 
         if (cmd_info_->do_overrepresentation_) {
 
@@ -993,6 +1027,9 @@ void PeQc::ProcessPeFastq() {
         State::PrintStates(pre_state2);
         printf("\nprint read2 (after filter) info :\n");
         State::PrintStates(aft_state2);
+        printf("\n");
+
+        State::PrintFilterResults(aft_state1); 
         printf("\n");
 
         if (cmd_info_->do_overrepresentation_) {

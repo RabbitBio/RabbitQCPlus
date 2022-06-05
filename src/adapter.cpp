@@ -815,7 +815,7 @@ Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_lim
  * @return
  */
 
-bool Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2) {
+int Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2) {
     const int matchReq = 4;
     const int allowOneMismatchForEach = 8;
 
@@ -943,24 +943,21 @@ bool Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2
 
 
     if (found) {
+        int res_len=0;
         if (pos < 0) {
             std::string adapter = adapter_seq.substr(0, alen + pos);
             ref.lseq = 0;
             ref.lqual = 0;
-            //            if (fr) {
-            //                fr->addAdapterTrimmed(adapter, isR2);
-            //            }
+            res_len = adapter.length();
 
         } else {
             std::string new_adapter_seq = std::string(reinterpret_cast<const char *>(ref.base + ref.pseq + pos),
                     rlen - pos);
             ref.lseq = pos;
             ref.lqual = pos;
-            //            if (fr) {
-            //                fr->addAdapterTrimmed(adapter, isR2);
-            //            }
+            res_len = new_adapter_seq.length();
         }
-        return true;
+        return res_len;
     }
 
     return false;
@@ -974,7 +971,7 @@ bool Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2
  * @param overlap_len
  * @return true if successfully trim adapter, false else
  */
-bool Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int overlap_len) {
+int Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int overlap_len) {
     //    if(ov.diff<=5 && ov.overlapped && ov.offset < 0 && ol > r1->length()/3)
 
     if (overlap_len > 0 && offset < 0) {
@@ -982,27 +979,12 @@ bool Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int ov
                 r1.lseq - overlap_len);
         std::string adapter2 = std::string(reinterpret_cast<const char *>(r2.base + r1.pseq + overlap_len),
                 r2.lseq - overlap_len);
-
-        //        printf("adapter1 %s\n", adapter1.c_str());
-        //        printf("adapter2 %s\n", adapter2.c_str());
-        //        printf("overlap : %d , %d\n", offset, overlap_len);
-        //        PrintRef(r1);
-        //        Reference tmp = GetRevRef(r2);
-        //        PrintRef(tmp);
-        //        printf("\n");
         r1.lseq = overlap_len;
         r1.lqual = overlap_len;
         r2.lseq = overlap_len;
         r2.lqual = overlap_len;
-        //        printf("after trim adapter:\n");
-        //        PrintRef(r1);
-        //        tmp = GetRevRef(r2);
-        //        PrintRef(tmp);
-        //        printf("\n");
 
-        //TODO add adapters to some ....
-        //        fr->addAdapterTrimmed(adapter1, adapter2);
-        return true;
+        return adapter1.length()+adapter2.length();
     }
     return false;
 }

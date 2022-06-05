@@ -206,15 +206,29 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 
 
                 if (trim_res && cmd_info_->trim_adapter_ && cmd_info_->detect_adapter1_) {
-                    Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);
+                    int res = Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);
+                    if(res){
+                        thread_info->aft_state1_->AddTrimAdapter();
+                        thread_info->aft_state1_->AddTrimAdapterBase(res);
+                    }
                 }
+
                 int filter_res = filter_->ReadFiltering(item, trim_res, cmd_info_->isPhred64_);
                 if (filter_res == 0) {
                     thread_info->aft_state1_->StateInfo(item);
+                    thread_info->aft_state1_->AddPassReads();
                     if (cmd_info_->write_data_) {
                         pass_data.push_back(item);
                         out_len += item.lname + item.lseq + item.lstrand + item.lqual + 4;
                     }
+                }else if(filter_res == 1){
+                    thread_info->aft_state1_->AddFailN();
+                }else if(filter_res == 2){
+                    thread_info->aft_state1_->AddFailShort();
+                }else if(filter_res == 3){
+                    thread_info->aft_state1_->AddFailLong();
+                }else if(filter_res == 4){
+                    thread_info->aft_state1_->AddFailLowq();
                 }
             }
 
@@ -458,6 +472,10 @@ void SeQc::ProcessSeFastq() {
     printf("\nprint read (after filter) info :\n");
     State::PrintStates(aft_state);
     printf("\n");
+
+    State::PrintFilterResults(aft_state);
+    printf("\n");
+
     if (cmd_info_->do_overrepresentation_) {
         auto hash_graph1 = pre_state->GetHashGraph();
         int hash_num1 = pre_state->GetHashNum();

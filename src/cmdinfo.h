@@ -33,6 +33,7 @@ public:
 
     //param for filter
     int length_required_;
+    int length_limit_;
     int n_number_limit_;
     int low_qual_perc_limit_;
     bool trim_5end_;

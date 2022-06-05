@@ -20,6 +20,7 @@ CmdInfo::CmdInfo() {
     n_number_limit_ = 5;
     low_qual_perc_limit_ = 40;
     length_required_ = 15;
+    length_limit_ = 500;
     trim_5end_ = false;
     trim_3end_ = false;
     cut_window_size_ = 4;

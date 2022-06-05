@@ -560,7 +560,7 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     outhtml.append(insertTableBegin());
     outhtml.append(insertTableTitle("", "General(TGS)"));
     outhtml.append(insertTableTbobyBegin());
-    outhtml.append(insertTableTr("RabbitQC version:", "0.0.2"));
+    outhtml.append(insertTableTr("RabbitQCPlus version:", "0.0.2"));
     outhtml.append(insertTableTr("FileName", file_name)); 
     outhtml.append(insertTableTr("ReadsNumber", std::to_string(readsNum)));
     outhtml.append(insertTableTr("BasesNumber", std::to_string(basesNum)));
@@ -953,7 +953,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertTableBegin());
     outhtml.append(insertTableTitle("General", ""));
     outhtml.append(insertTableTbobyBegin());
-    outhtml.append(insertTableTr("RabbitQC version:", "0.0.2"));
+    outhtml.append(insertTableTr("RabbitQCPlus version:", "0.0.2"));
     outhtml.append(insertTableTr("FileName", file_name));
     outhtml.append(
             insertTableTr("duplication rate:", std::to_string(dup) + "%" + "(may be overestimated since this is SE data)"));
@@ -1307,7 +1307,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     outhtml.append(insertTableBegin());
     outhtml.append(insertTableTitle("General", ""));
     outhtml.append(insertTableTbobyBegin());
-    outhtml.append(insertTableTr("RabbitQC version:", "0.0.2"));
+    outhtml.append(insertTableTr("RabbitQCPlus version:", "0.0.2"));
     outhtml.append(insertTableTr("FileName", file_name1 + "," + file_name2));
     outhtml.append(
             insertTableTr("duplication rate:", std::to_string(dup) + "%"));

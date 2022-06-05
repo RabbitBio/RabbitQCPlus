@@ -48,6 +48,15 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
 	tot_bases_ = 0;
 	gc_bases_ = 0;
 
+
+    pass_reads_ = 0;
+    fail_short_ = 0;
+    fail_long_ = 0;
+    fail_N_ = 0;
+    fail_lowq_ = 0;
+    trim_adapter_ = 0;
+    trim_adapter_bases_ = 0;
+
 	do_over_represent_analyze_ = cmd_info->do_overrepresentation_;
 	over_representation_sampling_ = cmd_info->overrepresentation_sampling_;
 
@@ -461,6 +470,14 @@ State *State::MergeStates(const std::vector<State *> &states) {
 		res_state->lines_ += item->lines_;
 		res_state->tot_bases_ += item->tot_bases_;
 		res_state->gc_bases_ += item->gc_bases_;
+        res_state->pass_reads_ += item->pass_reads_;
+        res_state->fail_short_ += item->fail_short_;
+        res_state->fail_long_ += item->fail_long_;
+        res_state->fail_N_ += item->fail_N_;
+        res_state->fail_lowq_ += item->fail_lowq_;
+        res_state->trim_adapter_ += item->trim_adapter_;
+        res_state->trim_adapter_bases_ += item->trim_adapter_bases_;
+
 		for (int i = 0; i < now_seq_len; i++) {
 			for (int j = 0; j < 8; j++) {
 				res_state->pos_cnt_[i * 8 + j] += item->pos_cnt_[i * 8 + j];
@@ -504,6 +521,20 @@ State *State::MergeStates(const std::vector<State *> &states) {
 	return res_state;
 }
 
+void State::PrintFilterResults(const State *state){
+     
+    printf("filterint result:\n");
+    printf("pass filter read number: %lld\n",state->pass_reads_);
+    printf("not pass filter due to too short: %lld\n",state->fail_short_);
+    printf("not pass filter due to too long: %lld\n",state->fail_long_);
+    printf("not pass filter due to too many N: %lld\n",state->fail_N_);
+    printf("not pass filter due to low quality: %lld\n",state->fail_lowq_);
+    printf("trimed adapter read number: %lld\n",state->trim_adapter_);
+    printf("trimed base number due to adatper %lld\n",state->trim_adapter_bases_);
+
+}
+
+
 /**
  * @brief Print state information to screen
  * @param state
@@ -514,7 +545,7 @@ void State::PrintStates(const State *state) {
 	printf("q30 bases %lld\n", state->q30bases_);
 	printf("read number %lld\n", state->lines_);
     printf("average read length %.3f\n", state->avg_len);
-	//printf("kmer max is %lld\n", state->kmer_max_);
+   	//printf("kmer max is %lld\n", state->kmer_max_);
 	//printf("kmer min is %lld\n", state->kmer_min_);
 	//if(state->do_over_represent_analyze_){
 	//	printf("orp qcnt %lld\n",state->over_representation_qcnt_);
@@ -646,6 +677,36 @@ double State::GetOrpCost() const {
 double State::GetAvgLen() const {
     return avg_len;
 }
+
+void State::AddPassReads(){
+    pass_reads_++;
+}
+
+void State::AddFailShort(){
+    fail_short_++;
+}
+
+
+void State::AddFailLong(){
+    fail_long_++;
+}
+
+void State::AddFailN(){
+    fail_N_++;
+}
+
+void State::AddFailLowq(){
+    fail_lowq_++;
+}
+
+void State::AddTrimAdapter(){
+    trim_adapter_++;
+}
+
+void State::AddTrimAdapterBase(int cnt){
+    trim_adapter_bases_+=cnt;
+}
+
 std::string State::list2string(int64_t *list, int size) {
 	std::stringstream ss;
 	for (int i = 0; i < size; i++) {

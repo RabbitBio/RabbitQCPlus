@@ -40,6 +40,8 @@ public:
 
     static void PrintStates(const State *state);
 
+    static void PrintFilterResults(const State *state);
+
     static std::string list2string(int64_t *list, int size);
 
     static std::string list2string(double *list, int size);
@@ -98,6 +100,20 @@ public:
 
 	double GetAvgLen() const;
 
+    void AddPassReads();
+
+    void AddFailShort();
+
+    void AddFailLong();
+    
+    void AddFailN();
+
+    void AddFailLowq();
+
+    void AddTrimAdapter();
+
+    void AddTrimAdapterBase(int cnt);
+
     CmdInfo *GetCmdInfo() const;
 
 private:
@@ -132,6 +148,14 @@ private:
     int64_t over_representation_pcnt_;
     int64_t *bf_zone_;
 	double orpCost; 
+
+    int64_t pass_reads_;
+    int64_t fail_short_;
+    int64_t fail_long_;
+    int64_t fail_N_;
+    int64_t fail_lowq_;
+    int64_t trim_adapter_;
+    int64_t trim_adapter_bases_;
 };
 
 

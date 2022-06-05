@@ -252,9 +252,7 @@ int main(int argc, char **argv) {
 #endif
         if (cmd_info.trim_adapter_ || cmd_info.correct_data_ || !cmd_info.no_insert_size_) {
             cmd_info.analyze_overlap_ = true;
-#ifdef Verbose
-            printf("now do overlap analyze\n");
-#endif
+            printf("for PE data, overlap analysis is used to find adapter by default\n");
         }
 
         if (cmd_info.trim_front1_) {
