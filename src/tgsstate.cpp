@@ -231,7 +231,7 @@ void TGSStats::CalReadsLens(){
     readsLens=new int[mMaxReadsLen];
     for(int i=0;i<mMaxReadsLen;i++)readsLens[i]=0;
     for(auto item:mTotalReadsLen){
-        readsLens[(item+Ppre)/Ppre]++;
+        readsLens[(item+Ppre-1)/Ppre]++;
     }
 }
 

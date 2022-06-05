@@ -864,7 +864,8 @@ void PeQc::ProcessPeFastq() {
             for (int i = 0; i < cmd_info_->max_insert_size_; i++) {
                 if (merge_insert_size[i] > merge_insert_size[mx_id])mx_id = i;
             }
-            printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
+            //printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
+            printf("Insert size Peak (based on PE overlap analyze): %d\n", mx_id);
         }
 
         Repoter::ReportHtmlPe(pre_state1, pre_state2, aft_state1, aft_state2, cmd_info_->in_file_name1_,
@@ -1053,7 +1054,8 @@ void PeQc::ProcessPeFastq() {
             for (int i = 0; i < cmd_info_->max_insert_size_; i++) {
                 if (merge_insert_size[i] > merge_insert_size[mx_id])mx_id = i;
             }
-            printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
+            //printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
+            printf("Insert size peak (based on PE overlap analyze): %d\n", mx_id);
         }
 
         Repoter::ReportHtmlPe(pre_state1, pre_state2, aft_state1, aft_state2, cmd_info_->in_file_name1_,

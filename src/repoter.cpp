@@ -36,204 +36,209 @@ Reference Repoter::GetRevRef(neoReference &ref) {
 
 std::string HTMLHeader() {
     return std::string("<!DOCTYPE html>\n"
-                       "<html lang=\"en\">\n"
-                       "<head>\n"
-                       "    <meta charset=\"UTF-8\">\n"
-                       "    <title>Title</title>\n"
-                       "    <script src=\"https://cdn.jsdelivr.net/npm/echarts@5.0.2/dist/echarts.min.js\"></script>\n"
-                       "</head>\n"
-                       "<body>\n");
+            "<html lang=\"en\">\n"
+            "<head>\n"
+            "    <meta charset=\"UTF-8\">\n"
+            "    <title>Title</title>\n"
+            "    <script src=\"https://cdn.jsdelivr.net/npm/echarts@5.0.2/dist/echarts.min.js\"></script>\n"
+            "</head>\n"
+            "<body>\n");
 }
 
 std::string HTMLCss() {
     return "<style type=\"text/css\">\n"
-           " @media screen {\n"
-           "  div.summary {\n"
-           "    width: 18em;\n"
-           "    position:fixed;\n"
-           "    top: 3em;\n"
-           "    margin:1em 0 0 1em;\n"
-           "  }\n"
-           "  \n"
-           "  div.main {\n"
-           "    display:block;\n"
-           "    position:absolute;\n"
-           "    overflow:auto;\n"
-           "    height:auto;\n"
-           "    width:auto;\n"
-           "    top:4.5em;\n"
-           "    bottom:2.3em;\n"
-           "    left:18em;\n"
-           "    right:0;\n"
-           "    border-left: 1px solid #CCC;\n"
-           "    padding:0 0 0 1em;\n"
-           "    background-color: white;\n"
-           "    z-index:1;\n"
-           "  }\n"
-           "  \n"
-           "  div.header {\n"
-           "    background-color: #EEE;\n"
-           "    border:0;\n"
-           "    margin:0;\n"
-           "    padding: 0.5em;\n"
-           "    font-size: 200%;\n"
-           "    font-weight: bold;\n"
-           "    position:fixed;\n"
-           "    width:100%;\n"
-           "    top:0;\n"
-           "    left:0;\n"
-           "    z-index:2;\n"
-           "  }\n"
-           "\n"
-           "  div.footer {\n"
-           "    background-color: #EEE;\n"
-           "    border:0;\n"
-           "    margin:0;\n"
-           "\tpadding:0.5em;\n"
-           "    height: 1.3em;\n"
-           "\toverflow:hidden;\n"
-           "    font-size: 100%;\n"
-           "    font-weight: bold;\n"
-           "    position:fixed;\n"
-           "    bottom:0;\n"
-           "    width:100%;\n"
-           "    z-index:2;\n"
-           "  }\n"
-           "  \n"
-           "  img.indented {\n"
-           "    margin-left: 3em;\n"
-           "  }\n"
-           " }\n"
-           " \n"
-           " @media print {\n"
-           "\timg {\n"
-           "\t\tmax-width:100% !important;\n"
-           "\t\tpage-break-inside: avoid;\n"
-           "\t}\n"
-           "\th2, h3 {\n"
-           "\t\tpage-break-after: avoid;\n"
-           "\t}\n"
-           "\tdiv.header {\n"
-           "      background-color: #FFF;\n"
-           "    }\n"
-           "\t\n"
-           " }\n"
-           " \n"
-           " body {    \n"
-           "  font-family: sans-serif;   \n"
-           "  color: #000;   \n"
-           "  background-color: #FFF;\n"
-           "  border: 0;\n"
-           "  margin: 0;\n"
-           "  padding: 0;\n"
-           "  }\n"
-           "  \n"
-           "  div.header {\n"
-           "  border:0;\n"
-           "  margin:0;\n"
-           "  padding: 0.5em;\n"
-           "  font-size: 200%;\n"
-           "  font-weight: bold;\n"
-           "  width:100%;\n"
-           "  }    \n"
-           "  \n"
-           "  #header_title {\n"
-           "  display:inline-block;\n"
-           "  float:left;\n"
-           "  clear:left;\n"
-           "  }\n"
-           "  #header_filename {\n"
-           "  display:inline-block;\n"
-           "  float:right;\n"
-           "  clear:right;\n"
-           "  font-size: 50%;\n"
-           "  margin-right:2em;\n"
-           "  text-align: right;\n"
-           "  }\n"
-           "\n"
-           "  div.header h3 {\n"
-           "  font-size: 50%;\n"
-           "  margin-bottom: 0;\n"
-           "  }\n"
-           "  \n"
-           "  div.summary ul {\n"
-           "  padding-left:0;\n"
-           "  list-style-type:none;\n"
-           "  }\n"
-           "  \n"
-           "  div.summary ul li img {\n"
-           "  margin-bottom:-0.5em;\n"
-           "  margin-top:0.5em;\n"
-           "  }\n"
-           "\t  \n"
-           "  div.main {\n"
-           "  background-color: white;\n"
-           "  }\n"
-           "      \n"
-           "  div.module {\n"
-           "  padding-bottom:1.5em;\n"
-           "  padding-top:1.5em;\n"
-           "  }\n"
-           "\t  \n"
-           "  div.footer {\n"
-           "  background-color: #EEE;\n"
-           "  border:0;\n"
-           "  margin:0;\n"
-           "  padding: 0.5em;\n"
-           "  font-size: 100%;\n"
-           "  font-weight: bold;\n"
-           "  width:100%;\n"
-           "  }\n"
-           "\n"
-           "\n"
-           "  a {\n"
-           "  color: #000080;\n"
-           "  }\n"
-           "\n"
-           "  a:hover {\n"
-           "  color: #800000;\n"
-           "  }\n"
-           "      \n"
-           "  h2 {\n"
-           "  color: #800000;\n"
-           "  padding-bottom: 0;\n"
-           "  margin-bottom: 0;\n"
-           "  clear:left;\n"
-           "  }\n"
-           "\n"
-           "  table { \n"
-           "  margin-left: 3em;\n"
-           "  text-align: center;\n"
-           "  }\n"
-           "  \n"
-           "  th { \n"
-           "  text-align: center;\n"
-           "  background-color: #000080;\n"
-           "  color: #FFF;\n"
-           "  padding: 0.4em;\n"
-           "  }      \n"
-           "  \n"
-           "  td { \n"
-           "  font-family: monospace; \n"
-           "  text-align: left;\n"
-           "  background-color: #EEE;\n"
-           "  color: #000;\n"
-           "  padding: 0.4em;\n"
-           "  }\n"
-           "\n"
-           "  img {\n"
-           "  padding-top: 0;\n"
-           "  margin-top: 0;\n"
-           "  border-top: 0;\n"
-           "  }\n"
-           "\n"
-           "  \n"
-           "  p {\n"
-           "  padding-top: 0;\n"
-           "  margin-top: 0;\n"
-           "  }\n"
-           "</style>\n";
+        " @media screen {\n"
+        "  div.summary {\n"
+        "    width: 18em;\n"
+        "    position:fixed;\n"
+        "    top: 3em;\n"
+        "    margin:1em 0 0 1em;\n"
+        "  }\n"
+        "  \n"
+        "  div.main {\n"
+        "    display:block;\n"
+        "    position:absolute;\n"
+        "    overflow:auto;\n"
+        "    height:auto;\n"
+        "    width:auto;\n"
+        "    top:4.5em;\n"
+        "    bottom:2.3em;\n"
+        "    left:18em;\n"
+        "    right:0;\n"
+        "    border-left: 1px solid #CCC;\n"
+        "    padding:0 0 0 1em;\n"
+        "    background-color: white;\n"
+        "    z-index:1;\n"
+        "  }\n"
+        "  \n"
+        "  div.header {\n"
+        "    background-color: #EEE;\n"
+        "    border:0;\n"
+        "    margin:0;\n"
+        "    padding: 0.5em;\n"
+        "    font-size: 200%;\n"
+        "    font-weight: bold;\n"
+        "    position:fixed;\n"
+        "    width:100%;\n"
+        "    top:0;\n"
+        "    left:0;\n"
+        "    z-index:2;\n"
+        "  }\n"
+        "\n"
+        "  div.footer {\n"
+        "    background-color: #EEE;\n"
+        "    border:0;\n"
+        "    margin:0;\n"
+        "\tpadding:0.5em;\n"
+        "    height: 1.3em;\n"
+        "\toverflow:hidden;\n"
+        "    font-size: 100%;\n"
+        "    font-weight: bold;\n"
+        "    position:fixed;\n"
+        "    bottom:0;\n"
+        "    width:100%;\n"
+        "    z-index:2;\n"
+        "  }\n"
+        "  \n"
+        "  img.indented {\n"
+        "    margin-left: 3em;\n"
+        "  }\n"
+        " }\n"
+        " \n"
+        " @media print {\n"
+        "\timg {\n"
+        "\t\tmax-width:100% !important;\n"
+        "\t\tpage-break-inside: avoid;\n"
+        "\t}\n"
+        "\th2, h3 {\n"
+        "\t\tpage-break-after: avoid;\n"
+        "\t}\n"
+        "\tdiv.header {\n"
+        "      background-color: #FFF;\n"
+        "    }\n"
+        "\t\n"
+        " }\n"
+        " \n"
+        " body {    \n"
+        "  font-family: sans-serif;   \n"
+        "  color: #000;   \n"
+        "  background-color: #FFF;\n"
+        "  border: 0;\n"
+        "  margin: 0;\n"
+        "  padding: 0;\n"
+        "  }\n"
+        "  \n"
+        "  div.header {\n"
+        "  border:0;\n"
+        "  margin:0;\n"
+        "  padding: 0.5em;\n"
+        "  font-size: 200%;\n"
+        "  font-weight: bold;\n"
+        "  width:100%;\n"
+        "  }    \n"
+        "  \n"
+        "  #header_title {\n"
+        "  display:inline-block;\n"
+        "  float:left;\n"
+        "  clear:left;\n"
+        "  }\n"
+        "  #header_filename {\n"
+        "  display:inline-block;\n"
+        "  float:right;\n"
+        "  clear:right;\n"
+        "  font-size: 50%;\n"
+        "  margin-right:2em;\n"
+        "  text-align: right;\n"
+        "  }\n"
+        "\n"
+        "  div.header h3 {\n"
+        "  font-size: 50%;\n"
+        "  margin-bottom: 0;\n"
+        "  }\n"
+        "  \n"
+        "  div.summary ul {\n"
+        "  padding-left:0;\n"
+        "  list-style-type:none;\n"
+        "  }\n"
+        "  \n"
+        "  div.summary ul li img {\n"
+        "  margin-bottom:-0.5em;\n"
+        "  margin-top:0.5em;\n"
+        "  }\n"
+        "\t  \n"
+        "  div.main {\n"
+        "  background-color: white;\n"
+        "  }\n"
+        "      \n"
+        "  div.module {\n"
+        "  padding-bottom:1.5em;\n"
+        "  padding-top:1.5em;\n"
+        "  }\n"
+        "\t  \n"
+        "  div.footer {\n"
+        "  background-color: #EEE;\n"
+        "  border:0;\n"
+        "  margin:0;\n"
+        "  padding: 0.5em;\n"
+        "  font-size: 100%;\n"
+        "  font-weight: bold;\n"
+        "  width:100%;\n"
+        "  }\n"
+        "\n"
+        "\n"
+        "  a {\n"
+        "  color: #000080;\n"
+        "  }\n"
+        "\n"
+        "  a:hover {\n"
+        "  color: #800000;\n"
+        "  }\n"
+        "      \n"
+        "  h2 {\n"
+        "  color: #800000;\n"
+        "  padding-bottom: 0;\n"
+        "  margin-bottom: 0;\n"
+        "  clear:left;\n"
+        "  }\n"
+        "\n"
+        "  table { \n"
+        "  margin-left: 3em;\n"
+        "  text-align: center;\n"
+        "  }\n"
+        "  \n"
+        "  th { \n"
+        "  text-align: center;\n"
+        "  background-color: #000080;\n"
+        "  color: #FFF;\n"
+        "  padding: 0.4em;\n"
+        "  }      \n"
+        "  \n"
+        "  td { \n"
+        "  font-family: monospace; \n"
+        "  text-align: left;\n"
+        "  background-color: #EEE;\n"
+        "  color: #000;\n"
+        "  padding: 0.4em;\n"
+        "  }\n"
+        "\n"
+        "  img {\n"
+        "  padding-top: 0;\n"
+        "  margin-top: 0;\n"
+        "  border-top: 0;\n"
+        "  }\n"
+        "\n"
+        "  \n"
+        "  p {\n"
+        "  padding-top: 0;\n"
+        "  margin-top: 0;\n"
+        "  }\n"
+        "</style>\n";
 }
+
+std::string insertDivFloat(std::string id) {
+    return "<div id=\"" + id + "\" style=\"width: 800px;height:600px;float:left; display:inline;\"></div>\n";
+}
+
 
 std::string insertDiv(std::string id) {
     return "<div id=\"" + id + "\" style=\"width: 800px;height:600px;\"></div>\n";
@@ -241,14 +246,14 @@ std::string insertDiv(std::string id) {
 
 std::string insertTooltip() {
     return "tooltip: {\n"
-           "        trigger: 'axis',\n"
-           "        axisPointer: {\n"
-           "            type: 'cross',\n"
-           "            label: {\n"
-           "                backgroundColor: '#6a7985'\n"
-           "            }\n"
-           "        }\n"
-           "    },\n";
+        "        trigger: 'axis',\n"
+        "        axisPointer: {\n"
+        "            type: 'cross',\n"
+        "            label: {\n"
+        "                backgroundColor: '#6a7985'\n"
+        "            }\n"
+        "        }\n"
+        "    },\n";
 }
 
 std::string insertChart(std::string id) {
@@ -269,15 +274,15 @@ std::string insertOptionEnd() {
 
 std::string insertTitle(std::string text) {
     return "title: {\n"
-           "            text: \'" + text + "\',\n"
-                                           "            left:\'center\',\n"
-                                           "        },\n";
+        "            text: \'" + text + "\',\n"
+        "            left:\'center\',\n"
+        "        },\n";
 }
 
 std::string insertxAxis(int len, int interval = 1) {
     std::string out("xAxis: {\n"
-                    "            type: 'category',\n"
-                    "            data: [");
+            "            type: 'category',\n"
+            "            data: [");
     for (int i = 0; i < len; i += interval) {
         out.append(std::to_string(i) + ',');
     }
@@ -287,16 +292,16 @@ std::string insertxAxis(int len, int interval = 1) {
 
 std::string insertxAxis(std::string name, int len, int interval = 1) {
     std::string out("xAxis: {\n"
-                    "            type: 'category',\n"
-                    "            name: \'" + name + "\',\n"
-                                                    "            nameLocation:'center',\n"
-                                                    "nameTextStyle: {\n"
-                                                    "                lineHeight: 50,\n"
-                                                    "                fontSize: 13,\n"
-                                                    "                fontFamily: \"monospace\",\n"
-                                                    "                fontWeight: \"bold\"\n"
-                                                    "            },\n"
-                                                    "            data: [");
+            "            type: 'category',\n"
+            "            name: \'" + name + "\',\n"
+            "            nameLocation:'center',\n"
+            "nameTextStyle: {\n"
+            "                lineHeight: 50,\n"
+            "                fontSize: 13,\n"
+            "                fontFamily: \"monospace\",\n"
+            "                fontWeight: \"bold\"\n"
+            "            },\n"
+            "            data: [");
     for (int i = 0; i < len; i += interval) {
         out.append(std::to_string(i) + ',');
     }
@@ -304,30 +309,75 @@ std::string insertxAxis(std::string name, int len, int interval = 1) {
     return out;
 }
 
+std::string insertyAxis(std::string type, std::string name, std::string _min, std::string _max) {
+    return "yAxis: {\n"
+        "            type: \'" + type + "\',\n"
+        "            name: \'" + name + "\',\n"
+        "            nameLocation:'center',\n"
+        "nameTextStyle: {\n"
+        "                lineHeight: 50,\n"
+        "                fontSize: 13,\n"
+        "                fontFamily: \"monospace\",\n"
+        "                fontWeight: \"bold\"\n"
+        "            },\n"
+
+        "            min:" + _min + ",\n"
+        "            max:" + _max + "\n"
+        "        },\n";
+}
+
+
 std::string insertyAxis(std::string type, std::string _min, std::string _max) {
     return "yAxis: {\n"
-           "            type: \'" + type + "\',\n"
-                                           "            min:" + _min + ",\n"
-                                                                       "            max:" + _max + "\n"
-                                                                                                   "        },\n";
+        "            type: \'" + type + "\',\n"
+        "            min:" + _min + ",\n"
+        "            max:" + _max + "\n"
+        "        },\n";
 }
+
+std::string insertyAxis(std::string type, std::string name) {
+    return "yAxis: {\n"
+        "            type: \'" + type + "\',\n"
+        "            name: \'" + name + "\',\n"
+        "            nameLocation:'center',\n"
+        "nameTextStyle: {\n"
+        "                lineHeight: 50,\n"
+        "                fontSize: 13,\n"
+        "                fontFamily: \"monospace\",\n"
+        "                fontWeight: \"bold\"\n"
+        "            },\n"
+        "            axisLabel: {\n"
+        "                formatter: function (value) {\n"
+        "                    if (value < 100000) return value;\n"
+        "                    var len=0;\n"
+        "                    var last=value;\n"
+        "                    while (value>9){\n"
+        "                        value=value/10;\n"
+        "                        len++;\n"
+        "                    }\n"
+        "                    return last/Math.pow(10,len)+'E+'+len;\n"
+        "              },\n"
+        "           },\n"
+        "        },\n";
+}
+
 
 std::string insertyAxis(std::string type) {
     return "yAxis: {\n"
-           "            type: \'" + type + "\',\n"
-                                           "            axisLabel: {\n"
-                                           "                formatter: function (value) {\n"
-                                           "                    if (value < 100000) return value;\n"
-                                           "                    var len=0;\n"
-                                           "                    var last=value;\n"
-                                           "                    while (value>9){\n"
-                                           "                        value=value/10;\n"
-                                           "                        len++;\n"
-                                           "                    }\n"
-                                           "                    return last/Math.pow(10,len)+'E+'+len;\n"
-                                           "              },\n"
-                                           "           },\n"
-                                           "        },\n";
+        "            type: \'" + type + "\',\n"
+        "            axisLabel: {\n"
+        "                formatter: function (value) {\n"
+        "                    if (value < 100000) return value;\n"
+        "                    var len=0;\n"
+        "                    var last=value;\n"
+        "                    while (value>9){\n"
+        "                        value=value/10;\n"
+        "                        len++;\n"
+        "                    }\n"
+        "                    return last/Math.pow(10,len)+'E+'+len;\n"
+        "              },\n"
+        "           },\n"
+        "        },\n";
 }
 
 std::string insertSeriesBegin() {
@@ -340,8 +390,8 @@ std::string insertSeriesEnd() {
 
 std::string insertSeriesSmoothData(std::string type, int64_t *data, int len, int interval = 1) {
     std::string out("{\n"
-                    "            type: \'" + type + "\',\n"
-                                                    "            data: [\n");
+            "            type: \'" + type + "\',\n"
+            "            data: [\n");
     for (int i = 0; i < len; i += interval) {
         out.append(std::to_string(data[i]) + ',');
     }
@@ -352,8 +402,8 @@ std::string insertSeriesSmoothData(std::string type, int64_t *data, int len, int
 
 std::string insertSeriesData(std::string type, int *data, int len, int interval = 1) {
     std::string out("{\n"
-                    "            type: \'" + type + "\',\n"
-                                                    "            data: [\n");
+            "            type: \'" + type + "\',\n"
+            "            data: [\n");
     for (int i = 0; i < len; i += interval) {
         out.append(std::to_string(data[i]) + ',');
     }
@@ -363,9 +413,9 @@ std::string insertSeriesData(std::string type, int *data, int len, int interval 
 
 std::string insertSeriesData(std::string type, std::string name, int *data, int len, int interval = 1) {
     std::string out("{\n"
-                    "            type: \'" + type + "\',\n"
-                                                    "            name: \'" + name + "\',\n"
-                                                                                    "            data: [\n             ");
+            "            type: \'" + type + "\',\n"
+            "            name: \'" + name + "\',\n"
+            "            data: [\n             ");
     for (int i = 0; i < len; i += interval) {
         out.append(std::to_string(data[i]) + ',');
     }
@@ -375,8 +425,8 @@ std::string insertSeriesData(std::string type, std::string name, int *data, int 
 
 std::string insertSeriesData(std::string type, double *data, int len, int interval = 1) {
     std::string out("{\n"
-                    "            type: \'" + type + "\',\n"
-                                                    "            data: [\n            ");
+            "            type: \'" + type + "\',\n"
+            "            data: [\n            ");
     for (int i = 0; i < len; i += interval) {
         out.append(std::to_string(data[i]) + ',');
     }
@@ -386,9 +436,9 @@ std::string insertSeriesData(std::string type, double *data, int len, int interv
 
 std::string insertSeriesData(std::string type, std::string name, double *data, int len, int interval = 1) {
     std::string out("{\n"
-                    "            type: \'" + type + "\',\n"
-                                                    "            name: \'" + name + "\',\n"
-                                                                                    "            data: [\n");
+            "            type: \'" + type + "\',\n"
+            "            name: \'" + name + "\',\n"
+            "            data: [\n");
     for (int i = 0; i < len; i += interval) {
         out.append(std::to_string(data[i]) + ',');
     }
@@ -398,21 +448,21 @@ std::string insertSeriesData(std::string type, std::string name, double *data, i
 
 std::string insertSeriesMultiDataBegin(std::string type, std::string name) {
     return "{\n"
-           "            type: \'" + type + "\',\n"
-                                           "            name:\'" + name + "\'"
-                                                                          "            data: [\n";
+        "            type: \'" + type + "\',\n"
+        "            name:\'" + name + "\'"
+        "            data: [\n";
 }
 
 std::string insertSeriesMultiDataBegin(std::string type) {
     return "{\n"
-           "            type: \'" + type + "\',\n"
-                                           "            data: [\n";
+        "            type: \'" + type + "\',\n"
+        "            data: [\n";
 }
 
 std::string insertSeriesMultiDataEnd() {
     return "],\nitemStyle: {\n"
-           "        color: \"#d7ab82\"\n"
-           "    },\n},\n";
+        "        color: \"#d7ab82\"\n"
+        "    },\n},\n";
 }
 
 std::string insertSeriesOneData(int *data, int len) {
@@ -426,31 +476,36 @@ std::string insertSeriesOneData(int *data, int len) {
 
 std::string insertDataZoom() {
     return "dataZoom: [\n"
-           "        {\n"
-           "            id: 'dataZoomX',\n"
-           "            type: 'slider',\n"
-           "            xAxisIndex: [0],\n"
-           "            filterMode: 'filter', // 设定为 'filter' 从而 X 的窗口变化会影响 Y 的范围。\n"
-           "            start: 0,\n"
-           "            end: 100\n"
-           "        },\n"
-           "        {\n"
-           "            id: 'dataZoomY',\n"
-           "            type: 'slider',\n"
-           "            yAxisIndex: [0],\n"
-           "            filterMode: 'empty',\n"
-           "            start: 0,\n"
-           "            end: 100\n"
-           "        }\n"
-           "    ],\n";
+        "        {\n"
+        "            id: 'dataZoomX',\n"
+        "            type: 'slider',\n"
+        "            xAxisIndex: [0],\n"
+        "            filterMode: 'filter', // 设定为 'filter' 从而 X 的窗口变化会影响 Y 的范围。\n"
+        "            start: 0,\n"
+        "            end: 100\n"
+        "        },\n"
+        "        {\n"
+        "            id: 'dataZoomY',\n"
+        "            type: 'slider',\n"
+        "            yAxisIndex: [0],\n"
+        "            filterMode: 'empty',\n"
+        "            start: 0,\n"
+        "            end: 100\n"
+        "        }\n"
+        "    ],\n";
 }
 
 std::string insertLegend(std::string data) {
     return "legend: {\n"
-           "        data: [" + data + "],\n"
-                                      "        left:\'85%\',\n"
-                                      "    },\n";
+        "        data: [" + data + "],\n"
+        "        left:\'85%\',\n"
+        "    },\n";
 }
+
+std::string insertTableBeginFloat() {
+    return "<table style='float:left; display:inline;'>\n";
+}
+
 
 std::string insertTableBegin() {
     return "<table>\n";
@@ -462,11 +517,11 @@ std::string insertTableEnd() {
 
 std::string insertTableTitle(std::string str1, std::string str2) {
     return "<thead>\n"
-           "    <tr>\n"
-           "        <th>" + str1 + "</th>\n"
-                                   "        <th>" + str2 + "</th>\n"
-                                                           "    </tr>\n"
-                                                           "</thead>\n";
+        "    <tr>\n"
+        "        <th>" + str1 + "</th>\n"
+        "        <th>" + str2 + "</th>\n"
+        "    </tr>\n"
+        "</thead>\n";
 }
 
 std::string insertTableTbobyBegin() {
@@ -479,9 +534,9 @@ std::string insertTableTbobyEnd() {
 
 std::string insertTableTr(std::string str1, std::string str2) {
     return "    <tr>\n"
-           "        <td>" + str1 + "</td>\n"
-                                   "        <td>" + str2 + "</td>\n"
-                                                           "    </tr>\n";
+        "        <td>" + str1 + "</td>\n"
+        "        <td>" + str2 + "</td>\n"
+        "    </tr>\n";
 }
 
 void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
@@ -516,7 +571,7 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
- 
+
 
     outhtml.append(insertTableBegin());
     outhtml.append(insertTableTitle("", "Top 5 quality reads and their length"));
@@ -529,8 +584,8 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
- 
- 
+
+
 
     outhtml.append(insertTableBegin());
     outhtml.append(insertTableTitle("", "Top 5 length reads and their quality"));
@@ -543,7 +598,6 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
- 
 
     std::string LengthNumber("LengthNumber");
 
@@ -552,10 +606,20 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     std::string PositionContent1("PositionContent1");
     std::string PositionContent2("PositionContent2");
 
+    outhtml.append("\n<hr align=\"left\" style=\"width:800px;\">\n");
+    outhtml.append("\n<br/>\n");
     outhtml.append(insertDiv(LengthNumber));
+    outhtml.append("\n<hr align=\"left\" style=\"width:800px;\">\n");
+    outhtml.append("\n<br/>\n");
     outhtml.append(insertDiv(PositionQuality1));
+    outhtml.append("\n<hr align=\"left\" style=\"width:800px;\">\n");
+    outhtml.append("\n<br/>\n");
     outhtml.append(insertDiv(PositionQuality2));
+    outhtml.append("\n<hr align=\"left\" style=\"width:800px;\">\n");
+    outhtml.append("\n<br/>\n");
     outhtml.append(insertDiv(PositionContent1));
+    outhtml.append("\n<hr align=\"left\" style=\"width:800px;\">\n");
+    outhtml.append("\n<br/>\n");
     outhtml.append(insertDiv(PositionContent2));
 
     outhtml.append("</body>\n");
@@ -578,7 +642,7 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     }
 
     outhtml.append(insertxAxis("Length (bp)", maxReadsLen*10,10));
-    outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(maxCnt)));
+    outhtml.append(insertyAxis("value", "read number",  std::to_string(0), std::to_string(maxCnt)));
     outhtml.append(insertSeriesBegin());
     outhtml.append(insertSeriesData("bar", readsLens, maxReadsLen));
     outhtml.append(insertSeriesEnd());
@@ -597,7 +661,7 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     outhtml.append(insertTooltip());
     outhtml.append(insertDataZoom());
     outhtml.append(insertxAxis("Position in read from start(bp)", mx_len + 1));
-    outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+    outhtml.append(insertyAxis("value", "quality score", std::to_string(0), std::to_string(41)));
     outhtml.append(insertSeriesBegin());
 
     auto tot_cnt4 = tgs_stats->GetHeadSeqPosCount();
@@ -616,6 +680,8 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     outhtml.append(insertChartOption(PositionQuality1));
 
 
+
+
     outhtml.append(insertChart(PositionQuality2));
     //option
     outhtml.append(insertOptionBegin(PositionQuality2));
@@ -623,7 +689,7 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     outhtml.append(insertTooltip());
     outhtml.append(insertDataZoom());
     outhtml.append(insertxAxis("Position in read from end(bp)", mx_len + 1));
-    outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+    outhtml.append(insertyAxis("value", "quality score", std::to_string(0), std::to_string(41)));
     outhtml.append(insertSeriesBegin());
 
     tot_cnt4 = tgs_stats->GetTailSeqPosCount();
@@ -642,6 +708,7 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     outhtml.append(insertChartOption(PositionQuality2));
 
 
+
     //AGCT Content
     outhtml.append(insertChart(PositionContent1));
     //option
@@ -651,7 +718,7 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     outhtml.append(insertDataZoom());
     outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
     outhtml.append(insertxAxis("Position in read from start(bp)", mx_len + 1));
-    outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+    outhtml.append(insertyAxis("value", "base percent", std::to_string(0), std::to_string(1)));
     outhtml.append(insertSeriesBegin());
 
     tot_cnt4 = tgs_stats->GetHeadSeqPosCount();
@@ -684,6 +751,8 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     outhtml.append(insertChartOption(PositionContent1));
 
 
+
+
     outhtml.append(insertChart(PositionContent2));
     //option
     outhtml.append(insertOptionBegin(PositionContent2));
@@ -692,7 +761,7 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
     outhtml.append(insertDataZoom());
     outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
     outhtml.append(insertxAxis("Position in read from end(bp)", mx_len + 1));
-    outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+    outhtml.append(insertyAxis("value", "base percent", std::to_string(0), std::to_string(1)));
     outhtml.append(insertSeriesBegin());
 
     tot_cnt4 = tgs_stats->GetTailSeqPosCount();
@@ -776,8 +845,8 @@ std::string GetOver(State *state, bool isAfter, bool isRead2, int eva_len) {
         << "</div>\n";
     ofs << "<table class='summary_table'>\n";
     ofs
-            << "<tr style='font-weight:bold;'><td>overrepresented sequence</td><td>count (% of bases)</td><td>distribution: cycle 1 ~ cycle "
-            << eva_len << "</td></tr>" << std::endl;
+        << "<tr style='font-weight:bold;'><td>overrepresented sequence</td><td>count (% of bases)</td><td>distribution: cycle 1 ~ cycle "
+        << eva_len << "</td></tr>" << std::endl;
     int found = 0;
     auto hash_graph = state->GetHashGraph();
     int hash_num = state->GetHashNum();
@@ -852,81 +921,15 @@ std::string GetOver(State *state, bool isAfter, bool isRead2, int eva_len) {
     return ofs.str();
 }
 
-
-std::string GetInsertSize(int64_t *size_info, int size_len_mx, int size_len_l, int size_len_r) {
-    std::stringstream ofs;
-
-
-    int total = std::min(size_len_mx, size_len_r);
-    int64_t *x = new int64_t[total];
-    double allCount = 0;
-    for (int i = 0; i < total; i++) {
-        x[i] = i;
-        allCount += size_info[i];
-    }
-    allCount += size_info[size_len_mx];
-    double *percents = new double[total];
-    memset(percents, 0, sizeof(double) * total);
-    if (allCount > 0) {
-        for (int i = 0; i < total; i++) {
-            percents[i] = (double) size_info[i] * 100.0 / (double) allCount;
-        }
-    }
-
-    double unknownPercents = (double) size_info[size_len_mx] * 100.0 / (double) allCount;
-
-    ofs << "<div class='section_div'>\n";
-    ofs
-            << "<div class='section_title' onclick=showOrHide('insert_size')><a name='summary'>Insert size estimation</a></div>\n";
-    ofs << "<div id='insert_size'>\n";
-    ofs << "<div id='insert_size_figure'>\n";
-    ofs << "<div class='figure' id='plot_insert_size' style='height:400px;'></div>\n";
-    ofs << "</div>\n";
-
-    ofs << "<div class='sub_section_tips'>This estimation is based on paired-end overlap analysis, and there are ";
-    ofs << std::to_string(unknownPercents);
-    ofs << "% reads found not overlapped. <br /> The nonoverlapped read pairs may have insert size &lt;"
-        << size_len_l;
-    ofs << " or &gt;" << size_len_r;
-    ofs << ", or contain too much sequencing errors to be detected as overlapped.";
-    ofs << "</div>\n";
-
-    ofs << "\n<script type=\"text/javascript\">" << std::endl;
-    std::string json_str = "var data=[";
-
-    json_str += "{";
-    json_str += "x:[" + State::list2string(x, total) + "],";
-    json_str += "y:[" + State::list2string(percents, total) + "],";
-    json_str += "name: 'Percent (%)  ',";
-    json_str += "type:'bar',";
-    json_str += "line:{color:'rgba(128,0,128,1.0)', width:1}\n";
-    json_str += "}";
-
-    json_str += "];\n";
-
-    json_str += "var layout={title:'Insert size distribution (" + std::to_string(unknownPercents) +
-                "% reads are with unknown length)', xaxis:{title:'Insert size'}, yaxis:{title:'Read percent (%)'}};\n";
-    json_str += "Plotly.newPlot('plot_insert_size', data, layout);\n";
-
-    ofs << json_str;
-    ofs << "</script>" << std::endl;
-    ofs << "</div>\n";
-    ofs << "</div>\n";
-
-    delete[] x;
-    delete[] percents;
-    return ofs.str();
-}
-
 void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, double dup) {
 
     /*
-    printf("tot bases %lld\n", state1->GetTotBases());
-    printf("gc bases %lld\n", state1->GetGcBases());
-    printf("tot bases %lld\n", state2->GetTotBases());
-    printf("gc bases %lld\n", state2->GetGcBases());
+       printf("tot bases %lld\n", state1->GetTotBases());
+       printf("gc bases %lld\n", state1->GetGcBases());
+       printf("tot bases %lld\n", state2->GetTotBases());
+       printf("gc bases %lld\n", state2->GetGcBases());
 
-    */
+*/
 
     printf("report se html data in RabbitQCPlus.html\n");
     std::string outhtml;
@@ -960,19 +963,20 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 
 
     //Before filtering information
-    outhtml.append(insertTableBegin());
+    outhtml.append(insertTableBeginFloat());
     outhtml.append(insertTableTitle("Before filtering", ""));
     outhtml.append(insertTableTbobyBegin());
     outhtml.append(insertTableTr("total reads:", std::to_string(state1->GetLines())));
     outhtml.append(insertTableTr("total bases:", std::to_string(state1->GetTotBases())));
     outhtml.append(insertTableTr("Q20 bases:", std::to_string(state1->GetQ20Bases())));
     outhtml.append(insertTableTr("Q30 bases:", std::to_string(state1->GetQ30Bases())));
-    outhtml.append(insertTableTr("GC", std::to_string(1.0 * state1->GetGcBases() / state1->GetTotBases()) + "%"));
+    outhtml.append(insertTableTr("GC percentage:", std::to_string(1.0 * state1->GetGcBases() / state1->GetTotBases()) + "%"));
+    outhtml.append(insertTableTr("average read length:", std::to_string(state2->GetAvgLen())));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
-
+    outhtml.append("<div style='width: 200px;float:left; display:inline;'></div>");
     //After filtering information
-    outhtml.append(insertTableBegin());
+    outhtml.append(insertTableBeginFloat());
     outhtml.append(insertTableTitle("After filtering", ""));
     outhtml.append(insertTableTbobyBegin());
 
@@ -980,7 +984,8 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     outhtml.append(insertTableTr("total bases:", std::to_string(state2->GetTotBases())));
     outhtml.append(insertTableTr("Q20 bases:", std::to_string(state2->GetQ20Bases())));
     outhtml.append(insertTableTr("Q30 bases:", std::to_string(state2->GetQ30Bases())));
-    outhtml.append(insertTableTr("GC", std::to_string(1.0 * state2->GetGcBases() / state2->GetTotBases()) + "%"));
+    outhtml.append(insertTableTr("GC percentage:", std::to_string(1.0 * state2->GetGcBases() / state2->GetTotBases()) + "%"));
+    outhtml.append(insertTableTr("average read length:", std::to_string(state2->GetAvgLen())));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
@@ -995,21 +1000,33 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
     std::string GCContent1("GCContent1");
     std::string GCContent2("GCContent2");
 
+    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<br/>\n");
 
-    outhtml.append(insertDiv(PositionQuality1));
-    outhtml.append(insertDiv(PositionContent1));
-    outhtml.append(insertDiv(MeanQuality1));
-    outhtml.append(insertDiv(GCContent1));
+    outhtml.append(insertDivFloat(PositionQuality1));
+    outhtml.append(insertDivFloat(PositionQuality2));
+    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<br/>\n");
+
+    outhtml.append(insertDivFloat(PositionContent1));
+    outhtml.append(insertDivFloat(PositionContent2));
+    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<br/>\n");
+
+    outhtml.append(insertDivFloat(MeanQuality1));
+    outhtml.append(insertDivFloat(MeanQuality2));
+    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<br/>\n");
+
+    outhtml.append(insertDivFloat(GCContent1));
+    outhtml.append(insertDivFloat(GCContent2));
+    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<br/>\n");
+
     if (state1->GetCmdInfo()->do_overrepresentation_) {
         outhtml.append(GetOver(state1, 0, 0, state1->GetCmdInfo()->eva_len_));
     }
 
-
-
-    outhtml.append(insertDiv(PositionQuality2));
-    outhtml.append(insertDiv(PositionContent2));
-    outhtml.append(insertDiv(MeanQuality2));
-    outhtml.append(insertDiv(GCContent2));
     if (state1->GetCmdInfo()->do_overrepresentation_) {
         outhtml.append(GetOver(state2, 1, 0, state2->GetCmdInfo()->eva_len_));
     }
@@ -1030,7 +1047,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Position in read(bp)", mx_len1 + 1));
-        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+        outhtml.append(insertyAxis("value", "quality score", std::to_string(0), std::to_string(41)));
         outhtml.append(insertSeriesBegin());
 
         pos_qul_ = state1->GetPosQul();
@@ -1058,7 +1075,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Position in read(bp)", mx_len2 + 1));
-        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+        outhtml.append(insertyAxis("value", "quality score", std::to_string(0), std::to_string(41)));
         outhtml.append(insertSeriesBegin());
 
         pos_qul_ = state2->GetPosQul();
@@ -1089,7 +1106,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Mean Sequence Quality(Phred Score)", 42));
-        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         qul_cnt = state1->GetQulCnt();
         for (int i = 0; i < 42; i++)
@@ -1108,7 +1125,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Mean Sequence Quality(Phred Score)", 42));
-        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         qul_cnt = state2->GetQulCnt();
         for (int i = 0; i < 42; i++)
@@ -1131,7 +1148,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         outhtml.append(insertDataZoom());
         outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
         outhtml.append(insertxAxis("Position in read(bp)", mx_len1 + 1));
-        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+        outhtml.append(insertyAxis("value", "base percent", std::to_string(0), std::to_string(1)));
         outhtml.append(insertSeriesBegin());
         pos_cnt_ = state1->GetPosCnt();
         for (int i = 0; i < mx_len1; i++) {
@@ -1171,7 +1188,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         outhtml.append(insertDataZoom());
         outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
         outhtml.append(insertxAxis("Position in read(bp)", mx_len2 + 1));
-        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+        outhtml.append(insertyAxis("value","base percent", std::to_string(0), std::to_string(1)));
         outhtml.append(insertSeriesBegin());
 
         pos_cnt_ = state2->GetPosCnt();
@@ -1215,7 +1232,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
-        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertyAxis("value","read number"));
         outhtml.append(insertSeriesBegin());
         gc_cnt = state1->GetGcCnt();
         for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
@@ -1233,7 +1250,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
-        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertyAxis("value","read number"));
         outhtml.append(insertSeriesBegin());
         gc_cnt = state2->GetGcCnt();
         for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
@@ -1254,7 +1271,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 }
 
 void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_state1, State *aft_state2,
-                           std::string file_name1, std::string file_name2, double dup, int64_t *size_info) {
+        std::string file_name1, std::string file_name2, double dup, int64_t *size_info) {
     auto cmd_info = pre_state1->GetCmdInfo();
     int size_len_mx = cmd_info->max_insert_size_;
     int size_require = cmd_info->overlap_require_;
@@ -1278,7 +1295,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
 
     int mx_malloc_size = size_len_mx + 1;
     mx_malloc_size = std::max(mx_malloc_size,
-                              std::max(std::max(pre_mx_len1, pre_mx_len2), std::max(aft_mx_len1, aft_mx_len2)));
+            std::max(std::max(pre_mx_len1, pre_mx_len2), std::max(aft_mx_len1, aft_mx_len2)));
 
     tmp_double = new double[mx_malloc_size];
     int64_t *tmp_int64 = new int64_t[110];
@@ -1298,38 +1315,46 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     outhtml.append(insertTableEnd());
 
     //Before filtering information
-    outhtml.append(insertTableBegin());
+    outhtml.append(insertTableBeginFloat());
     outhtml.append(insertTableTitle("Before filtering", ""));
     outhtml.append(insertTableTbobyBegin());
-    outhtml.append(insertTableTr("total reads:", std::to_string(pre_state1->GetLines() + pre_state2->GetLines())));
-    outhtml.append(
-            insertTableTr("total bases:", std::to_string(pre_state1->GetTotBases() + pre_state2->GetTotBases())));
-    outhtml.append(insertTableTr("Q20 bases:", std::to_string(pre_state1->GetQ20Bases() + pre_state2->GetQ20Bases())));
-    outhtml.append(insertTableTr("Q30 bases:", std::to_string(pre_state1->GetQ30Bases() + pre_state2->GetQ30Bases())));
-    outhtml.append(insertTableTr("GC", std::to_string(1.0 * (pre_state1->GetGcBases() + pre_state2->GetGcBases()) /
-                                                       (pre_state1->GetTotBases() + pre_state2->GetTotBases()))+"%"));
+    outhtml.append(insertTableTr("read1 total reads:", std::to_string(pre_state1->GetLines())));
+    outhtml.append(insertTableTr("read2 total reads:", std::to_string(pre_state2->GetLines())));
+    outhtml.append(insertTableTr("read1 total bases:", std::to_string(pre_state1->GetTotBases())));
+    outhtml.append(insertTableTr("read2 total bases:", std::to_string(pre_state2->GetTotBases())));
+    outhtml.append(insertTableTr("read1 Q20 bases:", std::to_string(pre_state1->GetQ20Bases())));
+    outhtml.append(insertTableTr("read2 Q20 bases:", std::to_string(pre_state2->GetQ20Bases())));
+    outhtml.append(insertTableTr("read1 Q30 bases:", std::to_string(pre_state1->GetQ30Bases())));
+    outhtml.append(insertTableTr("read2 Q30 bases:", std::to_string(pre_state2->GetQ30Bases())));
+    outhtml.append(insertTableTr("read1 GC percentage:", std::to_string(1.0 * pre_state1->GetGcBases() / pre_state1->GetTotBases())+"%"));
+    outhtml.append(insertTableTr("read2 GC percentage:", std::to_string(1.0 * pre_state2->GetGcBases() / pre_state2->GetTotBases())+"%"));
+    outhtml.append(insertTableTr("read1 averae read length:", std::to_string(pre_state1->GetAvgLen())));
+    outhtml.append(insertTableTr("read2 averae read length:", std::to_string(pre_state2->GetAvgLen())));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
     //After filtering information
-    outhtml.append(insertTableBegin());
+    outhtml.append("<div style='width: 200px;float:left; display:inline;'></div>");
+    outhtml.append(insertTableBeginFloat());
     outhtml.append(insertTableTitle("After filtering", ""));
     outhtml.append(insertTableTbobyBegin());
-
-    outhtml.append(insertTableTr("total reads:", std::to_string(aft_state1->GetLines() + aft_state2->GetLines())));
-    outhtml.append(
-            insertTableTr("total bases:", std::to_string(aft_state1->GetTotBases() + aft_state2->GetTotBases())));
-    outhtml.append(insertTableTr("Q20 bases:", std::to_string(aft_state1->GetQ20Bases() + aft_state2->GetQ20Bases())));
-    outhtml.append(insertTableTr("Q30 bases:", std::to_string(+aft_state1->GetQ30Bases() + aft_state2->GetQ30Bases())));
-    outhtml.append(insertTableTr("GC", std::to_string(1.0 * (aft_state1->GetGcBases() + aft_state2->GetGcBases()) /
-                                                       (aft_state1->GetTotBases() + aft_state2->GetTotBases()))+"%"));
+    outhtml.append(insertTableTr("read1 total reads:", std::to_string(aft_state1->GetLines())));
+    outhtml.append(insertTableTr("read2 total reads:", std::to_string(aft_state2->GetLines())));
+    outhtml.append(insertTableTr("read1 total bases:", std::to_string(aft_state1->GetTotBases())));
+    outhtml.append(insertTableTr("read2 total bases:", std::to_string(aft_state2->GetTotBases())));
+    outhtml.append(insertTableTr("read1 Q20 bases:", std::to_string(aft_state1->GetQ20Bases())));
+    outhtml.append(insertTableTr("read2 Q20 bases:", std::to_string(aft_state2->GetQ20Bases())));
+    outhtml.append(insertTableTr("read1 Q30 bases:", std::to_string(aft_state1->GetQ30Bases())));
+    outhtml.append(insertTableTr("read2 Q30 bases:", std::to_string(aft_state2->GetQ30Bases())));
+    outhtml.append(insertTableTr("read1 GC percentage:", std::to_string(1.0 * aft_state1->GetGcBases() / aft_state1->GetTotBases())+"%"));
+    outhtml.append(insertTableTr("read2 GC percentage:", std::to_string(1.0 * aft_state2->GetGcBases() / aft_state2->GetTotBases())+"%"));
+    outhtml.append(insertTableTr("read1 averae read length:", std::to_string(aft_state1->GetAvgLen())));
+    outhtml.append(insertTableTr("read2 averae read length:", std::to_string(aft_state2->GetAvgLen())));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
     int size_real = pre_state1->GetRealSeqLen() + pre_state2->GetRealSeqLen() - size_require;
 
-//    if (!no_size)
-//        outhtml.append(GetInsertSize(size_info, size_len_mx, size_require, size_real));
 
     std::string InsertSizeInfo("InsertSizeInfo");
 
@@ -1351,30 +1376,72 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
     std::string AftGCContent1("AftGCContent1");
     std::string AftGCContent2("AftGCContent2");
 
-    if (pre_state1->GetCmdInfo()->no_insert_size_ == 0)
-        outhtml.append(insertDiv(InsertSizeInfo));
+    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<br/>\n");
+    outhtml.append(insertDivFloat(PrePositionQuality1));
+    outhtml.append(insertDivFloat(AftPositionQuality1));
+    
 
-    outhtml.append(insertDiv(PrePositionQuality1));
-    outhtml.append(insertDiv(PrePositionQuality2));
-    outhtml.append(insertDiv(PrePositionContent1));
-    outhtml.append(insertDiv(PrePositionContent2));
-    outhtml.append(insertDiv(PreMeanQuality1));
-    outhtml.append(insertDiv(PreMeanQuality2));
-    outhtml.append(insertDiv(PreGCContent1));
-    outhtml.append(insertDiv(PreGCContent2));
+    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<br/>\n");
+    outhtml.append(insertDivFloat(PrePositionQuality2));
+    outhtml.append(insertDivFloat(AftPositionQuality2));
+
+
+    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<br/>\n");
+    outhtml.append(insertDivFloat(PrePositionContent1));
+    outhtml.append(insertDivFloat(AftPositionContent1));
+
+
+    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<br/>\n");
+    outhtml.append(insertDivFloat(PrePositionContent2));
+    outhtml.append(insertDivFloat(AftPositionContent2));
+
+
+    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<br/>\n");
+    outhtml.append(insertDivFloat(PreMeanQuality1));
+    outhtml.append(insertDivFloat(AftMeanQuality1));
+    
+
+
+    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<br/>\n");
+    outhtml.append(insertDivFloat(PreMeanQuality2));
+    outhtml.append(insertDivFloat(AftMeanQuality2));
+
+
+
+    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<br/>\n");
+    outhtml.append(insertDivFloat(PreGCContent1));
+    outhtml.append(insertDivFloat(AftGCContent1));
+
+
+
+    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<br/>\n");
+    outhtml.append(insertDivFloat(PreGCContent2));
+    outhtml.append(insertDivFloat(AftGCContent2));
+    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<br/>\n");
+
+
+
+    outhtml.append("\n<hr align=\"left\" style=\"width:1600px;\">\n");
+    outhtml.append("\n<br/>\n");
+    if (pre_state1->GetCmdInfo()->no_insert_size_ == 0){
+        outhtml.append(insertDivFloat(InsertSizeInfo));
+    }
+
+
+
     if (pre_state1->GetCmdInfo()->do_overrepresentation_) {
         outhtml.append(GetOver(pre_state1, 0, 0, pre_state1->GetCmdInfo()->eva_len_));
         outhtml.append(GetOver(pre_state2, 0, 1, pre_state2->GetCmdInfo()->eva_len2_));
     }
-    outhtml.append(insertDiv(AftPositionQuality1));
-    outhtml.append(insertDiv(AftPositionQuality2));
-    outhtml.append(insertDiv(AftPositionContent1));
-    outhtml.append(insertDiv(AftPositionContent2));
-    outhtml.append(insertDiv(AftMeanQuality1));
-    outhtml.append(insertDiv(AftMeanQuality2));
-    outhtml.append(insertDiv(AftGCContent1));
-    outhtml.append(insertDiv(AftGCContent2));
-
     if (pre_state1->GetCmdInfo()->do_overrepresentation_) {
         outhtml.append(GetOver(aft_state1, 1, 0, aft_state1->GetCmdInfo()->eva_len_));
         outhtml.append(GetOver(aft_state2, 1, 1, aft_state2->GetCmdInfo()->eva_len2_));
@@ -1390,11 +1457,11 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertChart(InsertSizeInfo));
         //option
         outhtml.append(insertOptionBegin(InsertSizeInfo));
-        outhtml.append(insertTitle("Insert Size Info"));
+        outhtml.append(insertTitle("Insert Size Distribution (based on PE overlap analyze)"));
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("read length", size_real, 1));
-        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertyAxis("value", "read percent"));
         outhtml.append(insertSeriesBegin());
         int64_t sum_read = 0;
         for (int i = 0; i < size_real; i++)sum_read += size_info[i];
@@ -1415,7 +1482,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Position in read(bp)", pre_mx_len1 + 1));
-        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+        outhtml.append(insertyAxis("value","quality score", std::to_string(0), std::to_string(41)));
         outhtml.append(insertSeriesBegin());
 
         pos_qul_ = pre_state1->GetPosQul();
@@ -1442,7 +1509,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Position in read(bp)", pre_mx_len2 + 1));
-        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+        outhtml.append(insertyAxis("value", "quality score", std::to_string(0), std::to_string(41)));
         outhtml.append(insertSeriesBegin());
 
         pos_qul_ = pre_state2->GetPosQul();
@@ -1470,7 +1537,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Position in read(bp)", aft_mx_len1 + 1));
-        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+        outhtml.append(insertyAxis("value", "quality score", std::to_string(0), std::to_string(41)));
         outhtml.append(insertSeriesBegin());
 
         pos_qul_ = aft_state1->GetPosQul();
@@ -1497,7 +1564,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Position in read(bp)", aft_mx_len2 + 1));
-        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(41)));
+        outhtml.append(insertyAxis("value", "quality score", std::to_string(0), std::to_string(41)));
         outhtml.append(insertSeriesBegin());
 
         pos_qul_ = aft_state2->GetPosQul();
@@ -1526,7 +1593,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Mean Sequence Quality(Phred Score)", 42));
-        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         qul_cnt = pre_state1->GetQulCnt();
         for (int i = 0; i < 42; i++)
@@ -1544,7 +1611,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Mean Sequence Quality(Phred Score)", 42));
-        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         qul_cnt = pre_state2->GetQulCnt();
         for (int i = 0; i < 42; i++)
@@ -1564,7 +1631,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Mean Sequence Quality(Phred Score)", 42));
-        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         qul_cnt = aft_state1->GetQulCnt();
         for (int i = 0; i < 42; i++)
@@ -1582,7 +1649,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Mean Sequence Quality(Phred Score)", 42));
-        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         qul_cnt = aft_state2->GetQulCnt();
         for (int i = 0; i < 42; i++)
@@ -1603,7 +1670,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertDataZoom());
         outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
         outhtml.append(insertxAxis("Position in read(bp)", pre_mx_len1 + 1));
-        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+        outhtml.append(insertyAxis("value", "base percent", std::to_string(0), std::to_string(1)));
         outhtml.append(insertSeriesBegin());
 
         pos_cnt_ = pre_state1->GetPosCnt();
@@ -1646,7 +1713,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertDataZoom());
         outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
         outhtml.append(insertxAxis("Position in read(bp)", pre_mx_len2 + 1));
-        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+        outhtml.append(insertyAxis("value", "base percent", std::to_string(0), std::to_string(1)));
         outhtml.append(insertSeriesBegin());
 
         pos_cnt_ = pre_state2->GetPosCnt();
@@ -1689,7 +1756,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertDataZoom());
         outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
         outhtml.append(insertxAxis("Position in read(bp)", aft_mx_len1 + 1));
-        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+        outhtml.append(insertyAxis("value", "base percent", std::to_string(0), std::to_string(1)));
         outhtml.append(insertSeriesBegin());
 
         pos_cnt_ = aft_state1->GetPosCnt();
@@ -1732,7 +1799,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertDataZoom());
         outhtml.append(insertLegend("\'A\',\'G\',\'C\',\'T\'"));
         outhtml.append(insertxAxis("Position in read(bp)", aft_mx_len2 + 1));
-        outhtml.append(insertyAxis("value", std::to_string(0), std::to_string(1)));
+        outhtml.append(insertyAxis("value", "base percent", std::to_string(0), std::to_string(1)));
         outhtml.append(insertSeriesBegin());
 
         pos_cnt_ = aft_state2->GetPosCnt();
@@ -1775,7 +1842,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
-        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         int64_t *gc_cnt = pre_state1->GetGcCnt();
         for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
@@ -1792,7 +1859,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
-        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         gc_cnt = pre_state2->GetGcCnt();
         for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
@@ -1810,7 +1877,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
-        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         int64_t *gc_cnt = aft_state1->GetGcCnt();
         for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
@@ -1827,7 +1894,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
         outhtml.append(insertTooltip());
         outhtml.append(insertDataZoom());
         outhtml.append(insertxAxis("Mean GC content(%)", 101 + 1, 1));
-        outhtml.append(insertyAxis("value"));
+        outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         gc_cnt = aft_state2->GetGcCnt();
         for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];

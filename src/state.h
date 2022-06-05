@@ -96,6 +96,8 @@ public:
 
 	double GetOrpCost() const;
 
+	double GetAvgLen() const;
+
     CmdInfo *GetCmdInfo() const;
 
 private:
@@ -118,6 +120,7 @@ private:
     int64_t kmer_max_;
     int64_t tot_bases_;
     int64_t gc_bases_;
+    double avg_len;
     bool has_summarize_;
     int *head_hash_graph_;
     node *hash_graph_;

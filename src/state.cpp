@@ -25,6 +25,7 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
 	q30bases_ = 0;
 	lines_ = 0;
 	malloc_seq_len_ = seq_len;
+    avg_len = 0;
 	qul_range_ = qul_range;
 	real_seq_len_ = 0;
 	has_summarize_ = false;
@@ -306,7 +307,6 @@ void State::StateInfo(neoReference &ref) {
 
 
 #elif Vec256
-	//print("pending...");
 	for (int i = 0; i < slen; i++) {
 		char b = bases[i] & 0x07;
 		if (b == 3 || b == 7)gc_cnt++;
@@ -499,7 +499,7 @@ State *State::MergeStates(const std::vector<State *> &states) {
 
 	}
 
-
+    res_state->avg_len = 1.0 * res_state->tot_bases_ / res_state->lines_;
 	res_state->Summarize();
 	return res_state;
 }
@@ -509,9 +509,11 @@ State *State::MergeStates(const std::vector<State *> &states) {
  * @param state
  */
 void State::PrintStates(const State *state) {
-	printf("q20bases %lld\n", state->q20bases_);
-	printf("q30bases %lld\n", state->q30bases_);
+    printf("total bases %lld\n", state->tot_bases_);
+	printf("q20 bases %lld\n", state->q20bases_);
+	printf("q30 bases %lld\n", state->q30bases_);
 	printf("read number %lld\n", state->lines_);
+    printf("average read length %.3f\n", state->avg_len);
 	//printf("kmer max is %lld\n", state->kmer_max_);
 	//printf("kmer min is %lld\n", state->kmer_min_);
 	//if(state->do_over_represent_analyze_){
@@ -640,6 +642,10 @@ int State::GetHashNum() const {
 double State::GetOrpCost() const {
 	return orpCost;
 }  
+
+double State::GetAvgLen() const {
+    return avg_len;
+}
 std::string State::list2string(int64_t *list, int size) {
 	std::stringstream ss;
 	for (int i = 0; i < size; i++) {
