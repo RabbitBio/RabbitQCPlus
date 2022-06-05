@@ -39,8 +39,8 @@ std::string HTMLHeader() {
             "<html lang=\"en\">\n"
             "<head>\n"
             "    <meta charset=\"UTF-8\">\n"
-            "    <title>Title</title>\n"
-            "    <script src=\"https://cdn.jsdelivr.net/npm/echarts@5.0.2/dist/echarts.min.js\"></script>\n"
+            "    <title>RabbitQCPlus report</title>\n"
+            "    <script src=\"https://cdn.bootcss.com/echarts/4.2.1-rc1/echarts.min.js\"></script>\n"
             "</head>\n"
             "<body>\n");
 }
