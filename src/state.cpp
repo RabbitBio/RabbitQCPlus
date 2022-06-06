@@ -552,7 +552,7 @@ void State::PrintAdatperToFile(const State *state){
 
 void State::PrintFilterResults(const State *state){
 
-    printf("filterint result:\n");
+    printf("filtering result:\n");
     printf("pass filter read number: %lld\n",state->pass_reads_);
     printf("not pass filter due to too short: %lld\n",state->fail_short_);
     printf("not pass filter due to too long: %lld\n",state->fail_long_);
