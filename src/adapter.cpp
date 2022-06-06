@@ -1145,7 +1145,7 @@ int Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int ove
     if (overlap_len > 0 && offset < 0) {
         std::string adapter1 = std::string(reinterpret_cast<const char *>(r1.base + r1.pseq + overlap_len),
                 r1.lseq - overlap_len);
-        std::string adapter2 = std::string(reinterpret_cast<const char *>(r2.base + r1.pseq + overlap_len),
+        std::string adapter2 = std::string(reinterpret_cast<const char *>(r2.base + r2.pseq + overlap_len),
                 r2.lseq - overlap_len);
         r1.lseq = overlap_len;
         r1.lqual = overlap_len;
@@ -1163,7 +1163,7 @@ int Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int ove
     if (overlap_len > 0 && offset < 0) {
         std::string adapter1 = std::string(reinterpret_cast<const char *>(r1.base + r1.pseq + overlap_len),
                 r1.lseq - overlap_len);
-        std::string adapter2 = std::string(reinterpret_cast<const char *>(r2.base + r1.pseq + overlap_len),
+        std::string adapter2 = std::string(reinterpret_cast<const char *>(r2.base + r2.pseq + overlap_len),
                 r2.lseq - overlap_len);
         r1.lseq = overlap_len;
         r1.lqual = overlap_len;
