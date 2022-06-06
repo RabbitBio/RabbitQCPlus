@@ -462,9 +462,9 @@ void SeQc::ProcessSeFastq() {
     auto pre_state = State::MergeStates(pre_vec_state);
     auto aft_state = State::MergeStates(aft_vec_state);
 #ifdef Verbose
-	if(cmd_info_->do_overrepresentation_){
-		printf("orp cost %lf\n",pre_state->GetOrpCost()+aft_state->GetOrpCost());
-	}  
+    if(cmd_info_->do_overrepresentation_){
+        printf("orp cost %lf\n",pre_state->GetOrpCost()+aft_state->GetOrpCost());
+    }  
     printf("merge done\n");
 #endif
     printf("\nprint read (before filter) info :\n");
@@ -486,16 +486,25 @@ void SeQc::ProcessSeFastq() {
 
 
         ofstream ofs;
-        ofs.open("ORP2.log", ifstream::out);
+
+        printf("in read (before filter) find %d possible overrepresented sequences (store in before_read_overrepresented_sequences.txt)\n",hash_num1);
+        ofs.open("before_read_overrepresented_sequences.txt", ifstream::out);
+        ofs << "sequence count" << "\n";
         for (int i = 0; i < hash_num1; i++) {
             ofs << hash_graph1[i].seq << " " << hash_graph1[i].cnt << "\n";
         }
         ofs.close();
-        ofs.open("ORP3.log", ifstream::out);
+
+
+        printf("in read (after filter) find %d possible overrepresented sequences (store in after_read_overrepresented_sequences.txt)\n",hash_num2);
+        ofs.open("after_read_overrepresented_sequences.txt", ifstream::out);
+        ofs << "sequence count" << "\n";
         for (int i = 0; i < hash_num2; i++) {
             ofs << hash_graph2[i].seq << " " << hash_graph2[i].cnt << "\n";
         }
         ofs.close();
+        printf("\n");
+
     }
 
 

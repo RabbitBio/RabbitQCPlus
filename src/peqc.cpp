@@ -850,23 +850,41 @@ void PeQc::ProcessPeFastq() {
             int aft_hash_num1 = aft_state1->GetHashNum();
             auto aft_hash_graph2 = aft_state2->GetHashGraph();
             int aft_hash_num2 = aft_state2->GetHashNum();
+
             ofstream ofs;
-            ofs.open("ORP2.log", ifstream::out);
+
+            printf("in read1 (before filter) find %d possible overrepresented sequences (store in before_read1_overrepresented_sequences.txt)\n",pre_hash_num1);
+            ofs.open("before_read1_overrepresented_sequences.txt", ifstream::out);
+            ofs << "sequence count" << "\n";
             for (int i = 0; i < pre_hash_num1; i++) {
                 ofs << pre_hash_graph1[i].seq << " " << pre_hash_graph1[i].cnt << "\n";
             }
+            ofs.close();
+
+            printf("in read2 (before filter) find %d possible overrepresented sequences (store in before_read2_overrepresented_sequences.txt)\n",pre_hash_num2);
+            ofs.open("before_read2_overrepresented_sequences.txt", ifstream::out);
+            ofs << "sequence count" << "\n";
             for (int i = 0; i < pre_hash_num2; i++) {
                 ofs << pre_hash_graph2[i].seq << " " << pre_hash_graph2[i].cnt << "\n";
             }
             ofs.close();
-            ofs.open("ORP3.log", ifstream::out);
+
+            printf("in read1 (after filter) find %d possible overrepresented sequences (store in after_read1_overrepresented_sequences.txt)\n",aft_hash_num1);
+            ofs.open("after_read1_overrepresented_sequences.txt", ifstream::out);
+            ofs << "sequence count" << "\n";
             for (int i = 0; i < aft_hash_num1; i++) {
                 ofs << aft_hash_graph1[i].seq << " " << aft_hash_graph1[i].cnt << "\n";
             }
+            ofs.close();
+
+            printf("in read2 (after filter) find %d possible overrepresented sequences (store in after_read2_overrepresented_sequences.txt)\n",aft_hash_num2);
+            ofs.open("after_read2_overrepresented_sequences.txt", ifstream::out);
+            ofs << "sequence count" << "\n";
             for (int i = 0; i < aft_hash_num2; i++) {
                 ofs << aft_hash_graph2[i].seq << " " << aft_hash_graph2[i].cnt << "\n";
             }
             ofs.close();
+            printf("\n");
         }
         int *dupHist = NULL;
         double *dupMeanGC = NULL;
@@ -1044,23 +1062,47 @@ void PeQc::ProcessPeFastq() {
             int aft_hash_num1 = aft_state1->GetHashNum();
             auto aft_hash_graph2 = aft_state2->GetHashGraph();
             int aft_hash_num2 = aft_state2->GetHashNum();
+
             ofstream ofs;
-            ofs.open("ORP2.log", ifstream::out);
+
+            printf("in read1 (before filter) find %d possible overrepresented sequences (store in before_read1_overrepresented_sequences.txt)\n",pre_hash_num1);
+            ofs.open("before_read1_overrepresented_sequences.txt", ifstream::out);
+            ofs << "sequence count" << "\n";
             for (int i = 0; i < pre_hash_num1; i++) {
                 ofs << pre_hash_graph1[i].seq << " " << pre_hash_graph1[i].cnt << "\n";
             }
+            ofs.close();
+
+
+
+            printf("in read2 (before filter) find %d possible overrepresented sequences (store in before_read2_overrepresented_sequences.txt)\n",pre_hash_num2);
+            ofs.open("before_read2_overrepresented_sequences.txt", ifstream::out);
+            ofs << "sequence count" << "\n";
             for (int i = 0; i < pre_hash_num2; i++) {
                 ofs << pre_hash_graph2[i].seq << " " << pre_hash_graph2[i].cnt << "\n";
             }
             ofs.close();
-            ofs.open("ORP3.log", ifstream::out);
+
+
+
+            printf("in read1 (after filter) find %d possible overrepresented sequences (store in after_read1_overrepresented_sequences.txt)\n",aft_hash_num1);
+            ofs.open("after_read1_overrepresented_sequences.txt", ifstream::out);
+            ofs << "sequence count" << "\n";
             for (int i = 0; i < aft_hash_num1; i++) {
                 ofs << aft_hash_graph1[i].seq << " " << aft_hash_graph1[i].cnt << "\n";
             }
+            ofs.close();
+
+
+
+            printf("in read2 (after filter) find %d possible overrepresented sequences (store in after_read2_overrepresented_sequences.txt)\n",aft_hash_num2);
+            ofs.open("after_read2_overrepresented_sequences.txt", ifstream::out);
+            ofs << "sequence count" << "\n";
             for (int i = 0; i < aft_hash_num2; i++) {
                 ofs << aft_hash_graph2[i].seq << " " << aft_hash_graph2[i].cnt << "\n";
             }
             ofs.close();
+            printf("\n");
         }
         int *dupHist = NULL;
         double *dupMeanGC = NULL;

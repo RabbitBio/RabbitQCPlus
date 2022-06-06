@@ -291,13 +291,12 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
     //    for (auto iter = hot_seqs.begin(); iter != hot_seqs.end(); iter++) {
     //        std::cout << iter->first << ": " << iter->first.size() << " , " << iter->second << std::endl;
     //    }
-    std::ofstream ofs;
-    ofs.open("ORP.log", std::ifstream::out);
-    for (auto item:hot_seqs) {
-
-        ofs << item << "\n";
-    }
-    ofs.close();
+    //std::ofstream ofs;
+    //ofs.open("ORP.log", std::ifstream::out);
+    //for (auto item:hot_seqs) {
+    //    ofs << item << "\n";
+    //}
+    //ofs.close();
     //printf("part4 cost %.5f\n", GetTime() - t0);
     t0 = GetTime();
     for (auto item:chunks)

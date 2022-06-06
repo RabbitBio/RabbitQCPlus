@@ -843,10 +843,8 @@ std::string GetOver(State *state, bool isAfter, bool isRead2, int eva_len) {
     divName = replace(divName, ":", "_");
     std::string title = "";
 
-    ofs << "<div class='subsection_title'><a title='click to hide/show' onclick=showOrHide('" << divName
-        << "')>" + subsection + "</a></div>\n";
-    ofs << "<div  id='" << divName << "'>\n";
-    ofs << "<div class='sub_section_tips'>Sampling rate: 1 / " << cmd_info->overrepresentation_sampling_
+    ofs << "<div  id='" << divName << "' style='width:40%;  float:left; display:inline; padding:5%'>\n";
+    ofs << "<div class='sub_section_tips'style='padding:10%' >" <<divName<< "   Sampling rate: 1 / " << cmd_info->overrepresentation_sampling_
         << "</div>\n";
     ofs << "<table class='summary_table'>\n";
     ofs
@@ -1443,10 +1441,12 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
 
     if (pre_state1->GetCmdInfo()->do_overrepresentation_) {
         outhtml.append(GetOver(pre_state1, 0, 0, pre_state1->GetCmdInfo()->eva_len_));
-        outhtml.append(GetOver(pre_state2, 0, 1, pre_state2->GetCmdInfo()->eva_len2_));
-    }
-    if (pre_state1->GetCmdInfo()->do_overrepresentation_) {
         outhtml.append(GetOver(aft_state1, 1, 0, aft_state1->GetCmdInfo()->eva_len_));
+
+        outhtml.append("\n<hr style='width:90%;'>\n");
+        outhtml.append("\n<br/>\n");
+
+        outhtml.append(GetOver(pre_state2, 0, 1, pre_state2->GetCmdInfo()->eva_len2_));
         outhtml.append(GetOver(aft_state2, 1, 1, aft_state2->GetCmdInfo()->eva_len2_));
     }
 

@@ -541,6 +541,7 @@ void State::PrintAdatperToFile(const State *state){
     string file_name="trimmed_adapters"+to_string(cntt)+".txt";
     cntt++;
     ooff.open(file_name);
+    ooff<<"adapter count\n";
     for(auto item:state->adapter_map_){
         ooff<<item.first<<" "<<item.second<<endl;
         tot_trimmed_base+=(item.first.length())*(item.second);
