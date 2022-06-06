@@ -20,11 +20,15 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != std::string::npos;
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != std::string::npos;
     if (cmd_info1->write_data_) {
-        out_queue1_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>;
+        out_queue1_ = new CIPair[1<<25];
+        queue1P1=0;
+        queue1P2=0;
         queueNumNow1=0;
         queueSizeLim1=1 << 6;
         if (cmd_info_->interleaved_out_ == 0){
-            out_queue2_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>;
+            out_queue2_ = new CIPair[1<<25];
+            queue2P1=0;
+            queue2P2=0;
             queueNumNow2=0;
             queueSizeLim2=1 << 6;
         }
@@ -99,6 +103,7 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
     writerDone2 = 0;
 
 }
+
 
 PeQc::~PeQc() {
     delete filter_;
@@ -241,6 +246,11 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
         for (int i = 0; i < b_size; i++) {
             auto item1 = data1[i];
             auto item2 = data2[i];
+            std::string name1 = std::string((char *) item1.base + item1.pname, item1.lname);
+            std::string name2 = std::string((char *) item2.base + item2.pname, item2.lname);
+            if(name1!=name2){
+                std::cout<<name1<<" "<<name2<<std::endl;
+            }
             thread_info->pre_state1_->StateInfo(item1);
             thread_info->pre_state2_->StateInfo(item2);
             if (cmd_info_->state_duplicate_) {
@@ -368,46 +378,49 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     Read2Chars(item1, out_data, pos);
                     Read2Chars(item2, out_data, pos);
                 }
+                mylock.lock();
                 while (queueNumNow1>queueSizeLim1) {
 #ifdef Verbose
                     //printf("waiting to push a chunk to out queue1\n");
 #endif
                     usleep(100);
                 }
-                out_queue1_->enqueue({out_data, pos});
+                out_queue1_[queue1P2++]={out_data, pos};
                 queueNumNow1++;
+                mylock.unlock();
             } else {
-                if (pass_data1.size() > 0) {
+                if (pass_data1.size() > 0 && pass_data2.size() > 0) {
                     char *out_data1 = new char[out_len1];
                     int pos = 0;
                     for (auto item:pass_data1) {
                         Read2Chars(item, out_data1, pos);
                     }
                     ASSERT(pos == out_len1);
+                    char *out_data2 = new char[out_len2];
+                    pos = 0;
+                    for (auto item:pass_data2) {
+                        Read2Chars(item, out_data2, pos);
+                    }
+                    ASSERT(pos == out_len2);
+
+                    mylock.lock();
                     while (queueNumNow1>queueSizeLim1) {
 #ifdef Verbose
                         //printf("waiting to push a chunk to out queue1\n");
 #endif
                         usleep(100);
                     }
-                    out_queue1_->enqueue({out_data1, out_len1});
-                    queueNumNow1++;
-                }
-                if (pass_data2.size() > 0) {
-                    char *out_data2 = new char[out_len2];
-                    int pos = 0;
-                    for (auto item:pass_data2) {
-                        Read2Chars(item, out_data2, pos);
-                    }
-                    ASSERT(pos == out_len2);
                     while (queueNumNow2>queueSizeLim2) {
 #ifdef Verbose
                         //printf("waiting to push a chunk to out queue2\n");
 #endif
                         usleep(100);
                     }
-                    out_queue2_->enqueue({out_data2, out_len2});
+                    out_queue1_[queue1P2++]={out_data1, out_len1};
+                    queueNumNow1++;
+                    out_queue2_[queue2P2++]={out_data2, out_len2};
                     queueNumNow2++;
+                    mylock.unlock();
                 }
             }
 
@@ -543,46 +556,49 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                 Read2Chars(item1, out_data, pos);
                 Read2Chars(item2, out_data, pos);
             }
+            mylock.lock();
             while (queueNumNow1>queueSizeLim1) {
 #ifdef Verbose
                 //printf("waiting to push a chunk to out queue1\n");
 #endif
                 usleep(100);
             }
-            out_queue1_->enqueue({out_data, pos});
+            out_queue1_[queue1P2++]={out_data, pos};
             queueNumNow1++;
+            mylock.unlock();
         } else {
-            if (pass_data1.size() > 0) {
+            if (pass_data1.size() > 0 && pass_data2.size() > 0) {
                 char *out_data1 = new char[out_len1];
                 int pos = 0;
                 for (auto item:pass_data1) {
                     Read2Chars(item, out_data1, pos);
                 }
                 ASSERT(pos == out_len1);
+                char *out_data2 = new char[out_len2];
+                pos = 0;
+                for (auto item:pass_data2) {
+                    Read2Chars(item, out_data2, pos);
+                }
+                ASSERT(pos == out_len2);
+
+                mylock.lock();
                 while (queueNumNow1>queueSizeLim1) {
 #ifdef Verbose
                     //printf("waiting to push a chunk to out queue1\n");
 #endif
                     usleep(100);
                 }
-                out_queue1_->enqueue({out_data1, out_len1});
-                queueNumNow1++;
-            }
-            if (pass_data2.size() > 0) {
-                char *out_data2 = new char[out_len2];
-                int pos = 0;
-                for (auto item:pass_data2) {
-                    Read2Chars(item, out_data2, pos);
-                }
-                ASSERT(pos == out_len2);
                 while (queueNumNow2>queueSizeLim2) {
 #ifdef Verbose
                     //printf("waiting to push a chunk to out queue2\n");
 #endif
                     usleep(100);
                 }
-                out_queue2_->enqueue({out_data2, out_len2});
+                out_queue1_[queue1P2++]={out_data1, out_len1};
+                queueNumNow1++;
+                out_queue2_[queue2P2++]={out_data2, out_len2};
                 queueNumNow2++;
+                mylock.unlock();
             }
         }
         fastqPool->Release(fqdatachunk);
@@ -600,16 +616,15 @@ void PeQc::WriteSeFastqTask1() {
     bool overWhile=0;
     std::pair<char *, int> now;
     while (true) {
-        while (out_queue1_->try_dequeue(now) == 0) {
-            if (done_thread_number_ == cmd_info_->thread_number_) {
-                if (out_queue1_->size_approx() == 0) {
-                    overWhile=1;
-                    break;
-                }
+        while(queueNumNow1==0){
+            if (done_thread_number_ == cmd_info_->thread_number_){
+                overWhile=1;
+                break;
             }
             usleep(100);
         }
         if(overWhile)break;
+        now=out_queue1_[queue1P1++];
         queueNumNow1--;
         if (out_is_zip_) {
             if(cmd_info_->use_pigz_){
@@ -663,18 +678,16 @@ void PeQc::WriteSeFastqTask2() {
     bool overWhile=0;
     std::pair<char *, int> now;
     while (true) {
-        while (out_queue2_->try_dequeue(now) == 0) {
-            if (done_thread_number_ == cmd_info_->thread_number_) {
-                if (out_queue2_->size_approx() == 0) {
-                    overWhile=1;
-                    break;
-                }
+        while(queueNumNow2==0){
+            if (done_thread_number_ == cmd_info_->thread_number_){
+                overWhile=1;
+                break;
             }
             usleep(100);
         }
         if(overWhile)break;
+        now=out_queue2_[queue2P1++];
         queueNumNow2--;
-
         if (out_is_zip_) {
             if(cmd_info_->use_pigz_){
                 while(pigzQueueNumNow2>pigzQueueSizeLim2){

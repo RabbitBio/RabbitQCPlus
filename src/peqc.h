@@ -10,6 +10,7 @@
 #include <functional>
 #include <cstring>
 #include <sys/time.h>
+#include <queue>
 
 #include "Globals.h"
 #include "Formater.h"
@@ -24,6 +25,7 @@
 #include "pugz.h"
 #include "pigz.h"
 
+#define CIPair std::pair<char *, int>
 class PeQc {
 public:
     PeQc(CmdInfo *cmd_info);
@@ -76,12 +78,14 @@ private:
 
 	void PigzTask2();
 
-
 private:
     CmdInfo *cmd_info_;
     Filter *filter_;
-    moodycamel::ConcurrentQueue<std::pair<char *, int>> *out_queue1_;
-    moodycamel::ConcurrentQueue<std::pair<char *, int>> *out_queue2_;
+    //moodycamel::ConcurrentQueue<std::pair<char *, int>> *out_queue1_;
+
+    CIPair *out_queue1_;
+    //moodycamel::ConcurrentQueue<std::pair<char *, int>> *out_queue2_;
+    CIPair *out_queue2_;
 //TODO replace concurrentqueue with char*[]
     std::atomic_int done_thread_number_;
     std::fstream out_stream1_;
@@ -107,17 +111,21 @@ private:
 
 	std::atomic_int producerDone;
  	std::atomic_int writerDone1;
+    std::atomic_int queue1P1;
+    std::atomic_int queue1P2;
     std::atomic_int queueNumNow1;
     std::atomic_int queueSizeLim1;
     std::atomic_int pigzQueueNumNow1;
     std::atomic_int pigzQueueSizeLim1;
 
   	std::atomic_int writerDone2;
+    std::atomic_int queue2P1;
+    std::atomic_int queue2P2;
     std::atomic_int queueNumNow2;
     std::atomic_int queueSizeLim2;
     std::atomic_int pigzQueueNumNow2;
     std::atomic_int pigzQueueSizeLim2;
-
+    std::mutex mylock;
 
 
 };
