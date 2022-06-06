@@ -248,9 +248,6 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             auto item2 = data2[i];
             std::string name1 = std::string((char *) item1.base + item1.pname, item1.lname);
             std::string name2 = std::string((char *) item2.base + item2.pname, item2.lname);
-            if(name1!=name2){
-                std::cout<<name1<<" "<<name2<<std::endl;
-            }
             thread_info->pre_state1_->StateInfo(item1);
             thread_info->pre_state2_->StateInfo(item2);
             if (cmd_info_->state_duplicate_) {
