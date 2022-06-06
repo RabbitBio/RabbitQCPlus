@@ -15,72 +15,72 @@ int main(int argc, char **argv) {
     app.add_option("-o,--outFile1", cmd_info.out_file_name1_, "output fastq name 1");
     app.add_option("-O,--outFile2", cmd_info.out_file_name2_, "output fastq name 2");
 
-    app.add_flag("--phred64", cmd_info.isPhred64_, "input is using phred64 scoring");
+    app.add_flag("--phred64", cmd_info.isPhred64_, "input is using phred64 scoring, default is phred33");
     app.add_flag("--stdin", cmd_info.isStdin_,
-            "input from stdin, or -i /dev/stdin, only for se data or interleaved in pe data(which means use --interleavedIn)");
+            "input from stdin, or -i /dev/stdin, only for se data or interleaved pe data(which means use --interleavedIn)");
     app.add_flag("--stdout", cmd_info.isStdout_,
-            "output to stdout, or -o /dev/stdout, only for se data or interleaved out pe data(which means use --interleavedOut)");
+            "output to stdout, or -o /dev/stdout, only for se data or interleaved pe data(which means use --interleavedOut)");
 
 
-    app.add_flag("-a,--noTrimAdapter", cmd_info.no_trim_adapter_, "no trim adapter");
-    app.add_flag("--decAdaForSe", cmd_info.se_auto_detect_adapter_, "detect adapter for se data");
-    app.add_flag("--decAdaForPe", cmd_info.pe_auto_detect_adapter_, "detect adapter for pe data");
+    app.add_flag("-a,--noTrimAdapter", cmd_info.no_trim_adapter_, "no trim adapter, default is off");
+    app.add_flag("--decAdaForSe", cmd_info.se_auto_detect_adapter_, "detect adapter for se data, default is on");
+    app.add_flag("--decAdaForPe", cmd_info.pe_auto_detect_adapter_, "detect adapter for pe data, default is off, tool prefers to use overlap to find adapter");
     app.add_flag("--printWhatTrimmed", cmd_info.print_what_trimmed_, "print what trimmed to *overrepresented_sequences.txt, default is off");
-    app.add_option("--adapterSeq1", cmd_info.adapter_seq1_, "input adapter sequence1");
-    app.add_option("--adapterSeq2", cmd_info.adapter_seq2_, "input adapter sequence2");
-    app.add_option("--adapterLengthLimit", cmd_info.adapter_len_lim_, "minimum adapter length when trimming, default is 0");
+    app.add_option("--adapterSeq1", cmd_info.adapter_seq1_, "input adapter sequence1 for read1");
+    app.add_option("--adapterSeq2", cmd_info.adapter_seq2_, "input adapter sequence2 for read2");
+    //app.add_option("--adapterLengthLimit", cmd_info.adapter_len_lim_, "minimum adapter length when trimming, default is 0");
 
-    app.add_flag("-c,--correctData", cmd_info.correct_data_, "correct data");
+    app.add_flag("-c,--correctData", cmd_info.correct_data_, "correct data with overlap analyze, default is off");
 
-    app.add_option("-w,--threadNum", cmd_info.thread_number_, "number thread used to solve fastq data");
+    app.add_option("-w,--threadNum", cmd_info.thread_number_, "number thread used to do QC, default is 1");
 
     //filter
-    app.add_flag("-5,--trim5End", cmd_info.trim_5end_, "do sliding window 5end trim");
-    app.add_flag("-3,--trim3End", cmd_info.trim_3end_, "do sliding window 3end trim");
-    app.add_option("--trimFront1", cmd_info.trim_front1_, "ref1 trim front size");
-    app.add_option("--trimFront2", cmd_info.trim_front2_, "ref2 trim front size");
-    app.add_option("--trimTail1", cmd_info.trim_tail1_, "ref1 trim tail size");
-    app.add_option("--trimTail2", cmd_info.trim_tail2_, "ref2 trim tail size");
+    app.add_flag("-5,--trim5End", cmd_info.trim_5end_, "do sliding window 5end trim, defalut is off");
+    app.add_flag("-3,--trim3End", cmd_info.trim_3end_, "do sliding window 3end trim, defalut is off");
+    app.add_option("--trimFront1", cmd_info.trim_front1_, "read1 trim front size, defalut is 0");
+    app.add_option("--trimFront2", cmd_info.trim_front2_, "read2 trim front size, defalut is 0");
+    app.add_option("--trimTail1", cmd_info.trim_tail1_, "read1 trim tail size, defalut is 0");
+    app.add_option("--trimTail2", cmd_info.trim_tail2_, "read2 trim tail size, defalut is 0");
 
 
-    app.add_flag("-g,--trimPolyg", cmd_info.trim_polyg_, "do polyg trim");
-    app.add_flag("-x,--trimPolyx", cmd_info.trim_polyx_, "do polyx trim");
+    app.add_flag("-g,--trimPolyg", cmd_info.trim_polyg_, "do polyg trim, defalut is off");
+    app.add_flag("-x,--trimPolyx", cmd_info.trim_polyx_, "do polyx trim, defalut is off");
 
 
-    app.add_flag("-u,--addUmi", cmd_info.add_umi_, "do umi add");
-    app.add_option("--umiLen", cmd_info.umi_len_, "");
+    app.add_flag("-u,--addUmi", cmd_info.add_umi_, "do umi add, defalut is off");
+    app.add_option("--umiLen", cmd_info.umi_len_, "umi length, defalut is 0");
     string umiLoc = "";
-    app.add_option("--umiLoc", umiLoc, "");
-    app.add_option("--umiPrefix", cmd_info.umi_prefix_, "");
-    app.add_option("--umiSkip", cmd_info.umi_skip_, "");
+    app.add_option("--umiLoc", umiLoc, "umi local, default is UMI_LOC_NONE");
+    app.add_option("--umiPrefix", cmd_info.umi_prefix_, "umi prefix");
+    app.add_option("--umiSkip", cmd_info.umi_skip_, "umi skip, defalut is 0");
 
-    app.add_option("--seqLen", cmd_info.seq_len_, "");
+    //app.add_option("--seqLen", cmd_info.seq_len_, "max sequence length, defalut is 200");
 
 
     //TGS
     //TODO now just se
-    app.add_flag("--TGS", cmd_info.is_TGS_, "process TGS");
+    app.add_flag("--TGS", cmd_info.is_TGS_, "process TGS data, defalut is off");
 
 
     //overrepresentation
-    app.add_flag("-p,--doOverrepresentation", cmd_info.do_overrepresentation_, "do overrepresentation");
+    app.add_flag("-p,--doOverrepresentation", cmd_info.do_overrepresentation_, "do overrepresentation analyze, defalut is off");
     app.add_option("-P,--overrepresentationSampling", cmd_info.overrepresentation_sampling_,
-            "do overrepresentation every [] reads");
+            "do overrepresentation every [] reads, defalut is 1");
 
     //insert size analyze
-    app.add_flag("--noInsertSize", cmd_info.no_insert_size_, "no insert size analyze");
+    app.add_flag("--noInsertSize", cmd_info.no_insert_size_, "no insert size analyze, defalut is off");
 
 
     //interleaved
-    app.add_flag("--interleavedIn", cmd_info.interleaved_in_, "use interleaved input (only for pe data)");
-    app.add_flag("--interleavedOut", cmd_info.interleaved_out_, "use interleaved output (only for pe data)");
+    app.add_flag("--interleavedIn", cmd_info.interleaved_in_, "use interleaved input (only for pe data), defalut is off");
+    app.add_flag("--interleavedOut", cmd_info.interleaved_out_, "use interleaved output (only for pe data), defalut is off");
 
 
     //parallel gz
-    app.add_flag("--usePugz", cmd_info.use_pugz_, "use pugz to decompress");
-    app.add_flag("--usePigz", cmd_info.use_pigz_, "use pigz to compress");
-    app.add_option("--pugzThread", cmd_info.pugz_threads_, "pugz thread number");
-    app.add_option("--pigzThread", cmd_info.pigz_threads_, "pigz thread number");
+    app.add_flag("--usePugz", cmd_info.use_pugz_, "use pugz to decompress, defalut is off");
+    app.add_flag("--usePigz", cmd_info.use_pigz_, "use pigz to compress, defalut is off");
+    app.add_option("--pugzThread", cmd_info.pugz_threads_, "pugz thread number, defalut is 2");
+    app.add_option("--pigzThread", cmd_info.pigz_threads_, "pigz thread number, defalut is 2");
 
     bool quVersion=false;
     app.add_flag("-V,--version",quVersion,"application version");

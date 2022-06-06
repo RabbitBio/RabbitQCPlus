@@ -78,7 +78,7 @@ CmdInfo::CmdInfo() {
 
     //overrepresentation
     do_overrepresentation_ = false;
-    overrepresentation_sampling_ = 20;
+    overrepresentation_sampling_ = 1;
     eva_len_ = 150;
     eva_len2_ = 150;
 
