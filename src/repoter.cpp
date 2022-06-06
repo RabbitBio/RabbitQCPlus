@@ -35,12 +35,35 @@ Reference Repoter::GetRevRef(neoReference &ref) {
 
 
 std::string HTMLHeader() {
+    
+    std::ifstream iiff("src/echarts.min.js",ios::in);
+    if (!iiff.is_open()){
+        cout << "read echarts.min.js fail." << endl;
+        exit(0);
+    }
+    std::string jsInfo="";
+    std::string jsTmp="";
+    while(std::getline(iiff,jsTmp)){
+        jsInfo+=jsTmp+"\n";
+    }
+    iiff.close();
+    
+    /*
+    freopen("echarts.min.js","r",stdin);
+    std::string jsInfo;
+    std::string tmpInfo;
+    while(std::cin>>tmpInfo){
+        jsInfo+=tmpInfo;
+    }
+    printf("rr %d\n",jsInfo.length());
+    fclose(stdin);
+*/
     return std::string("<!DOCTYPE html>\n"
             "<html lang=\"en\">\n"
             "<head>\n"
             "    <meta charset=\"UTF-8\">\n"
             "    <title>RabbitQCPlus report</title>\n"
-            "    <script src=\"https://cdn.bootcss.com/echarts/4.2.1-rc1/echarts.min.js\"></script>\n"
+            "    <script>" + jsInfo + "</script>\n"
             "</head>\n"
             "<body>\n");
 }
