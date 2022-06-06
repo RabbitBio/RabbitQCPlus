@@ -54,7 +54,8 @@ CmdInfo::CmdInfo() {
     adapter_seq1_ = "";
     adapter_seq2_ = "";
     analyze_overlap_ = false;
-    adapter_len_lim_ = 20;
+    adapter_len_lim_ = 0;
+    print_what_trimmed_ = false;
 
     //duplicate
     state_duplicate_ = true;

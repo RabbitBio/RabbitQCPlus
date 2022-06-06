@@ -60,6 +60,7 @@ public:
     bool correct_data_;
     bool analyze_overlap_;
     int adapter_len_lim_;
+    bool print_what_trimmed_;
 
     //duplicate
     bool state_duplicate_;

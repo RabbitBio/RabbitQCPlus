@@ -25,9 +25,10 @@ int main(int argc, char **argv) {
     app.add_flag("-a,--noTrimAdapter", cmd_info.no_trim_adapter_, "no trim adapter");
     app.add_flag("--decAdaForSe", cmd_info.se_auto_detect_adapter_, "detect adapter for se data");
     app.add_flag("--decAdaForPe", cmd_info.pe_auto_detect_adapter_, "detect adapter for pe data");
+    app.add_flag("--printWhatTrimmed", cmd_info.print_what_trimmed_, "print what trimmed to *overrepresented_sequences.txt, default is off");
     app.add_option("--adapterSeq1", cmd_info.adapter_seq1_, "input adapter sequence1");
     app.add_option("--adapterSeq2", cmd_info.adapter_seq2_, "input adapter sequence2");
-    app.add_option("--adapterLengthLimit", cmd_info.adapter_len_lim_, "minimum adapter length when trimming, default is 20");
+    app.add_option("--adapterLengthLimit", cmd_info.adapter_len_lim_, "minimum adapter length when trimming, default is 0");
 
     app.add_flag("-c,--correctData", cmd_info.correct_data_, "correct data");
 

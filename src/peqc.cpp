@@ -281,7 +281,13 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                 Adapter::CorrectData(item1, item2, overlap_res, cmd_info_->isPhred64_);
             }
             if (trim_res1 && trim_res2 && cmd_info_->trim_adapter_) {
-                int trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len, thread_info->aft_state1_->adapter_map_, thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_);
+                int trimmed;
+                if(cmd_info_->print_what_trimmed_){
+                    trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len, thread_info->aft_state1_->adapter_map_, thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_);
+                }
+                else{
+                    trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
+                }
                 if(trimmed){
                     thread_info->aft_state1_->AddTrimAdapter();
                     thread_info->aft_state1_->AddTrimAdapter();
@@ -289,10 +295,22 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                 }
                 if (!trimmed) {
                     int res1,res2;
-                    if (cmd_info_->detect_adapter1_)
-                        int res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, thread_info->aft_state1_->adapter_map_, cmd_info_->adapter_len_lim_, false);
-                    if (cmd_info_->detect_adapter2_)
-                        int res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_,true);
+                    if (cmd_info_->detect_adapter1_){
+                        int res1;
+                        if(cmd_info_->print_what_trimmed_){
+                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, thread_info->aft_state1_->adapter_map_, cmd_info_->adapter_len_lim_, false);
+                        }else{
+                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_,false);
+                        }
+                    }
+                    if (cmd_info_->detect_adapter2_){
+                        int res2;
+                        if(cmd_info_->print_what_trimmed_){
+                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_,true);
+                        }else{
+                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_,true);
+                        }
+                    }
                     if(res1){
                         thread_info->aft_state1_->AddTrimAdapter();
                         thread_info->aft_state1_->AddTrimAdapterBase(res1);
@@ -458,12 +476,44 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                 Adapter::CorrectData(item1, item2, overlap_res, cmd_info_->isPhred64_);
             }
             if (trim_res1 && trim_res2 && cmd_info_->trim_adapter_) {
-                bool trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
+                int trimmed;
+                if(cmd_info_->print_what_trimmed_){
+                    trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len, thread_info->aft_state1_->adapter_map_, thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_);
+                }
+                else{
+                    trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
+                }
+                if(trimmed){
+                    thread_info->aft_state1_->AddTrimAdapter();
+                    thread_info->aft_state1_->AddTrimAdapter();
+                    thread_info->aft_state1_->AddTrimAdapterBase(trimmed);
+                }
                 if (!trimmed) {
-                    if (cmd_info_->detect_adapter1_)
-                        Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, false);
-                    if (cmd_info_->detect_adapter2_)
-                        Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, true);
+                    int res1,res2;
+                    if (cmd_info_->detect_adapter1_){
+                        int res1;
+                        if(cmd_info_->print_what_trimmed_){
+                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, thread_info->aft_state1_->adapter_map_, cmd_info_->adapter_len_lim_, false);
+                        }else{
+                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_,false);
+                        }
+                    }
+                    if (cmd_info_->detect_adapter2_){
+                        int res2;
+                        if(cmd_info_->print_what_trimmed_){
+                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_,true);
+                        }else{
+                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_,true);
+                        }
+                    }
+                    if(res1){
+                        thread_info->aft_state1_->AddTrimAdapter();
+                        thread_info->aft_state1_->AddTrimAdapterBase(res1);
+                    }
+                    if(res2){
+                        thread_info->aft_state1_->AddTrimAdapter();
+                        thread_info->aft_state1_->AddTrimAdapterBase(res2);
+                    }
                 }
             }
 
@@ -836,6 +886,11 @@ void PeQc::ProcessPeFastq() {
         printf("\nprint read2 (after filter) info :\n");
         State::PrintStates(aft_state2);
         printf("\n");
+
+        if(cmd_info_->print_what_trimmed_){
+            State::PrintAdatperToFile(aft_state1);
+            State::PrintAdatperToFile(aft_state2);
+        }
         State::PrintFilterResults(aft_state1);
         printf("\n");
 
@@ -1046,8 +1101,10 @@ void PeQc::ProcessPeFastq() {
         printf("\nprint read2 (after filter) info :\n");
         State::PrintStates(aft_state2);
         printf("\n");
-        State::PrintAdatperToFile(aft_state1);
-        State::PrintAdatperToFile(aft_state2);
+        if(cmd_info_->print_what_trimmed_){
+            State::PrintAdatperToFile(aft_state1);
+            State::PrintAdatperToFile(aft_state2);
+        }
         State::PrintFilterResults(aft_state1); 
         printf("\n");
 
