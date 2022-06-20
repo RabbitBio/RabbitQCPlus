@@ -1,8 +1,13 @@
 ## ![image-20211220153709911](./RabbitQCPlus.png)
 
-# RabbitQCPlus
+# RabbitQCPlus Features
 
 A modern quality control tool for sequencing data.
+- Single-threaded performance is improved by a factor of 2 at least.
+
+- Solving the performance issues when processing gz files (more than 5x speedups compared with SOTA).
+
+- Improving the efficiency of the time-consuming over-representation module by a factor of 5.
 
 # Build
 
