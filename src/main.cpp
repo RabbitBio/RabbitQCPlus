@@ -82,6 +82,15 @@ int main(int argc, char **argv) {
     app.add_flag("--usePigz", cmd_info.use_pigz_, "use pigz to compress, default is off");
     app.add_option("--pugzThread", cmd_info.pugz_threads_, "pugz thread number, default is 2");
     app.add_option("--pigzThread", cmd_info.pigz_threads_, "pigz thread number, default is 2");
+    stringstream ss;
+    for (int i = 0; i < argc; i++) {
+        ss << argv[i] << " ";
+
+    }
+    string command = ss.str();
+
+    cmd_info.command_ = command;
+
 
     bool quVersion=false;
     app.add_flag("-V,--version",quVersion,"application version");
@@ -353,8 +362,7 @@ int main(int argc, char **argv) {
         }
         delete se_qc;
     }
-#ifdef Verbose
-    printf("total cost %.5f\n", GetTime() - t1);
-#endif
+    printf("cmd is %s\n", command.c_str());
+    printf("total cost %.5fs\n", GetTime() - t1);
     return 0;
 }

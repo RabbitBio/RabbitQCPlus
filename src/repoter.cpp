@@ -618,7 +618,7 @@ std::string insertTableTr(std::string str1, std::string str2) {
                                                            "    </tr>\n";
 }
 
-void Repoter::ReportHtmlTGS(std::string html_name, TGSStats *tgs_stats, std::string file_name) {
+void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats *tgs_stats, std::string file_name) {
     printf("report TGS html data in %s\n", html_name.c_str());
     std::string outhtml;
     int mx_len = 100;
@@ -640,6 +640,7 @@ void Repoter::ReportHtmlTGS(std::string html_name, TGSStats *tgs_stats, std::str
     outhtml.append(insertTableTbobyBegin());
     outhtml.append(insertTableTr("RabbitQCPlus version:", "0.0.2"));
     outhtml.append(insertTableTr("FileName", file_name));
+    outhtml.append(insertTableTr("Command", command));
     outhtml.append(insertTableTr("ReadsNumber", std::to_string(readsNum)));
     outhtml.append(insertTableTr("BasesNumber", std::to_string(basesNum)));
     outhtml.append(insertTableTr(">Q5 BasesNuimber", std::to_string(base51015Num[0])));
@@ -987,14 +988,9 @@ std::string GetOver(State *state, bool isAfter, bool isRead2, int eva_len) {
 
 void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, std::string file_name, double dup) {
 
-    /*
-       printf("tot bases %lld\n", state1->GetTotBases());
-       printf("gc bases %lld\n", state1->GetGcBases());
-       printf("tot bases %lld\n", state2->GetTotBases());
-       printf("gc bases %lld\n", state2->GetGcBases());
+    auto cmd_info = state1->GetCmdInfo();
 
-*/
-
+    std::string command = cmd_info->command_;
     printf("report se html data in %s\n", html_name.c_str());
     std::string outhtml;
 
@@ -1019,13 +1015,24 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
     outhtml.append(insertTableTbobyBegin());
     outhtml.append(insertTableTr("RabbitQCPlus version:", "0.0.2"));
     outhtml.append(insertTableTr("FileName", file_name));
+    outhtml.append(insertTableTr("Command", command));
     outhtml.append(
             insertTableTr("duplication rate:",
                           std::to_string(dup) + "%" + "(may be overestimated since this is SE data)"));
+    outhtml.append(insertTableTr("pass filter read number",std::to_string(state2->pass_reads_)));
+    outhtml.append(insertTableTr("not pass filter due to too short", std::to_string(state2->fail_short_)));
+    outhtml.append(insertTableTr("not pass filter due to too long", std::to_string(state2->fail_long_)));
+    outhtml.append(insertTableTr("not pass filter due to too many N", std::to_string(state2->fail_N_)));
+    outhtml.append(insertTableTr("not pass filter due to low quality", std::to_string(state2->fail_lowq_)));
+    outhtml.append(insertTableTr("trimmed adapter read number", std::to_string(state2->trim_adapter_)));
+    outhtml.append(insertTableTr("trimmed base number due to adapter", std::to_string(state2->trim_adapter_bases_)));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
     outhtml.append("\n<hr style='width:90%;'>\n");
     outhtml.append("\n<br/>\n");
+
+
+    //Filtering result
 
 
 
@@ -1343,6 +1350,7 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
     int size_len_mx = cmd_info->max_insert_size_;
     int size_require = cmd_info->overlap_require_;
 
+    std::string command = cmd_info->command_;
     printf("report pe html data in %s\n", html_name.c_str());
 
     std::string outhtml;
@@ -1375,8 +1383,16 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
     outhtml.append(insertTableTbobyBegin());
     outhtml.append(insertTableTr("RabbitQCPlus version:", "0.0.2"));
     outhtml.append(insertTableTr("FileName", file_name1 + "," + file_name2));
+    outhtml.append(insertTableTr("Command", command));
     outhtml.append(
             insertTableTr("duplication rate:", std::to_string(dup) + "%"));
+    outhtml.append(insertTableTr("pass filter read number",std::to_string(aft_state1->pass_reads_)));
+    outhtml.append(insertTableTr("not pass filter due to too short", std::to_string(aft_state1->fail_short_)));
+    outhtml.append(insertTableTr("not pass filter due to too long", std::to_string(aft_state1->fail_long_)));
+    outhtml.append(insertTableTr("not pass filter due to too many N", std::to_string(aft_state1->fail_N_)));
+    outhtml.append(insertTableTr("not pass filter due to low quality", std::to_string(aft_state1->fail_lowq_)));
+    outhtml.append(insertTableTr("trimmed adapter read number", std::to_string(aft_state1->trim_adapter_)));
+    outhtml.append(insertTableTr("trimmed base number due to adapter", std::to_string(aft_state1->trim_adapter_bases_)));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 

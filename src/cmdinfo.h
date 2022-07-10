@@ -20,6 +20,7 @@ public:
     std::string out_file_name1_;
     std::string out_file_name2_;
     int thread_number_;
+    std::string command_;
     bool isPhred64_;
     bool isStdin_;
     bool isStdout_;

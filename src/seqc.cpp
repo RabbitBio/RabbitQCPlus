@@ -616,7 +616,8 @@ void SeQc::ProcessSeTGS() {
     mer_state->print();
     std::string srr_name = cmd_info_->in_file_name1_;
     srr_name = PaseFileName(srr_name);
-    Repoter::ReportHtmlTGS(srr_name + "_RabbitQCPlus.html", mer_state, cmd_info_->in_file_name1_);
+    std::string command = cmd_info_->command_;
+    Repoter::ReportHtmlTGS(srr_name + "_RabbitQCPlus.html", command, mer_state, cmd_info_->in_file_name1_);
 
     delete fastqPool;
     for (int t = 0; t < cmd_info_->thread_number_; t++) {

@@ -19,7 +19,7 @@ public:
 
     static void PrintRef(Reference &ref);
 
-    static void ReportHtmlTGS(std::string html_name, TGSStats *tgs_stats, std::string file_name);
+    static void ReportHtmlTGS(std::string html_name, std::string command, TGSStats *tgs_stats, std::string file_name);
 
     static void ReportHtmlSe(std::string html_name, State *state1, State *state2, std::string file_name, double dup);
 

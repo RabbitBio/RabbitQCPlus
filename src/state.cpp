@@ -568,7 +568,7 @@ void State::PrintFilterResults(const State *state){
     if(state->cmd_info_->print_what_trimmed_) 
         printf("trimmed adapter read number: %lld (all trimmed adapter (len >= %d) can be find in *_trimmed_adapters.txt)\n",state->trim_adapter_,state->cmd_info_->adapter_len_lim_);
     else printf("trimmed adapter read number: %lld \n",state->trim_adapter_);
-    printf("trimmed base number due to adapter %lld\n",state->trim_adapter_bases_);
+    printf("trimmed base number due to adapter: %lld\n",state->trim_adapter_bases_);
 
 }
 

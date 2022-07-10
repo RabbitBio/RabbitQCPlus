@@ -11,6 +11,7 @@ CmdInfo::CmdInfo() {
     in_file_name2_ = "";
     out_file_name1_ = "";
     out_file_name2_ = "";
+    command_ = "";
     isPhred64_ = false;
     isStdin_ = false;
     isStdout_ = false;

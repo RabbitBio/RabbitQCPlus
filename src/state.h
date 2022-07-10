@@ -154,7 +154,7 @@ private:
     int64_t over_representation_pcnt_;
     int64_t *bf_zone_;
 	double orpCost; 
-
+public:
     int64_t pass_reads_;
     int64_t fail_short_;
     int64_t fail_long_;
@@ -162,7 +162,6 @@ private:
     int64_t fail_lowq_;
     int64_t trim_adapter_;
     int64_t trim_adapter_bases_;
-public:
     unordered_map<string,int>adapter_map_;
 };
 
