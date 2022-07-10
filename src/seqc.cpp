@@ -479,36 +479,47 @@ void SeQc::ProcessSeFastq() {
     State::PrintStates(aft_state);
     printf("\n");
     if(cmd_info_->print_what_trimmed_)
-        State::PrintAdatperToFile(aft_state);
+        State::PrintAdapterToFile(aft_state);
     State::PrintFilterResults(aft_state);
     printf("\n");
 
-    if (cmd_info_->do_overrepresentation_) {
+    if (cmd_info_->do_overrepresentation_ && cmd_info_->print_ORP_seqs_) {
         auto hash_graph1 = pre_state->GetHashGraph();
         int hash_num1 = pre_state->GetHashNum();
 
         auto hash_graph2 = aft_state->GetHashGraph();
         int hash_num2 = aft_state->GetHashNum();
 
+        int spg = cmd_info_->overrepresentation_sampling_;
 
         ofstream ofs;
+        string srr_name = cmd_info_->in_file_name1_;
+        srr_name = PaseFileName(srr_name);
 
-        printf("in read (before filter) find %d possible overrepresented sequences (store in before_read_overrepresented_sequences.txt)\n",hash_num1);
-        ofs.open("before_read_overrepresented_sequences.txt", ifstream::out);
+        string out_name = "se_" + srr_name + "_before_ORP_sequences.txt";
+        ofs.open(out_name, ifstream::out);
         ofs << "sequence count" << "\n";
+        int cnt1 = 0;
         for (int i = 0; i < hash_num1; i++) {
+            if(!overRepPassed(hash_graph1[i].seq, hash_graph1[i].cnt, spg))continue;
             ofs << hash_graph1[i].seq << " " << hash_graph1[i].cnt << "\n";
+            cnt1++;
         }
         ofs.close();
+        printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n", srr_name.c_str(), cnt1, out_name.c_str());
 
 
-        printf("in read (after filter) find %d possible overrepresented sequences (store in after_read_overrepresented_sequences.txt)\n",hash_num2);
-        ofs.open("after_read_overrepresented_sequences.txt", ifstream::out);
+        out_name = "se_" + srr_name + "_after_ORP_sequences.txt";
+        ofs.open(out_name, ifstream::out);
         ofs << "sequence count" << "\n";
+        int cnt2 = 0;
         for (int i = 0; i < hash_num2; i++) {
+            if(!overRepPassed(hash_graph2[i].seq, hash_graph2[i].cnt, spg))continue;
             ofs << hash_graph2[i].seq << " " << hash_graph2[i].cnt << "\n";
+            cnt2++;
         }
         ofs.close();
+        printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name.c_str(), cnt2, out_name.c_str());
         printf("\n");
 
     }
@@ -529,8 +540,9 @@ void SeQc::ProcessSeFastq() {
         delete[] dupMeanGC;
 
     }
-
-    Repoter::ReportHtmlSe(pre_state, aft_state, cmd_info_->in_file_name1_, dupRate * 100.0);
+    std::string srr_name = cmd_info_->in_file_name1_;
+    srr_name = PaseFileName(srr_name);
+    Repoter::ReportHtmlSe(srr_name + "_RabbitQCPlus.html", pre_state, aft_state, cmd_info_->in_file_name1_, dupRate * 100.0);
 
 
     delete pre_state;
@@ -602,7 +614,9 @@ void SeQc::ProcessSeTGS() {
     mer_state->CalReadsLens();
 
     mer_state->print();
-    Repoter::ReportHtmlTGS(mer_state, cmd_info_->in_file_name1_);
+    std::string srr_name = cmd_info_->in_file_name1_;
+    srr_name = PaseFileName(srr_name);
+    Repoter::ReportHtmlTGS(srr_name + "_RabbitQCPlus.html", mer_state, cmd_info_->in_file_name1_);
 
     delete fastqPool;
     for (int t = 0; t < cmd_info_->thread_number_; t++) {

@@ -533,12 +533,19 @@ State *State::MergeStates(const std::vector<State *> &states) {
     return res_state;
 }
 
-
-void State::PrintAdatperToFile(const State *state){
+void State::PrintAdapterToFile(const State *state){
+    string srr_name;
+    bool is_pe = state->cmd_info_->in_file_name2_.length() > 0;
     int64_t tot_trimmed_base=0;
     ofstream ooff;
     static int cntt=1;
-    string file_name="trimmed_adapters"+to_string(cntt)+".txt";
+    if(cntt == 1){
+        srr_name = state->cmd_info_->in_file_name1_;
+    }else if(cntt == 2){
+        srr_name = state->cmd_info_->in_file_name2_;
+    }
+    srr_name = PaseFileName(srr_name);
+    string file_name = (is_pe ? "pe_" : "se_") + srr_name + "_trimmed_adapters.txt";
     cntt++;
     ooff.open(file_name);
     ooff<<"adapter count\n";
@@ -559,9 +566,9 @@ void State::PrintFilterResults(const State *state){
     printf("not pass filter due to too many N: %lld\n",state->fail_N_);
     printf("not pass filter due to low quality: %lld\n",state->fail_lowq_);
     if(state->cmd_info_->print_what_trimmed_) 
-        printf("trimmed adapter read number: %lld (all trimmed adapter (len >= %d) can be find in trimmed_adapters*.txt)\n",state->trim_adapter_,state->cmd_info_->adapter_len_lim_);
+        printf("trimmed adapter read number: %lld (all trimmed adapter (len >= %d) can be find in *_trimmed_adapters.txt)\n",state->trim_adapter_,state->cmd_info_->adapter_len_lim_);
     else printf("trimmed adapter read number: %lld \n",state->trim_adapter_);
-    printf("trimmed base number due to adatper %lld\n",state->trim_adapter_bases_);
+    printf("trimmed base number due to adapter %lld\n",state->trim_adapter_bases_);
 
 }
 

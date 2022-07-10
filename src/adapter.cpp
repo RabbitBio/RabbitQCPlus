@@ -232,26 +232,33 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
     //printf("now get hotseqs\n");
 
     std::vector<std::pair<std::string, int>> hot_s;
+   
+    std::map<std::string, int>mp_tmp;
 
     for (int i = 0; i < num; i++) {
         if (seqs[i].length() >= seqlen - 1) {
             if (cnt[i] >= 3) {
+                mp_tmp[seqs[i]] = cnt[i];
                 hot_s.push_back({seqs[i], cnt[i]});
             }
         } else if (seqs[i].length() >= 100) {
             if (cnt[i] >= 5) {
+                mp_tmp[seqs[i]] = cnt[i];
                 hot_s.push_back({seqs[i], cnt[i]});
             }
         } else if (seqs[i].length() >= 40) {
             if (cnt[i] >= 20) {
+                mp_tmp[seqs[i]] = cnt[i];
                 hot_s.push_back({seqs[i], cnt[i]});
             }
         } else if (seqs[i].length() >= 20) {
             if (cnt[i] >= 100) {
+                mp_tmp[seqs[i]] = cnt[i];
                 hot_s.push_back({seqs[i], cnt[i]});
             }
         } else if (seqs[i].length() >= 10) {
             if (cnt[i] >= 500) {
+                mp_tmp[seqs[i]] = cnt[i];
                 hot_s.push_back({seqs[i], cnt[i]});
             }
         }
@@ -293,8 +300,8 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
     //    }
     //std::ofstream ofs;
     //ofs.open("ORP.log", std::ifstream::out);
-    //for (auto item:hot_seqs) {
-    //    ofs << item << "\n";
+    //for (auto item : mp_tmp) {
+    //    ofs << item.first << " " << item.second << "\n";
     //}
     //ofs.close();
     //printf("part4 cost %.5f\n", GetTime() - t0);

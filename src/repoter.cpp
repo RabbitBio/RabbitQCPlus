@@ -618,8 +618,8 @@ std::string insertTableTr(std::string str1, std::string str2) {
                                                            "    </tr>\n";
 }
 
-void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
-    printf("report TGS html data in RabbitQCPlus.html\n");
+void Repoter::ReportHtmlTGS(std::string html_name, TGSStats *tgs_stats, std::string file_name) {
+    printf("report TGS html data in %s\n", html_name.c_str());
     std::string outhtml;
     int mx_len = 100;
     double *tmp_double = new double[mx_len];
@@ -877,26 +877,10 @@ void Repoter::ReportHtmlTGS(TGSStats *tgs_stats, std::string file_name) {
 
     outhtml.append("</script>");
     outhtml.append("</html>");
-    std::fstream fout = std::fstream("RabbitQCPlus.html", std::ios::out | std::ios::binary);
+    std::fstream fout = std::fstream(html_name, std::ios::out | std::ios::binary);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
     delete[]tmp_double;
-}
-
-
-bool overRepPassed(std::string &seq, int64_t count, int s) {
-    switch (seq.length()) {
-        case 10:
-            return s * count > 500;
-        case 20:
-            return s * count > 200;
-        case 40:
-            return s * count > 100;
-        case 100:
-            return s * count > 50;
-        default:
-            return s * count > 20;
-    }
 }
 
 std::string GetOver(State *state, bool isAfter, bool isRead2, int eva_len) {
@@ -1001,7 +985,7 @@ std::string GetOver(State *state, bool isAfter, bool isRead2, int eva_len) {
     return ofs.str();
 }
 
-void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, double dup) {
+void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, std::string file_name, double dup) {
 
     /*
        printf("tot bases %lld\n", state1->GetTotBases());
@@ -1011,7 +995,7 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 
 */
 
-    printf("report se html data in RabbitQCPlus.html\n");
+    printf("report se html data in %s\n", html_name.c_str());
     std::string outhtml;
 
     int mx_len1 = state1->GetRealSeqLen();
@@ -1347,19 +1331,19 @@ void Repoter::ReportHtmlSe(State *state1, State *state2, std::string file_name, 
 
     outhtml.append("</script>");
     outhtml.append("</html>");
-    std::fstream fout = std::fstream("RabbitQCPlus.html", std::ios::out | std::ios::binary);
+    std::fstream fout = std::fstream(html_name, std::ios::out | std::ios::binary);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
     delete[]tmp_double;
 }
 
-void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_state1, State *aft_state2,
+void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_state2, State *aft_state1, State *aft_state2,
                            std::string file_name1, std::string file_name2, double dup, int64_t *size_info) {
     auto cmd_info = pre_state1->GetCmdInfo();
     int size_len_mx = cmd_info->max_insert_size_;
     int size_require = cmd_info->overlap_require_;
 
-    printf("report pe html data in RabbitQCPlus.html\n");
+    printf("report pe html data in %s\n", html_name.c_str());
 
     std::string outhtml;
     double *tmp_double;
@@ -1988,7 +1972,7 @@ void Repoter::ReportHtmlPe(State *pre_state1, State *pre_state2, State *aft_stat
 
     outhtml.append("</script>");
     outhtml.append("</html>");
-    std::fstream fout = std::fstream("RabbitQCPlus.html", std::ios::out | std::ios::binary);
+    std::fstream fout = std::fstream(html_name, std::ios::out | std::ios::binary);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
     delete[]tmp_double;

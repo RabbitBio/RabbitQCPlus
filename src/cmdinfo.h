@@ -88,6 +88,7 @@ public:
     std::vector<std::string> hot_seqs2_;
     int eva_len_;
     int eva_len2_;
+    bool print_ORP_seqs_;
 
     //insert size
     bool no_insert_size_;

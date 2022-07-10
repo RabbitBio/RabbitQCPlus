@@ -33,15 +33,12 @@ CmdInfo::CmdInfo() {
     write_data_ = false;
     in_file_size1_ = 0;
     in_file_size2_ = 0;
-    //TODO change
     out_block_size_ = 1 << 21;
-    //TODO change
     seq_len_ = 200;
     qul_range_ = 50;
 
 
 
-    //TODO add this function and set value true
     trim_adapter_ = true;
     no_trim_adapter_ = false;
     se_auto_detect_adapter_ = true;
@@ -81,6 +78,7 @@ CmdInfo::CmdInfo() {
     overrepresentation_sampling_ = 1;
     eva_len_ = 150;
     eva_len2_ = 150;
+    print_ORP_seqs_ = false;
 
     //insert size
     no_insert_size_ = false;

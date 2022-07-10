@@ -886,25 +886,23 @@ void PeQc::ProcessPeFastq() {
 #endif
         printf("\nprint read1 (before filter) info :\n");
         State::PrintStates(pre_state1);
-        printf("\n");
-        printf("\nprint read2 (before filter) info :\n");
-        State::PrintStates(pre_state2);
-        printf("\n");
         printf("\nprint read1 (after filter) info :\n");
         State::PrintStates(aft_state1);
         printf("\n");
+
+        printf("\nprint read2 (before filter) info :\n");
+        State::PrintStates(pre_state2);
         printf("\nprint read2 (after filter) info :\n");
         State::PrintStates(aft_state2);
         printf("\n");
-
         if(cmd_info_->print_what_trimmed_){
-            State::PrintAdatperToFile(aft_state1);
-            State::PrintAdatperToFile(aft_state2);
+            State::PrintAdapterToFile(aft_state1);
+            State::PrintAdapterToFile(aft_state2);
         }
         State::PrintFilterResults(aft_state1);
         printf("\n");
 
-        if (cmd_info_->do_overrepresentation_) {
+        if (cmd_info_->do_overrepresentation_ && cmd_info_->print_ORP_seqs_) {
 
             auto pre_hash_graph1 = pre_state1->GetHashGraph();
             int pre_hash_num1 = pre_state1->GetHashNum();
@@ -916,39 +914,66 @@ void PeQc::ProcessPeFastq() {
             auto aft_hash_graph2 = aft_state2->GetHashGraph();
             int aft_hash_num2 = aft_state2->GetHashNum();
 
+
+            int spg = cmd_info_->overrepresentation_sampling_;
             ofstream ofs;
 
-            printf("in read1 (before filter) find %d possible overrepresented sequences (store in before_read1_overrepresented_sequences.txt)\n",pre_hash_num1);
-            ofs.open("before_read1_overrepresented_sequences.txt", ifstream::out);
+            string srr_name1 = cmd_info_->in_file_name1_;
+            srr_name1 = PaseFileName(srr_name1);
+
+            string srr_name2 = cmd_info_->in_file_name2_;
+            srr_name2 = PaseFileName(srr_name2);
+
+            string out_name1 = "pe_" + srr_name1 + "_before_ORP_sequences.txt";
+            ofs.open(out_name1, ifstream::out);
+
+            int cnt1 = 0;
             ofs << "sequence count" << "\n";
             for (int i = 0; i < pre_hash_num1; i++) {
+                if(!overRepPassed(pre_hash_graph1[i].seq, pre_hash_graph1[i].cnt, spg))continue;
                 ofs << pre_hash_graph1[i].seq << " " << pre_hash_graph1[i].cnt << "\n";
+                cnt1++;
             }
             ofs.close();
+            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(), cnt1, out_name1.c_str());
 
-            printf("in read2 (before filter) find %d possible overrepresented sequences (store in before_read2_overrepresented_sequences.txt)\n",pre_hash_num2);
-            ofs.open("before_read2_overrepresented_sequences.txt", ifstream::out);
+            string out_name2 = "pe_" + srr_name2 + "_before_ORP_sequences.txt";
+            ofs.open(out_name2, ifstream::out);
+            int cnt2 = 0;
             ofs << "sequence count" << "\n";
             for (int i = 0; i < pre_hash_num2; i++) {
+                if(!overRepPassed(pre_hash_graph2[i].seq, pre_hash_graph2[i].cnt, spg))continue;
                 ofs << pre_hash_graph2[i].seq << " " << pre_hash_graph2[i].cnt << "\n";
+                cnt2++;
             }
             ofs.close();
+            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(), cnt2, out_name2.c_str());
 
-            printf("in read1 (after filter) find %d possible overrepresented sequences (store in after_read1_overrepresented_sequences.txt)\n",aft_hash_num1);
-            ofs.open("after_read1_overrepresented_sequences.txt", ifstream::out);
+
+            out_name1 = "pe_" + srr_name1 + "_after_ORP_sequences.txt";
+            ofs.open(out_name1, ifstream::out);
+            cnt1 = 0;
             ofs << "sequence count" << "\n";
             for (int i = 0; i < aft_hash_num1; i++) {
+                if(!overRepPassed(aft_hash_graph1[i].seq, aft_hash_graph1[i].cnt, spg))continue;
                 ofs << aft_hash_graph1[i].seq << " " << aft_hash_graph1[i].cnt << "\n";
+                cnt1++;
             }
             ofs.close();
+            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(), cnt1, out_name1.c_str());
 
-            printf("in read2 (after filter) find %d possible overrepresented sequences (store in after_read2_overrepresented_sequences.txt)\n",aft_hash_num2);
-            ofs.open("after_read2_overrepresented_sequences.txt", ifstream::out);
+            out_name2 = "pe_" + srr_name2 + "_after_ORP_sequences.txt";
+            ofs.open(out_name2, ifstream::out);
+            cnt2 = 0;
             ofs << "sequence count" << "\n";
-            for (int i = 0; i < aft_hash_num2; i++) {
+            for (int i = 0; i < aft_hash_num1; i++) {
+                if(!overRepPassed(aft_hash_graph2[i].seq, aft_hash_graph2[i].cnt, spg))continue;
                 ofs << aft_hash_graph2[i].seq << " " << aft_hash_graph2[i].cnt << "\n";
+                cnt2++;
             }
             ofs.close();
+            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(), cnt2, out_name2.c_str());
+
             printf("\n");
         }
         int *dupHist = NULL;
@@ -984,8 +1009,11 @@ void PeQc::ProcessPeFastq() {
             //printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
             printf("Insert size Peak (based on PE overlap analyze): %d\n", mx_id);
         }
-
-        Repoter::ReportHtmlPe(pre_state1, pre_state2, aft_state1, aft_state2, cmd_info_->in_file_name1_,
+        std::string srr_name1 = cmd_info_->in_file_name1_;
+        srr_name1 = PaseFileName(srr_name1);
+        std::string srr_name2 = cmd_info_->in_file_name2_;
+        srr_name2 = PaseFileName(srr_name2);
+        Repoter::ReportHtmlPe(srr_name1 + "_" + srr_name2 + "_RabbitQCPlus.html", pre_state1, pre_state2, aft_state1, aft_state2, cmd_info_->in_file_name1_,
                 cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
 #ifdef Verbose
         printf("report done\n");
@@ -1102,7 +1130,7 @@ void PeQc::ProcessPeFastq() {
 #endif
         printf("\nprint read1 (before filter) info :\n");
         State::PrintStates(pre_state1);
-        printf("\nprint read1 (after filter) :\n");
+        printf("\nprint read1 (after filter) info :\n");
         State::PrintStates(aft_state1);
         printf("\n");
 
@@ -1112,13 +1140,13 @@ void PeQc::ProcessPeFastq() {
         State::PrintStates(aft_state2);
         printf("\n");
         if(cmd_info_->print_what_trimmed_){
-            State::PrintAdatperToFile(aft_state1);
-            State::PrintAdatperToFile(aft_state2);
+            State::PrintAdapterToFile(aft_state1);
+            State::PrintAdapterToFile(aft_state2);
         }
         State::PrintFilterResults(aft_state1); 
         printf("\n");
 
-        if (cmd_info_->do_overrepresentation_) {
+        if (cmd_info_->do_overrepresentation_ && cmd_info_->print_ORP_seqs_) {
 
             auto pre_hash_graph1 = pre_state1->GetHashGraph();
             int pre_hash_num1 = pre_state1->GetHashNum();
@@ -1130,45 +1158,66 @@ void PeQc::ProcessPeFastq() {
             auto aft_hash_graph2 = aft_state2->GetHashGraph();
             int aft_hash_num2 = aft_state2->GetHashNum();
 
+
+            int spg = cmd_info_->overrepresentation_sampling_;
             ofstream ofs;
 
-            printf("in read1 (before filter) find %d possible overrepresented sequences (store in before_read1_overrepresented_sequences.txt)\n",pre_hash_num1);
-            ofs.open("before_read1_overrepresented_sequences.txt", ifstream::out);
+            string srr_name1 = cmd_info_->in_file_name1_;
+            srr_name1 = PaseFileName(srr_name1);
+
+            string srr_name2 = cmd_info_->in_file_name2_;
+            srr_name2 = PaseFileName(srr_name2);
+
+            string out_name1 = "pe_" + srr_name1 + "_before_ORP_sequences.txt";
+            ofs.open(out_name1, ifstream::out);
+
+            int cnt1 = 0;
             ofs << "sequence count" << "\n";
             for (int i = 0; i < pre_hash_num1; i++) {
+                if(!overRepPassed(pre_hash_graph1[i].seq, pre_hash_graph1[i].cnt, spg))continue;
                 ofs << pre_hash_graph1[i].seq << " " << pre_hash_graph1[i].cnt << "\n";
+                cnt1++;
             }
             ofs.close();
+            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(), cnt1, out_name1.c_str());
 
-
-
-            printf("in read2 (before filter) find %d possible overrepresented sequences (store in before_read2_overrepresented_sequences.txt)\n",pre_hash_num2);
-            ofs.open("before_read2_overrepresented_sequences.txt", ifstream::out);
+            string out_name2 = "pe_" + srr_name2 + "_before_ORP_sequences.txt";
+            ofs.open(out_name2, ifstream::out);
+            int cnt2 = 0;
             ofs << "sequence count" << "\n";
             for (int i = 0; i < pre_hash_num2; i++) {
+                if(!overRepPassed(pre_hash_graph2[i].seq, pre_hash_graph2[i].cnt, spg))continue;
                 ofs << pre_hash_graph2[i].seq << " " << pre_hash_graph2[i].cnt << "\n";
+                cnt2++;
             }
             ofs.close();
+            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(), cnt2, out_name2.c_str());
 
 
-
-            printf("in read1 (after filter) find %d possible overrepresented sequences (store in after_read1_overrepresented_sequences.txt)\n",aft_hash_num1);
-            ofs.open("after_read1_overrepresented_sequences.txt", ifstream::out);
+            out_name1 = "pe_" + srr_name1 + "_after_ORP_sequences.txt";
+            ofs.open(out_name1, ifstream::out);
+            cnt1 = 0;
             ofs << "sequence count" << "\n";
             for (int i = 0; i < aft_hash_num1; i++) {
+                if(!overRepPassed(aft_hash_graph1[i].seq, aft_hash_graph1[i].cnt, spg))continue;
                 ofs << aft_hash_graph1[i].seq << " " << aft_hash_graph1[i].cnt << "\n";
+                cnt1++;
             }
             ofs.close();
+            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(), cnt1, out_name1.c_str());
 
-
-
-            printf("in read2 (after filter) find %d possible overrepresented sequences (store in after_read2_overrepresented_sequences.txt)\n",aft_hash_num2);
-            ofs.open("after_read2_overrepresented_sequences.txt", ifstream::out);
+            out_name2 = "pe_" + srr_name2 + "_after_ORP_sequences.txt";
+            ofs.open(out_name2, ifstream::out);
+            cnt2 = 0;
             ofs << "sequence count" << "\n";
             for (int i = 0; i < aft_hash_num2; i++) {
+                if(!overRepPassed(aft_hash_graph2[i].seq, aft_hash_graph2[i].cnt, spg))continue;
                 ofs << aft_hash_graph2[i].seq << " " << aft_hash_graph2[i].cnt << "\n";
+                cnt2++;
             }
             ofs.close();
+            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(), cnt2, out_name2.c_str());
+
             printf("\n");
         }
         int *dupHist = NULL;
@@ -1205,7 +1254,11 @@ void PeQc::ProcessPeFastq() {
             printf("Insert size peak (based on PE overlap analyze): %d\n", mx_id);
         }
 
-        Repoter::ReportHtmlPe(pre_state1, pre_state2, aft_state1, aft_state2, cmd_info_->in_file_name1_,
+        std::string srr_name1 = cmd_info_->in_file_name1_;
+        srr_name1 = PaseFileName(srr_name1);
+        std::string srr_name2 = cmd_info_->in_file_name2_;
+        srr_name2 = PaseFileName(srr_name2);
+        Repoter::ReportHtmlPe(srr_name1 + "_" + srr_name2 + "_RabbitQCPlus.html", pre_state1, pre_state2, aft_state1, aft_state2, cmd_info_->in_file_name1_,
                 cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
 #ifdef Verbose
         printf("report done\n");
