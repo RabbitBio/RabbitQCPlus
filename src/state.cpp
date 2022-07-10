@@ -17,6 +17,7 @@
 
 #define MODB 20
 #define gcMax 100000
+
 State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
     is_read2_ = is_read2;
     cmd_info_ = cmd_info;
@@ -36,8 +37,8 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
     memset(pos_qul_, 0, pos_seq_len * sizeof(int64_t));
     len_cnt_ = new int64_t[malloc_seq_len_];
     memset(len_cnt_, 0, malloc_seq_len_ * sizeof(int64_t));
-    gc_cnt_ = new int64_t[gcMax+100];
-    memset(gc_cnt_, 0, (gcMax+1) * sizeof(int64_t));
+    gc_cnt_ = new int64_t[gcMax + 100];
+    memset(gc_cnt_, 0, (gcMax + 1) * sizeof(int64_t));
     qul_cnt_ = new int64_t[qul_range_];
     memset(qul_cnt_, 0, qul_range_ * sizeof(int64_t));
 
@@ -63,24 +64,24 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
     head_hash_graph_ = NULL;
     hash_graph_ = NULL;
     hash_num_ = 0;
-    over_representation_qcnt_=0;
-    over_representation_pcnt_=0;
+    over_representation_qcnt_ = 0;
+    over_representation_pcnt_ = 0;
     if (do_over_represent_analyze_) {
-        double t0=GetTime();
-        head_hash_graph_ = new int[(1<<MODB)+100];
-        bf_zone_=new int64_t[(1<<MODB)/64+100];
-        for (int i = 0; i < (1<<MODB)+10; i++)head_hash_graph_[i] = -1;
-        for (int i=0;i<(1<<MODB)/64+10;i++)bf_zone_[i]=0;
+        double t0 = GetTime();
+        head_hash_graph_ = new int[(1 << MODB) + 100];
+        bf_zone_ = new int64_t[(1 << MODB) / 64 + 100];
+        for (int i = 0; i < (1 << MODB) + 10; i++)head_hash_graph_[i] = -1;
+        for (int i = 0; i < (1 << MODB) / 64 + 10; i++)bf_zone_[i] = 0;
         if (is_read2_) {
             hash_graph_ = new node[cmd_info->hot_seqs2_.size()];
-            t0=GetTime();
-            for (auto item:cmd_info->hot_seqs2_) {
+            t0 = GetTime();
+            for (auto item: cmd_info->hot_seqs2_) {
                 HashInsert(item.c_str(), item.length(), cmd_info->eva_len2_);
             }
         } else {
             hash_graph_ = new node[cmd_info->hot_seqs_.size()];
-            t0=GetTime();
-            for (auto item:cmd_info->hot_seqs_) {
+            t0 = GetTime();
+            for (auto item: cmd_info->hot_seqs_) {
                 HashInsert(item.c_str(), item.length(), cmd_info->eva_len2_);
             }
         }
@@ -112,33 +113,33 @@ State::~State() {
 
 void State::HashInsert(const char *seq, int len, int eva_len) {
     uint64_t now = NT64(seq, len);
-    int ha = now &((1<<MODB)-1);
-    int ha_big = now &((1<<MODB)-1);
-    bf_zone_[ha_big>>6]|=(1ll<<(ha_big&(0x3f)));
+    int ha = now & ((1 << MODB) - 1);
+    int ha_big = now & ((1 << MODB) - 1);
+    bf_zone_[ha_big >> 6] |= (1ll << (ha_big & (0x3f)));
     hash_graph_[hash_num_].v = now;
     hash_graph_[hash_num_].pre = head_hash_graph_[ha];
     head_hash_graph_[ha] = hash_num_;
     hash_graph_[hash_num_].cnt = 0;
-    hash_graph_[hash_num_].seq = std::string(seq,len);
+    hash_graph_[hash_num_].seq = std::string(seq, len);
     hash_graph_[hash_num_].dist = new int64_t[eva_len];
     memset(hash_graph_[hash_num_].dist, 0, sizeof(int64_t) * eva_len);
     hash_num_++;
 }
 
-void State::HashState(){
+void State::HashState() {
     int cntTotal[100];
-    for(int i=0;i<100;i++)cntTotal[i]=0;
-    for(int ha=0;ha<(1<<MODB);ha++){
-        int cnt=0;
-        for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre){
+    for (int i = 0; i < 100; i++)cntTotal[i] = 0;
+    for (int ha = 0; ha < (1 << MODB); ha++) {
+        int cnt = 0;
+        for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre) {
             cnt++;
         }
         cntTotal[cnt]++;
 
     }
     printf("print hash table state info ===========================\n");
-    for(int i=1;i<100;i++){
-        if(cntTotal[i])printf("%d %d\n",i,cntTotal[i]);
+    for (int i = 1; i < 100; i++) {
+        if (cntTotal[i])printf("%d %d\n", i, cntTotal[i]);
     }
     printf("=======================================================\n");
 
@@ -146,12 +147,12 @@ void State::HashState(){
 
 inline bool State::HashQueryAndAdd(uint64_t now, int offset, int len, int eva_len) {
     over_representation_qcnt_++;
-    int ha_big=now&((1<<MODB)-1);
-    bool pass_bf=bf_zone_[ha_big>>6]&(1ll<<(ha_big&0x3f));
-    if(!pass_bf)return 0;
-    else over_representation_pcnt_++; 
-    int ha=now&((1<<MODB)-1);
-    for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre){
+    int ha_big = now & ((1 << MODB) - 1);
+    bool pass_bf = bf_zone_[ha_big >> 6] & (1ll << (ha_big & 0x3f));
+    if (!pass_bf)return 0;
+    else over_representation_pcnt_++;
+    int ha = now & ((1 << MODB) - 1);
+    for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre) {
         //over_representation_pcnt_++;
         if (hash_graph_[i].v == now && hash_graph_[i].seq.length() == len) {
             //over_representation_pcnt_++;
@@ -366,13 +367,13 @@ void State::StateInfo(neoReference &ref) {
     gc_cnt_[int(1.0 * gcMax * gc_cnt / slen)]++;
     qul_cnt_[int(1.0 * qul_tot / slen)]++;
     // do overrepresentation analysis for 1 of every 20 reads
-    double t0=GetTime();
-    if (do_over_represent_analyze_){
+    double t0 = GetTime();
+    if (do_over_represent_analyze_) {
         if (lines_ % over_representation_sampling_ == 0) {
             StateORP(ref);
         }
     }
-    orpCost+=GetTime()-t0;
+    orpCost += GetTime() - t0;
     lines_++;
 }
 
@@ -403,28 +404,27 @@ HashQueryAndAdd(hVal, i+1, steps[s], eva_len);
 }
 */
 
-void State::StateORP(neoReference &ref){
+void State::StateORP(neoReference &ref) {
     int slen = ref.lseq;
     int eva_len = 0;
     if (is_read2_)eva_len = cmd_info_->eva_len2_;
     else eva_len = cmd_info_->eva_len_;
     int steps[5] = {10, 20, 40, 100, std::min(150, eva_len - 2)};
     char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
-    std::string seqs=std::string(seq,slen);
-    for(int s=0;s<5;s++){
-        if(steps[s]>slen)continue;
-        int k=steps[s];
+    std::string seqs = std::string(seq, slen);
+    for (int s = 0; s < 5; s++) {
+        if (steps[s] > slen)continue;
+        int k = steps[s];
         uint64_t hVal = NT64(seq, k);
-        int lim=0;
-        bool res=HashQueryAndAdd(hVal, 0, steps[s], eva_len);
-        if(res)lim=k;
-        for (int i = 0; i < slen - k - 1; i++){
-            hVal = NTF64(hVal,k, seq[i], seq[i+k]);
-            if(lim==0){
-                res=HashQueryAndAdd(hVal, i+1, steps[s], eva_len);
-                if(res)lim=k;
-            }
-            else lim--;
+        int lim = 0;
+        bool res = HashQueryAndAdd(hVal, 0, steps[s], eva_len);
+        if (res)lim = k;
+        for (int i = 0; i < slen - k - 1; i++) {
+            hVal = NTF64(hVal, k, seq[i], seq[i + k]);
+            if (lim == 0) {
+                res = HashQueryAndAdd(hVal, i + 1, steps[s], eva_len);
+                if (res)lim = k;
+            } else lim--;
         }
     }
 }
@@ -453,7 +453,7 @@ void State::Summarize() {
  */
 State *State::MergeStates(const std::vector<State *> &states) {
     int now_seq_len = 0;
-    for (auto item:states) {
+    for (auto item: states) {
         item->Summarize();
         now_seq_len = std::max(now_seq_len, item->real_seq_len_);
     }
@@ -463,8 +463,8 @@ State *State::MergeStates(const std::vector<State *> &states) {
     if (states[0]->is_read2_)eva_len = states[0]->cmd_info_->eva_len2_;
     else eva_len = states[0]->cmd_info_->eva_len_;
 
-    for (auto item:states) {
-        res_state->orpCost=max(res_state->orpCost,item->orpCost); 
+    for (auto item: states) {
+        res_state->orpCost = max(res_state->orpCost, item->orpCost);
         res_state->q20bases_ += item->q20bases_;
         res_state->q30bases_ += item->q30bases_;
         res_state->lines_ += item->lines_;
@@ -478,14 +478,14 @@ State *State::MergeStates(const std::vector<State *> &states) {
         res_state->trim_adapter_ += item->trim_adapter_;
         res_state->trim_adapter_bases_ += item->trim_adapter_bases_;
 
-        for(auto itmap:item->adapter_map_){
-            string seq=itmap.first;
-            int cnt=itmap.second;
-            if(res_state->adapter_map_.count(seq)){
-                int cnt_now=res_state->adapter_map_[seq];
-                res_state->adapter_map_[seq]=cnt+cnt_now;
-            }else{
-                res_state->adapter_map_[seq]=cnt;
+        for (auto itmap: item->adapter_map_) {
+            string seq = itmap.first;
+            int cnt = itmap.second;
+            if (res_state->adapter_map_.count(seq)) {
+                int cnt_now = res_state->adapter_map_[seq];
+                res_state->adapter_map_[seq] = cnt + cnt_now;
+            } else {
+                res_state->adapter_map_[seq] = cnt;
             }
         }
 
@@ -501,13 +501,13 @@ State *State::MergeStates(const std::vector<State *> &states) {
             res_state->qul_cnt_[i] += item->qul_cnt_[i];
         }
         //TODO find a better method to get smoother line
-        int gcPart=gcMax/100;
+        int gcPart = gcMax / 100;
         for (int i = 0; i < 100; i++) {
-            double sum=0;
-            for(int j=i*gcPart;j<(i+1)*gcPart;j++){
-                sum=max(sum,1.0*item->gc_cnt_[j]);
+            double sum = 0;
+            for (int j = i * gcPart; j < (i + 1) * gcPart; j++) {
+                sum = max(sum, 1.0 * item->gc_cnt_[j]);
             }
-            res_state->gc_cnt_[i] += sum/gcPart;
+            res_state->gc_cnt_[i] += sum / gcPart;
         }
         for (int i = 0; i < res_state->kmer_buf_len_; i++) {
             res_state->kmer_[i] += item->kmer_[i];
@@ -516,8 +516,8 @@ State *State::MergeStates(const std::vector<State *> &states) {
         if (res_state->do_over_represent_analyze_) {
             // merge over rep seq
             int hash_num = res_state->hash_num_;
-            res_state->over_representation_qcnt_+=item->over_representation_qcnt_;
-            res_state->over_representation_pcnt_+=item->over_representation_pcnt_;
+            res_state->over_representation_qcnt_ += item->over_representation_qcnt_;
+            res_state->over_representation_pcnt_ += item->over_representation_pcnt_;
             for (int i = 0; i < hash_num; i++) {
                 res_state->hash_graph_[i].cnt += item->hash_graph_[i].cnt;
                 for (int j = 0; j < eva_len; j++) {
@@ -533,42 +533,43 @@ State *State::MergeStates(const std::vector<State *> &states) {
     return res_state;
 }
 
-void State::PrintAdapterToFile(const State *state){
+void State::PrintAdapterToFile(const State *state) {
     string srr_name;
     bool is_pe = state->cmd_info_->in_file_name2_.length() > 0;
-    int64_t tot_trimmed_base=0;
+    int64_t tot_trimmed_base = 0;
     ofstream ooff;
-    static int cntt=1;
-    if(cntt == 1){
+    static int cntt = 1;
+    if (cntt == 1) {
         srr_name = state->cmd_info_->in_file_name1_;
-    }else if(cntt == 2){
+    } else if (cntt == 2) {
         srr_name = state->cmd_info_->in_file_name2_;
     }
     srr_name = PaseFileName(srr_name);
     string file_name = (is_pe ? "pe_" : "se_") + srr_name + "_trimmed_adapters.txt";
     cntt++;
     ooff.open(file_name);
-    ooff<<"adapter count\n";
-    for(auto item:state->adapter_map_){
-        ooff<<item.first<<" "<<item.second<<endl;
-        tot_trimmed_base+=(item.first.length())*(item.second);
+    ooff << "adapter count\n";
+    for (auto item: state->adapter_map_) {
+        ooff << item.first << " " << item.second << endl;
+        tot_trimmed_base += (item.first.length()) * (item.second);
     }
     ooff.close();
 
 }
 
-void State::PrintFilterResults(const State *state){
+void State::PrintFilterResults(const State *state) {
 
     printf("filtering result:\n");
-    printf("pass filter read number: %lld\n",state->pass_reads_);
-    printf("not pass filter due to too short: %lld\n",state->fail_short_);
-    printf("not pass filter due to too long: %lld\n",state->fail_long_);
-    printf("not pass filter due to too many N: %lld\n",state->fail_N_);
-    printf("not pass filter due to low quality: %lld\n",state->fail_lowq_);
-    if(state->cmd_info_->print_what_trimmed_) 
-        printf("trimmed adapter read number: %lld (all trimmed adapter (len >= %d) can be find in *_trimmed_adapters.txt)\n",state->trim_adapter_,state->cmd_info_->adapter_len_lim_);
-    else printf("trimmed adapter read number: %lld \n",state->trim_adapter_);
-    printf("trimmed base number due to adapter: %lld\n",state->trim_adapter_bases_);
+    printf("pass filter read number: %lld\n", state->pass_reads_);
+    printf("not pass filter due to too short: %lld\n", state->fail_short_);
+    printf("not pass filter due to too long: %lld\n", state->fail_long_);
+    printf("not pass filter due to too many N: %lld\n", state->fail_N_);
+    printf("not pass filter due to low quality: %lld\n", state->fail_lowq_);
+    if (state->cmd_info_->print_what_trimmed_)
+        printf("trimmed adapter read number: %lld (all trimmed adapter (len >= %d) can be find in *_trimmed_adapters.txt)\n",
+               state->trim_adapter_, state->cmd_info_->adapter_len_lim_);
+    else printf("trimmed adapter read number: %lld \n", state->trim_adapter_);
+    printf("trimmed base number due to adapter: %lld\n", state->trim_adapter_bases_);
 
 }
 
@@ -709,42 +710,42 @@ int State::GetHashNum() const {
 
 double State::GetOrpCost() const {
     return orpCost;
-}  
+}
 
 double State::GetAvgLen() const {
     return avg_len;
 }
 
-void State::AddPassReads(){
+void State::AddPassReads() {
     pass_reads_++;
 }
 
-void State::AddFailShort(){
+void State::AddFailShort() {
     fail_short_++;
 }
 
 
-void State::AddFailLong(){
+void State::AddFailLong() {
     fail_long_++;
 }
 
-void State::AddFailN(){
+void State::AddFailN() {
     fail_N_++;
 }
 
-void State::AddFailLowq(){
+void State::AddFailLowq() {
     fail_lowq_++;
 }
 
-void State::AddTrimAdapter(){
+void State::AddTrimAdapter() {
     trim_adapter_++;
 }
 
-void State::AddTrimAdapterBase(int cnt){
-    trim_adapter_bases_+=cnt;
+void State::AddTrimAdapterBase(int cnt) {
+    trim_adapter_bases_ += cnt;
 }
 
-unordered_map<string,int> State::GetAdapterMap(){
+unordered_map<string, int> State::GetAdapterMap() {
     return adapter_map_;
 }
 

@@ -22,17 +22,17 @@ TGSStats::TGSStats(int minLen) {
     //init
     memset(head_qual_sum, 0, size_range * sizeof(int64_t));
     memset(tail_qual_sum, 0, size_range * sizeof(int64_t));
-    mReadsNum=0;
-    mBasesNum=0;
-    mBases51015Num=new int64_t[3];
-    mBases51015Num[0]=0;
-    mBases51015Num[1]=0;
-    mBases51015Num[2]=0;
-    mTop5QualReads=new std::pair<double,int>[5];
-    mTop5LengReads=new std::pair<int,double>[5];
-    for(int i=0;i<5;i++){
-        mTop5QualReads[i]={0,0};
-        mTop5LengReads[i]={0,0};
+    mReadsNum = 0;
+    mBasesNum = 0;
+    mBases51015Num = new int64_t[3];
+    mBases51015Num[0] = 0;
+    mBases51015Num[1] = 0;
+    mBases51015Num[2] = 0;
+    mTop5QualReads = new std::pair<double, int>[5];
+    mTop5LengReads = new std::pair<int, double>[5];
+    for (int i = 0; i < 5; i++) {
+        mTop5QualReads[i] = {0, 0};
+        mTop5LengReads[i] = {0, 0};
     }
 
 }
@@ -50,23 +50,23 @@ TGSStats::~TGSStats() {
     delete mTop5LengReads;
 }
 
-void TGSStats::updateTop5(int rlen,double avgQual){
-    int pos=5;
-    for(int i=0;i<5;i++){
-        if(mTop5QualReads[i].first<avgQual){
-            for(int j=4;j>i;j--){
-                mTop5QualReads[j]=mTop5QualReads[j-1];
+void TGSStats::updateTop5(int rlen, double avgQual) {
+    int pos = 5;
+    for (int i = 0; i < 5; i++) {
+        if (mTop5QualReads[i].first < avgQual) {
+            for (int j = 4; j > i; j--) {
+                mTop5QualReads[j] = mTop5QualReads[j - 1];
             }
-            mTop5QualReads[i]={avgQual,rlen};
+            mTop5QualReads[i] = {avgQual, rlen};
             break;
         }
     }
-    for(int i=0;i<5;i++){
-        if(mTop5LengReads[i].first<rlen){
-            for(int j=4;j>i;j--){
-                mTop5LengReads[j]=mTop5LengReads[j-1];
+    for (int i = 0; i < 5; i++) {
+        if (mTop5LengReads[i].first < rlen) {
+            for (int j = 4; j > i; j--) {
+                mTop5LengReads[j] = mTop5LengReads[j - 1];
             }
-            mTop5LengReads[i]={rlen,avgQual};
+            mTop5LengReads[i] = {rlen, avgQual};
             break;
         }
     }
@@ -77,58 +77,58 @@ void TGSStats::tgsStatRead(neoReference &ref, bool isPhred64) {
     const char *seq = reinterpret_cast<const char *>(ref.base + ref.pseq);
     const char *quality = reinterpret_cast<const char *>(ref.base + ref.pqual);
     int size_range = mMinlen >> 1;
-    size_range=min(size_range,rlen);
+    size_range = min(size_range, rlen);
     int i;
     mReadsNum++;
-    mBasesNum+=rlen;
+    mBasesNum += rlen;
     char c1, c2;
     mTotalReadsLen.push_back(rlen);
     int phredSub = 33;
     if (isPhred64)phredSub = 64;
-    int sumQual=0;
-    for(int i=0;i<rlen;i++){
-        int qual=(quality[i] - phredSub);
-        sumQual+=qual;
-        if(qual>=5)mBases51015Num[0]++;
-        if(qual>=10)mBases51015Num[1]++;
-        if(qual>=15)mBases51015Num[2]++;
+    int sumQual = 0;
+    for (int i = 0; i < rlen; i++) {
+        int qual = (quality[i] - phredSub);
+        sumQual += qual;
+        if (qual >= 5)mBases51015Num[0]++;
+        if (qual >= 10)mBases51015Num[1]++;
+        if (qual >= 15)mBases51015Num[2]++;
     }
-    updateTop5(rlen,1.0*sumQual/rlen);
+    updateTop5(rlen, 1.0 * sumQual / rlen);
     //if (rlen > mMinlen) {
-        //[1] stats lengths
-        mLengths.push_back(rlen);
-        //--head
-        for (i = 0; i < size_range; ++i) {
-            c1 = seq[i];
-            //[2] quality sum
-            head_qual_sum[i] += (quality[i] - phredSub);
-            //[3] sequence count
-            if (c1 == 'A') {
-                head_seq_pos_count[0][i]++;
-            } else if (c1 == 'T') {
-                head_seq_pos_count[1][i]++;
-            } else if (c1 == 'C') {
-                head_seq_pos_count[2][i]++;
-            } else if (c1 == 'G') {
-                head_seq_pos_count[3][i]++;
-            }
-
+    //[1] stats lengths
+    mLengths.push_back(rlen);
+    //--head
+    for (i = 0; i < size_range; ++i) {
+        c1 = seq[i];
+        //[2] quality sum
+        head_qual_sum[i] += (quality[i] - phredSub);
+        //[3] sequence count
+        if (c1 == 'A') {
+            head_seq_pos_count[0][i]++;
+        } else if (c1 == 'T') {
+            head_seq_pos_count[1][i]++;
+        } else if (c1 == 'C') {
+            head_seq_pos_count[2][i]++;
+        } else if (c1 == 'G') {
+            head_seq_pos_count[3][i]++;
         }
-        //--tail
-        for (i = rlen - 1; i >= rlen - size_range; --i) {
-            c2 = seq[i];
-            tail_qual_sum[i - (rlen - size_range)] += (quality[i] - phredSub);
 
-            if (c2 == 'A') {
-                tail_seq_pos_count[0][i - (rlen - size_range)]++;
-            } else if (c2 == 'T') {
-                tail_seq_pos_count[1][i - (rlen - size_range)]++;
-            } else if (c2 == 'C') {
-                tail_seq_pos_count[2][i - (rlen - size_range)]++;
-            } else if (c2 == 'G') {
-                tail_seq_pos_count[3][i - (rlen - size_range)]++;
-            }
+    }
+    //--tail
+    for (i = rlen - 1; i >= rlen - size_range; --i) {
+        c2 = seq[i];
+        tail_qual_sum[i - (rlen - size_range)] += (quality[i] - phredSub);
+
+        if (c2 == 'A') {
+            tail_seq_pos_count[0][i - (rlen - size_range)]++;
+        } else if (c2 == 'T') {
+            tail_seq_pos_count[1][i - (rlen - size_range)]++;
+        } else if (c2 == 'C') {
+            tail_seq_pos_count[2][i - (rlen - size_range)]++;
+        } else if (c2 == 'G') {
+            tail_seq_pos_count[3][i - (rlen - size_range)]++;
         }
+    }
     //}
 }
 
@@ -176,7 +176,7 @@ TGSStats *TGSStats::merge(std::vector<TGSStats *> &list) {
     int i;
     const int minLen = list[0]->mMinlen;
     TGSStats *s = new TGSStats(minLen);
-    for (TGSStats *ds : list) {
+    for (TGSStats *ds: list) {
         //mLengths
         //s->mLengths.push_back(ds->mLengths);
         //ds->print();
@@ -200,38 +200,39 @@ TGSStats *TGSStats::merge(std::vector<TGSStats *> &list) {
             //tail_qual
             s->tail_qual_sum[i] += ds->tail_qual_sum[i];
         }
-        s->mReadsNum+=ds->mReadsNum;
-        s->mBasesNum+=ds->mBasesNum;
-        s->mBases51015Num[0]+=ds->mBases51015Num[0];
-        s->mBases51015Num[1]+=ds->mBases51015Num[1];
-        s->mBases51015Num[2]+=ds->mBases51015Num[2];
-        for(int i=0;i<5;i++){
-            s->updateTop5(ds->mTop5QualReads[i].second,ds->mTop5QualReads[i].first);
-            s->updateTop5(ds->mTop5LengReads[i].first,ds->mTop5LengReads[i].second);
+        s->mReadsNum += ds->mReadsNum;
+        s->mBasesNum += ds->mBasesNum;
+        s->mBases51015Num[0] += ds->mBases51015Num[0];
+        s->mBases51015Num[1] += ds->mBases51015Num[1];
+        s->mBases51015Num[2] += ds->mBases51015Num[2];
+        for (int i = 0; i < 5; i++) {
+            s->updateTop5(ds->mTop5QualReads[i].second, ds->mTop5QualReads[i].first);
+            s->updateTop5(ds->mTop5LengReads[i].first, ds->mTop5LengReads[i].second);
         }
-        
+
     }
 
-    
+
     //s->head_qual_mean = s->head_qual_sum/s->mLengths.size()
     return s;
 
 }
-void TGSStats::CalReadsLens(){
-    int Ppre=10;
-    mMaxReadsLen=0;
-    int64_t readLenSum=0; 
-    for(auto item:mTotalReadsLen){
-        mMaxReadsLen=max(mMaxReadsLen,item);
-        readLenSum+=item;
+
+void TGSStats::CalReadsLens() {
+    int Ppre = 10;
+    mMaxReadsLen = 0;
+    int64_t readLenSum = 0;
+    for (auto item: mTotalReadsLen) {
+        mMaxReadsLen = max(mMaxReadsLen, item);
+        readLenSum += item;
     }
-    mAvgReadsLen=1.0*readLenSum/mTotalReadsLen.size();
-    mMaxReadsLen/=Ppre;
-    mMaxReadsLen+=Ppre;
-    readsLens=new int[mMaxReadsLen];
-    for(int i=0;i<mMaxReadsLen;i++)readsLens[i]=0;
-    for(auto item:mTotalReadsLen){
-        readsLens[(item+Ppre-1)/Ppre]++;
+    mAvgReadsLen = 1.0 * readLenSum / mTotalReadsLen.size();
+    mMaxReadsLen /= Ppre;
+    mMaxReadsLen += Ppre;
+    readsLens = new int[mMaxReadsLen];
+    for (int i = 0; i < mMaxReadsLen; i++)readsLens[i] = 0;
+    for (auto item: mTotalReadsLen) {
+        readsLens[(item + Ppre - 1) / Ppre]++;
     }
 }
 
@@ -312,7 +313,6 @@ std::string TGSStats::list2stringReversedOrder(int64_t *list, int size) {
 }
 
 
-
 int64_t *const *TGSStats::GetHeadSeqPosCount() const {
     return head_seq_pos_count;
 }
@@ -329,7 +329,7 @@ const int64_t *TGSStats::GetTailQualSum() const {
     return tail_qual_sum;
 }
 
-const int TGSStats::GetMaxReadsLen() const{
+const int TGSStats::GetMaxReadsLen() const {
     return mMaxReadsLen;
 }
 
@@ -338,26 +338,26 @@ int *TGSStats::GetReadsLens() const {
 }
 
 
-const double TGSStats::GetAvgReadsLen() const{
+const double TGSStats::GetAvgReadsLen() const {
     return mAvgReadsLen;
 }
 
-const int64_t TGSStats::GetReadsNum() const{
+const int64_t TGSStats::GetReadsNum() const {
     return mReadsNum;
 }
 
-const int64_t TGSStats::GetBasesNum() const{
+const int64_t TGSStats::GetBasesNum() const {
     return mBasesNum;
 }
 
-const int64_t* TGSStats::GetBases51015Num() const{
+const int64_t *TGSStats::GetBases51015Num() const {
     return mBases51015Num;
 }
 
-const std::pair<double,int>* TGSStats::GetTop5QualReads() const{
+const std::pair<double, int> *TGSStats::GetTop5QualReads() const {
     return mTop5QualReads;
 }
 
-const std::pair<int,double>* TGSStats::GetTop5LengReads() const{
+const std::pair<int, double> *TGSStats::GetTop5LengReads() const {
     return mTop5LengReads;
 }

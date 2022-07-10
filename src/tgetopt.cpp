@@ -27,8 +27,8 @@
 
 #include "prog_util.h"
 
-tchar* toptarg;
-int    toptind = 1, topterr = 1, toptopt;
+tchar *toptarg;
+int toptind = 1, topterr = 1, toptopt;
 
 /*
  * This is a simple implementation of getopt().  It can be compiled with either
@@ -41,27 +41,26 @@ int    toptind = 1, topterr = 1, toptopt;
  *	- '+' and '-' characters in optstring
  */
 int
-tgetopt(int argc, tchar* argv[], const tchar* optstring)
-{
-    static tchar  empty[1];
-    static tchar* nextchar;
-    static bool   done;
+tgetopt(int argc, tchar *argv[], const tchar *optstring) {
+    static tchar empty[1];
+    static tchar *nextchar;
+    static bool done;
 
     if (toptind == 1) {
         /* Starting to scan a new argument vector */
         nextchar = nullptr;
-        done     = false;
+        done = false;
     }
 
     while (!done && (nextchar != nullptr || toptind < argc)) {
         if (nextchar == nullptr) {
             /* Scanning a new argument */
-            tchar* arg = argv[toptind++];
+            tchar *arg = argv[toptind++];
             if (arg[0] == '-' && arg[1] != '\0') {
                 if (arg[1] == '-' && arg[2] == '\0') {
                     /* All args after "--" are nonoptions */
                     argv[toptind - 1] = nullptr;
-                    done              = true;
+                    done = true;
                 } else {
                     /* Start of short option characters */
                     nextchar = &arg[1];
@@ -69,8 +68,8 @@ tgetopt(int argc, tchar* argv[], const tchar* optstring)
             }
         } else {
             /* More short options in previous arg */
-            tchar        opt = *nextchar;
-            const tchar* p   = tstrchr(optstring, opt);
+            tchar opt = *nextchar;
+            const tchar *p = tstrchr(optstring, opt);
             if (p == nullptr) {
                 if (topterr) msg("invalid option -- '%" TC "'", opt);
                 toptopt = opt;
@@ -83,12 +82,12 @@ tgetopt(int argc, tchar* argv[], const tchar* optstring)
                 /* 'opt' can take an argument */
                 if (*nextchar != '\0') {
                     /* Optarg is in same argv argument */
-                    toptarg  = nextchar;
+                    toptarg = nextchar;
                     nextchar = empty;
                 } else if (toptind < argc && *(p + 2) != ':') {
                     /* Optarg is next argv argument */
                     argv[toptind - 1] = nullptr;
-                    toptarg           = argv[toptind++];
+                    toptarg = argv[toptind++];
                 } else if (*(p + 2) != ':') {
                     if (topterr && *optstring != ':') {
                         msg("option requires an "
@@ -96,12 +95,12 @@ tgetopt(int argc, tchar* argv[], const tchar* optstring)
                             opt);
                     }
                     toptopt = opt;
-                    opt     = (*optstring == ':') ? ':' : '?';
+                    opt = (*optstring == ':') ? ':' : '?';
                 }
             }
             if (*nextchar == '\0') {
                 argv[toptind - 1] = nullptr;
-                nextchar          = nullptr;
+                nextchar = nullptr;
             }
             return opt;
         }

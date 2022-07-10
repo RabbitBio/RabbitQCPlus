@@ -41,7 +41,7 @@ struct neoReference {
 };
 
 /// Sequence infomations, only for FASTA data
-typedef std::vector<Reference> SeqInfos;
+typedef std::vector <Reference> SeqInfos;
 /// One sequence sequence infomation, only for FASTA data
 typedef Reference OneSeqInfo;
 
@@ -51,7 +51,6 @@ inline void cutseq_neoref(neoReference &ref, uint64_t from, uint64_t to) {
     ref.pqual += from;
     ref.lseq += (to - from + 1);
 }
-
 
 
 #endif

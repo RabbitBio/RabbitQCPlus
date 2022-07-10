@@ -24,28 +24,36 @@
 
 namespace rabbit {
 
-namespace fa {
+    namespace fa {
 
-std::string getSequence(FastaDataChunk *&chunk, uint64 &pos);  // addbyxxm
-std::string getLine(FastaDataChunk *&chunk, uint64 &pos);
-int chunkListFormat(FastaChunk &fachunk, std::vector<Reference> &refs);
-int chunkFormat(FastaChunk &fachunk, std::vector<Reference> &refs);
-int chunkFormat(FastaChunk &fachunk, std::vector<Reference> &refs, int kmerSize);
-Reference getNextSeq(FastaChunk &fachunk, bool &done, uint64 &pos);
+        std::string getSequence(FastaDataChunk *&chunk, uint64 &pos);  // addbyxxm
+        std::string getLine(FastaDataChunk *&chunk, uint64 &pos);
 
-}  // namespace fa
+        int chunkListFormat(FastaChunk &fachunk, std::vector <Reference> &refs);
 
-namespace fq {
+        int chunkFormat(FastaChunk &fachunk, std::vector <Reference> &refs);
 
-int chunkFormat(FastqChunk *chunk, std::vector<Reference> &, bool);
-int chunkFormat(FastqChunk *chunk, std::vector<neoReference> &, bool);
-int chunkFormat(FastqDataChunk *fqChunk, std::vector<neoReference> &data, bool);
-int chunkFormat(FastqDataChunk *fqChunk, std::vector<Reference> &data, bool);
+        int chunkFormat(FastaChunk &fachunk, std::vector <Reference> &refs, int kmerSize);
 
-std::string getLine(FastqDataChunk *&chunk, int &pos);
-int neoGetLine(FastqDataChunk *&chunk, uint64_t &pos, uint64_t &len);
+        Reference getNextSeq(FastaChunk &fachunk, bool &done, uint64 &pos);
 
-}  // namespace fq
+    }  // namespace fa
+
+    namespace fq {
+
+        int chunkFormat(FastqChunk *chunk, std::vector <Reference> &, bool);
+
+        int chunkFormat(FastqChunk *chunk, std::vector <neoReference> &, bool);
+
+        int chunkFormat(FastqDataChunk *fqChunk, std::vector <neoReference> &data, bool);
+
+        int chunkFormat(FastqDataChunk *fqChunk, std::vector <Reference> &data, bool);
+
+        std::string getLine(FastqDataChunk *&chunk, int &pos);
+
+        int neoGetLine(FastqDataChunk *&chunk, uint64_t &pos, uint64_t &len);
+
+    }  // namespace fq
 
 }  // namespace rabbit
 

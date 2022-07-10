@@ -32,9 +32,11 @@ solution.
 #define ZOPFLI_SQUEEZE_H_
 
 #include "lz77.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 /*
 Calculates lit/len and dist pairs for given data.
 If instart is larger than 0, it uses values before instart as starting
@@ -59,6 +61,7 @@ void ZopfliLZ77OptimalFixed(ZopfliBlockState *s,
                             const unsigned char *in,
                             size_t instart, size_t inend,
                             ZopfliLZ77Store *store);
+
 #ifdef __cplusplus
 }
 #endif

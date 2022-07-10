@@ -23,8 +23,8 @@ struct AdapterSeedInfo {
     int pos;
 };
 
-inline std::map<std::string, std::string> getKnownAdapter() {
-    std::map<std::string, std::string> knownAdapters;
+inline std::map <std::string, std::string> getKnownAdapter() {
+    std::map <std::string, std::string> knownAdapters;
 
     knownAdapters["AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"] = "Illumina TruSeq Adapter Read 1";
     knownAdapters["AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"] = "Illumina TruSeq Adapter Read 2";
@@ -105,9 +105,8 @@ int Adapter::seq2int(const char *seq, int pos, int keylen, int lastVal) {
 }
 
 
-
 std::string Adapter::matchKnownAdapter(std::string seq) {
-    std::map<std::string, std::string> knownAdapters = getKnownAdapter();
+    std::map <std::string, std::string> knownAdapters = getKnownAdapter();
     std::map<std::string, std::string>::iterator iter;
     for (iter = knownAdapters.begin(); iter != knownAdapters.end(); iter++) {
         std::string adapter = iter->first;
@@ -126,12 +125,12 @@ std::string Adapter::matchKnownAdapter(std::string seq) {
     return "";
 }
 
-void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &hot_seqs, int &eva_len) {
+void Adapter::PreOverAnalyze(std::string file_name, std::vector <std::string> &hot_seqs, int &eva_len) {
 
     double t0 = GetTime();
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
-            file_name.find(".gz") != std::string::npos);
+                                                        file_name.find(".gz") != std::string::npos);
     int64_t n_chunks = 0;
     const long BASE_LIMIT = 151 * 10000;
     long records = 0;
@@ -147,18 +146,18 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
     for (int i = 0; i < maxn; i++)head[i] = -1;
 
 
-    std::vector<neoReference> loadedReads;
-    std::vector<rabbit::fq::FastqDataChunk *> chunks;
+    std::vector <neoReference> loadedReads;
+    std::vector < rabbit::fq::FastqDataChunk * > chunks;
 
     while (bases < BASE_LIMIT) {
         rabbit::fq::FastqDataChunk *fqdatachunk;
         fqdatachunk = fqFileReader->readNextChunk();
         if (fqdatachunk == NULL) break;
         n_chunks++;
-        std::vector<neoReference> data;
+        std::vector <neoReference> data;
         rabbit::fq::chunkFormat(fqdatachunk, data, true);
         chunks.push_back(fqdatachunk);
-        for (auto item:data) {
+        for (auto item: data) {
             bases += item.lseq;
             loadedReads.push_back(item);
             records++;
@@ -231,9 +230,9 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
     //printf("total hot seqs num is %d\n", num);
     //printf("now get hotseqs\n");
 
-    std::vector<std::pair<std::string, int>> hot_s;
-   
-    std::map<std::string, int>mp_tmp;
+    std::vector <std::pair<std::string, int>> hot_s;
+
+    std::map<std::string, int> mp_tmp;
 
     for (int i = 0; i < num; i++) {
         if (seqs[i].length() >= seqlen - 1) {
@@ -275,7 +274,7 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
         auto seq = item.first;
         auto count = item.second;
         bool isSubString = false;
-        for (auto item:hot_s) {
+        for (auto item: hot_s) {
             auto seq2 = item.first;
             auto count2 = item.second;
             if (seq != seq2 && seq2.find(seq) != std::string::npos && count / count2 < 10) {
@@ -306,7 +305,7 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
     //ofs.close();
     //printf("part4 cost %.5f\n", GetTime() - t0);
     t0 = GetTime();
-    for (auto item:chunks)
+    for (auto item: chunks)
         fastq_data_pool->Release(item);
     delete fastq_data_pool;
     delete fqFileReader;
@@ -319,37 +318,37 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
 
 }
 
-int Adapter::EvalMaxLen(std::string file_name){
+int Adapter::EvalMaxLen(std::string file_name) {
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
-            file_name.find(".gz") != std::string::npos);
+                                                        file_name.find(".gz") != std::string::npos);
     int64_t n_chunks = 0;
     // stat up to 256K reads
     const long READ_LIMIT = 256 * 1024;
     const long BASE_LIMIT = 151 * READ_LIMIT;
     long records = 0;
     long bases = 0;
-    int mx_len=0;
-    std::vector<rabbit::fq::FastqDataChunk *> chunks;
+    int mx_len = 0;
+    std::vector < rabbit::fq::FastqDataChunk * > chunks;
 
     while (records < READ_LIMIT && bases < BASE_LIMIT) {
         rabbit::fq::FastqDataChunk *fqdatachunk;
         fqdatachunk = fqFileReader->readNextChunk();
         if (fqdatachunk == NULL) break;
         n_chunks++;
-        std::vector<neoReference> data;
+        std::vector <neoReference> data;
         rabbit::fq::chunkFormat(fqdatachunk, data, true);
         chunks.push_back(fqdatachunk);
-        for (auto item:data) {
+        for (auto item: data) {
             bases += item.lseq;
-            mx_len=max(mx_len,(int)item.lseq);
+            mx_len = max(mx_len, (int) item.lseq);
             records++;
             if (records >= READ_LIMIT || bases >= BASE_LIMIT)
                 break;
         }
     }
 
-    for (auto item:chunks)
+    for (auto item: chunks)
         fastq_data_pool->Release(item);
     delete fastq_data_pool;
     delete fqFileReader;
@@ -361,7 +360,7 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
     //printf("now auto find adapter...\n");
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
-            file_name.find(".gz") != std::string::npos);
+                                                        file_name.find(".gz") != std::string::npos);
     int64_t n_chunks = 0;
     // stat up to 256K reads
     const long READ_LIMIT = 256 * 1024;
@@ -370,19 +369,19 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
     long bases = 0;
 
 
-    std::vector<neoReference> loadedReads;
-    std::vector<rabbit::fq::FastqDataChunk *> chunks;
+    std::vector <neoReference> loadedReads;
+    std::vector < rabbit::fq::FastqDataChunk * > chunks;
 
     while (records < READ_LIMIT && bases < BASE_LIMIT) {
         rabbit::fq::FastqDataChunk *fqdatachunk;
         fqdatachunk = fqFileReader->readNextChunk();
         if (fqdatachunk == NULL) break;
         n_chunks++;
-        std::vector<neoReference> data;
+        std::vector <neoReference> data;
         rabbit::fq::chunkFormat(fqdatachunk, data, true);
         chunks.push_back(fqdatachunk);
         //        fastq_data_pool->Release(fqdatachunk);
-        for (auto item:data) {
+        for (auto item: data) {
             bases += item.lseq;
             loadedReads.push_back(item);
             records++;
@@ -490,7 +489,7 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
         }
     }
 
-    for (auto item:chunks)
+    for (auto item: chunks)
         fastq_data_pool->Release(item);
 
     delete fastq_data_pool;
@@ -502,13 +501,13 @@ std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
 
 
 std::string
-Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, long records, int keylen,
-        int trim_tail) {
+Adapter::getAdapterWithSeed(int seed, std::vector <neoReference> loadedReads, long records, int keylen,
+                            int trim_tail) {
     // we have to shift last cycle for evaluation since it is so noisy, especially for Illumina data
     const int shiftTail = std::max(1, trim_tail);
     NucleotideTree *forwardTree = new NucleotideTree();
     NucleotideTree *backwardTree = new NucleotideTree();
-    std::vector<AdapterSeedInfo> vec;
+    std::vector <AdapterSeedInfo> vec;
     //#pragma omp parallel for
     for (int i = 0; i < records; i++) {
         neoReference r = loadedReads[i];
@@ -532,7 +531,7 @@ Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, lon
         auto now_it = loadedReads[it->recordsID];
         forwardTree->addSeq(
                 std::string(reinterpret_cast<const char *>(now_it.base + now_it.pseq + it->pos + keylen),
-                    now_it.lseq - keylen - shiftTail - it->pos));
+                            now_it.lseq - keylen - shiftTail - it->pos));
         std::string seq = std::string(reinterpret_cast<const char *>(now_it.base + now_it.pseq), it->pos);
         std::string rcseq = Reverse(seq);
         backwardTree->addSeq(rcseq);
@@ -549,7 +548,7 @@ Adapter::getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, lon
     delete backwardTree;
     std::string matchedAdapter = matchKnownAdapter(adapter);
     if (!matchedAdapter.empty()) {
-        std::map<std::string, std::string> knownAdapters = getKnownAdapter();
+        std::map <std::string, std::string> knownAdapters = getKnownAdapter();
         //std::cout << knownAdapters[matchedAdapter] << ": " << matchedAdapter << std::endl;
         return matchedAdapter;
     } else {
@@ -949,7 +948,7 @@ int Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2)
 
 
     if (found) {
-        int res_len=0;
+        int res_len = 0;
         if (pos < 0) {
             std::string adapter = adapter_seq.substr(0, alen + pos);
             ref.lseq = 0;
@@ -958,7 +957,7 @@ int Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2)
 
         } else {
             std::string new_adapter_seq = std::string(reinterpret_cast<const char *>(ref.base + ref.pseq + pos),
-                    rlen - pos);
+                                                      rlen - pos);
             ref.lseq = pos;
             ref.lqual = pos;
             res_len = new_adapter_seq.length();
@@ -970,8 +969,8 @@ int Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2)
 }
 
 
-
-int Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, std::unordered_map<std::string,int> &mp, int adapter_len_lim, bool isR2) {
+int Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, std::unordered_map<std::string, int> &mp,
+                         int adapter_len_lim, bool isR2) {
     const int matchReq = 4;
     const int allowOneMismatchForEach = 8;
 
@@ -1098,34 +1097,32 @@ int Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, std::unord
 #endif
 
 
-
-
     if (found) {
-        int res_len=0;
+        int res_len = 0;
         if (pos < 0) {
             std::string adapter = adapter_seq.substr(0, alen + pos);
             ref.lseq = 0;
             ref.lqual = 0;
             res_len = adapter.length();
-            if(adapter.length()>=adapter_len_lim){
-                if(mp.count(adapter)==0){
-                    mp[adapter]=1;
-                }else {
+            if (adapter.length() >= adapter_len_lim) {
+                if (mp.count(adapter) == 0) {
+                    mp[adapter] = 1;
+                } else {
                     mp[adapter]++;
                 }
             }
 
         } else {
             std::string new_adapter_seq = std::string(reinterpret_cast<const char *>(ref.base + ref.pseq + pos),
-                    rlen - pos);
+                                                      rlen - pos);
             ref.lseq = pos;
             ref.lqual = pos;
             res_len = new_adapter_seq.length();
 
-            if(new_adapter_seq.length()>=adapter_len_lim){
-                if(mp.count(new_adapter_seq)==0){
-                    mp[new_adapter_seq]=1;
-                }else {
+            if (new_adapter_seq.length() >= adapter_len_lim) {
+                if (mp.count(new_adapter_seq) == 0) {
+                    mp[new_adapter_seq] = 1;
+                } else {
                     mp[new_adapter_seq]++;
                 }
             }
@@ -1134,8 +1131,6 @@ int Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, std::unord
     }
     return false;
 }
-
-
 
 
 /**
@@ -1151,46 +1146,48 @@ int Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int ove
 
     if (overlap_len > 0 && offset < 0) {
         std::string adapter1 = std::string(reinterpret_cast<const char *>(r1.base + r1.pseq + overlap_len),
-                r1.lseq - overlap_len);
+                                           r1.lseq - overlap_len);
         std::string adapter2 = std::string(reinterpret_cast<const char *>(r2.base + r2.pseq + overlap_len),
-                r2.lseq - overlap_len);
+                                           r2.lseq - overlap_len);
         r1.lseq = overlap_len;
         r1.lqual = overlap_len;
         r2.lseq = overlap_len;
         r2.lqual = overlap_len;
 
-        return adapter1.length()+adapter2.length();
+        return adapter1.length() + adapter2.length();
     }
     return false;
 }
 
-int Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int overlap_len, std::unordered_map<std::string,int> &mp1, std::unordered_map<std::string,int> &mp2, int adapter_len_lim) {
+int Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int overlap_len,
+                         std::unordered_map<std::string, int> &mp1, std::unordered_map<std::string, int> &mp2,
+                         int adapter_len_lim) {
     //    if(ov.diff<=5 && ov.overlapped && ov.offset < 0 && ol > r1->length()/3)
 
     if (overlap_len > 0 && offset < 0) {
         std::string adapter1 = std::string(reinterpret_cast<const char *>(r1.base + r1.pseq + overlap_len),
-                r1.lseq - overlap_len);
+                                           r1.lseq - overlap_len);
         std::string adapter2 = std::string(reinterpret_cast<const char *>(r2.base + r2.pseq + overlap_len),
-                r2.lseq - overlap_len);
+                                           r2.lseq - overlap_len);
         r1.lseq = overlap_len;
         r1.lqual = overlap_len;
         r2.lseq = overlap_len;
         r2.lqual = overlap_len;
-        if(adapter1.length()>=adapter_len_lim){
-            if(mp1.count(adapter1)==0){
-                mp1[adapter1]=1;
-            }else{
+        if (adapter1.length() >= adapter_len_lim) {
+            if (mp1.count(adapter1) == 0) {
+                mp1[adapter1] = 1;
+            } else {
                 mp1[adapter1]++;
             }
         }
-        if(adapter2.length()>=adapter_len_lim){
-            if(mp2.count(adapter2)==0){
-                mp2[adapter2]=1;
-            }else{
+        if (adapter2.length() >= adapter_len_lim) {
+            if (mp2.count(adapter2) == 0) {
+                mp2[adapter2] = 1;
+            } else {
                 mp2[adapter2]++;
             }
         }
-        return adapter1.length()+adapter2.length();
+        return adapter1.length() + adapter2.length();
     }
     return false;
 }

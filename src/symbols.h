@@ -26,6 +26,7 @@ Utilities for using the lz77 symbols of the deflate spec.
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 /* Gets the amount of extra bits for the given dist, cfr. the DEFLATE spec. */
 int ZopfliGetDistExtraBits(int dist);
 
@@ -52,6 +53,7 @@ int ZopfliGetLengthSymbolExtraBits(int s);
 
 /* Gets the amount of extra bits for the given distance symbol. */
 int ZopfliGetDistSymbolExtraBits(int s);
+
 #ifdef __cplusplus
 }
 #endif

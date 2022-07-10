@@ -15,6 +15,7 @@
 #include "Reference.h"
 #include "cmdinfo.h"
 #include "nthash.hpp"
+
 struct node {
     int pre, cnt;
     uint64_t v;
@@ -51,7 +52,7 @@ public:
 
     void HashInsert(const char *seq, int len, int eva_len);
 
-	void HashState();
+    void HashState();
 
     //void HashQueryAndAdd(uint64_t now, int offset, int len, int eva_len);
 
@@ -99,16 +100,16 @@ public:
 
     int64_t GetGcBases() const;
 
-	double GetOrpCost() const;
+    double GetOrpCost() const;
 
-	double GetAvgLen() const;
+    double GetAvgLen() const;
 
     void AddPassReads();
 
     void AddFailShort();
 
     void AddFailLong();
-    
+
     void AddFailN();
 
     void AddFailLowq();
@@ -118,7 +119,7 @@ public:
     void AddTrimAdapterBase(int cnt);
 
 
-    unordered_map<string,int> GetAdapterMap();
+    unordered_map<string, int> GetAdapterMap();
 
     CmdInfo *GetCmdInfo() const;
 
@@ -153,7 +154,7 @@ private:
     int64_t over_representation_qcnt_;
     int64_t over_representation_pcnt_;
     int64_t *bf_zone_;
-	double orpCost; 
+    double orpCost;
 public:
     int64_t pass_reads_;
     int64_t fail_short_;
@@ -162,7 +163,7 @@ public:
     int64_t fail_lowq_;
     int64_t trim_adapter_;
     int64_t trim_adapter_bases_;
-    unordered_map<string,int>adapter_map_;
+    unordered_map<string, int> adapter_map_;
 };
 
 

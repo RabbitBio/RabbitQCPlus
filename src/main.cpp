@@ -17,15 +17,17 @@ int main(int argc, char **argv) {
 
     app.add_flag("--phred64", cmd_info.isPhred64_, "input is using phred64 scoring, default is phred33");
     app.add_flag("--stdin", cmd_info.isStdin_,
-            "input from stdin, or -i /dev/stdin, only for se data or interleaved pe data(which means use --interleavedIn)");
+                 "input from stdin, or -i /dev/stdin, only for se data or interleaved pe data(which means use --interleavedIn)");
     app.add_flag("--stdout", cmd_info.isStdout_,
-            "output to stdout, or -o /dev/stdout, only for se data or interleaved pe data(which means use --interleavedOut)");
+                 "output to stdout, or -o /dev/stdout, only for se data or interleaved pe data(which means use --interleavedOut)");
 
 
     app.add_flag("-a,--noTrimAdapter", cmd_info.no_trim_adapter_, "no trim adapter, default is off");
     app.add_flag("--decAdaForSe", cmd_info.se_auto_detect_adapter_, "detect adapter for se data, default is on");
-    app.add_flag("--decAdaForPe", cmd_info.pe_auto_detect_adapter_, "detect adapter for pe data, default is off, tool prefers to use overlap to find adapter");
-    app.add_flag("--printWhatTrimmed", cmd_info.print_what_trimmed_, "print what trimmed to *_trimmed_adapters.txt, default is off");
+    app.add_flag("--decAdaForPe", cmd_info.pe_auto_detect_adapter_,
+                 "detect adapter for pe data, default is off, tool prefers to use overlap to find adapter");
+    app.add_flag("--printWhatTrimmed", cmd_info.print_what_trimmed_,
+                 "print what trimmed to *_trimmed_adapters.txt, default is off");
     app.add_option("--adapterSeq1", cmd_info.adapter_seq1_, "input adapter sequence1 for read1");
     app.add_option("--adapterSeq2", cmd_info.adapter_seq2_, "input adapter sequence2 for read2");
     //app.add_option("--adapterLengthLimit", cmd_info.adapter_len_lim_, "minimum adapter length when trimming, default is 0");
@@ -63,18 +65,22 @@ int main(int argc, char **argv) {
 
 
     //overrepresentation
-    app.add_flag("-p,--doOverrepresentation", cmd_info.do_overrepresentation_, "do overrepresentation analyze, default is off");
+    app.add_flag("-p,--doOverrepresentation", cmd_info.do_overrepresentation_,
+                 "do overrepresentation analyze, default is off");
     app.add_option("-P,--overrepresentationSampling", cmd_info.overrepresentation_sampling_,
-            "do overrepresentation every [] reads, default is 1");
+                   "do overrepresentation every [] reads, default is 1");
 
-    app.add_flag("--printORPSeqs", cmd_info.print_ORP_seqs_, "print overrepresentation sequences to *ORP_sequences.txt , default is off");
+    app.add_flag("--printORPSeqs", cmd_info.print_ORP_seqs_,
+                 "print overrepresentation sequences to *ORP_sequences.txt , default is off");
     //insert size analyze
     app.add_flag("--noInsertSize", cmd_info.no_insert_size_, "no insert size analyze, default is off");
 
 
     //interleaved
-    app.add_flag("--interleavedIn", cmd_info.interleaved_in_, "use interleaved input (only for pe data), default is off");
-    app.add_flag("--interleavedOut", cmd_info.interleaved_out_, "use interleaved output (only for pe data), default is off");
+    app.add_flag("--interleavedIn", cmd_info.interleaved_in_,
+                 "use interleaved input (only for pe data), default is off");
+    app.add_flag("--interleavedOut", cmd_info.interleaved_out_,
+                 "use interleaved output (only for pe data), default is off");
 
 
     //parallel gz
@@ -92,12 +98,12 @@ int main(int argc, char **argv) {
     cmd_info.command_ = command;
 
 
-    bool quVersion=false;
-    app.add_flag("-V,--version",quVersion,"application version");
+    bool quVersion = false;
+    app.add_flag("-V,--version", quVersion, "application version");
 
     CLI11_PARSE(app, argc, argv);
 
-    if(quVersion){
+    if (quVersion) {
         printf("0.0.2\n");
         return 0;
     }
@@ -128,15 +134,14 @@ int main(int argc, char **argv) {
     printf("inFile1 is %s\n", cmd_info.in_file_name1_.c_str());
     if (cmd_info.isStdout_)cmd_info.out_file_name1_ = "/dev/stdout";
     if (cmd_info.in_file_name2_.length())printf("inFile2 is %s\n", cmd_info.in_file_name2_.c_str());
-    if (cmd_info.out_file_name1_.length()){
+    if (cmd_info.out_file_name1_.length()) {
         remove(cmd_info.out_file_name1_.c_str());
         printf("outFile1 is %s\n", cmd_info.out_file_name1_.c_str());
-    }	    
-    if (cmd_info.out_file_name2_.length()){
+    }
+    if (cmd_info.out_file_name2_.length()) {
         remove(cmd_info.out_file_name2_.c_str());
         printf("outFile2 is %s\n", cmd_info.out_file_name2_.c_str());
     }
-
 
 
     if (cmd_info.no_trim_adapter_)cmd_info.trim_adapter_ = false;
@@ -173,7 +178,7 @@ int main(int argc, char **argv) {
         if (umiLoc.empty())
             error_exit("You've enabled UMI by (--addUmi), you should specify the UMI location by (--umiLoc)");
         if (umiLoc != "index1" && umiLoc != "index2" && umiLoc != "read1" && umiLoc != "read2" &&
-                umiLoc != "per_index" && umiLoc != "per_read") {
+            umiLoc != "per_index" && umiLoc != "per_read") {
             error_exit("UMI location can only be index1/index2/read1/read2/per_index/per_read");
         }
         if (cmd_info.in_file_name2_.length() == 0 && (umiLoc == "index2" || umiLoc == "read2"))
@@ -212,21 +217,21 @@ int main(int argc, char **argv) {
     if (cmd_info.use_pigz_) {
         printf("now use pigz, pigz thread number is %d\n", cmd_info.pigz_threads_);
     }
-    if(cmd_info.thread_number_==1)
+    if (cmd_info.thread_number_ == 1)
         printf("now use %d thread to do QC operations\n", cmd_info.thread_number_);
     else
         printf("now use %d threads to do QC operations\n", cmd_info.thread_number_);
-    int mx_len=Adapter::EvalMaxLen(cmd_info.in_file_name1_);
-    cmd_info.seq_len_=mx_len;
+    int mx_len = Adapter::EvalMaxLen(cmd_info.in_file_name1_);
+    cmd_info.seq_len_ = mx_len;
     double t1 = GetTime();
-    
+
     if (cmd_info.in_file_name2_.length() || cmd_info.interleaved_in_) {
         //PE
         if ((cmd_info.out_file_name1_.length() > 0 && cmd_info.out_file_name2_.length() > 0) ||
-                cmd_info.interleaved_out_) {
+            cmd_info.interleaved_out_) {
             cmd_info.write_data_ = true;
         }
-        
+
         //adapter
         if (cmd_info.adapter_seq1_.length()) {
             printf("input adapter1 is %s\n", cmd_info.adapter_seq1_.c_str());
@@ -300,10 +305,10 @@ int main(int argc, char **argv) {
         if (cmd_info.interleaved_out_) {
             printf("now output use interleaved pe data\n");
         }
-        if(cmd_info.adapter_seq1_.length()>0)
-            cmd_info.adapter_len_lim_=min(cmd_info.adapter_len_lim_,int(cmd_info.adapter_seq1_.length()));
-        if(cmd_info.adapter_seq2_.length()>0)
-            cmd_info.adapter_len_lim_=min(cmd_info.adapter_len_lim_,int(cmd_info.adapter_seq2_.length()));
+        if (cmd_info.adapter_seq1_.length() > 0)
+            cmd_info.adapter_len_lim_ = min(cmd_info.adapter_len_lim_, int(cmd_info.adapter_seq1_.length()));
+        if (cmd_info.adapter_seq2_.length() > 0)
+            cmd_info.adapter_len_lim_ = min(cmd_info.adapter_len_lim_, int(cmd_info.adapter_seq2_.length()));
 
         PeQc *pe_qc = new PeQc(&cmd_info);
         pe_qc->ProcessPeFastq();
@@ -352,8 +357,8 @@ int main(int argc, char **argv) {
             printf("pre over representation cost %.5f\n", GetTime() - t2);
 #endif
         }
-        if(cmd_info.adapter_seq1_.length()>0)
-            cmd_info.adapter_len_lim_=min(cmd_info.adapter_len_lim_,int(cmd_info.adapter_seq1_.length()));
+        if (cmd_info.adapter_seq1_.length() > 0)
+            cmd_info.adapter_len_lim_ = min(cmd_info.adapter_len_lim_, int(cmd_info.adapter_seq1_.length()));
         SeQc *se_qc = new SeQc(&cmd_info);
         if (cmd_info.is_TGS_) {
             se_qc->ProcessSeTGS();

@@ -39,7 +39,6 @@ CmdInfo::CmdInfo() {
     qul_range_ = 50;
 
 
-
     trim_adapter_ = true;
     no_trim_adapter_ = false;
     se_auto_detect_adapter_ = true;

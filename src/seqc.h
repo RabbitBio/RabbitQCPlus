@@ -38,7 +38,6 @@ public:
     void ProcessSeTGS();
 
 
-
 private:
 
 //    void PrintRead(neoReference &ref);
@@ -56,14 +55,15 @@ private:
     void WriteSeFastqTask();
 
     void PugzTask();
-    
-	void PigzTask();
+
+    void PigzTask();
 
 private:
     CmdInfo *cmd_info_;
 
     Filter *filter_;
-    moodycamel::ConcurrentQueue<std::pair<char *, int>> *out_queue_;
+    moodycamel::ConcurrentQueue<std::pair < char * , int>> *
+    out_queue_;
 //TODO replace concurrentqueue with char*[]
     std::atomic_int done_thread_number_;
     std::fstream out_stream_;
@@ -74,10 +74,12 @@ private:
     bool in_is_zip_;
     bool out_is_zip_;
 
-    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pugzQueue;
+    moodycamel::ReaderWriterQueue<std::pair < char * , int>> *
+    pugzQueue;
     std::atomic_int pugzDone;
 
-    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pigzQueue;
+    moodycamel::ReaderWriterQueue<std::pair < char * , int>> *
+    pigzQueue;
     pair<char *, int> pigzLast;
 
     std::atomic_int producerDone;

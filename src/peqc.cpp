@@ -20,29 +20,29 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != std::string::npos;
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != std::string::npos;
     if (cmd_info1->write_data_) {
-        out_queue1_ = new CIPair[1<<25];
-        queue1P1=0;
-        queue1P2=0;
-        queueNumNow1=0;
-        queueSizeLim1=1 << 6;
-        if (cmd_info_->interleaved_out_ == 0){
-            out_queue2_ = new CIPair[1<<25];
-            queue2P1=0;
-            queue2P2=0;
-            queueNumNow2=0;
-            queueSizeLim2=1 << 6;
+        out_queue1_ = new CIPair[1 << 25];
+        queue1P1 = 0;
+        queue1P2 = 0;
+        queueNumNow1 = 0;
+        queueSizeLim1 = 1 << 6;
+        if (cmd_info_->interleaved_out_ == 0) {
+            out_queue2_ = new CIPair[1 << 25];
+            queue2P1 = 0;
+            queue2P2 = 0;
+            queueNumNow2 = 0;
+            queueSizeLim2 = 1 << 6;
         }
         if (out_is_zip_) {
-            if(cmd_info1->use_pigz_){
-                pigzQueueNumNow1=0;
-                pigzQueueSizeLim1=1 << 6;
+            if (cmd_info1->use_pigz_) {
+                pigzQueueNumNow1 = 0;
+                pigzQueueSizeLim1 = 1 << 6;
                 string out_name1 = cmd_info1->out_file_name1_;
                 out_name1 = out_name1.substr(0, out_name1.find(".gz"));
                 out_stream1_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
                 out_stream1_.close();
 
-                pigzQueueNumNow2=0;
-                pigzQueueSizeLim2=1 << 6;
+                pigzQueueNumNow2 = 0;
+                pigzQueueSizeLim2 = 1 << 6;
                 string out_name2 = cmd_info1->out_file_name2_;
                 out_name2 = out_name2.substr(0, out_name2.find(".gz"));
                 out_stream2_ = std::fstream(out_name2, std::ios::out | std::ios::binary);
@@ -51,7 +51,7 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
                 printf("now use pigz to compress output data\n");
 #endif
 
-            }else{
+            } else {
 #ifdef Verbose
                 printf("open gzip stream1 %s\n", cmd_info1->out_file_name1_.c_str());
                 printf("open gzip stream2 %s\n", cmd_info1->out_file_name2_.c_str());
@@ -132,9 +132,9 @@ PeQc::~PeQc() {
 
 std::string PeQc::Read2String(neoReference &ref) {
     return std::string((char *) ref.base + ref.pname, ref.lname) + "\n" +
-        std::string((char *) ref.base + ref.pseq, ref.lseq) + "\n" +
-        std::string((char *) ref.base + ref.pstrand, ref.lstrand) + "\n" +
-        std::string((char *) ref.base + ref.pqual, ref.lqual) + "\n";
+           std::string((char *) ref.base + ref.pseq, ref.lseq) + "\n" +
+           std::string((char *) ref.base + ref.pstrand, ref.lstrand) + "\n" +
+           std::string((char *) ref.base + ref.pqual, ref.lqual) + "\n";
 }
 
 void PeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
@@ -153,12 +153,12 @@ void PeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
 }
 
 void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
-        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
+                                    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
     double t0 = GetTime();
 
     rabbit::fq::FastqFileReader *fqFileReader;
-    rabbit::uint32 tmpSize=1 << 20;
-    if(cmd_info_->seq_len_<=200)tmpSize=1 << 14;
+    rabbit::uint32 tmpSize = 1 << 20;
+    if (cmd_info_->seq_len_ <= 200)tmpSize = 1 << 14;
     fqFileReader = new rabbit::fq::FastqFileReader(file, *fastq_data_pool, "", in_is_zip_);
     int64_t n_chunks = 0;
     while (true) {
@@ -180,12 +180,12 @@ void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool 
 
 
 void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
-        rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
+                               rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
     double t0 = GetTime();
 
     rabbit::fq::FastqFileReader *fqFileReader;
-    rabbit::uint32 tmpSize=1 << 20;
-    if(cmd_info_->seq_len_<=200)tmpSize=1 << 14;
+    rabbit::uint32 tmpSize = 1 << 20;
+    if (cmd_info_->seq_len_ <= 200)tmpSize = 1 << 14;
     fqFileReader = new rabbit::fq::FastqFileReader(file, *fastqPool, file2, in_is_zip_, tmpSize);
     int n_chunks = 0;
 
@@ -199,13 +199,14 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
         last2.second = 0;
         while (true) {
             rabbit::fq::FastqDataPairChunk *fqdatachunk;
-            fqdatachunk = fqFileReader->readNextPairChunkParallel(pugzQueue1, pugzQueue2, &pugzDone1, &pugzDone2, last1, last2);
+            fqdatachunk = fqFileReader->readNextPairChunkParallel(pugzQueue1, pugzQueue2, &pugzDone1, &pugzDone2, last1,
+                                                                  last2);
             if (fqdatachunk == NULL) break;
             n_chunks++;
             dq.Push(n_chunks, fqdatachunk);
         }
-        delete []last1.first;
-        delete []last2.first;
+        delete[]last1.first;
+        delete[]last2.first;
     } else {
         while (true) {
             rabbit::fq::FastqDataPairChunk *fqdatachunk;
@@ -232,22 +233,22 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
  * @param dq : data queue
  */
 void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
-        rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
+                               rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataPairChunk *fqdatachunk;
     while (dq.Pop(id, fqdatachunk)) {
-        std::vector<neoReference> data1, data2;
-        std::vector<neoReference> pass_data1, pass_data2;
+        std::vector <neoReference> data1, data2;
+        std::vector <neoReference> pass_data1, pass_data2;
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->left_part), data1, true);
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->right_part), data2, true);
         ASSERT(data1.size() == data2.size());
         int out_len1 = 0, out_len2 = 0;
-        int b_size=min(data1.size(),data2.size());
+        int b_size = min(data1.size(), data2.size());
         for (int i = 0; i < b_size; i++) {
             auto item1 = data1[i];
             auto item2 = data2[i];
-            std::string name1 = std::string((char *) item1.base + item1.pname, item1.lname);
-            std::string name2 = std::string((char *) item2.base + item2.pname, item2.lname);
+            auto name1 = std::string((char *) item1.base + item1.pname, item1.lname);
+            auto name2 = std::string((char *) item2.base + item2.pname, item2.lname);
             thread_info->pre_state1_->StateInfo(item1);
             thread_info->pre_state2_->StateInfo(item2);
             if (cmd_info_->state_duplicate_) {
@@ -273,7 +274,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             OverlapRes overlap_res;
             if (trim_res1 && trim_res2 && cmd_info_->analyze_overlap_) {
                 overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
-                        cmd_info_->overlap_require_);
+                                                      cmd_info_->overlap_require_);
                 int now_size = cmd_info_->max_insert_size_;
                 if (overlap_res.overlapped) {
                     if (overlap_res.offset > 0)
@@ -289,40 +290,45 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             }
             if (trim_res1 && trim_res2 && cmd_info_->trim_adapter_) {
                 int trimmed;
-                if(cmd_info_->print_what_trimmed_){
-                    trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len, thread_info->aft_state1_->adapter_map_, thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_);
-                }
-                else{
+                if (cmd_info_->print_what_trimmed_) {
+                    trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len,
+                                                   thread_info->aft_state1_->adapter_map_,
+                                                   thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_);
+                } else {
                     trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
                 }
-                if(trimmed){
+                if (trimmed) {
                     thread_info->aft_state1_->AddTrimAdapter();
                     thread_info->aft_state1_->AddTrimAdapter();
                     thread_info->aft_state1_->AddTrimAdapterBase(trimmed);
                 }
                 if (!trimmed) {
-                    int res1,res2;
-                    if (cmd_info_->detect_adapter1_){
+                    int res1, res2;
+                    if (cmd_info_->detect_adapter1_) {
                         int res1;
-                        if(cmd_info_->print_what_trimmed_){
-                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, thread_info->aft_state1_->adapter_map_, cmd_info_->adapter_len_lim_, false);
-                        }else{
-                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_,false);
+                        if (cmd_info_->print_what_trimmed_) {
+                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_,
+                                                        thread_info->aft_state1_->adapter_map_,
+                                                        cmd_info_->adapter_len_lim_, false);
+                        } else {
+                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, false);
                         }
                     }
-                    if (cmd_info_->detect_adapter2_){
+                    if (cmd_info_->detect_adapter2_) {
                         int res2;
-                        if(cmd_info_->print_what_trimmed_){
-                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_,true);
-                        }else{
-                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_,true);
+                        if (cmd_info_->print_what_trimmed_) {
+                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_,
+                                                        thread_info->aft_state2_->adapter_map_,
+                                                        cmd_info_->adapter_len_lim_, true);
+                        } else {
+                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, true);
                         }
                     }
-                    if(res1){
+                    if (res1) {
                         thread_info->aft_state1_->AddTrimAdapter();
                         thread_info->aft_state1_->AddTrimAdapterBase(res1);
                     }
-                    if(res2){
+                    if (res2) {
                         thread_info->aft_state1_->AddTrimAdapter();
                         thread_info->aft_state1_->AddTrimAdapterBase(res2);
                     }
@@ -334,7 +340,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             int filter_res1 = filter_->ReadFiltering(item1, trim_res1, cmd_info_->isPhred64_);
             int filter_res2 = filter_->ReadFiltering(item2, trim_res2, cmd_info_->isPhred64_);
 
-            int filter_res = max(filter_res1,filter_res2);
+            int filter_res = max(filter_res1, filter_res2);
 
 
             if (filter_res == 0) {
@@ -348,23 +354,22 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     out_len1 += item1.lname + item1.lseq + item1.lstrand + item1.lqual + 4;
                     out_len2 += item2.lname + item2.lseq + item2.lstrand + item2.lqual + 4;
                 }
-            }else if(filter_res == 2){
+            } else if (filter_res == 2) {
                 thread_info->aft_state1_->AddFailShort();
                 thread_info->aft_state1_->AddFailShort();
-            }else if(filter_res == 3){
+            } else if (filter_res == 3) {
                 thread_info->aft_state1_->AddFailLong();
                 thread_info->aft_state1_->AddFailLong();
-            }else if(filter_res == 4){
+            } else if (filter_res == 4) {
                 thread_info->aft_state1_->AddFailLowq();
                 thread_info->aft_state1_->AddFailLowq();
-            }else if(filter_res == 1){
+            } else if (filter_res == 1) {
                 thread_info->aft_state1_->AddFailN();
                 thread_info->aft_state1_->AddFailN();
             }
 
         }
         if (cmd_info_->write_data_) {
-
             if (cmd_info_->interleaved_out_) {
                 char *out_data = new char[out_len1 + out_len2];
                 int pos = 0;
@@ -376,51 +381,50 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     Read2Chars(item2, out_data, pos);
                 }
                 mylock.lock();
-                while (queueNumNow1>queueSizeLim1) {
+                while (queueNumNow1 > queueSizeLim1) {
 #ifdef Verbose
                     //printf("waiting to push a chunk to out queue1\n");
 #endif
                     usleep(100);
                 }
-                out_queue1_[queue1P2++]={out_data, pos};
+                out_queue1_[queue1P2++] = {out_data, pos};
                 queueNumNow1++;
                 mylock.unlock();
             } else {
                 if (pass_data1.size() > 0 && pass_data2.size() > 0) {
                     char *out_data1 = new char[out_len1];
                     int pos = 0;
-                    for (auto item:pass_data1) {
+                    for (auto item: pass_data1) {
                         Read2Chars(item, out_data1, pos);
                     }
                     ASSERT(pos == out_len1);
                     char *out_data2 = new char[out_len2];
                     pos = 0;
-                    for (auto item:pass_data2) {
+                    for (auto item: pass_data2) {
                         Read2Chars(item, out_data2, pos);
                     }
                     ASSERT(pos == out_len2);
 
                     mylock.lock();
-                    while (queueNumNow1>queueSizeLim1) {
+                    while (queueNumNow1 > queueSizeLim1) {
 #ifdef Verbose
                         //printf("waiting to push a chunk to out queue1\n");
 #endif
                         usleep(100);
                     }
-                    while (queueNumNow2>queueSizeLim2) {
+                    while (queueNumNow2 > queueSizeLim2) {
 #ifdef Verbose
                         //printf("waiting to push a chunk to out queue2\n");
 #endif
                         usleep(100);
                     }
-                    out_queue1_[queue1P2++]={out_data1, out_len1};
+                    out_queue1_[queue1P2++] = {out_data1, out_len1};
                     queueNumNow1++;
-                    out_queue2_[queue2P2++]={out_data2, out_len2};
+                    out_queue2_[queue2P2++] = {out_data2, out_len2};
                     queueNumNow2++;
                     mylock.unlock();
                 }
             }
-
         }
         fastqPool->Release(fqdatachunk->left_part);
         fastqPool->Release(fqdatachunk->right_part);
@@ -428,24 +432,22 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
     done_thread_number_++;
 }
 
+
 void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
-        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
+                                    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;
-    neoReference item1, item2;
-    std::string name1, name2;
-
     while (dq.Pop(id, fqdatachunk)) {
-        std::vector<neoReference> data;
-        std::vector<neoReference> pass_data1, pass_data2;
+        std::vector <neoReference> data;
+        std::vector <neoReference> pass_data1, pass_data2;
         rabbit::fq::chunkFormat(fqdatachunk, data, true);
 
         int out_len1 = 0, out_len2 = 0;
         for (int i = 0; i + 2 <= data.size(); i += 2) {
-            item1 = data[i];
-            item2 = data[i + 1];
-            name1 = string(reinterpret_cast<const char *>(item1.base + item1.pname), item1.lname);
-            name2 = string(reinterpret_cast<const char *>(item2.base + item2.pname), item2.lname);
+            auto item1 = data[i];
+            auto item2 = data[i + 1];
+            auto name1 = std::string((char *) item1.base + item1.pname, item1.lname);
+            auto name2 = std::string((char *) item2.base + item2.pname, item2.lname);
             thread_info->pre_state1_->StateInfo(item1);
             thread_info->pre_state2_->StateInfo(item2);
             if (cmd_info_->state_duplicate_) {
@@ -471,7 +473,7 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
             OverlapRes overlap_res;
             if (trim_res1 && trim_res2 && cmd_info_->analyze_overlap_) {
                 overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
-                        cmd_info_->overlap_require_);
+                                                      cmd_info_->overlap_require_);
                 int now_size = cmd_info_->max_insert_size_;
                 if (overlap_res.overlapped) {
                     if (overlap_res.offset > 0)
@@ -487,40 +489,45 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
             }
             if (trim_res1 && trim_res2 && cmd_info_->trim_adapter_) {
                 int trimmed;
-                if(cmd_info_->print_what_trimmed_){
-                    trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len, thread_info->aft_state1_->adapter_map_, thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_);
-                }
-                else{
+                if (cmd_info_->print_what_trimmed_) {
+                    trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len,
+                                                   thread_info->aft_state1_->adapter_map_,
+                                                   thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_);
+                } else {
                     trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
                 }
-                if(trimmed){
+                if (trimmed) {
                     thread_info->aft_state1_->AddTrimAdapter();
                     thread_info->aft_state1_->AddTrimAdapter();
                     thread_info->aft_state1_->AddTrimAdapterBase(trimmed);
                 }
                 if (!trimmed) {
-                    int res1,res2;
-                    if (cmd_info_->detect_adapter1_){
+                    int res1, res2;
+                    if (cmd_info_->detect_adapter1_) {
                         int res1;
-                        if(cmd_info_->print_what_trimmed_){
-                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, thread_info->aft_state1_->adapter_map_, cmd_info_->adapter_len_lim_, false);
-                        }else{
-                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_,false);
+                        if (cmd_info_->print_what_trimmed_) {
+                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_,
+                                                        thread_info->aft_state1_->adapter_map_,
+                                                        cmd_info_->adapter_len_lim_, false);
+                        } else {
+                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, false);
                         }
                     }
-                    if (cmd_info_->detect_adapter2_){
+                    if (cmd_info_->detect_adapter2_) {
                         int res2;
-                        if(cmd_info_->print_what_trimmed_){
-                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_,true);
-                        }else{
-                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_,true);
+                        if (cmd_info_->print_what_trimmed_) {
+                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_,
+                                                        thread_info->aft_state2_->adapter_map_,
+                                                        cmd_info_->adapter_len_lim_, true);
+                        } else {
+                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, true);
                         }
                     }
-                    if(res1){
+                    if (res1) {
                         thread_info->aft_state1_->AddTrimAdapter();
                         thread_info->aft_state1_->AddTrimAdapterBase(res1);
                     }
-                    if(res2){
+                    if (res2) {
                         thread_info->aft_state1_->AddTrimAdapter();
                         thread_info->aft_state1_->AddTrimAdapterBase(res2);
                     }
@@ -532,72 +539,93 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
             int filter_res1 = filter_->ReadFiltering(item1, trim_res1, cmd_info_->isPhred64_);
             int filter_res2 = filter_->ReadFiltering(item2, trim_res2, cmd_info_->isPhred64_);
 
-            if (filter_res1 == 0 && filter_res2 == 0) {
+
+            int filter_res = max(filter_res1, filter_res2);
+
+
+            if (filter_res == 0) {
                 thread_info->aft_state1_->StateInfo(item1);
                 thread_info->aft_state2_->StateInfo(item2);
+                thread_info->aft_state1_->AddPassReads();
+                thread_info->aft_state1_->AddPassReads();
                 if (cmd_info_->write_data_) {
                     pass_data1.push_back(item1);
                     pass_data2.push_back(item2);
                     out_len1 += item1.lname + item1.lseq + item1.lstrand + item1.lqual + 4;
                     out_len2 += item2.lname + item2.lseq + item2.lstrand + item2.lqual + 4;
                 }
+            } else if (filter_res == 2) {
+                thread_info->aft_state1_->AddFailShort();
+                thread_info->aft_state1_->AddFailShort();
+            } else if (filter_res == 3) {
+                thread_info->aft_state1_->AddFailLong();
+                thread_info->aft_state1_->AddFailLong();
+            } else if (filter_res == 4) {
+                thread_info->aft_state1_->AddFailLowq();
+                thread_info->aft_state1_->AddFailLowq();
+            } else if (filter_res == 1) {
+                thread_info->aft_state1_->AddFailN();
+                thread_info->aft_state1_->AddFailN();
             }
         }
-        if (cmd_info_->interleaved_out_) {
-            char *out_data = new char[out_len1 + out_len2];
-            int pos = 0;
-            int len = min(pass_data1.size(), pass_data2.size());
-            for (int i = 0; i < len; i++) {
-                auto item1 = pass_data1[i];
-                auto item2 = pass_data2[i];
-                Read2Chars(item1, out_data, pos);
-                Read2Chars(item2, out_data, pos);
-            }
-            mylock.lock();
-            while (queueNumNow1>queueSizeLim1) {
-#ifdef Verbose
-                //printf("waiting to push a chunk to out queue1\n");
-#endif
-                usleep(100);
-            }
-            out_queue1_[queue1P2++]={out_data, pos};
-            queueNumNow1++;
-            mylock.unlock();
-        } else {
-            if (pass_data1.size() > 0 && pass_data2.size() > 0) {
-                char *out_data1 = new char[out_len1];
+        if (cmd_info_->write_data_) {
+            if (cmd_info_->interleaved_out_) {
+                char *out_data = new char[out_len1 + out_len2];
                 int pos = 0;
-                for (auto item:pass_data1) {
-                    Read2Chars(item, out_data1, pos);
+                int len = min(pass_data1.size(), pass_data2.size());
+                for (int i = 0; i < len; i++) {
+                    auto item1 = pass_data1[i];
+                    auto item2 = pass_data2[i];
+                    Read2Chars(item1, out_data, pos);
+                    Read2Chars(item2, out_data, pos);
                 }
-                ASSERT(pos == out_len1);
-                char *out_data2 = new char[out_len2];
-                pos = 0;
-                for (auto item:pass_data2) {
-                    Read2Chars(item, out_data2, pos);
-                }
-                ASSERT(pos == out_len2);
-
                 mylock.lock();
-                while (queueNumNow1>queueSizeLim1) {
+                while (queueNumNow1 > queueSizeLim1) {
 #ifdef Verbose
                     //printf("waiting to push a chunk to out queue1\n");
 #endif
                     usleep(100);
                 }
-                while (queueNumNow2>queueSizeLim2) {
-#ifdef Verbose
-                    //printf("waiting to push a chunk to out queue2\n");
-#endif
-                    usleep(100);
-                }
-                out_queue1_[queue1P2++]={out_data1, out_len1};
+                out_queue1_[queue1P2++] = {out_data, pos};
                 queueNumNow1++;
-                out_queue2_[queue2P2++]={out_data2, out_len2};
-                queueNumNow2++;
                 mylock.unlock();
+            } else {
+                if (pass_data1.size() > 0 && pass_data2.size() > 0) {
+                    char *out_data1 = new char[out_len1];
+                    int pos = 0;
+                    for (auto item: pass_data1) {
+                        Read2Chars(item, out_data1, pos);
+                    }
+                    ASSERT(pos == out_len1);
+                    char *out_data2 = new char[out_len2];
+                    pos = 0;
+                    for (auto item: pass_data2) {
+                        Read2Chars(item, out_data2, pos);
+                    }
+                    ASSERT(pos == out_len2);
+
+                    mylock.lock();
+                    while (queueNumNow1 > queueSizeLim1) {
+#ifdef Verbose
+                        //printf("waiting to push a chunk to out queue1\n");
+#endif
+                        usleep(100);
+                    }
+                    while (queueNumNow2 > queueSizeLim2) {
+#ifdef Verbose
+                        //printf("waiting to push a chunk to out queue2\n");
+#endif
+                        usleep(100);
+                    }
+                    out_queue1_[queue1P2++] = {out_data1, out_len1};
+                    queueNumNow1++;
+                    out_queue2_[queue2P2++] = {out_data2, out_len2};
+                    queueNumNow2++;
+                    mylock.unlock();
+                }
             }
         }
+
         fastqPool->Release(fqdatachunk);
     }
     done_thread_number_++;
@@ -610,22 +638,22 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
 void PeQc::WriteSeFastqTask1() {
     double t0 = GetTime();
     int cnt = 0;
-    bool overWhile=0;
+    bool overWhile = 0;
     std::pair<char *, int> now;
     while (true) {
-        while(queueNumNow1==0){
-            if (done_thread_number_ == cmd_info_->thread_number_){
-                overWhile=1;
+        while (queueNumNow1 == 0) {
+            if (done_thread_number_ == cmd_info_->thread_number_) {
+                overWhile = 1;
                 break;
             }
             usleep(100);
         }
-        if(overWhile)break;
-        now=out_queue1_[queue1P1++];
+        if (overWhile)break;
+        now = out_queue1_[queue1P1++];
         queueNumNow1--;
         if (out_is_zip_) {
-            if(cmd_info_->use_pigz_){
-                while(pigzQueueNumNow1>pigzQueueSizeLim1){
+            if (cmd_info_->use_pigz_) {
+                while (pigzQueueNumNow1 > pigzQueueSizeLim1) {
 
 #ifdef Verbose
                     //printf("waiting to push a chunk to pigz queue1\n");
@@ -634,7 +662,7 @@ void PeQc::WriteSeFastqTask1() {
                 }
                 pigzQueue1->enqueue(now);
                 pigzQueueNumNow1++;
-            }else{
+            } else {
                 int written = gzwrite(zip_out_stream1, now.first, now.second);
                 if (written != now.second) {
                     printf("gzwrite error\n");
@@ -648,9 +676,9 @@ void PeQc::WriteSeFastqTask1() {
         }
     }
     if (out_is_zip_) {
-        if(cmd_info_->use_pigz_){
+        if (cmd_info_->use_pigz_) {
 
-        }else{
+        } else {
             if (zip_out_stream1) {
                 gzflush(zip_out_stream1, Z_FINISH);
                 gzclose(zip_out_stream1);
@@ -672,22 +700,22 @@ void PeQc::WriteSeFastqTask1() {
 void PeQc::WriteSeFastqTask2() {
     double t0 = GetTime();
     int cnt = 0;
-    bool overWhile=0;
+    bool overWhile = 0;
     std::pair<char *, int> now;
     while (true) {
-        while(queueNumNow2==0){
-            if (done_thread_number_ == cmd_info_->thread_number_){
-                overWhile=1;
+        while (queueNumNow2 == 0) {
+            if (done_thread_number_ == cmd_info_->thread_number_) {
+                overWhile = 1;
                 break;
             }
             usleep(100);
         }
-        if(overWhile)break;
-        now=out_queue2_[queue2P1++];
+        if (overWhile)break;
+        now = out_queue2_[queue2P1++];
         queueNumNow2--;
         if (out_is_zip_) {
-            if(cmd_info_->use_pigz_){
-                while(pigzQueueNumNow2>pigzQueueSizeLim2){
+            if (cmd_info_->use_pigz_) {
+                while (pigzQueueNumNow2 > pigzQueueSizeLim2) {
 
 #ifdef Verbose
                     //printf("waiting to push a chunk to pigz queue2\n");
@@ -696,7 +724,7 @@ void PeQc::WriteSeFastqTask2() {
                 }
                 pigzQueue2->enqueue(now);
                 pigzQueueNumNow2++;
-            }else{
+            } else {
                 int written = gzwrite(zip_out_stream2, now.first, now.second);
                 if (written != now.second) {
                     printf("GG");
@@ -714,9 +742,9 @@ void PeQc::WriteSeFastqTask2() {
     }
 
     if (out_is_zip_) {
-        if(cmd_info_->use_pigz_){
+        if (cmd_info_->use_pigz_) {
 
-        }else{
+        } else {
             if (zip_out_stream2) {
                 gzflush(zip_out_stream2, Z_FINISH);
                 gzclose(zip_out_stream2);
@@ -784,7 +812,7 @@ void PeQc::PigzTask1() {
     infos[8] = new char[out_file.length() + 1];
     memcpy(infos[8], out_file.c_str(), out_file.length());
     infos[8][out_file.length()] = '\0';
-    infos[9]="-v";
+    infos[9] = "-v";
     main_pigz(cnt, infos, pigzQueue1, &writerDone1, pigzLast1, &pigzQueueNumNow1);
 #ifdef Verbose
     printf("pigz1 done\n");
@@ -819,12 +847,13 @@ void PeQc::PigzTask2() {
     infos[8] = new char[out_file.length() + 1];
     memcpy(infos[8], out_file.c_str(), out_file.length());
     infos[8][out_file.length()] = '\0';
-    infos[9]="-v";
+    infos[9] = "-v";
     main_pigz(cnt, infos, pigzQueue2, &writerDone2, pigzLast2, &pigzQueueNumNow2);
 #ifdef Verbose
     printf("pigz2 done\n");
 #endif
 }
+
 /**
  * @brief do QC for pair-end data
  */
@@ -845,8 +874,8 @@ void PeQc::ProcessPeFastq() {
         }
 
         std::thread producer(
-                std::bind(&PeQc::ProducerPeInterFastqTask, this, cmd_info_->in_file_name1_, fastqPool,
-                    std::ref(queue1)));
+        std::bind(&PeQc::ProducerPeInterFastqTask, this, cmd_info_->in_file_name1_, fastqPool,
+                  std::ref(queue1)));
         auto **threads = new std::thread *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             threads[t] = new std::thread(
@@ -865,10 +894,10 @@ void PeQc::ProcessPeFastq() {
         printf("all thrad done\n");
         printf("now merge thread info\n");
 #endif
-        std::vector<State *> pre_vec_state1;
-        std::vector<State *> pre_vec_state2;
-        std::vector<State *> aft_vec_state1;
-        std::vector<State *> aft_vec_state2;
+        std::vector < State * > pre_vec_state1;
+        std::vector < State * > pre_vec_state2;
+        std::vector < State * > aft_vec_state1;
+        std::vector < State * > aft_vec_state2;
 
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             pre_vec_state1.push_back(p_thread_info[t]->pre_state1_);
@@ -895,7 +924,7 @@ void PeQc::ProcessPeFastq() {
         printf("\nprint read2 (after filter) info :\n");
         State::PrintStates(aft_state2);
         printf("\n");
-        if(cmd_info_->print_what_trimmed_){
+        if (cmd_info_->print_what_trimmed_) {
             State::PrintAdapterToFile(aft_state1);
             State::PrintAdapterToFile(aft_state2);
         }
@@ -930,24 +959,26 @@ void PeQc::ProcessPeFastq() {
             int cnt1 = 0;
             ofs << "sequence count" << "\n";
             for (int i = 0; i < pre_hash_num1; i++) {
-                if(!overRepPassed(pre_hash_graph1[i].seq, pre_hash_graph1[i].cnt, spg))continue;
+                if (!overRepPassed(pre_hash_graph1[i].seq, pre_hash_graph1[i].cnt, spg))continue;
                 ofs << pre_hash_graph1[i].seq << " " << pre_hash_graph1[i].cnt << "\n";
                 cnt1++;
             }
             ofs.close();
-            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(), cnt1, out_name1.c_str());
+            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
+                   srr_name1.c_str(), cnt1, out_name1.c_str());
 
             string out_name2 = "pe_" + srr_name2 + "_before_ORP_sequences.txt";
             ofs.open(out_name2, ifstream::out);
             int cnt2 = 0;
             ofs << "sequence count" << "\n";
             for (int i = 0; i < pre_hash_num2; i++) {
-                if(!overRepPassed(pre_hash_graph2[i].seq, pre_hash_graph2[i].cnt, spg))continue;
+                if (!overRepPassed(pre_hash_graph2[i].seq, pre_hash_graph2[i].cnt, spg))continue;
                 ofs << pre_hash_graph2[i].seq << " " << pre_hash_graph2[i].cnt << "\n";
                 cnt2++;
             }
             ofs.close();
-            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(), cnt2, out_name2.c_str());
+            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
+                   srr_name2.c_str(), cnt2, out_name2.c_str());
 
 
             out_name1 = "pe_" + srr_name1 + "_after_ORP_sequences.txt";
@@ -955,24 +986,26 @@ void PeQc::ProcessPeFastq() {
             cnt1 = 0;
             ofs << "sequence count" << "\n";
             for (int i = 0; i < aft_hash_num1; i++) {
-                if(!overRepPassed(aft_hash_graph1[i].seq, aft_hash_graph1[i].cnt, spg))continue;
+                if (!overRepPassed(aft_hash_graph1[i].seq, aft_hash_graph1[i].cnt, spg))continue;
                 ofs << aft_hash_graph1[i].seq << " " << aft_hash_graph1[i].cnt << "\n";
                 cnt1++;
             }
             ofs.close();
-            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(), cnt1, out_name1.c_str());
+            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(),
+                   cnt1, out_name1.c_str());
 
             out_name2 = "pe_" + srr_name2 + "_after_ORP_sequences.txt";
             ofs.open(out_name2, ifstream::out);
             cnt2 = 0;
             ofs << "sequence count" << "\n";
-            for (int i = 0; i < aft_hash_num1; i++) {
-                if(!overRepPassed(aft_hash_graph2[i].seq, aft_hash_graph2[i].cnt, spg))continue;
+            for (int i = 0; i < aft_hash_num2; i++) {
+                if (!overRepPassed(aft_hash_graph2[i].seq, aft_hash_graph2[i].cnt, spg))continue;
                 ofs << aft_hash_graph2[i].seq << " " << aft_hash_graph2[i].cnt << "\n";
                 cnt2++;
             }
             ofs.close();
-            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(), cnt2, out_name2.c_str());
+            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(),
+                   cnt2, out_name2.c_str());
 
             printf("\n");
         }
@@ -1007,14 +1040,15 @@ void PeQc::ProcessPeFastq() {
                 if (merge_insert_size[i] > merge_insert_size[mx_id])mx_id = i;
             }
             //printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
-            printf("Insert size Peak (based on PE overlap analyze): %d\n", mx_id);
+            printf("Insert size peak (based on PE overlap analyze): %d\n", mx_id);
         }
         std::string srr_name1 = cmd_info_->in_file_name1_;
         srr_name1 = PaseFileName(srr_name1);
         std::string srr_name2 = cmd_info_->in_file_name2_;
         srr_name2 = PaseFileName(srr_name2);
-        Repoter::ReportHtmlPe(srr_name1 + "_" + srr_name2 + "_RabbitQCPlus.html", pre_state1, pre_state2, aft_state1, aft_state2, cmd_info_->in_file_name1_,
-                cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
+        Repoter::ReportHtmlPe(srr_name1 + "_" + srr_name2 + "_RabbitQCPlus.html", pre_state1, pre_state2, aft_state1,
+                              aft_state2, cmd_info_->in_file_name1_,
+                              cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
 #ifdef Verbose
         printf("report done\n");
 #endif
@@ -1065,14 +1099,14 @@ void PeQc::ProcessPeFastq() {
         }
         thread *pigzer1;
         thread *pigzer2;
-        if(cmd_info_->use_pigz_){
-            pigzer1 = new thread(bind(&PeQc::PigzTask1,this));
-            if(cmd_info_->interleaved_out_==0)
-                pigzer2 = new thread(bind(&PeQc::PigzTask2,this));
+        if (cmd_info_->use_pigz_) {
+            pigzer1 = new thread(bind(&PeQc::PigzTask1, this));
+            if (cmd_info_->interleaved_out_ == 0)
+                pigzer2 = new thread(bind(&PeQc::PigzTask2, this));
         }
         std::thread producer(
-                std::bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_,
-                    fastqPool, std::ref(queue1)));
+        std::bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_,
+                  fastqPool, std::ref(queue1)));
         auto **threads = new std::thread *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             threads[t] = new std::thread(
@@ -1090,27 +1124,27 @@ void PeQc::ProcessPeFastq() {
         }
         if (cmd_info_->write_data_) {
             write_thread1->join();
-            writerDone1=1;
-            if (cmd_info_->interleaved_out_ == 0){
+            writerDone1 = 1;
+            if (cmd_info_->interleaved_out_ == 0) {
 
                 write_thread2->join();
-                writerDone2=1;
+                writerDone2 = 1;
             }
         }
 
-        if(cmd_info_->use_pigz_){
+        if (cmd_info_->use_pigz_) {
             pigzer1->join();
-            if(cmd_info_->interleaved_out_==0)
+            if (cmd_info_->interleaved_out_ == 0)
                 pigzer2->join();
         }
 #ifdef Verbose
         printf("all thrad done\n");
         printf("now merge thread info\n");
 #endif
-        std::vector<State *> pre_vec_state1;
-        std::vector<State *> pre_vec_state2;
-        std::vector<State *> aft_vec_state1;
-        std::vector<State *> aft_vec_state2;
+        std::vector < State * > pre_vec_state1;
+        std::vector < State * > pre_vec_state2;
+        std::vector < State * > aft_vec_state1;
+        std::vector < State * > aft_vec_state2;
 
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             pre_vec_state1.push_back(p_thread_info[t]->pre_state1_);
@@ -1139,11 +1173,11 @@ void PeQc::ProcessPeFastq() {
         printf("\nprint read2 (after filter) info :\n");
         State::PrintStates(aft_state2);
         printf("\n");
-        if(cmd_info_->print_what_trimmed_){
+        if (cmd_info_->print_what_trimmed_) {
             State::PrintAdapterToFile(aft_state1);
             State::PrintAdapterToFile(aft_state2);
         }
-        State::PrintFilterResults(aft_state1); 
+        State::PrintFilterResults(aft_state1);
         printf("\n");
 
         if (cmd_info_->do_overrepresentation_ && cmd_info_->print_ORP_seqs_) {
@@ -1174,24 +1208,26 @@ void PeQc::ProcessPeFastq() {
             int cnt1 = 0;
             ofs << "sequence count" << "\n";
             for (int i = 0; i < pre_hash_num1; i++) {
-                if(!overRepPassed(pre_hash_graph1[i].seq, pre_hash_graph1[i].cnt, spg))continue;
+                if (!overRepPassed(pre_hash_graph1[i].seq, pre_hash_graph1[i].cnt, spg))continue;
                 ofs << pre_hash_graph1[i].seq << " " << pre_hash_graph1[i].cnt << "\n";
                 cnt1++;
             }
             ofs.close();
-            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(), cnt1, out_name1.c_str());
+            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
+                   srr_name1.c_str(), cnt1, out_name1.c_str());
 
             string out_name2 = "pe_" + srr_name2 + "_before_ORP_sequences.txt";
             ofs.open(out_name2, ifstream::out);
             int cnt2 = 0;
             ofs << "sequence count" << "\n";
             for (int i = 0; i < pre_hash_num2; i++) {
-                if(!overRepPassed(pre_hash_graph2[i].seq, pre_hash_graph2[i].cnt, spg))continue;
+                if (!overRepPassed(pre_hash_graph2[i].seq, pre_hash_graph2[i].cnt, spg))continue;
                 ofs << pre_hash_graph2[i].seq << " " << pre_hash_graph2[i].cnt << "\n";
                 cnt2++;
             }
             ofs.close();
-            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(), cnt2, out_name2.c_str());
+            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
+                   srr_name2.c_str(), cnt2, out_name2.c_str());
 
 
             out_name1 = "pe_" + srr_name1 + "_after_ORP_sequences.txt";
@@ -1199,24 +1235,26 @@ void PeQc::ProcessPeFastq() {
             cnt1 = 0;
             ofs << "sequence count" << "\n";
             for (int i = 0; i < aft_hash_num1; i++) {
-                if(!overRepPassed(aft_hash_graph1[i].seq, aft_hash_graph1[i].cnt, spg))continue;
+                if (!overRepPassed(aft_hash_graph1[i].seq, aft_hash_graph1[i].cnt, spg))continue;
                 ofs << aft_hash_graph1[i].seq << " " << aft_hash_graph1[i].cnt << "\n";
                 cnt1++;
             }
             ofs.close();
-            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(), cnt1, out_name1.c_str());
+            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(),
+                   cnt1, out_name1.c_str());
 
             out_name2 = "pe_" + srr_name2 + "_after_ORP_sequences.txt";
             ofs.open(out_name2, ifstream::out);
             cnt2 = 0;
             ofs << "sequence count" << "\n";
             for (int i = 0; i < aft_hash_num2; i++) {
-                if(!overRepPassed(aft_hash_graph2[i].seq, aft_hash_graph2[i].cnt, spg))continue;
+                if (!overRepPassed(aft_hash_graph2[i].seq, aft_hash_graph2[i].cnt, spg))continue;
                 ofs << aft_hash_graph2[i].seq << " " << aft_hash_graph2[i].cnt << "\n";
                 cnt2++;
             }
             ofs.close();
-            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(), cnt2, out_name2.c_str());
+            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(),
+                   cnt2, out_name2.c_str());
 
             printf("\n");
         }
@@ -1253,13 +1291,13 @@ void PeQc::ProcessPeFastq() {
             //printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
             printf("Insert size peak (based on PE overlap analyze): %d\n", mx_id);
         }
-
         std::string srr_name1 = cmd_info_->in_file_name1_;
         srr_name1 = PaseFileName(srr_name1);
         std::string srr_name2 = cmd_info_->in_file_name2_;
         srr_name2 = PaseFileName(srr_name2);
-        Repoter::ReportHtmlPe(srr_name1 + "_" + srr_name2 + "_RabbitQCPlus.html", pre_state1, pre_state2, aft_state1, aft_state2, cmd_info_->in_file_name1_,
-                cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
+        Repoter::ReportHtmlPe(srr_name1 + "_" + srr_name2 + "_RabbitQCPlus.html", pre_state1, pre_state2, aft_state1,
+                              aft_state2, cmd_info_->in_file_name1_,
+                              cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
 #ifdef Verbose
         printf("report done\n");
 #endif

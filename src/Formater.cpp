@@ -84,7 +84,7 @@ namespace rabbit {
  * @param refs Destation vector to store at
  * @return Total number of Reference instance in vector refs.
  */
-        int chunkListFormat(FastaChunk &fachunk, vector<Reference> &refs) {
+        int chunkListFormat(FastaChunk &fachunk, vector <Reference> &refs) {
             auto tmp = fachunk.chunk;
             uint64 chunk_seq_start = fachunk.start;
             Reference *current = NULL;
@@ -134,7 +134,7 @@ namespace rabbit {
  * @param refs Destation vector to store at
  * @return Total number of Reference instance in vector refs.
  */
-        int chunkFormat(FastaChunk &fachunk, vector<Reference> &refs) {
+        int chunkFormat(FastaChunk &fachunk, vector <Reference> &refs) {
             uint64 pos = 0;
             bool done = false;
             // cerr << "into chunkFormat" << endl;
@@ -157,7 +157,7 @@ namespace rabbit {
  * @param kmerSize Formated Reference's sequence length < kmerSize will be dropout
  * @return Total number of Reference instance in vector refs.
  */
-        int chunkFormat(FastaChunk &fachunk, vector<Reference> &refs, int kmerSize) {
+        int chunkFormat(FastaChunk &fachunk, vector <Reference> &refs, int kmerSize) {
             uint64 pos = 0;
             bool done = false;
             // cerr << "into chunkFormat" << endl;
@@ -235,7 +235,7 @@ namespace rabbit {
  * @param mHasQuality If the FASTQ data has quality infomation (default: true)
  * @return Total number of neoReference instance in vector `data`.
  */
-        int chunkFormat(FastqChunk *fqChunk, std::vector<neoReference> &data, bool mHasQuality = true) {
+        int chunkFormat(FastqChunk *fqChunk, std::vector <neoReference> &data, bool mHasQuality = true) {
             FastqDataChunk *chunk = fqChunk->chunk;
             uint64_t seq_count = 0;
             uint64_t line_count = 0;
@@ -262,7 +262,7 @@ namespace rabbit {
             return seq_count;
         }
 
-        int chunkFormat(FastqDataChunk *fqDataChunk, std::vector<neoReference> &data, bool mHasQuality = true) {
+        int chunkFormat(FastqDataChunk *fqDataChunk, std::vector <neoReference> &data, bool mHasQuality = true) {
             FastqDataChunk *chunk = fqDataChunk;
             uint64_t seq_count = 0;
             uint64_t line_count = 0;
@@ -297,7 +297,7 @@ namespace rabbit {
  * @param mHasQuality If the FASTQ data has quality infomation (default: true)
  * @return Total number of Reference instance in vector `data`.
  */
-        int chunkFormat(FastqChunk *fqChunk, std::vector<Reference> &data, bool mHasQuality = true) {
+        int chunkFormat(FastqChunk *fqChunk, std::vector <Reference> &data, bool mHasQuality = true) {
             //format a whole chunk and return number of reads
             FastqDataChunk *chunk = fqChunk->chunk;
             int seq_count = 0;
@@ -342,7 +342,7 @@ namespace rabbit {
             return seq_count;
         }
 
-        int chunkFormat(FastqDataChunk *fqDataChunk, std::vector<Reference> &data, bool mHasQuality = true) {
+        int chunkFormat(FastqDataChunk *fqDataChunk, std::vector <Reference> &data, bool mHasQuality = true) {
             //format a whole chunk and return number of reads
             FastqDataChunk *chunk = fqDataChunk;
             int seq_count = 0;

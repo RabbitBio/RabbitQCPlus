@@ -23,7 +23,7 @@ int Filter::ReadFiltering(neoReference &ref, bool trim_res, bool isPhred64) {
     int seq_len = ref.lseq;
     int qul_len = ref.lqual;
     ASSERT(seq_len == qul_len);
-    if (seq_len >= cmd_info->length_limit_){
+    if (seq_len >= cmd_info->length_limit_) {
         return 3;
     }
     if (seq_len == 0 || seq_len < cmd_info->length_required_) {

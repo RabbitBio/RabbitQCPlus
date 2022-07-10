@@ -30,8 +30,7 @@ stat_file(struct file_stream *in, stat_t *stbuf, bool allow_hard_links) {
 }
 
 
-void main_pugz(string in_name, int threads, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q,
-               atomic_int *producerDone) {
+void main_pugz(string in_name, int threads, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, atomic_int *producerDone) {
     struct file_stream in;
     stat_t stbuf;
     int ret;

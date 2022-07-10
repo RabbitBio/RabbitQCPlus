@@ -37,22 +37,25 @@ public:
 
     static std::string matchKnownAdapter(std::string seq);
 
-    static void PreOverAnalyze(std::string file_name, std::vector<std::string> &ho_seqs, int &eva_len);
+    static void PreOverAnalyze(std::string file_name, std::vector <std::string> &ho_seqs, int &eva_len);
 
     static std::string AutoDetect(std::string file_name, int trim_tail);
-    
+
     static int EvalMaxLen(std::string file_name);
 
     static std::string
-    getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, long records, int keylen, int trim_tail);
+    getAdapterWithSeed(int seed, std::vector <neoReference> loadedReads, long records, int keylen, int trim_tail);
 
     static OverlapRes AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require);
 
-    static int TrimAdapter(neoReference &r1, neoReference &r2, int offset, int overlap_len, std::unordered_map<std::string,int> &mp1, std::unordered_map<std::string,int> &mp2, int adapter_len_lim);
+    static int TrimAdapter(neoReference &r1, neoReference &r2, int offset, int overlap_len,
+                           std::unordered_map<std::string, int> &mp1, std::unordered_map<std::string, int> &mp2,
+                           int adapter_len_lim);
 
     static int TrimAdapter(neoReference &r1, neoReference &r2, int offset, int overlap_len);
 
-    static int TrimAdapter(neoReference &ref, std::string &adapter_seq, std::unordered_map<std::string,int> &mp, int adapter_len_lim, bool isR2);
+    static int TrimAdapter(neoReference &ref, std::string &adapter_seq, std::unordered_map<std::string, int> &mp,
+                           int adapter_len_lim, bool isR2);
 
     static int TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2 = false);
 

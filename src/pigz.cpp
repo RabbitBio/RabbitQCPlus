@@ -201,127 +201,128 @@ Produce Zip64 format when needed for --zip (>= 4 GiB)
     */
 
 #define VERSION "pigz 2.6"
+
 #include "pigz.h"
 
 
-    /* To-do:
-       - make source portable for Windows, VMS, etc. (see gzip source code)
-       - make build portable (currently good for Unixish)
-       */
+/* To-do:
+   - make source portable for Windows, VMS, etc. (see gzip source code)
+   - make build portable (currently good for Unixish)
+   */
 
-    /*
-       pigz compresses using threads to make use of multiple processors and cores.
-       The input is broken up into 128 KB chunks with each compressed in parallel.
-       The individual check value for each chunk is also calculated in parallel.
-       The compressed data is written in order to the output, and a combined check
-       value is calculated from the individual check values.
+/*
+   pigz compresses using threads to make use of multiple processors and cores.
+   The input is broken up into 128 KB chunks with each compressed in parallel.
+   The individual check value for each chunk is also calculated in parallel.
+   The compressed data is written in order to the output, and a combined check
+   value is calculated from the individual check values.
 
-       The compressed data format generated is in the gzip, zlib, or single-entry
-       zip format using the deflate compression method. The compression produces
-       partial raw deflate streams which are concatenated by a single write threadPigz
-       and wrapped with the appropriate header and trailer, where the trailer
-       contains the combined check value.
+   The compressed data format generated is in the gzip, zlib, or single-entry
+   zip format using the deflate compression method. The compression produces
+   partial raw deflate streams which are concatenated by a single write threadPigz
+   and wrapped with the appropriate header and trailer, where the trailer
+   contains the combined check value.
 
-       Each partial raw deflate stream is terminated by an empty stored block
-       (using the Z_SYNC_FLUSH option of zlib), in order to end that partial bit
-       stream at a byte boundary, unless that partial stream happens to already end
-       at a byte boundary (the latter requires zlib 1.2.6 or later). Ending on a
-       byte boundary allows the partial streams to be concatenated simply as
-       sequences of bytes. This adds a very small four to five byte overhead
-       (average 3.75 bytes) to the output for each input chunk.
+   Each partial raw deflate stream is terminated by an empty stored block
+   (using the Z_SYNC_FLUSH option of zlib), in order to end that partial bit
+   stream at a byte boundary, unless that partial stream happens to already end
+   at a byte boundary (the latter requires zlib 1.2.6 or later). Ending on a
+   byte boundary allows the partial streams to be concatenated simply as
+   sequences of bytes. This adds a very small four to five byte overhead
+   (average 3.75 bytes) to the output for each input chunk.
 
-       The default input block size is 128K, but can be changed with the -b option.
-       The number of compress threads is set by default to 8, which can be changed
-       using the -p option. Specifying -p 1 avoids the use of threads entirely.
-       pigz will try to determine the number of processors in the machine, in which
-       case if that number is two or greater, pigz will use that as the default for
-       -p instead of 8.
+   The default input block size is 128K, but can be changed with the -b option.
+   The number of compress threads is set by default to 8, which can be changed
+   using the -p option. Specifying -p 1 avoids the use of threads entirely.
+   pigz will try to determine the number of processors in the machine, in which
+   case if that number is two or greater, pigz will use that as the default for
+   -p instead of 8.
 
-       The input blocks, while compressed independently, have the last 32K of the
-       previous block loaded as a preset dictionary to preserve the compression
-       effectiveness of deflating in a single threadPigz. This can be turned off using
-       the --independent or -i option, so that the blocks can be decompressed
-       independently for partial error recovery or for random access.
+   The input blocks, while compressed independently, have the last 32K of the
+   previous block loaded as a preset dictionary to preserve the compression
+   effectiveness of deflating in a single threadPigz. This can be turned off using
+   the --independent or -i option, so that the blocks can be decompressed
+   independently for partial error recovery or for random access.
 
-       Decompression can't be parallelized over an arbitrary number of processors
-       like compression can be, at least not without specially prepared deflate
-       streams for that purpose. As a result, pigz uses a single threadPigz (the main
-       threadPigz) for decompression, but will create three other threads for reading,
-       writing, and check calculation, which can speed up decompression under some
-       circumstances. Parallel decompression can be turned off by specifying one
-       process (-dp 1 or -tp 1).
+   Decompression can't be parallelized over an arbitrary number of processors
+   like compression can be, at least not without specially prepared deflate
+   streams for that purpose. As a result, pigz uses a single threadPigz (the main
+   threadPigz) for decompression, but will create three other threads for reading,
+   writing, and check calculation, which can speed up decompression under some
+   circumstances. Parallel decompression can be turned off by specifying one
+   process (-dp 1 or -tp 1).
 
-       pigz requires zlib 1.2.1 or later to allow setting the dictionary when doing
-       raw deflate. Since zlib 1.2.3 corrects security vulnerabilities in zlib
-       version 1.2.1 and 1.2.2, conditionals check for zlib 1.2.3 or later during
-       the compilation of pigz.c. zlib 1.2.4 includes some improvements to
-       Z_FULL_FLUSH and deflateSetDictionary() that permit identical output for
-       pigz with and without threads, which is not possible with zlib 1.2.3. This
-       may be important for uses of pigz -R where small changes in the contents
-       should result in small changes in the archive for rsync. Note that due to
-       the details of how the lower levels of compression result in greater speed,
-       compression level 3 and below does not permit identical pigz output with and
-       without threads.
+   pigz requires zlib 1.2.1 or later to allow setting the dictionary when doing
+   raw deflate. Since zlib 1.2.3 corrects security vulnerabilities in zlib
+   version 1.2.1 and 1.2.2, conditionals check for zlib 1.2.3 or later during
+   the compilation of pigz.c. zlib 1.2.4 includes some improvements to
+   Z_FULL_FLUSH and deflateSetDictionary() that permit identical output for
+   pigz with and without threads, which is not possible with zlib 1.2.3. This
+   may be important for uses of pigz -R where small changes in the contents
+   should result in small changes in the archive for rsync. Note that due to
+   the details of how the lower levels of compression result in greater speed,
+   compression level 3 and below does not permit identical pigz output with and
+   without threads.
 
-       pigz uses the POSIX pthread library for threadPigz control and communication,
-       through the yarn.h interface to yarn.c. yarn.c can be replaced with
-       equivalent implementations using other threadPigz libraries. pigz can be
-       compiled with NOTHREAD #defined to not use threads at all (in which case
-       pigz will not be able to live up to the "parallel" in its name).
-       */
+   pigz uses the POSIX pthread library for threadPigz control and communication,
+   through the yarn.h interface to yarn.c. yarn.c can be replaced with
+   equivalent implementations using other threadPigz libraries. pigz can be
+   compiled with NOTHREAD #defined to not use threads at all (in which case
+   pigz will not be able to live up to the "parallel" in its name).
+   */
 
-    /*
-       Details of parallel compression implementation:
+/*
+   Details of parallel compression implementation:
 
-       When doing parallel compression, pigz uses the main threadPigz to read the input
-       in 'size' sized chunks (see -b), and puts those in a compression job list,
-       each with a sequence number to keep track of the ordering[small_map[*((int*)(pthread_getspecific(gtid)))]]. If it is not the
-       first chunk, then that job also points to the previous input buffer, from
-       which the last 32K will be used as a dictionary (unless -i is specified).
-       This sets a lower limit of 32K on 'size'.
+   When doing parallel compression, pigz uses the main threadPigz to read the input
+   in 'size' sized chunks (see -b), and puts those in a compression job list,
+   each with a sequence number to keep track of the ordering[small_map[*((int*)(pthread_getspecific(gtid)))]]. If it is not the
+   first chunk, then that job also points to the previous input buffer, from
+   which the last 32K will be used as a dictionary (unless -i is specified).
+   This sets a lower limit of 32K on 'size'.
 
-       pigz launches up to 'procs' compression threads (see -p). Each compression
-       threadPigz continues to look for jobs in the compression list and perform those
-       jobs until instructed to return. When a job is pulled, the dictionary, if
-       provided, will be loaded into the deflate engine and then that input buffer
-       is dropped for reuse. Then the input data is compressed into an output
-       buffer that grows in size if necessary to hold the compressed data. The job
-       is then put into the write job list, sorted by the sequence number. The
-       compress threadPigz however continues to calculate the check value on the input
-       data, either a CRC-32 or Adler-32, possibly in parallel with the write
-       threadPigz writing the output data. Once that's done, the compress threadPigz drops
-       the input buffer and also releases the lock_pigz on the check value so that the
-       write threadPigz can combine it with the previous check values. The compress
-       threadPigz has then completed that job, and goes to look for another.
+   pigz launches up to 'procs' compression threads (see -p). Each compression
+   threadPigz continues to look for jobs in the compression list and perform those
+   jobs until instructed to return. When a job is pulled, the dictionary, if
+   provided, will be loaded into the deflate engine and then that input buffer
+   is dropped for reuse. Then the input data is compressed into an output
+   buffer that grows in size if necessary to hold the compressed data. The job
+   is then put into the write job list, sorted by the sequence number. The
+   compress threadPigz however continues to calculate the check value on the input
+   data, either a CRC-32 or Adler-32, possibly in parallel with the write
+   threadPigz writing the output data. Once that's done, the compress threadPigz drops
+   the input buffer and also releases the lock_pigz on the check value so that the
+   write threadPigz can combine it with the previous check values. The compress
+   threadPigz has then completed that job, and goes to look for another.
 
-       All of the compress threads are left running and waiting even after the last
-       chunk is processed, so that they can support the next input to be compressed
-       (more than one input file on the command line). Once pigz is done, it will
-       call all the compress threads home (that'll do pig, that'll do).
+   All of the compress threads are left running and waiting even after the last
+   chunk is processed, so that they can support the next input to be compressed
+   (more than one input file on the command line). Once pigz is done, it will
+   call all the compress threads home (that'll do pig, that'll do).
 
-       Before starting to read the input, the main threadPigz launches the write threadPigz
-       so that it is ready pick up jobs immediately. The compress threadPigz puts the
-       write jobs in the list in sequence sorted order, so that the first job in
-       the list is always has the lowest sequence number. The write threadPigz waits
-       for the next write job in sequence, and then gets that job. The job still
-       holds its input buffer, from which the write threadPigz gets the input buffer
-       length for use in check value combination. Then the write threadPigz drops that
-       input buffer to allow its reuse. Holding on to the input buffer until the
-       write threadPigz starts also has the benefit that the read and compress threads
-       can't get way ahead of the write threadPigz and build up a large backlog of
-       unwritten compressed data. The write threadPigz will write the compressed data,
-       drop the output buffer, and then wait for the check value to be unlocked by
-       the compress threadPigz. Then the write threadPigz combines the check value for this
-       chunk with the total check value for eventual use in the trailer. If this is
-       not the last chunk, the write threadPigz then goes back to look for the next
-       output chunk in sequence. After the last chunk, the write threadPigz returns and
-       joins the main threadPigz. Unlike the compress threads, a new write threadPigz is
-       launched for each input stream. The write threadPigz writes the appropriate
-       header and trailer around the compressed data.
+   Before starting to read the input, the main threadPigz launches the write threadPigz
+   so that it is ready pick up jobs immediately. The compress threadPigz puts the
+   write jobs in the list in sequence sorted order, so that the first job in
+   the list is always has the lowest sequence number. The write threadPigz waits
+   for the next write job in sequence, and then gets that job. The job still
+   holds its input buffer, from which the write threadPigz gets the input buffer
+   length for use in check value combination. Then the write threadPigz drops that
+   input buffer to allow its reuse. Holding on to the input buffer until the
+   write threadPigz starts also has the benefit that the read and compress threads
+   can't get way ahead of the write threadPigz and build up a large backlog of
+   unwritten compressed data. The write threadPigz will write the compressed data,
+   drop the output buffer, and then wait for the check value to be unlocked by
+   the compress threadPigz. Then the write threadPigz combines the check value for this
+   chunk with the total check value for eventual use in the trailer. If this is
+   not the last chunk, the write threadPigz then goes back to look for the next
+   output chunk in sequence. After the last chunk, the write threadPigz returns and
+   joins the main threadPigz. Unlike the compress threads, a new write threadPigz is
+   launched for each input stream. The write threadPigz writes the appropriate
+   header and trailer around the compressed data.
 
-       The input and output buffers are reused through their collection in pools.
-       Each buffer has a use count, which when decremented to zero returns the
-       buffer to the respective pool. Each input buffer has up to three parallel
+   The input and output buffers are reused through their collection in pools.
+   Each buffer has a use count, which when decremented to zero returns the
+   buffer to the respective pool. Each input buffer has up to three parallel
 uses: as the input for compression, as the data for the check value
 calculation, and as a dictionary for compression. Each output buffer has
 only one use, which is as the output of compression followed serially as
@@ -335,45 +336,45 @@ is not directly limited, but is indirectly limited by the release_pigz of input
 buffers to about the same number.
 */
 
-    // Portability defines.
+// Portability defines.
 #define _FILE_OFFSET_BITS 64            // Use large file functions
 #define _LARGE_FILES                    // Same thing for AIX
 #define _XOPEN_SOURCE 700               // For POSIX 2008
 
 #include <sys/syscall.h>
-    // Included headers and what is expected from each.
+// Included headers and what is expected from each.
 #include <stdio.h>      // fflush(), fprintf(), fputs(), getchar(), putc(),
-    // puts(), printf(), vasprintf(), stderr, EOF, NULL,
-    // SEEK_END, size_t, off_t
+// puts(), printf(), vasprintf(), stderr, EOF, NULL,
+// SEEK_END, size_t, off_t
 #include <stdlib.h>     // exit(), malloc(), free(), realloc(), atol(), atoi(),
-    // getenv()
+// getenv()
 #include <stdarg.h>     // va_start(), va_arg(), va_end(), va_list
 #include <string.h>     // memset(), memchr(), memcpy(), strcmp(), strcpy(),
-    // strncpy(), strlen(), strcat(), strrchr(),
-    // strerror()
+// strncpy(), strlen(), strcat(), strrchr(),
+// strerror()
 #include <errno.h>      // errno, EEXIST
 #include <assert.h>     // assert()
 #include <time.h>       // ctime(), time(), time_t, mktime()
 #include <signal.h>     // signal(), SIGINT
 #include <sys/types.h>  // ssize_t
 #include <sys/stat.h>   // chmod(), stat(), fstat(), lstat(), struct stat,
-    // S_IFDIR, S_IFLNK, S_IFMT, S_IFREG
+// S_IFDIR, S_IFLNK, S_IFMT, S_IFREG
 #include <sys/time.h>   // utimes(), gettimeofday(), struct timeval
 #include <unistd.h>     // unlink(), _exit(), read(), write(), close(),
-    // lseek(), isatty(), chown(), fsync()
+// lseek(), isatty(), chown(), fsync()
 #include <fcntl.h>      // open(), O_CREAT, O_EXCL, O_RDONLY, O_TRUNC,
-    // O_WRONLY, fcntl(), F_FULLFSYNC
+// O_WRONLY, fcntl(), F_FULLFSYNC
 #include <dirent.h>     // opendir(), readdir(), closedir(), DIR,
-    // struct dirent
+// struct dirent
 #include <limits.h>     // UINT_MAX, INT_MAX
 
 #if __STDC_VERSION__ - 0 >= 199901L || __GNUC__ - 0 >= 3
 #  include <inttypes.h> // intmax_t, uintmax_t
-    typedef uintmax_t length_t;
-    typedef uint32_t crc_t;
+typedef uintmax_t length_t;
+typedef uint32_t crc_t;
 #else
-    typedef unsigned long length_t;
-    typedef unsigned long crc_t;
+typedef unsigned long length_t;
+typedef unsigned long crc_t;
 #endif
 
 #ifdef PIGZ_DEBUG
@@ -408,11 +409,11 @@ buffers to about the same number.
 #endif
 
 #include "zlib.h"       // deflateInit2(), deflateReset(), deflate(),
-    // deflateEnd(), deflateSetDictionary(), crc32(),
-    // adler32(), inflateBackInit(), inflateBack(),
-    // inflateBackEnd(), Z_DEFAULT_COMPRESSION,
-    // Z_DEFAULT_STRATEGY, Z_DEFLATED, Z_NO_FLUSH, Z_NULL,
-    // Z_OK, Z_SYNC_FLUSH, z_stream
+// deflateEnd(), deflateSetDictionary(), crc32(),
+// adler32(), inflateBackInit(), inflateBack(),
+// inflateBackEnd(), Z_DEFAULT_COMPRESSION,
+// Z_DEFAULT_STRATEGY, Z_DEFLATED, Z_NO_FLUSH, Z_NULL,
+// Z_OK, Z_SYNC_FLUSH, z_stream
 #if !defined(ZLIB_VERNUM) || ZLIB_VERNUM < 0x1230
 #  error "Need zlib version 1.2.3 or later"
 #endif
@@ -420,23 +421,23 @@ buffers to about the same number.
 #ifndef NOTHREAD
 
 #  include "yarn.h"     // threadPigz, launch_pigz(), join_pigz(), join_all_pigz(), lock_pigz,
-    // new_lock_pigz(), possess_pigz(), twist_pigz(), wait_for_pigz(),
-    // release_pigz(), peek_lock(), free_lock_pigz(), yarn_name
+// new_lock_pigz(), possess_pigz(), twist_pigz(), wait_for_pigz(),
+// release_pigz(), peek_lock(), free_lock_pigz(), yarn_name
 #endif
 
 #ifndef NOZOPFLI
 
 #  include "deflate.h"    // ZopfliDeflatePart(),
-    // ZopfliInitOptions(),
-    // ZopfliOptions
+// ZopfliInitOptions(),
+// ZopfliOptions
 #endif
 
 #include "try.h"        // try, catch, always, throw, drop, punt, ball_t
 
-    // For local functions and globals.
-    //#define local static
+// For local functions and globals.
+//#define local static
 #define local
-    // Prevent end-of-line conversions on MSDOSish operating systems.
+// Prevent end-of-line conversions on MSDOSish operating systems.
 #if defined(MSDOS) || defined(OS2) || defined(_WIN32) || defined(__CYGWIN__)
 #  include <io.h>       // setmode(), O_BINARY, _commit() for _WIN32
 #  define SET_BINARY_MODE(fd) setmode(fd, O_BINARY)
@@ -444,7 +445,7 @@ buffers to about the same number.
 #  define SET_BINARY_MODE(fd)
 #endif
 
-    // Release an allocated pointer, if allocated, and mark as unallocated.
+// Release an allocated pointer, if allocated, and mark as unallocated.
 #define RELEASE(ptr) \
         do { \
             if ((ptr) != NULL) { \
@@ -453,81 +454,81 @@ buffers to about the same number.
             } \
         } while (0)
 
-    // Sliding dictionary size for deflate.
+// Sliding dictionary size for deflate.
 #define DICT 32768U
 
-    // Largest power of 2 that fits in an unsigned int. Used to limit requests to
-    // zlib functions that use unsigned int lengths.
+// Largest power of 2 that fits in an unsigned int. Used to limit requests to
+// zlib functions that use unsigned int lengths.
 #define MAXP2 (UINT_MAX - (UINT_MAX >> 1))
 
-    /* rsyncable constants -- RSYNCBITS is the number of bits in the mask for
-       comparison. For random input data, there will be a hit on average every
-       1<<RSYNCBITS bytes. So for an RSYNCBITS of 12, there will be an average of
-       one hit every 4096 bytes, resulting in a mean block size of 4096. RSYNCMASK
-       is the resulting bit mask. RSYNCHIT is what the hash value is compared to
-       after applying the mask.
+/* rsyncable constants -- RSYNCBITS is the number of bits in the mask for
+   comparison. For random input data, there will be a hit on average every
+   1<<RSYNCBITS bytes. So for an RSYNCBITS of 12, there will be an average of
+   one hit every 4096 bytes, resulting in a mean block size of 4096. RSYNCMASK
+   is the resulting bit mask. RSYNCHIT is what the hash value is compared to
+   after applying the mask.
 
-       The choice of 12 for RSYNCBITS is consistent with the original rsyncable
-       patch for gzip which also uses a 12-bit mask. This results in a relatively
-       small hit to compression, on the order of 1.5% to 3%. A mask of 13 bits can
-       be used instead if a hit of less than 1% to the compression is desired, at
-       the expense of more blocks transmitted for rsync updates. (Your mileage may
-       vary.)
+   The choice of 12 for RSYNCBITS is consistent with the original rsyncable
+   patch for gzip which also uses a 12-bit mask. This results in a relatively
+   small hit to compression, on the order of 1.5% to 3%. A mask of 13 bits can
+   be used instead if a hit of less than 1% to the compression is desired, at
+   the expense of more blocks transmitted for rsync updates. (Your mileage may
+   vary.)
 
-       This implementation of rsyncable uses a different hash algorithm than what
-       the gzip rsyncable patch uses in order to provide better performance in
-       several regards. The algorithm is simply to shift the hash value left one
-       bit and exclusive-or that with the next byte. This is masked to the number
-       of hash bits (RSYNCMASK) and compared to all ones except for a zero in the
-       top bit (RSYNCHIT). This rolling hash has a very small window of 19 bytes
-       (RSYNCBITS+7). The small window provides the benefit of much more rapid
-       resynchronization after a change, than does the 4096-byte window of the gzip
-       rsyncable patch.
+   This implementation of rsyncable uses a different hash algorithm than what
+   the gzip rsyncable patch uses in order to provide better performance in
+   several regards. The algorithm is simply to shift the hash value left one
+   bit and exclusive-or that with the next byte. This is masked to the number
+   of hash bits (RSYNCMASK) and compared to all ones except for a zero in the
+   top bit (RSYNCHIT). This rolling hash has a very small window of 19 bytes
+   (RSYNCBITS+7). The small window provides the benefit of much more rapid
+   resynchronization after a change, than does the 4096-byte window of the gzip
+   rsyncable patch.
 
-       The comparison value is chosen to avoid matching any repeated bytes or short
-       sequences. The gzip rsyncable patch on the other hand uses a sum and zero
-       for comparison, which results in certain bad behaviors, such as always
-       matching everywhere in a long sequence of zeros. Such sequences occur
-       frequently in tar files.
+   The comparison value is chosen to avoid matching any repeated bytes or short
+   sequences. The gzip rsyncable patch on the other hand uses a sum and zero
+   for comparison, which results in certain bad behaviors, such as always
+   matching everywhere in a long sequence of zeros. Such sequences occur
+   frequently in tar files.
 
-       This hash efficiently discards history older than 19 bytes simply by
-       shifting that data past the top of the mask -- no history needs to be
-       retained to undo its impact on the hash value, as is needed for a sum.
+   This hash efficiently discards history older than 19 bytes simply by
+   shifting that data past the top of the mask -- no history needs to be
+   retained to undo its impact on the hash value, as is needed for a sum.
 
-       The choice of the comparison value (RSYNCHIT) has the virtue of avoiding
-       extremely short blocks. The shortest block is five bytes (RSYNCBITS-7) from
-       hit to hit, and is unlikely. Whereas with the gzip rsyncable algorithm,
-       blocks of one byte are not only possible, but in fact are the most likely
-       block size.
+   The choice of the comparison value (RSYNCHIT) has the virtue of avoiding
+   extremely short blocks. The shortest block is five bytes (RSYNCBITS-7) from
+   hit to hit, and is unlikely. Whereas with the gzip rsyncable algorithm,
+   blocks of one byte are not only possible, but in fact are the most likely
+   block size.
 
-       Thanks and acknowledgement to Kevin Day for his experimentation and insights
-       on rsyncable hash characteristics that led to some of the choices here.
-       */
+   Thanks and acknowledgement to Kevin Day for his experimentation and insights
+   on rsyncable hash characteristics that led to some of the choices here.
+   */
 #define RSYNCBITS 12
 #define RSYNCMASK ((1U << RSYNCBITS) - 1)
 #define RSYNCHIT (RSYNCMASK >> 1)
 
-    // Initial pool counts and sizes -- INBUFS is the limit on the number of input
-    // spaces as a function of the number of processors (used to throttle the
-    // creation of compression jobs), OUTPOOL is the initial size of the output
-    // data buffer, chosen to make resizing of the buffer very unlikely and to
-    // allow prepending with a dictionary for use as an input buffer for zopfli.
+// Initial pool counts and sizes -- INBUFS is the limit on the number of input
+// spaces as a function of the number of processors (used to throttle the
+// creation of compression jobs), OUTPOOL is the initial size of the output
+// data buffer, chosen to make resizing of the buffer very unlikely and to
+// allow prepending with a dictionary for use as an input buffer for zopfli.
 #define INBUFS(p) (((p)<<1)+3)
 #define OUTPOOL(s) ((s)+((s)>>4)+DICT)
 
-    // Input buffer size, and augmentation for re-inserting a central header.
+// Input buffer size, and augmentation for re-inserting a central header.
 #define BUF 32768
 #define CEN 42
 #define EXT (BUF + CEN)     // provide enough room to unget a header
 #define MAX_PIGZTHREAD_T_NUMBER 16      //can new 16 processes at most
-    pthread_key_t gtid;
+pthread_key_t gtid;
 
-    int small_hash(unsigned int pid) {
-        return pid % 91;
-    }
+int small_hash(unsigned int pid) {
+    return pid % 91;
+}
 
 int small_map[100];
-static int threadCnt=0;
+static int threadCnt = 0;
 // Globals (modified by main threadPigz only when it's the only threadPigz).
 local struct {
     int volatile ret;       // pigz return code
@@ -754,7 +755,7 @@ local void zlib_free(voidpf opaque, voidpf address) {
 local void *alloc(void *ptr, size_t size) {
     ptr = REALLOC(ptr, size);
     if (ptr == NULL)
-        throw(ENOMEM, "not enough memory");
+        throw (ENOMEM, "not enough memory");
     return ptr;
 }
 
@@ -921,7 +922,7 @@ local void cut_short(int sig) {
         Trace(("termination by user"));
     }
     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd != -1 &&
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd != 1) {
+        g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd != 1) {
         unlink(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf);
         RELEASE(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf);
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd = -1;
@@ -963,12 +964,12 @@ local size_t grow(size_t size) {
 // Copy cpy[0..len-1] to *mem + off, growing *mem if necessary, where *size is
 // the allocated size of *mem. Return the number of bytes in the result.
 local size_t vmemcpy(char **mem, size_t *size, size_t off,
-        void *cpy, size_t len) {
+                     void *cpy, size_t len) {
     size_t need;
 
     need = off + len;
     if (need < off)
-        throw(ERANGE, "overflow");
+        throw (ERANGE, "overflow");
     if (need > *size) {
         need = grow(need);
         if (off == 0) {
@@ -998,8 +999,8 @@ local size_t readn(int desc, unsigned char *buf, size_t len) {
     while (len) {
         ret = read(desc, buf, len);
         if (ret < 0)
-            throw(errno, "read error on %s (%s)", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,
-                    strerror(errno));
+            throw (errno, "read error on %s (%s)", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,
+                   strerror(errno));
         if (ret == 0)
             break;
         buf += ret;
@@ -1012,7 +1013,7 @@ local size_t readn(int desc, unsigned char *buf, size_t len) {
 // Add by ylf
 local size_t
 readFromQueue(moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, atomic_int *wDone,
-        pair<char *, int> &L,atomic_int *qNum, unsigned char *buf, size_t len) {
+              pair<char *, int> &L, atomic_int *qNum, unsigned char *buf, size_t len) {
 
     ssize_t ret;
     size_t got;
@@ -1106,8 +1107,8 @@ local size_t writen(int desc, void const *buf, size_t len) {
         size_t const max = SSIZE_MAX;
         ssize_t ret = write(desc, next, left > max ? max : left);
         if (ret < 1)
-            throw(errno, "write error on %s (%s)", g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf,
-                    strerror(errno));
+            throw (errno, "write error on %s (%s)", g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf,
+                   strerror(errno));
         next += ret;
         left -= (size_t) ret;
     }
@@ -1203,89 +1204,89 @@ local length_t put_header(void) {
         // in a Zip64 extra field so that the data descriptor that appears
         // after the compressed data is interpreted with 64-bit lengths
         len = put(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                4, (val_t) 0x04034b50,   // local header signature
-                2, (val_t) 45,           // version needed to extract (4.5)
-                2, (val_t) 8,            // flags: data descriptor follows data
-                2, (val_t) 8,            // deflate
-                4, (val_t) time2dos(g[small_map[*((int *) (pthread_getspecific(gtid)))]].mtime),
-                4, (val_t) 0,            // crc (not here)
-                4, (val_t) LOW32,        // compressed length (not here)
-                4, (val_t) LOW32,        // uncompressed length (not here)
-                2, (val_t) (strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].name == NULL
-                        ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].alias
-                        : g[small_map[*((int *) (pthread_getspecific(gtid)))]].name)),  // name len
-                2, (val_t) 29,           // length of extra field (see below)
-                0);
+                  4, (val_t) 0x04034b50,   // local header signature
+                  2, (val_t) 45,           // version needed to extract (4.5)
+                  2, (val_t) 8,            // flags: data descriptor follows data
+                  2, (val_t) 8,            // deflate
+                  4, (val_t) time2dos(g[small_map[*((int *) (pthread_getspecific(gtid)))]].mtime),
+                  4, (val_t) 0,            // crc (not here)
+                  4, (val_t) LOW32,        // compressed length (not here)
+                  4, (val_t) LOW32,        // uncompressed length (not here)
+                  2, (val_t) (strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].name == NULL
+                                     ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].alias
+                                     : g[small_map[*((int *) (pthread_getspecific(gtid)))]].name)),  // name len
+                  2, (val_t) 29,           // length of extra field (see below)
+                  0);
 
         // write file name (use g[small_map[*((int*)(pthread_getspecific(gtid)))]].alias for stdin)
         len += writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].name == NULL
-                ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].alias
-                : g[small_map[*((int *) (pthread_getspecific(gtid)))]].name,
-                strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].name == NULL
-                    ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].alias
-                    : g[small_map[*((int *) (pthread_getspecific(gtid)))]].name));
+                      g[small_map[*((int *) (pthread_getspecific(gtid)))]].name == NULL
+                      ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].alias
+                      : g[small_map[*((int *) (pthread_getspecific(gtid)))]].name,
+                      strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].name == NULL
+                             ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].alias
+                             : g[small_map[*((int *) (pthread_getspecific(gtid)))]].name));
 
         // write Zip64 and extended timestamp extra field blocks (29 bytes)
         len += put(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                2, (val_t) 0x0001,       // Zip64 extended information ID
-                2, (val_t) 16,           // number of data bytes in this block
-                8, (val_t) 0,            // uncompressed length (not here)
-                8, (val_t) 0,            // compressed length (not here)
-                2, (val_t) 0x5455,       // extended timestamp ID
-                2, (val_t) 5,            // number of data bytes in this block
-                1, (val_t) 1,            // flag presence of mod time
-                4, (val_t) g[small_map[*((int *) (pthread_getspecific(gtid)))]].mtime,      // mod time
-                0);
+                   2, (val_t) 0x0001,       // Zip64 extended information ID
+                   2, (val_t) 16,           // number of data bytes in this block
+                   8, (val_t) 0,            // uncompressed length (not here)
+                   8, (val_t) 0,            // compressed length (not here)
+                   2, (val_t) 0x5455,       // extended timestamp ID
+                   2, (val_t) 5,            // number of data bytes in this block
+                   1, (val_t) 1,            // flag presence of mod time
+                   4, (val_t) g[small_map[*((int *) (pthread_getspecific(gtid)))]].mtime,      // mod time
+                   0);
     } else if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].form) {              // zlib
-        if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment != NULL){}
+        if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment != NULL) {}
         //            complain("can't store comment in zlib format -- ignoring");
         unsigned int head;
         head = (0x78 << 8) +        // deflate, 32K window
-            (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level >= 9 ? 3 << 6 :
-             g[small_map[*((int *) (pthread_getspecific(gtid)))]].level == 1 ? 0 << 6 :
-             g[small_map[*((int *) (pthread_getspecific(gtid)))]].level >= 6 ||
-             g[small_map[*((int *) (pthread_getspecific(gtid)))]].level == Z_DEFAULT_COMPRESSION ? 1 << 6 :
-             2 << 6);            // optional compression level clue
+               (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level >= 9 ? 3 << 6 :
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].level == 1 ? 0 << 6 :
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].level >= 6 ||
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].level == Z_DEFAULT_COMPRESSION ? 1 << 6 :
+                2 << 6);            // optional compression level clue
         head += 31 - (head % 31);   // make it a multiple of 31
         len = put(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                -2, (val_t) head,        // zlib format uses big-endian order
-                0);
+                  -2, (val_t) head,        // zlib format uses big-endian order
+                  0);
     } else {                          // gzip
         len = put(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                1, (val_t) 31,
-                1, (val_t) 139,
-                1, (val_t) 8,            // deflate
-                1, (val_t) ((g[small_map[*((int *) (pthread_getspecific(gtid)))]].name != NULL ? 8 : 0) +
-                    (g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment != NULL ? 16 : 0)),
-                4, (val_t) g[small_map[*((int *) (pthread_getspecific(gtid)))]].mtime,
-                1, (val_t) (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level >= 9 ? 2 :
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].level == 1 ? 4 : 0),
-                1, (val_t) 3,            // unix
-                0);
+                  1, (val_t) 31,
+                  1, (val_t) 139,
+                  1, (val_t) 8,            // deflate
+                  1, (val_t) ((g[small_map[*((int *) (pthread_getspecific(gtid)))]].name != NULL ? 8 : 0) +
+                              (g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment != NULL ? 16 : 0)),
+                  4, (val_t) g[small_map[*((int *) (pthread_getspecific(gtid)))]].mtime,
+                  1, (val_t) (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level >= 9 ? 2 :
+                              g[small_map[*((int *) (pthread_getspecific(gtid)))]].level == 1 ? 4 : 0),
+                  1, (val_t) 3,            // unix
+                  0);
         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].name != NULL)
             len += writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].name,
-                    strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].name) + 1);
+                          g[small_map[*((int *) (pthread_getspecific(gtid)))]].name,
+                          strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].name) + 1);
         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment != NULL)
             len += writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment,
-                    strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment) + 1);
+                          g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment,
+                          strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment) + 1);
     }
     return len;
 }
 
 // Write a gzip, zlib, or zip trailer.
 local void put_trailer(length_t ulen, length_t clen,
-        unsigned long check, length_t head) {
+                       unsigned long check, length_t head) {
     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].form > 1) {               // zip
         // write Zip64 data descriptor, as promised in the local header
         length_t desc = put(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                4, (val_t) 0x08074b50,
-                4, (val_t) check,
-                8, (val_t) clen,
-                8, (val_t) ulen,
-                0);
+                            4, (val_t) 0x08074b50,
+                            4, (val_t) check,
+                            8, (val_t) clen,
+                            8, (val_t) ulen,
+                            0);
 
         // zip64 is true if either the compressed or the uncompressed length
         // does not fit in 32 bits, in which case there needs to be a Zip64
@@ -1294,61 +1295,61 @@ local void put_trailer(length_t ulen, length_t clen,
 
         // write central file header
         length_t cent = put(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                4, (val_t) 0x02014b50,   // central header signature
-                1, (val_t) 45,           // made by 4.5 for Zip64 V1 end record
-                1, (val_t) 255,          // ignore external attributes
-                2, (val_t) 45,           // version needed to extract (4.5)
-                2, (val_t) 8,            // data descriptor is present
-                2, (val_t) 8,            // deflate
-                4, (val_t) time2dos(g[small_map[*((int *) (pthread_getspecific(gtid)))]].mtime),
-                4, (val_t) check,        // crc
-                4, (val_t) (zip64 ? LOW32 : clen),   // compressed length
-                4, (val_t) (zip64 ? LOW32 : ulen),   // uncompressed length
-                2, (val_t) (strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].name == NULL
-                        ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].alias
-                        : g[small_map[*((int *) (pthread_getspecific(
-                                    gtid)))]].name)),  // name len
-                2, (val_t) (zip64 ? 29 : 9), // extra field size (see below)
-                2,
-                (val_t) (g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment == NULL ? 0 : strlen(
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment)),  // comment
-                2, (val_t) 0,            // disk number 0
-                2, (val_t) 0,            // internal file attributes
-                4, (val_t) 0,            // external file attributes (ignored)
-                4, (val_t) 0,            // offset of local header
-                0);
+                            4, (val_t) 0x02014b50,   // central header signature
+                            1, (val_t) 45,           // made by 4.5 for Zip64 V1 end record
+                            1, (val_t) 255,          // ignore external attributes
+                            2, (val_t) 45,           // version needed to extract (4.5)
+                            2, (val_t) 8,            // data descriptor is present
+                            2, (val_t) 8,            // deflate
+                            4, (val_t) time2dos(g[small_map[*((int *) (pthread_getspecific(gtid)))]].mtime),
+                            4, (val_t) check,        // crc
+                            4, (val_t) (zip64 ? LOW32 : clen),   // compressed length
+                            4, (val_t) (zip64 ? LOW32 : ulen),   // uncompressed length
+                            2, (val_t) (strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].name == NULL
+                                               ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].alias
+                                               : g[small_map[*((int *) (pthread_getspecific(
+                                gtid)))]].name)),  // name len
+                            2, (val_t) (zip64 ? 29 : 9), // extra field size (see below)
+                            2,
+                            (val_t) (g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment == NULL ? 0 : strlen(
+                                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment)),  // comment
+                            2, (val_t) 0,            // disk number 0
+                            2, (val_t) 0,            // internal file attributes
+                            4, (val_t) 0,            // external file attributes (ignored)
+                            4, (val_t) 0,            // offset of local header
+                            0);
 
         // write file name (use g[small_map[*((int*)(pthread_getspecific(gtid)))]].alias for stdin)
         cent += writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].name == NULL
-                ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].alias
-                : g[small_map[*((int *) (pthread_getspecific(gtid)))]].name,
-                strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].name == NULL
-                    ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].alias
-                    : g[small_map[*((int *) (pthread_getspecific(gtid)))]].name));
+                       g[small_map[*((int *) (pthread_getspecific(gtid)))]].name == NULL
+                       ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].alias
+                       : g[small_map[*((int *) (pthread_getspecific(gtid)))]].name,
+                       strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].name == NULL
+                              ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].alias
+                              : g[small_map[*((int *) (pthread_getspecific(gtid)))]].name));
 
         // write Zip64 extra field block (20 bytes)
         if (zip64)
             cent += put(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                    2, (val_t) 0x0001,   // Zip64 extended information ID
-                    2, (val_t) 16,       // number of data bytes in this block
-                    8, (val_t) ulen,     // uncompressed length
-                    8, (val_t) clen,     // compressed length
-                    0);
+                        2, (val_t) 0x0001,   // Zip64 extended information ID
+                        2, (val_t) 16,       // number of data bytes in this block
+                        8, (val_t) ulen,     // uncompressed length
+                        8, (val_t) clen,     // compressed length
+                        0);
 
         // write extended timestamp extra field block (9 bytes)
         cent += put(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                2, (val_t) 0x5455,       // extended timestamp signature
-                2, (val_t) 5,            // number of data bytes in this block
-                1, (val_t) 1,            // flag presence of mod time
-                4, (val_t) g[small_map[*((int *) (pthread_getspecific(gtid)))]].mtime,      // mod time
-                0);
+                    2, (val_t) 0x5455,       // extended timestamp signature
+                    2, (val_t) 5,            // number of data bytes in this block
+                    1, (val_t) 1,            // flag presence of mod time
+                    4, (val_t) g[small_map[*((int *) (pthread_getspecific(gtid)))]].mtime,      // mod time
+                    0);
 
         // write comment, if requested
         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment != NULL)
             cent += writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment,
-                    strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment));
+                           g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment,
+                           strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].comment));
 
         // here zip64 is true if the offset of the central directory does not
         // fit in 32 bits, in which case insert the Zip64 end records to
@@ -1357,48 +1358,48 @@ local void put_trailer(length_t ulen, length_t clen,
         if (zip64) {
             // write Zip64 end of central directory record and locator
             put(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                    4, (val_t) 0x06064b50,   // Zip64 end of central dir sig
-                    8, (val_t) 44,       // size of the remainder of this record
-                    2, (val_t) 45,       // version made by
-                    2, (val_t) 45,       // version needed to extract
-                    4, (val_t) 0,        // number of this disk
-                    4, (val_t) 0,        // disk with start of central directory
-                    8, (val_t) 1,        // number of entries on this disk
-                    8, (val_t) 1,        // total number of entries
-                    8, (val_t) cent,     // size of central directory
-                    8, (val_t) (head + clen + desc), // central dir offset
-                    4, (val_t) 0x07064b50,   // Zip64 end locator signature
-                    4, (val_t) 0,        // disk with Zip64 end of central dir
-                    8, (val_t) (head + clen + desc + cent),  // location
-                    4, (val_t) 1,        // total number of disks
-                    0);
+                4, (val_t) 0x06064b50,   // Zip64 end of central dir sig
+                8, (val_t) 44,       // size of the remainder of this record
+                2, (val_t) 45,       // version made by
+                2, (val_t) 45,       // version needed to extract
+                4, (val_t) 0,        // number of this disk
+                4, (val_t) 0,        // disk with start of central directory
+                8, (val_t) 1,        // number of entries on this disk
+                8, (val_t) 1,        // total number of entries
+                8, (val_t) cent,     // size of central directory
+                8, (val_t) (head + clen + desc), // central dir offset
+                4, (val_t) 0x07064b50,   // Zip64 end locator signature
+                4, (val_t) 0,        // disk with Zip64 end of central dir
+                8, (val_t) (head + clen + desc + cent),  // location
+                4, (val_t) 1,        // total number of disks
+                0);
         }
 
         // write end of central directory record
         put(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                4, (val_t) 0x06054b50,   // end of central directory signature
-                2, (val_t) 0,            // number of this disk
-                2, (val_t) 0,            // disk with start of central directory
-                2, (val_t) (zip64 ? 0xffff : 1), // entries on this disk
-                2, (val_t) (zip64 ? 0xffff : 1), // total number of entries
-                4, (val_t) (zip64 ? LOW32 : cent),   // size of central directory
-                4, (val_t) (zip64 ? LOW32 : head + clen + desc), // offset
-                2, (val_t) 0,            // no zip file comment
-                0);
+            4, (val_t) 0x06054b50,   // end of central directory signature
+            2, (val_t) 0,            // number of this disk
+            2, (val_t) 0,            // disk with start of central directory
+            2, (val_t) (zip64 ? 0xffff : 1), // entries on this disk
+            2, (val_t) (zip64 ? 0xffff : 1), // total number of entries
+            4, (val_t) (zip64 ? LOW32 : cent),   // size of central directory
+            4, (val_t) (zip64 ? LOW32 : head + clen + desc), // offset
+            2, (val_t) 0,            // no zip file comment
+            0);
     } else if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].form)                // zlib
         put(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                -4, (val_t) check,       // zlib format uses big-endian order
-                0);
+            -4, (val_t) check,       // zlib format uses big-endian order
+            0);
     else                            // gzip
         put(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                4, (val_t) check,
-                4, (val_t) ulen,
-                0);
+            4, (val_t) check,
+            4, (val_t) ulen,
+            0);
 }
 
 // Compute an Adler-32, allowing a size_t length.
 local unsigned long adler32z(unsigned long adler,
-        unsigned char const *buf, size_t len) {
+                             unsigned char const *buf, size_t len) {
     while (len > UINT_MAX && buf != NULL) {
         adler = adler32(adler, buf, UINT_MAX);
         buf += UINT_MAX;
@@ -1409,7 +1410,7 @@ local unsigned long adler32z(unsigned long adler,
 
 // Compute a CRC-32, allowing a size_t length.
 local unsigned long crc32z(unsigned long crc,
-        unsigned char const *buf, size_t len) {
+                           unsigned char const *buf, size_t len) {
     while (len > UINT_MAX && buf != NULL) {
         crc = crc32(crc, buf, UINT_MAX);
         buf += UINT_MAX;
@@ -1478,13 +1479,13 @@ local crc_t multmodp(crc_t a, crc_t b) {
 
 // Table of x^2^n modulo p(x).
 local const crc_t x2n_table[] = {
-    0x40000000, 0x20000000, 0x08000000, 0x00800000, 0x00008000,
-    0xedb88320, 0xb1e6b092, 0xa06a2517, 0xed627dae, 0x88d14467,
-    0xd7bbfe6a, 0xec447f11, 0x8e7ea170, 0x6427800e, 0x4d47bae0,
-    0x09fe548f, 0x83852d0f, 0x30362f1a, 0x7b5a9cc3, 0x31fec169,
-    0x9fec022a, 0x6c8dedc4, 0x15d6874d, 0x5fde7a4e, 0xbad90e37,
-    0x2e4e5eef, 0x4eaba214, 0xa8a472c0, 0x429a969e, 0x148d302a,
-    0xc40ba6d0, 0xc4e22c3c};
+        0x40000000, 0x20000000, 0x08000000, 0x00800000, 0x00008000,
+        0xedb88320, 0xb1e6b092, 0xa06a2517, 0xed627dae, 0x88d14467,
+        0xd7bbfe6a, 0xec447f11, 0x8e7ea170, 0x6427800e, 0x4d47bae0,
+        0x09fe548f, 0x83852d0f, 0x30362f1a, 0x7b5a9cc3, 0x31fec169,
+        0x9fec022a, 0x6c8dedc4, 0x15d6874d, 0x5fde7a4e, 0xbad90e37,
+        0x2e4e5eef, 0x4eaba214, 0xa8a472c0, 0x429a969e, 0x148d302a,
+        0xc40ba6d0, 0xc4e22c3c};
 
 // Return x^(n*2^k) modulo p(x).
 local crc_t x2nmodp(size_t n, unsigned k) {
@@ -1501,16 +1502,16 @@ local crc_t x2nmodp(size_t n, unsigned k) {
 // This uses the pre-computed g[small_map[*((int*)(pthread_getspecific(gtid)))]].shift value most of the time. Only the last
 // combination requires a new x2nmodp() calculation.
 local unsigned long crc32_comb(unsigned long crc1, unsigned long crc2,
-        size_t len2) {
+                               size_t len2) {
     return multmodp(len2 == g[small_map[*((int *) (pthread_getspecific(gtid)))]].block
-            ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].shift : x2nmodp(len2, 3), crc1) ^ crc2;
+                    ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].shift : x2nmodp(len2, 3), crc1) ^ crc2;
 }
 
 #define BASE 65521U     // largest prime smaller than 65536
 #define LOW16 0xffff    // mask lower 16 bits
 
 local unsigned long adler32_comb(unsigned long adler1, unsigned long adler2,
-        size_t len2) {
+                                 size_t len2) {
     unsigned long sum1;
     unsigned long sum2;
     unsigned rem;
@@ -1612,7 +1613,7 @@ local void grow_space(struct space *space) {
     // compute next size up
     more = grow(space->size);
     if (more == space->size)
-        throw(ERANGE, "overflow");
+        throw (ERANGE, "overflow");
 
     // reallocate the buffer
     space->buf = static_cast<unsigned char *>(alloc(space->buf, more));
@@ -1718,7 +1719,7 @@ local void setup_jobs(void) {
     compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]] = new_lock_pigz(0);
     compress_head[small_map[*((int *) (pthread_getspecific(gtid)))]] = NULL;
     compress_tail[small_map[*((int *) (pthread_getspecific(
-                    gtid)))]] = &compress_head[small_map[*((int *) (pthread_getspecific(gtid)))]];
+            gtid)))]] = &compress_head[small_map[*((int *) (pthread_getspecific(gtid)))]];
     write_first[small_map[*((int *) (pthread_getspecific(gtid)))]] = new_lock_pigz(-1);
     write_head[small_map[*((int *) (pthread_getspecific(gtid)))]] = NULL;
 
@@ -1726,13 +1727,13 @@ local void setup_jobs(void) {
     // buffers will be grown in size if needed -- the initial size chosen to
     // make this unlikely, the same for lens_pool)
     new_pool(&in_pool[small_map[*((int *) (pthread_getspecific(gtid)))]],
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].block,
-            INBUFS(g[small_map[*((int *) (pthread_getspecific(gtid)))]].procs));
+             g[small_map[*((int *) (pthread_getspecific(gtid)))]].block,
+             INBUFS(g[small_map[*((int *) (pthread_getspecific(gtid)))]].procs));
     new_pool(&out_pool[small_map[*((int *) (pthread_getspecific(gtid)))]],
-            OUTPOOL(g[small_map[*((int *) (pthread_getspecific(gtid)))]].block), -1);
+             OUTPOOL(g[small_map[*((int *) (pthread_getspecific(gtid)))]].block), -1);
     new_pool(&dict_pool[small_map[*((int *) (pthread_getspecific(gtid)))]], DICT, -1);
     new_pool(&lens_pool[small_map[*((int *) (pthread_getspecific(gtid)))]],
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].block >> (RSYNCBITS - 1), -1);
+             g[small_map[*((int *) (pthread_getspecific(gtid)))]].block >> (RSYNCBITS - 1), -1);
 }
 
 // Command the compress threads to all return, then join_pigz them all (call from
@@ -1755,11 +1756,11 @@ local void finish_jobs(void) {
 
     // join_pigz all of the compress threads, verify they all came back
     //printf("threadCnt is %d\n",threadCnt);
-    if(threadCnt==1)
+    if (threadCnt == 1)
         caught = join_all_pigz();
     Trace(("-- joined %d compress threads", caught));
-    if(threadCnt==1)
-        assert(caught == cthreads[small_map[*((int*)(pthread_getspecific(gtid)))]]);
+    if (threadCnt == 1)
+        assert(caught == cthreads[small_map[*((int *) (pthread_getspecific(gtid)))]]);
     cthreads[small_map[*((int *) (pthread_getspecific(gtid)))]] = 0;
 
     // free the resources
@@ -1821,259 +1822,258 @@ local void compress_thread(void *dummy) {
 
 
     try
-    {
-        z_stream strm;                  // deflate stream
+                {
+                    z_stream strm;                  // deflate stream
 #ifndef NOZOPFLI
-        struct space *temp = NULL;
-        // get temporary space for zopfli input
-        if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level > 9)
-            temp = get_space(&out_pool[small_map[*((int *) (pthread_getspecific(gtid)))]]);
-        else
+                    struct space *temp = NULL;
+                    // get temporary space for zopfli input
+                    if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level > 9)
+                        temp = get_space(&out_pool[small_map[*((int *) (pthread_getspecific(gtid)))]]);
+                    else
 #endif
-        {
-            // initialize the deflate stream for this threadPigz
-            strm.zfree = ZFREE;
-            strm.zalloc = ZALLOC;
-            strm.opaque = OPAQUE;
-            ret = deflateInit2(&strm, 6, Z_DEFLATED, -15, 8,
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].strategy);
-            if (ret == Z_MEM_ERROR)
-                throw(ENOMEM, "not enough memory");
-            if (ret != Z_OK)
-                throw(EINVAL, "internal error");
-        }
-        int cnt_t = 0;
-        // keep looking for work
-        for (;;) {
-            // get a job (like I tell my son)
-            possess_pigz(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]]);
-            wait_for_pigz(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]], NOT_TO_BE, 0);
-            job = compress_head[small_map[*((int *) (pthread_getspecific(gtid)))]];
-            assert(job != NULL);
-            if (job->seq == -1)
-                break;
-            compress_head[small_map[*((int *) (pthread_getspecific(gtid)))]] = job->next;
-            if (job->next == NULL)
-                compress_tail[small_map[*((int *) (pthread_getspecific(
-                                gtid)))]] = &compress_head[small_map[*((int *) (pthread_getspecific(gtid)))]];
-            twist_pigz(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]], BY, -1);
-
-            // got a job -- initialize and set the compression level (note that
-            // if deflateParams() is called immediately after deflateReset(),
-            // there is no need to initialize input/output for the stream)
-            Trace(("-- compressing #%ld", job->seq));
-#ifndef NOZOPFLI
-            if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level <= 9) {
-#endif
-                (void) deflateReset(&strm);
-                (void) deflateParams(&strm, g[small_map[*((int *) (pthread_getspecific(gtid)))]].level,
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].strategy);
-#ifndef NOZOPFLI
-            } else
-                temp->len = 0;
-#endif
-
-            // set dictionary if provided, release_pigz that input or dictionary
-            // buffer (not NULL if g[small_map[*((int*)(pthread_getspecific(gtid)))]].setdict is true and if this is not the
-            // first work unit)
-            if (job->out != NULL) {
-                len = job->out->len;
-                left = len < DICT ? len : DICT;
-#ifndef NOZOPFLI
-                if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level <= 9)
-#endif
-                    deflateSetDictionary(&strm, job->out->buf + (len - left),
-                            (unsigned) left);
-#ifndef NOZOPFLI
-                else {
-                    memcpy(temp->buf, job->out->buf + (len - left), left);
-                    temp->len = left;
-                }
-#endif
-                drop_space(job->out);
-            }
-
-            // set up input and output
-            job->out = get_space(&out_pool[small_map[*((int *) (pthread_getspecific(gtid)))]]);
-#ifndef NOZOPFLI
-            if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level <= 9) {
-#endif
-                strm.next_in = job->in->buf;
-                strm.next_out = job->out->buf;
-#ifndef NOZOPFLI
-            } else
-                memcpy(temp->buf + temp->len, job->in->buf, job->in->len);
-#endif
-
-            // compress each block, either flushing or finishing
-            next = job->lens == NULL ? NULL : job->lens->buf;
-            left = job->in->len;
-            job->out->len = 0;
-            do {
-                // decode next block length from blocks list
-                len = next == NULL ? 128 : *next++;
-                if (len < 128)                  // 64..32831
-                    len = (len << 8) + (*next++) + 64;
-                else if (len == 128)            // end of list
-                    len = left;
-                else if (len < 192)             // 1..63
-                    len &= 0x3f;
-                else if (len < 224) {            // 32832..2129983
-                    len = ((len & 0x1f) << 16) + ((size_t) * next++ << 8);
-                    len += *next++ + 32832U;
-                } else {                          // 2129984..539000895
-                    len = ((len & 0x1f) << 24) + ((size_t) * next++ << 16);
-                    len += (size_t) * next++ << 8;
-                    len += (size_t) * next++ + 2129984UL;
-                }
-                left -= len;
-
-#ifndef NOZOPFLI
-                if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level <= 9) {
-#endif
-                    // run MAXP2-sized amounts of input through deflate -- this
-                    // loop is needed for those cases where the unsigned type
-                    // is smaller than the size_t type, or when len is close to
-                    // the limit of the size_t type
-                    while (len > MAXP2) {
-                        strm.avail_in = MAXP2;
-                        deflate_engine(&strm, job->out, Z_NO_FLUSH);
-                        len -= MAXP2;
+                    {
+                        // initialize the deflate stream for this threadPigz
+                        strm.zfree = ZFREE;
+                        strm.zalloc = ZALLOC;
+                        strm.opaque = OPAQUE;
+                        ret = deflateInit2(&strm, 6, Z_DEFLATED, -15, 8,
+                                           g[small_map[*((int *) (pthread_getspecific(gtid)))]].strategy);
+                        if (ret == Z_MEM_ERROR)
+                            throw (ENOMEM, "not enough memory");
+                        if (ret != Z_OK)
+                            throw (EINVAL, "internal error");
                     }
+                    int cnt_t = 0;
+                    // keep looking for work
+                    for (;;) {
+                        // get a job (like I tell my son)
+                        possess_pigz(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]]);
+                        wait_for_pigz(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]], NOT_TO_BE, 0);
+                        job = compress_head[small_map[*((int *) (pthread_getspecific(gtid)))]];
+                        assert(job != NULL);
+                        if (job->seq == -1)
+                            break;
+                        compress_head[small_map[*((int *) (pthread_getspecific(gtid)))]] = job->next;
+                        if (job->next == NULL)
+                            compress_tail[small_map[*((int *) (pthread_getspecific(
+                                    gtid)))]] = &compress_head[small_map[*((int *) (pthread_getspecific(gtid)))]];
+                        twist_pigz(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]], BY, -1);
 
-                    // run the last piece through deflate -- end on a byte
-                    // boundary, using a sync marker if necessary, or finish
-                    // the deflate stream if this is the last block
-                    strm.avail_in = (unsigned) len;
-                    if (left || job->more) {
-#if ZLIB_VERNUM >= 0x1260
-                        if (zlib_vernum() >= 0x1260) {
-                            deflate_engine(&strm, job->out, Z_BLOCK);
+                        // got a job -- initialize and set the compression level (note that
+                        // if deflateParams() is called immediately after deflateReset(),
+                        // there is no need to initialize input/output for the stream)
+                        Trace(("-- compressing #%ld", job->seq));
+#ifndef NOZOPFLI
+                        if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level <= 9) {
+#endif
+                            (void) deflateReset(&strm);
+                            (void) deflateParams(&strm, g[small_map[*((int *) (pthread_getspecific(gtid)))]].level,
+                                                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].strategy);
+#ifndef NOZOPFLI
+                        } else
+                            temp->len = 0;
+#endif
 
-                            // add enough empty blocks to get to a byte
-                            // boundary
-                            (void)deflatePending(&strm, Z_NULL, &bits);
-                            if ((bits & 1) || !g[small_map[*((int*)(pthread_getspecific(gtid)))]].setdict)
-                                deflate_engine(&strm, job->out, Z_SYNC_FLUSH);
-                            else if (bits & 7) {
-                                do {        // add static empty blocks
-                                    bits = deflatePrime(&strm, 10, 2);
-                                    assert(bits == Z_OK);
-                                    (void)deflatePending(&strm, Z_NULL, &bits);
-                                } while (bits & 7);
-                                deflate_engine(&strm, job->out, Z_BLOCK);
+                        // set dictionary if provided, release_pigz that input or dictionary
+                        // buffer (not NULL if g[small_map[*((int*)(pthread_getspecific(gtid)))]].setdict is true and if this is not the
+                        // first work unit)
+                        if (job->out != NULL) {
+                            len = job->out->len;
+                            left = len < DICT ? len : DICT;
+#ifndef NOZOPFLI
+                            if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level <= 9)
+#endif
+                                deflateSetDictionary(&strm, job->out->buf + (len - left),
+                                                     (unsigned) left);
+#ifndef NOZOPFLI
+                            else {
+                                memcpy(temp->buf, job->out->buf + (len - left), left);
+                                temp->len = left;
                             }
-                        }
-                        else
 #endif
-                        {
-                            deflate_engine(&strm, job->out, Z_SYNC_FLUSH);
+                            drop_space(job->out);
                         }
-                        if (!g[small_map[*((int *) (pthread_getspecific(
+
+                        // set up input and output
+                        job->out = get_space(&out_pool[small_map[*((int *) (pthread_getspecific(gtid)))]]);
+#ifndef NOZOPFLI
+                        if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level <= 9) {
+#endif
+                            strm.next_in = job->in->buf;
+                            strm.next_out = job->out->buf;
+#ifndef NOZOPFLI
+                        } else
+                            memcpy(temp->buf + temp->len, job->in->buf, job->in->len);
+#endif
+
+                        // compress each block, either flushing or finishing
+                        next = job->lens == NULL ? NULL : job->lens->buf;
+                        left = job->in->len;
+                        job->out->len = 0;
+                        do {
+                            // decode next block length from blocks list
+                            len = next == NULL ? 128 : *next++;
+                            if (len < 128)                  // 64..32831
+                                len = (len << 8) + (*next++) + 64;
+                            else if (len == 128)            // end of list
+                                len = left;
+                            else if (len < 192)             // 1..63
+                                len &= 0x3f;
+                            else if (len < 224) {            // 32832..2129983
+                                len = ((len & 0x1f) << 16) + ((size_t) * next++ << 8);
+                                len += *next++ + 32832U;
+                            } else {                          // 2129984..539000895
+                                len = ((len & 0x1f) << 24) + ((size_t) * next++ << 16);
+                                len += (size_t) * next++ << 8;
+                                len += (size_t) * next++ + 2129984UL;
+                            }
+                            left -= len;
+
+#ifndef NOZOPFLI
+                            if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level <= 9) {
+#endif
+                                // run MAXP2-sized amounts of input through deflate -- this
+                                // loop is needed for those cases where the unsigned type
+                                // is smaller than the size_t type, or when len is close to
+                                // the limit of the size_t type
+                                while (len > MAXP2) {
+                                    strm.avail_in = MAXP2;
+                                    deflate_engine(&strm, job->out, Z_NO_FLUSH);
+                                    len -= MAXP2;
+                                }
+
+                                // run the last piece through deflate -- end on a byte
+                                // boundary, using a sync marker if necessary, or finish
+                                // the deflate stream if this is the last block
+                                strm.avail_in = (unsigned) len;
+                                if (left || job->more) {
+#if ZLIB_VERNUM >= 0x1260
+                                    if (zlib_vernum() >= 0x1260) {
+                                        deflate_engine(&strm, job->out, Z_BLOCK);
+
+                                        // add enough empty blocks to get to a byte
+                                        // boundary
+                                        (void)deflatePending(&strm, Z_NULL, &bits);
+                                        if ((bits & 1) || !g[small_map[*((int*)(pthread_getspecific(gtid)))]].setdict)
+                                            deflate_engine(&strm, job->out, Z_SYNC_FLUSH);
+                                        else if (bits & 7) {
+                                            do {        // add static empty blocks
+                                                bits = deflatePrime(&strm, 10, 2);
+                                                assert(bits == Z_OK);
+                                                (void)deflatePending(&strm, Z_NULL, &bits);
+                                            } while (bits & 7);
+                                            deflate_engine(&strm, job->out, Z_BLOCK);
+                                        }
+                                    }
+                                    else
+#endif
+                                    {
+                                        deflate_engine(&strm, job->out, Z_SYNC_FLUSH);
+                                    }
+                                    if (!g[small_map[*((int *) (pthread_getspecific(
                                             gtid)))]].setdict)     // two markers when independent
-                            deflate_engine(&strm, job->out, Z_FULL_FLUSH);
-                    } else
-                        deflate_engine(&strm, job->out, Z_FINISH);
+                                        deflate_engine(&strm, job->out, Z_FULL_FLUSH);
+                                } else
+                                    deflate_engine(&strm, job->out, Z_FINISH);
 #ifndef NOZOPFLI
-                } else {
-                    // compress len bytes using zopfli, end at byte boundary
-                    unsigned char bits, *out;
-                    size_t outsize;
+                            } else {
+                                // compress len bytes using zopfli, end at byte boundary
+                                unsigned char bits, *out;
+                                size_t outsize;
 
-                    out = NULL;
-                    outsize = 0;
-                    bits = 0;
-                    ZopfliDeflatePart(&g[small_map[*((int *) (pthread_getspecific(gtid)))]].zopts, 2,
-                            !(left || job->more),
-                            temp->buf, temp->len, temp->len + len,
-                            &bits, &out, &outsize);
-                    assert(job->out->len + outsize + 5 <= job->out->size);
-                    memcpy(job->out->buf + job->out->len, out, outsize);
-                    free(out);
-                    job->out->len += outsize;
-                    if (left || job->more) {
-                        bits &= 7;
-                        if ((bits & 1) || !g[small_map[*((int *) (pthread_getspecific(gtid)))]].setdict) {
-                            if (bits == 0 || bits > 5)
-                                job->out->buf[job->out->len++] = 0;
-                            job->out->buf[job->out->len++] = 0;
-                            job->out->buf[job->out->len++] = 0;
-                            job->out->buf[job->out->len++] = 0xff;
-                            job->out->buf[job->out->len++] = 0xff;
-                        } else if (bits) {
-                            do {
-                                job->out->buf[job->out->len - 1] += 2 << bits;
-                                job->out->buf[job->out->len++] = 0;
-                                bits += 2;
-                            } while (bits < 8);
-                        }
-                        if (!g[small_map[*((int *) (pthread_getspecific(
+                                out = NULL;
+                                outsize = 0;
+                                bits = 0;
+                                ZopfliDeflatePart(&g[small_map[*((int *) (pthread_getspecific(gtid)))]].zopts, 2,
+                                                  !(left || job->more),
+                                                  temp->buf, temp->len, temp->len + len,
+                                                  &bits, &out, &outsize);
+                                assert(job->out->len + outsize + 5 <= job->out->size);
+                                memcpy(job->out->buf + job->out->len, out, outsize);
+                                free(out);
+                                job->out->len += outsize;
+                                if (left || job->more) {
+                                    bits &= 7;
+                                    if ((bits & 1) || !g[small_map[*((int *) (pthread_getspecific(gtid)))]].setdict) {
+                                        if (bits == 0 || bits > 5)
+                                            job->out->buf[job->out->len++] = 0;
+                                        job->out->buf[job->out->len++] = 0;
+                                        job->out->buf[job->out->len++] = 0;
+                                        job->out->buf[job->out->len++] = 0xff;
+                                        job->out->buf[job->out->len++] = 0xff;
+                                    } else if (bits) {
+                                        do {
+                                            job->out->buf[job->out->len - 1] += 2 << bits;
+                                            job->out->buf[job->out->len++] = 0;
+                                            bits += 2;
+                                        } while (bits < 8);
+                                    }
+                                    if (!g[small_map[*((int *) (pthread_getspecific(
                                             gtid)))]].setdict) {   // two markers when independent
-                            job->out->buf[job->out->len++] = 0;
-                            job->out->buf[job->out->len++] = 0;
-                            job->out->buf[job->out->len++] = 0;
-                            job->out->buf[job->out->len++] = 0xff;
-                            job->out->buf[job->out->len++] = 0xff;
+                                        job->out->buf[job->out->len++] = 0;
+                                        job->out->buf[job->out->len++] = 0;
+                                        job->out->buf[job->out->len++] = 0;
+                                        job->out->buf[job->out->len++] = 0xff;
+                                        job->out->buf[job->out->len++] = 0xff;
+                                    }
+                                }
+                                temp->len += len;
+                            }
+#endif
+                        } while (left);
+                        drop_space(job->lens);
+                        job->lens = NULL;
+                        Trace(("-- compressed #%ld%s", job->seq,
+                                job->more ? "" : " (last)"));
+
+                        // reserve input buffer until check value has been calculated
+                        use_space(job->in);
+
+                        // insert write job in list in sorted order, alert write threadPigz
+                        possess_pigz(write_first[small_map[*((int *) (pthread_getspecific(gtid)))]]);
+                        prior = &write_head[small_map[*((int *) (pthread_getspecific(gtid)))]];
+                        while ((here = *prior) != NULL) {
+                            if (here->seq > job->seq)
+                                break;
+                            prior = &(here->next);
                         }
+                        job->next = here;
+                        *prior = job;
+                        twist_pigz(write_first[small_map[*((int *) (pthread_getspecific(gtid)))]], TO,
+                                   write_head[small_map[*((int *) (pthread_getspecific(gtid)))]]->seq);
+
+                        // calculate the check value in parallel with writing, alert the
+                        // write threadPigz that the calculation is complete, and drop this
+                        // usage of the input buffer
+                        len = job->in->len;
+                        next = job->in->buf;
+                        check = CHECK(0L, Z_NULL, 0);
+                        while (len > MAXP2) {
+                            check = CHECK(check, next, MAXP2);
+                            len -= MAXP2;
+                            next += MAXP2;
+                        }
+                        check = CHECK(check, next, (unsigned) len);
+                        drop_space(job->in);
+                        job->check = check;
+                        Trace(("-- checked #%ld%s", job->seq, job->more ? "" : " (last)"));
+                        possess_pigz(job->calc);
+                        twist_pigz(job->calc, TO, 1);
+
+                        // done with that one -- go find another job
                     }
-                    temp->len += len;
-                }
-#endif
-            } while (left);
-            drop_space(job->lens);
-            job->lens = NULL;
-            Trace(("-- compressed #%ld%s", job->seq,
-                        job->more ? "" : " (last)"));
-
-            // reserve input buffer until check value has been calculated
-            use_space(job->in);
-
-            // insert write job in list in sorted order, alert write threadPigz
-            possess_pigz(write_first[small_map[*((int *) (pthread_getspecific(gtid)))]]);
-            prior = &write_head[small_map[*((int *) (pthread_getspecific(gtid)))]];
-            while ((here = *prior) != NULL) {
-                if (here->seq > job->seq)
-                    break;
-                prior = &(here->next);
-            }
-            job->next = here;
-            *prior = job;
-            twist_pigz(write_first[small_map[*((int *) (pthread_getspecific(gtid)))]], TO,
-                    write_head[small_map[*((int *) (pthread_getspecific(gtid)))]]->seq);
-
-            // calculate the check value in parallel with writing, alert the
-            // write threadPigz that the calculation is complete, and drop this
-            // usage of the input buffer
-            len = job->in->len;
-            next = job->in->buf;
-            check = CHECK(0L, Z_NULL, 0);
-            while (len > MAXP2) {
-                check = CHECK(check, next, MAXP2);
-                len -= MAXP2;
-                next += MAXP2;
-            }
-            check = CHECK(check, next, (unsigned) len);
-            drop_space(job->in);
-            job->check = check;
-            Trace(("-- checked #%ld%s", job->seq, job->more ? "" : " (last)"));
-            possess_pigz(job->calc);
-            twist_pigz(job->calc, TO, 1);
-
-            // done with that one -- go find another job
-        }
-        // found job with seq == -1 -- return to join_pigz
-        release_pigz(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]]);
+                    // found job with seq == -1 -- return to join_pigz
+                    release_pigz(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]]);
 #ifndef NOZOPFLI
-        if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level > 9)
-            drop_space(temp);
-        else
+                    if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level > 9)
+                        drop_space(temp);
+                    else
 #endif
-        {
-            (void) deflateEnd(&strm);
-        }
-    }
-    catch(err)
-    {
+                    {
+                        (void) deflateEnd(&strm);
+                    }
+                }
+    catch (err) {
         THREADABORT(err);
     }
 }
@@ -2098,69 +2098,68 @@ local void write_thread(void *dummy) {
     //printf("write_thread get fa_id is %d\n", fa_id);
     pthread_setspecific(gtid, &fa_id);
     try
-    {
-        // build and write header
-        Trace(("-- write threadPigz running"));
-        head = put_header();
+                {
+                    // build and write header
+                    Trace(("-- write threadPigz running"));
+                    head = put_header();
 
-        // process output of compress threads until end of input
-        ulen = clen = 0;
-        check = CHECK(0L, Z_NULL, 0);
-        seq = 0;
-        do {
-            // get next write job in order
-            possess_pigz(write_first[small_map[*((int *) (pthread_getspecific(gtid)))]]);
-            wait_for_pigz(write_first[small_map[*((int *) (pthread_getspecific(gtid)))]], TO_BE, seq);
-            job = write_head[small_map[*((int *) (pthread_getspecific(gtid)))]];
-            write_head[small_map[*((int *) (pthread_getspecific(gtid)))]] = job->next;
-            twist_pigz(write_first[small_map[*((int *) (pthread_getspecific(gtid)))]], TO,
-                    write_head[small_map[*((int *) (pthread_getspecific(gtid)))]] == NULL ? -1
-                    : write_head[small_map[*((int *) (pthread_getspecific(
-                                gtid)))]]->seq);
+                    // process output of compress threads until end of input
+                    ulen = clen = 0;
+                    check = CHECK(0L, Z_NULL, 0);
+                    seq = 0;
+                    do {
+                        // get next write job in order
+                        possess_pigz(write_first[small_map[*((int *) (pthread_getspecific(gtid)))]]);
+                        wait_for_pigz(write_first[small_map[*((int *) (pthread_getspecific(gtid)))]], TO_BE, seq);
+                        job = write_head[small_map[*((int *) (pthread_getspecific(gtid)))]];
+                        write_head[small_map[*((int *) (pthread_getspecific(gtid)))]] = job->next;
+                        twist_pigz(write_first[small_map[*((int *) (pthread_getspecific(gtid)))]], TO,
+                                   write_head[small_map[*((int *) (pthread_getspecific(gtid)))]] == NULL ? -1
+                                                                                                         : write_head[small_map[*((int *) (pthread_getspecific(
+                                           gtid)))]]->seq);
 
-            // update lengths, save uncompressed length for COMB
-            more = job->more;
-            len = job->in->len;
-            drop_space(job->in);
-            ulen += len;
-            clen += job->out->len;
+                        // update lengths, save uncompressed length for COMB
+                        more = job->more;
+                        len = job->in->len;
+                        drop_space(job->in);
+                        ulen += len;
+                        clen += job->out->len;
 
-            // write the compressed data and drop the output buffer
-            Trace(("-- writing #%ld", seq));
-            writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd, job->out->buf, job->out->len);
-            drop_space(job->out);
-            Trace(("-- wrote #%ld%s", seq, more ? "" : " (last)"));
+                        // write the compressed data and drop the output buffer
+                        Trace(("-- writing #%ld", seq));
+                        writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd, job->out->buf, job->out->len);
+                        drop_space(job->out);
+                        Trace(("-- wrote #%ld%s", seq, more ? "" : " (last)"));
 
-            // wait for check calculation to complete, then combine, once the
-            // compress threadPigz is done with the input, release_pigz it
-            possess_pigz(job->calc);
-            wait_for_pigz(job->calc, TO_BE, 1);
-            release_pigz(job->calc);
-            check = COMB(check, job->check, len);
-            Trace(("-- combined #%ld%s", seq, more ? "" : " (last)"));
+                        // wait for check calculation to complete, then combine, once the
+                        // compress threadPigz is done with the input, release_pigz it
+                        possess_pigz(job->calc);
+                        wait_for_pigz(job->calc, TO_BE, 1);
+                        release_pigz(job->calc);
+                        check = COMB(check, job->check, len);
+                        Trace(("-- combined #%ld%s", seq, more ? "" : " (last)"));
 
-            // free the job
-            free_lock_pigz(job->calc);
-            FREE(job);
+                        // free the job
+                        free_lock_pigz(job->calc);
+                        FREE(job);
 
-            // get the next buffer in sequence
-            seq++;
-        } while (more);
+                        // get the next buffer in sequence
+                        seq++;
+                    } while (more);
 
-        // write trailer
-        put_trailer(ulen, clen, check, head);
+                    // write trailer
+                    put_trailer(ulen, clen, check, head);
 
-        // verify no more jobs, prepare for next use
-        possess_pigz(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]]);
-        assert(compress_head[small_map[*((int *) (pthread_getspecific(gtid)))]] == NULL &&
-                peek_lock(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]]) == 0);
-        release_pigz(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]]);
-        possess_pigz(write_first[small_map[*((int *) (pthread_getspecific(gtid)))]]);
-        assert(write_head[small_map[*((int *) (pthread_getspecific(gtid)))]] == NULL);
-        twist_pigz(write_first[small_map[*((int *) (pthread_getspecific(gtid)))]], TO, -1);
-    }
-    catch(err)
-    {
+                    // verify no more jobs, prepare for next use
+                    possess_pigz(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]]);
+                    assert(compress_head[small_map[*((int *) (pthread_getspecific(gtid)))]] == NULL &&
+                           peek_lock(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]]) == 0);
+                    release_pigz(compress_have[small_map[*((int *) (pthread_getspecific(gtid)))]]);
+                    possess_pigz(write_first[small_map[*((int *) (pthread_getspecific(gtid)))]]);
+                    assert(write_head[small_map[*((int *) (pthread_getspecific(gtid)))]] == NULL);
+                    twist_pigz(write_first[small_map[*((int *) (pthread_getspecific(gtid)))]], TO, -1);
+                }
+    catch (err) {
         THREADABORT(err);
     }
 }
@@ -2200,7 +2199,7 @@ local void append_len(struct job *job, size_t len) {
 // threads will be launched and left running (waiting actually) to support
 // subsequent calls of parallel_compress().
 local void parallel_compress(moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, atomic_int *wDone,
-        pair<char *, int> &L, atomic_int *qNum) {
+                             pair<char *, int> &L, atomic_int *qNum) {
     //printf("111\n");
     long seq;                       // sequence number
     struct space *curr;             // input data to compress
@@ -2221,7 +2220,7 @@ local void parallel_compress(moodycamel::ReaderWriterQueue<pair<char *, int>> *Q
 
     // start write threadPigz
     writeth[small_map[*((int *) (pthread_getspecific(gtid)))]] = launch_pigz(write_thread,
-            (int *) (pthread_getspecific(gtid)));
+                                                                             (int *) (pthread_getspecific(gtid)));
 
     // read from input and start compress threads (write threadPigz will pick up
     // the output of the compress threads)
@@ -2350,12 +2349,12 @@ local void parallel_compress(moodycamel::ReaderWriterQueue<pair<char *, int>> *Q
         job->seq = seq;
         Trace(("-- read #%ld%s", seq, more ? "" : " (last)"));
         if (++seq < 1)
-            throw(ERANGE, "overflow");
+            throw (ERANGE, "overflow");
 
         // start another compress threadPigz if needed
         if (cthreads[small_map[*((int *) (pthread_getspecific(gtid)))]] < seq &&
-                cthreads[small_map[*((int *) (pthread_getspecific(gtid)))]] <
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].procs) {
+            cthreads[small_map[*((int *) (pthread_getspecific(gtid)))]] <
+            g[small_map[*((int *) (pthread_getspecific(gtid)))]].procs) {
             (void) launch_pigz(compress_thread, (int *) (pthread_getspecific(gtid)));
             cthreads[small_map[*((int *) (pthread_getspecific(gtid)))]]++;
         }
@@ -2431,27 +2430,31 @@ local void single_compress(int reset) {
         int ret;                    // zlib return code
 
         out_size[small_map[*((int *) (pthread_getspecific(gtid)))]] =
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].block > MAXP2 ? MAXP2
-            : (unsigned) g[small_map[*((int *) (pthread_getspecific(
-                            gtid)))]].block;
-        in[small_map[*((int *) (pthread_getspecific(gtid)))]] = static_cast<unsigned char *>(alloc(NULL, g[small_map[*((int *) (pthread_getspecific(
-                                gtid)))]].block + DICT));
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].block > MAXP2 ? MAXP2
+                                                                                   : (unsigned) g[small_map[*((int *) (pthread_getspecific(
+                        gtid)))]].block;
+        in[small_map[*((int *) (pthread_getspecific(gtid)))]] = static_cast<unsigned char *>(alloc(NULL,
+                                                                                                   g[small_map[*((int *) (pthread_getspecific(
+                                                                                                           gtid)))]].block +
+                                                                                                   DICT));
         nextPigz[small_map[*((int *) (pthread_getspecific(gtid)))]] = static_cast<unsigned char *>(alloc(NULL,
-                    g[small_map[*((int *) (pthread_getspecific(
-                                gtid)))]].block + DICT));
+                                                                                                         g[small_map[*((int *) (pthread_getspecific(
+                                                                                                                 gtid)))]].block +
+                                                                                                         DICT));
         out[small_map[*((int *) (pthread_getspecific(gtid)))]] = static_cast<unsigned char *>(alloc(NULL,
-                    out_size[small_map[*((int *) (pthread_getspecific(
-                                gtid)))]]));
-        strm[small_map[*((int *) (pthread_getspecific(gtid)))]] = static_cast<z_stream *>(alloc(NULL, sizeof(z_stream)));
+                                                                                                    out_size[small_map[*((int *) (pthread_getspecific(
+                                                                                                            gtid)))]]));
+        strm[small_map[*((int *) (pthread_getspecific(gtid)))]] = static_cast<z_stream *>(alloc(NULL,
+                                                                                                sizeof(z_stream)));
         strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->zfree = ZFREE;
         strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->zalloc = ZALLOC;
         strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->opaque = OPAQUE;
         ret = deflateInit2(strm[small_map[*((int *) (pthread_getspecific(gtid)))]], 6, Z_DEFLATED, -15, 8,
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].strategy);
+                           g[small_map[*((int *) (pthread_getspecific(gtid)))]].strategy);
         if (ret == Z_MEM_ERROR)
-            throw(ENOMEM, "not enough memory");
+            throw (ENOMEM, "not enough memory");
         if (ret != Z_OK)
-            throw(EINVAL, "internal error");
+            throw (EINVAL, "internal error");
     }
 
     // write header
@@ -2463,8 +2466,8 @@ local void single_compress(int reset) {
 #endif
         (void) deflateReset(strm[small_map[*((int *) (pthread_getspecific(gtid)))]]);
         (void) deflateParams(strm[small_map[*((int *) (pthread_getspecific(gtid)))]],
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].level,
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].strategy);
+                             g[small_map[*((int *) (pthread_getspecific(gtid)))]].level,
+                             g[small_map[*((int *) (pthread_getspecific(gtid)))]].strategy);
 #ifndef NOZOPFLI
     }
 #endif
@@ -2472,8 +2475,8 @@ local void single_compress(int reset) {
     // do raw deflate and calculate check value
     got = 0;
     more = readn(g[small_map[*((int *) (pthread_getspecific(gtid)))]].ind,
-            nextPigz[small_map[*((int *) (pthread_getspecific(gtid)))]],
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].block);
+                 nextPigz[small_map[*((int *) (pthread_getspecific(gtid)))]],
+                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].block);
     ulen = more;
     start = 0;
     hist = 0;
@@ -2486,24 +2489,24 @@ local void single_compress(int reset) {
         if (got == 0) {
             scan = in[small_map[*((int *) (pthread_getspecific(gtid)))]];
             in[small_map[*((int *) (pthread_getspecific(gtid)))]] = nextPigz[small_map[*((int *) (pthread_getspecific(
-                            gtid)))]];
+                    gtid)))]];
             nextPigz[small_map[*((int *) (pthread_getspecific(gtid)))]] = scan;
             strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->next_in =
-                in[small_map[*((int *) (pthread_getspecific(gtid)))]] + start;
+                    in[small_map[*((int *) (pthread_getspecific(gtid)))]] + start;
             got = more;
             if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level > 9) {
                 left = start + more - hist;
                 if (left > DICT)
                     left = DICT;
                 memcpy(nextPigz[small_map[*((int *) (pthread_getspecific(gtid)))]],
-                        in[small_map[*((int *) (pthread_getspecific(gtid)))]] + ((start + more) - left), left);
+                       in[small_map[*((int *) (pthread_getspecific(gtid)))]] + ((start + more) - left), left);
                 start = left;
                 hist = 0;
             } else
                 start = 0;
             more = readn(g[small_map[*((int *) (pthread_getspecific(gtid)))]].ind,
-                    nextPigz[small_map[*((int *) (pthread_getspecific(gtid)))]] + start,
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].block);
+                         nextPigz[small_map[*((int *) (pthread_getspecific(gtid)))]] + start,
+                         g[small_map[*((int *) (pthread_getspecific(gtid)))]].block);
             ulen += more;
         }
 
@@ -2523,7 +2526,7 @@ local void single_compress(int reset) {
                     // from next[] -- set up to continue hash hit search
                     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level > 9) {
                         left = (size_t)(strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->next_in -
-                                in[small_map[*((int *) (pthread_getspecific(gtid)))]]) - hist;
+                                        in[small_map[*((int *) (pthread_getspecific(gtid)))]]) - hist;
                         if (left > DICT)
                             left = DICT;
                     }
@@ -2531,10 +2534,10 @@ local void single_compress(int reset) {
                             strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->next_in - left, left + got);
                     hist = 0;
                     strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->next_in =
-                        in[small_map[*((int *) (pthread_getspecific(gtid)))]] + left;
+                            in[small_map[*((int *) (pthread_getspecific(gtid)))]] + left;
                     scan = in[small_map[*((int *) (pthread_getspecific(gtid)))]] + left + got;
                     left = more > g[small_map[*((int *) (pthread_getspecific(gtid)))]].block - got ?
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].block - got : more;
+                           g[small_map[*((int *) (pthread_getspecific(gtid)))]].block - got : more;
                     memcpy(scan, nextPigz[small_map[*((int *) (pthread_getspecific(gtid)))]] + start, left);
                     got += left;
                     more -= left;
@@ -2543,8 +2546,8 @@ local void single_compress(int reset) {
                     // if that emptied the next buffer, try to refill it
                     if (more == 0) {
                         more = readn(g[small_map[*((int *) (pthread_getspecific(gtid)))]].ind,
-                                nextPigz[small_map[*((int *) (pthread_getspecific(gtid)))]],
-                                g[small_map[*((int *) (pthread_getspecific(gtid)))]].block);
+                                     nextPigz[small_map[*((int *) (pthread_getspecific(gtid)))]],
+                                     g[small_map[*((int *) (pthread_getspecific(gtid)))]].block);
                         ulen += more;
                         start = 0;
                     }
@@ -2552,7 +2555,7 @@ local void single_compress(int reset) {
                 left--;
                 hash = ((hash << 1) ^ *scan++) & RSYNCMASK;
             } while (hash != RSYNCHIT);
-                    got -= left;
+            got -= left;
         }
 
         // clear history for --independent option
@@ -2576,7 +2579,7 @@ local void single_compress(int reset) {
             while (got > MAXP2) {
                 strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->avail_in = MAXP2;
                 check = CHECK(check, strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->next_in,
-                        strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->avail_in);
+                              strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->avail_in);
                 DEFLATE_WRITE(Z_NO_FLUSH);
                 got -= MAXP2;
             }
@@ -2585,7 +2588,7 @@ local void single_compress(int reset) {
             strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->avail_in = (unsigned) got;
             got = left;
             check = CHECK(check, strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->next_in,
-                    strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->avail_in);
+                          strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->avail_in);
             if (more || got) {
 #if ZLIB_VERNUM >= 0x1260
                 if (zlib_vernum() >= 0x1260) {
@@ -2610,7 +2613,7 @@ local void single_compress(int reset) {
                 DEFLATE_WRITE(Z_SYNC_FLUSH);
 #endif
                 if (!g[small_map[*((int *) (pthread_getspecific(
-                                    gtid)))]].setdict)             // two markers when independent
+                        gtid)))]].setdict)             // two markers when independent
                     DEFLATE_WRITE(Z_FULL_FLUSH);
             } else
                 DEFLATE_WRITE(Z_FINISH);
@@ -2622,7 +2625,7 @@ local void single_compress(int reset) {
 
             // discard history if requested
             off = (size_t)(strm[small_map[*((int *) (pthread_getspecific(gtid)))]]->next_in -
-                    in[small_map[*((int *) (pthread_getspecific(gtid)))]]);
+                           in[small_map[*((int *) (pthread_getspecific(gtid)))]]);
             if (fresh)
                 hist = off;
 
@@ -2630,9 +2633,9 @@ local void single_compress(int reset) {
             size = 0;
             bits = 0;
             ZopfliDeflatePart(&g[small_map[*((int *) (pthread_getspecific(gtid)))]].zopts, 2, !(more || left),
-                    in[small_map[*((int *) (pthread_getspecific(gtid)))]] + hist, off - hist,
-                    (off - hist) + got,
-                    &bits, &def, &size);
+                              in[small_map[*((int *) (pthread_getspecific(gtid)))]] + hist, off - hist,
+                              (off - hist) + got,
+                              &bits, &def, &size);
             bits &= 7;
             if (more || left) {
                 if ((bits & 1) || !g[small_map[*((int *) (pthread_getspecific(gtid)))]].setdict) {
@@ -2640,7 +2643,7 @@ local void single_compress(int reset) {
                     if (bits == 0 || bits > 5)
                         writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd, (unsigned char *) "\0", 1);
                     writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd, (unsigned char *) "\0\0\xff\xff",
-                            4);
+                           4);
                 } else {
                     assert(size > 0);
                     writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd, def, size - 1);
@@ -2654,9 +2657,9 @@ local void single_compress(int reset) {
                     writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd, def + size - 1, 1);
                 }
                 if (!g[small_map[*((int *) (pthread_getspecific(
-                                    gtid)))]].setdict)             // two markers when independent
+                        gtid)))]].setdict)             // two markers when independent
                     writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                            (unsigned char *) "\0\0\0\xff\xff", 5);
+                           (unsigned char *) "\0\0\0\xff\xff", 5);
             } else
                 writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd, def, size);
             free(def);
@@ -2674,8 +2677,8 @@ local void single_compress(int reset) {
         // do until no more input
     } while (more || got);
 
-                    // write trailer
-                    put_trailer(ulen, clen, check, head);
+    // write trailer
+    put_trailer(ulen, clen, check, head);
 }
 
 // --- decompression ---
@@ -2694,26 +2697,25 @@ local void load_read(void *dummy) {
 
     Trace(("-- launched decompress read threadPigz"));
     try
-    {
-        do {
-            possess_pigz(g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_state);
-            wait_for_pigz(g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_state, NOT_TO_BE, 0);
-            if (peek_lock(g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_state) > 1) {
-                release_pigz(g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_state);
-                break;
-            }
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_len = len = readn(
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].ind,
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_which
-                    ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_buf
-                    : g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_buf2,
-                    BUF);
-            Trace(("-- decompress read threadPigz read %lu bytes", len));
-            twist_pigz(g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_state, TO, 0);
-        } while (len == BUF);
-    }
-    catch(err)
-    {
+                {
+                    do {
+                        possess_pigz(g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_state);
+                        wait_for_pigz(g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_state, NOT_TO_BE, 0);
+                        if (peek_lock(g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_state) > 1) {
+                            release_pigz(g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_state);
+                            break;
+                        }
+                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_len = len = readn(
+                                g[small_map[*((int *) (pthread_getspecific(gtid)))]].ind,
+                                g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_which
+                                ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_buf
+                                : g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_buf2,
+                                BUF);
+                        Trace(("-- decompress read threadPigz read %lu bytes", len));
+                        twist_pigz(g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_state, TO, 0);
+                    } while (len == BUF);
+                }
+    catch (err) {
         THREADABORT(err);
     }
     Trace(("-- exited decompress read threadPigz"));
@@ -2753,8 +2755,8 @@ local size_t load(void) {
             g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_which = 1;
             g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_state = new_lock_pigz(1);
             g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_thread = launch_pigz(load_read,
-                    (int *) (pthread_getspecific(
-                            gtid)));
+                                                                                           (int *) (pthread_getspecific(
+                                                                                                   gtid)));
         }
 
         // wait for the previously requested read to complete
@@ -2762,21 +2764,21 @@ local size_t load(void) {
 
         // set up input buffer with the data just read
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next = g[small_map[*((int *) (pthread_getspecific(
-                        gtid)))]].in_which ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_buf
-            : g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_buf2;
+                gtid)))]].in_which ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_buf
+                                   : g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_buf2;
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left = g[small_map[*((int *) (pthread_getspecific(
-                        gtid)))]].in_len;
+                gtid)))]].in_len;
 
         // if not at end of file, alert read threadPigz to load next buffer,
         // alternate between g[small_map[*((int*)(pthread_getspecific(gtid)))]].in_buf and g[small_map[*((int*)(pthread_getspecific(gtid)))]].in_buf2
         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_len == BUF) {
             g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_which =
-                1 - g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_which;
+                    1 - g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_which;
             possess_pigz(g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_state);
             twist_pigz(g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_state, TO, 1);
         }
 
-        // at end of file -- join_pigz read threadPigz (already exited), clean up
+            // at end of file -- join_pigz read threadPigz (already exited), clean up
         else {
             join_pigz(g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_thread);
             free_lock_pigz(g[small_map[*((int *) (pthread_getspecific(gtid)))]].load_state);
@@ -2788,7 +2790,7 @@ local size_t load(void) {
         // don't use threads -- simply read a buffer into g[small_map[*((int*)(pthread_getspecific(gtid)))]].in_buf
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left = readn(
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].ind, g[small_map[*((int *) (pthread_getspecific(
-                            gtid)))]].in_next = g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_buf, BUF);
+                        gtid)))]].in_next = g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_buf, BUF);
     }
 
     // note end of file
@@ -2802,7 +2804,7 @@ local size_t load(void) {
 
     // update the total and return the available bytes
     g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot += g[small_map[*((int *) (pthread_getspecific(
-                    gtid)))]].in_left;
+            gtid)))]].in_left;
     return g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;
 }
 
@@ -3053,10 +3055,11 @@ local int get_header(int save) {
 
             if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_eof)
                 return -3;
-            next = g[small_map[*((int *) (pthread_getspecific(gtid)))]].hname = static_cast<char *>(alloc(NULL, fname + 1));
+            next = g[small_map[*((int *) (pthread_getspecific(gtid)))]].hname = static_cast<char *>(alloc(NULL,
+                                                                                                          fname + 1));
             while (fname > g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left) {
                 memcpy(next, g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next,
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left);
+                       g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left);
                 fname -= g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;
                 next += g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;
                 if (load() == 0)
@@ -3138,9 +3141,9 @@ local int more_zip_entries(void) {
 
     sig = GET4();
     ret = !g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_eof &&
-        sig == 0x04034b50;   // true if another entry follows
+          sig == 0x04034b50;   // true if another entry follows
     if (!g[small_map[*((int *) (pthread_getspecific(gtid)))]].list ||
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].verbosity < 2)
+        g[small_map[*((int *) (pthread_getspecific(gtid)))]].verbosity < 2)
         return ret;
 
     // if it was a central file header signature, then already four bytes
@@ -3152,8 +3155,9 @@ local int more_zip_entries(void) {
             return ret;
         if (n == 0) {
             // look for first byte in central signature
-            first = static_cast<unsigned char *>(memchr(g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next, central[0],
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left));
+            first = static_cast<unsigned char *>(memchr(g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next,
+                                                        central[0],
+                                                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left));
             if (first == NULL) {
                 // not found -- go get the next buffer and keep looking
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left = 0;
@@ -3161,7 +3165,7 @@ local int more_zip_entries(void) {
                 // found -- continue search at next byte
                 n++;
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left -=
-                    first - g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next + 1;
+                        first - g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next + 1;
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next = first + 1;
             }
         } else if (n < 4) {
@@ -3179,7 +3183,7 @@ local int more_zip_entries(void) {
             size_t need = CEN, part = 0, len, i;
 
             if (need >
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left) {     // will only need to do this once
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left) {     // will only need to do this once
                 part = g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;
                 memcpy(head + CEN - need, g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next, part);
                 need -= part;
@@ -3192,7 +3196,7 @@ local int more_zip_entries(void) {
             // Determine to sufficient probability that this is the droid we're
             // looking for, by checking the CRC and the local header offset.
             if (PULL4L(head + 12) == g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_check &&
-                    PULL4L(head + 38) == 0) {
+                PULL4L(head + 38) == 0) {
                 // Update the number of bytes consumed from the current buffer.
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next += need;
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left -= need;
@@ -3210,8 +3214,8 @@ local int more_zip_entries(void) {
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].hcomm = static_cast<char *>(alloc(NULL, len + 1));
                 while (need > g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left) {
                     memcpy(g[small_map[*((int *) (pthread_getspecific(gtid)))]].hcomm + len - need,
-                            g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next,
-                            g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left);
+                           g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next,
+                           g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left);
                     need -= g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;
                     g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left = 0;
                     if (load() == 0) {          // premature EOF
@@ -3220,7 +3224,7 @@ local int more_zip_entries(void) {
                     }
                 }
                 memcpy(g[small_map[*((int *) (pthread_getspecific(gtid)))]].hcomm + len - need,
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next, need);
+                       g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next, need);
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next += need;
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left -= need;
                 for (i = 0; i < len; i++)
@@ -3257,20 +3261,20 @@ local size_t compressed_suffix(char *nm) {
         nm += len - 4;
         len = 4;
         if (strcmp(nm, ".zip") == 0 || strcmp(nm, ".ZIP") == 0 ||
-                strcmp(nm, ".tgz") == 0)
+            strcmp(nm, ".tgz") == 0)
             return 4;
     }
     if (len > 3) {
         nm += len - 3;
         len = 3;
         if (strcmp(nm, ".gz") == 0 || strcmp(nm, "-gz") == 0 ||
-                strcmp(nm, ".zz") == 0 || strcmp(nm, "-zz") == 0)
+            strcmp(nm, ".zz") == 0 || strcmp(nm, "-zz") == 0)
             return 3;
     }
     if (len > 2) {
         nm += len - 2;
         if (strcmp(nm, ".z") == 0 || strcmp(nm, "-z") == 0 ||
-                strcmp(nm, "_z") == 0 || strcmp(nm, ".Z") == 0)
+            strcmp(nm, "_z") == 0 || strcmp(nm, ".Z") == 0)
             return 2;
     }
     return 0;
@@ -3326,7 +3330,7 @@ local void show_info(int method, unsigned long check, length_t len, int cont) {
     // print information
     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].verbosity > 1) {
         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].form == 3 &&
-                !g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode)
+            !g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode)
             printf("zip%3d  --------  %s  ", method, mod + 4);
         else if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].form > 1)
             printf("zip%3d  %08lx  %s  ", method, check, mod + 4);
@@ -3341,9 +3345,9 @@ local void show_info(int method, unsigned long check, length_t len, int cont) {
         // compute reduction percent -- allow divide-by-zero, displays as -inf%
         double red = 100. * (len - (double) g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot) / len;
         if ((g[small_map[*((int *) (pthread_getspecific(gtid)))]].form == 3 &&
-                    !g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode) ||
-                (method == 8 && g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot > (len + (len >> 10) + 12)) ||
-                (method == 257 && g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot > len + (len >> 1) + 3))
+             !g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode) ||
+            (method == 8 && g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot > (len + (len >> 10) + 12)) ||
+            (method == 257 && g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot > len + (len >> 1) + 3))
 #if __STDC_VERSION__ - 0 >= 199901L || __GNUC__ - 0 >= 3
             printf("%10jd %10jd?  unk    %s\n",
                     (intmax_t)g[small_map[*((int*)(pthread_getspecific(gtid)))]].in_tot, (intmax_t)len, tag);
@@ -3351,17 +3355,17 @@ local void show_info(int method, unsigned long check, length_t len, int cont) {
             printf("%10jd %10jd %6.1f%%  %s\n",
                     (intmax_t)g[small_map[*((int*)(pthread_getspecific(gtid)))]].in_tot, (intmax_t)len, red, tag);
 #else
-        printf(sizeof(off_t) == sizeof(long) ?
-                "%10ld %10ld?  unk    %s\n" : "%10lld %10lld?  unk    %s\n",
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot, len, tag);
+            printf(sizeof(off_t) == sizeof(long) ?
+                   "%10ld %10ld?  unk    %s\n" : "%10lld %10lld?  unk    %s\n",
+                   g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot, len, tag);
         else
             printf(sizeof(off_t) == sizeof(long) ?
-                    "%10ld %10ld %6.1f%%  %s\n" : "%10lld %10lld %6.1f%%  %s\n",
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot, len, red, tag);
+                   "%10ld %10ld %6.1f%%  %s\n" : "%10lld %10lld %6.1f%%  %s\n",
+                   g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot, len, red, tag);
 #endif
     }
     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].verbosity > 1 &&
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].hcomm != NULL)
+        g[small_map[*((int *) (pthread_getspecific(gtid)))]].hcomm != NULL)
         puts(g[small_map[*((int *) (pthread_getspecific(gtid)))]].hcomm);
 }
 
@@ -3398,9 +3402,9 @@ local void list_info(void) {
     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].form > 1) {
         more_zip_entries();         // get first entry comment, if any
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot = g[small_map[*((int *) (pthread_getspecific(
-                        gtid)))]].zip_clen;
+                gtid)))]].zip_clen;
         show_info(method, g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_crc,
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_ulen, 0);
+                  g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_ulen, 0);
         return;
     }
 
@@ -3411,9 +3415,9 @@ local void list_info(void) {
             check = 0;
             do {
                 len = g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left < 4
-                    ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left : 4;
+                      ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left : 4;
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next +=
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left - len;
+                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left - len;
                 while (len--)
                     check = (check << 8) + *g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next++;
             } while (load() != 0);
@@ -3448,22 +3452,22 @@ local void list_info(void) {
             return;
         }
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot =
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left - 8;       // compressed size
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left - 8;       // compressed size
         memcpy(tail, g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next +
-                (g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left - 8), 8);
+                     (g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left - 8), 8);
     } else if ((at = lseek(g[small_map[*((int *) (pthread_getspecific(gtid)))]].ind, -8, SEEK_END)) != -1) {
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot =
-            (length_t) at - g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot +
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left; // compressed size
+                (length_t) at - g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot +
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left; // compressed size
         readn(g[small_map[*((int *) (pthread_getspecific(gtid)))]].ind, tail, 8);          // get trailer
     } else {                              // can't seek
         len = g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot -
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;     // save header size
+              g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;     // save header size
         do {
             n = g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left < 8
                 ? g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left : 8;
             memcpy(tail, g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next +
-                    (g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left - n), n);
+                         (g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left - n), n);
             load();
         } while (g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left == BUF);     // read until end
         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left < 8) {
@@ -3475,14 +3479,14 @@ local void list_info(void) {
             if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left) {
                 if (n + g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left > 8)
                     memcpy(tail, tail + n - (8 - g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left),
-                            8 - g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left);
+                           8 - g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left);
                 memcpy(tail + 8 - g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left,
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next,
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left);
+                       g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next,
+                       g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left);
             }
         } else
             memcpy(tail, g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next +
-                    (g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left - 8), 8);
+                         (g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left - 8), 8);
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot -= len + 8;
     }
     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot < 2) {
@@ -3503,7 +3507,8 @@ local void list_info(void) {
 local void cat(void) {
     // copy the first header byte read, if any
     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].magic1 != -1) {
-        unsigned char buf[1] = {static_cast<unsigned char>(g[small_map[*((int *) (pthread_getspecific(gtid)))]].magic1)};
+        unsigned char buf[1] = {
+                static_cast<unsigned char>(g[small_map[*((int *) (pthread_getspecific(gtid)))]].magic1)};
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_tot += writen(
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd, buf, 1);
     }
@@ -3528,8 +3533,8 @@ local unsigned inb(void *desc, unsigned char **buf) {
         load();
     *buf = g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next;
     unsigned len = g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left > UINT_MAX ? UINT_MAX
-        : (unsigned) g[small_map[*((int *) (pthread_getspecific(
-                        gtid)))]].in_left;
+                                                                                           : (unsigned) g[small_map[*((int *) (pthread_getspecific(
+                    gtid)))]].in_left;
     g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next += len;
     g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left -= len;
     return len;
@@ -3560,20 +3565,19 @@ local void outb_write(void *dummy) {
 
     Trace(("-- launched decompress write threadPigz"));
     try
-    {
-        do {
-            possess_pigz(outb_write_more[small_map[*((int *) (pthread_getspecific(gtid)))]]);
-            wait_for_pigz(outb_write_more[small_map[*((int *) (pthread_getspecific(gtid)))]], TO_BE, 1);
-            len = out_len[small_map[*((int *) (pthread_getspecific(gtid)))]];
-            if (len && g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode == 1)
-                writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                        out_copy[small_map[*((int *) (pthread_getspecific(gtid)))]], len);
-            Trace(("-- decompress wrote %lu bytes", len));
-            twist_pigz(outb_write_more[small_map[*((int *) (pthread_getspecific(gtid)))]], TO, 0);
-        } while (len);
-    }
-    catch(err)
-    {
+                {
+                    do {
+                        possess_pigz(outb_write_more[small_map[*((int *) (pthread_getspecific(gtid)))]]);
+                        wait_for_pigz(outb_write_more[small_map[*((int *) (pthread_getspecific(gtid)))]], TO_BE, 1);
+                        len = out_len[small_map[*((int *) (pthread_getspecific(gtid)))]];
+                        if (len && g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode == 1)
+                            writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
+                                   out_copy[small_map[*((int *) (pthread_getspecific(gtid)))]], len);
+                        Trace(("-- decompress wrote %lu bytes", len));
+                        twist_pigz(outb_write_more[small_map[*((int *) (pthread_getspecific(gtid)))]], TO, 0);
+                    } while (len);
+                }
+    catch (err) {
         THREADABORT(err);
     }
     Trace(("-- exited decompress write threadPigz"));
@@ -3592,20 +3596,19 @@ local void outb_check(void *dummy) {
 
     Trace(("-- launched decompress check threadPigz"));
     try
-    {
-        do {
-            possess_pigz(outb_check_more[small_map[*((int *) (pthread_getspecific(gtid)))]]);
-            wait_for_pigz(outb_check_more[small_map[*((int *) (pthread_getspecific(gtid)))]], TO_BE, 1);
-            len = out_len[small_map[*((int *) (pthread_getspecific(gtid)))]];
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_check = CHECK(
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_check,
-                    out_copy[small_map[*((int *) (pthread_getspecific(gtid)))]], len);
-            Trace(("-- decompress checked %lu bytes", len));
-            twist_pigz(outb_check_more[small_map[*((int *) (pthread_getspecific(gtid)))]], TO, 0);
-        } while (len);
-    }
-    catch(err)
-    {
+                {
+                    do {
+                        possess_pigz(outb_check_more[small_map[*((int *) (pthread_getspecific(gtid)))]]);
+                        wait_for_pigz(outb_check_more[small_map[*((int *) (pthread_getspecific(gtid)))]], TO_BE, 1);
+                        len = out_len[small_map[*((int *) (pthread_getspecific(gtid)))]];
+                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_check = CHECK(
+                                g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_check,
+                                out_copy[small_map[*((int *) (pthread_getspecific(gtid)))]], len);
+                        Trace(("-- decompress checked %lu bytes", len));
+                        twist_pigz(outb_check_more[small_map[*((int *) (pthread_getspecific(gtid)))]], TO, 0);
+                    } while (len);
+                }
+    catch (err) {
         THREADABORT(err);
     }
     Trace(("-- exited decompress check threadPigz"));
@@ -3630,9 +3633,9 @@ local int outb(void *desc, unsigned char *buf, unsigned len) {
             outb_write_more[small_map[*((int *) (pthread_getspecific(gtid)))]] = new_lock_pigz(0);
             outb_check_more[small_map[*((int *) (pthread_getspecific(gtid)))]] = new_lock_pigz(0);
             wr[small_map[*((int *) (pthread_getspecific(gtid)))]] = launch_pigz(outb_write,
-                    (int *) (pthread_getspecific(gtid)));
+                                                                                (int *) (pthread_getspecific(gtid)));
             ch[small_map[*((int *) (pthread_getspecific(gtid)))]] = launch_pigz(outb_check,
-                    (int *) (pthread_getspecific(gtid)));
+                                                                                (int *) (pthread_getspecific(gtid)));
         }
 
         // wait for previous write and check threads to complete
@@ -3697,7 +3700,7 @@ local void infchk(void) {
     do {
         // header already read -- set up for decompression
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot = g[small_map[*((int *) (pthread_getspecific(
-                        gtid)))]].in_left;       // track compressed data length
+                gtid)))]].in_left;       // track compressed data length
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_tot = 0;
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_check = CHECK(0L, Z_NULL, 0);
         strm.zalloc = ZALLOC;
@@ -3705,9 +3708,9 @@ local void infchk(void) {
         strm.opaque = OPAQUE;
         ret = inflateBackInit(&strm, 15, out_buf[small_map[*((int *) (pthread_getspecific(gtid)))]]);
         if (ret == Z_MEM_ERROR)
-            throw(ENOMEM, "not enough memory");
+            throw (ENOMEM, "not enough memory");
         if (ret != Z_OK)
-            throw(EINVAL, "internal error");
+            throw (EINVAL, "internal error");
 
         // decompress, compute lengths and check value
         strm.avail_in = 0;
@@ -3715,20 +3718,20 @@ local void infchk(void) {
         ret = inflateBack(&strm, inb, NULL, outb, NULL);
         inflateBackEnd(&strm);
         if (ret == Z_DATA_ERROR)
-            throw(EDOM, "%s: corrupted -- invalid deflate data (%s)",
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf, strm.msg);
+            throw (EDOM, "%s: corrupted -- invalid deflate data (%s)",
+                   g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf, strm.msg);
         if (ret == Z_BUF_ERROR)
-            throw(EDOM, "%s: corrupted -- incomplete deflate data",
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+            throw (EDOM, "%s: corrupted -- incomplete deflate data",
+                   g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
         if (ret != Z_STREAM_END)
-            throw(EINVAL, "internal error");
+            throw (EINVAL, "internal error");
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left += strm.avail_in;
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next = strm.next_in;
         outb(NULL, NULL, 0);        // finish off final write and check
 
         // compute compressed data length
         clen = g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot -
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;
+               g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;
 
         // read and check trailer
         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].form > 1) {           // zip local trailer (if any)
@@ -3737,54 +3740,54 @@ local void infchk(void) {
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_crc = GET4();
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_clen = GET4();
                 g[small_map[*((int *) (pthread_getspecific(
-                                gtid)))]].zip_ulen = GET4();        // ZIP64 -> high clen, not ulen
+                        gtid)))]].zip_ulen = GET4();        // ZIP64 -> high clen, not ulen
 
                 // deduce whether or not a signature precedes the values
                 if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_crc == SIG &&// might be the signature
-                        // if the expected CRC is not SIG, then it's a signature
-                        (g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_check != SIG ||      // assume signature
-                         // now we're in a very rare case where CRC == SIG -- the
-                         // first four bytes could be the signature or the CRC
-                         (g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_clen == SIG &&
-                          // if not, then no signature
-                          // now we have the first two words are SIG and the
-                          // expected CRC is SIG, so it could be a signature and
-                          // the CRC, or it could be the CRC and a compressed
-                          // length that is *also* SIG (!) -- so check the low 32
-                          // bits of the expected compressed length for SIG
-                          ((clen & LOW32) != SIG || // assume signature and CRC
-                           // now the expected CRC *and* the expected low 32 bits
-                           // of the compressed length are SIG -- this is so
-                           // incredibly unlikely, clearly someone is messing with
-                           // us, but we continue ... if the next four bytes are
-                           // not SIG, then there is not a signature -- check those
-                           // bytes, currently in g[small_map[*((int*)(pthread_getspecific(gtid)))]].zip_ulen:
-                           (g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_ulen == SIG &&
-                            // if not, then no signature
-                            // we have three SIGs in a row in the descriptor, and
-                            // both the expected CRC and the expected clen are SIG
-                            // -- the first one is a signature if we don't expect
-                            // the third word to be SIG, which is either the low 32
-                            // bits of ulen, or if ZIP64, the high 32 bits of clen:
-                            (g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip64 ? clen >> 32
-                             : g[small_map[*((int *) (pthread_getspecific(
-                                         gtid)))]].out_tot) != SIG
-                            // if that last compare was equal, then the expected
-                            // values for the CRC, the low 32 bits of clen, *and*
-                            // the low 32 bits of ulen are all SIG (!!), or in the
-                            // case of ZIP64, even crazier, the CRC and *both*
-                            // 32-bit halves of clen are all SIG (clen > 500
-                            // petabytes!!!) ... we can no longer discriminate the
-                            // hypotheses, so we will assume no signature
-                           ))))) {
-                               // first four bytes were actually the descriptor -- shift
-                               // the values down and get another four bytes
-                               g[small_map[*((int *) (pthread_getspecific(
-                                               gtid)))]].zip_crc = g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_clen;
-                               g[small_map[*((int *) (pthread_getspecific(
-                                               gtid)))]].zip_clen = g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_ulen;
-                               g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_ulen = GET4();
-                           }
+                    // if the expected CRC is not SIG, then it's a signature
+                    (g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_check != SIG ||      // assume signature
+                     // now we're in a very rare case where CRC == SIG -- the
+                     // first four bytes could be the signature or the CRC
+                     (g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_clen == SIG &&
+                      // if not, then no signature
+                      // now we have the first two words are SIG and the
+                      // expected CRC is SIG, so it could be a signature and
+                      // the CRC, or it could be the CRC and a compressed
+                      // length that is *also* SIG (!) -- so check the low 32
+                      // bits of the expected compressed length for SIG
+                      ((clen & LOW32) != SIG || // assume signature and CRC
+                       // now the expected CRC *and* the expected low 32 bits
+                       // of the compressed length are SIG -- this is so
+                       // incredibly unlikely, clearly someone is messing with
+                       // us, but we continue ... if the next four bytes are
+                       // not SIG, then there is not a signature -- check those
+                       // bytes, currently in g[small_map[*((int*)(pthread_getspecific(gtid)))]].zip_ulen:
+                       (g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_ulen == SIG &&
+                        // if not, then no signature
+                        // we have three SIGs in a row in the descriptor, and
+                        // both the expected CRC and the expected clen are SIG
+                        // -- the first one is a signature if we don't expect
+                        // the third word to be SIG, which is either the low 32
+                        // bits of ulen, or if ZIP64, the high 32 bits of clen:
+                        (g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip64 ? clen >> 32
+                                                                                    : g[small_map[*((int *) (pthread_getspecific(
+                                        gtid)))]].out_tot) != SIG
+                               // if that last compare was equal, then the expected
+                               // values for the CRC, the low 32 bits of clen, *and*
+                               // the low 32 bits of ulen are all SIG (!!), or in the
+                               // case of ZIP64, even crazier, the CRC and *both*
+                               // 32-bit halves of clen are all SIG (clen > 500
+                               // petabytes!!!) ... we can no longer discriminate the
+                               // hypotheses, so we will assume no signature
+                       ))))) {
+                    // first four bytes were actually the descriptor -- shift
+                    // the values down and get another four bytes
+                    g[small_map[*((int *) (pthread_getspecific(
+                            gtid)))]].zip_crc = g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_clen;
+                    g[small_map[*((int *) (pthread_getspecific(
+                            gtid)))]].zip_clen = g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_ulen;
+                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_ulen = GET4();
+                }
 
                 // if ZIP64, then ulen is really the high word of clen -- get
                 // the actual ulen and skip its high word as well (we only
@@ -3794,18 +3797,18 @@ local void infchk(void) {
                     (void) GET4();
                 }
                 if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_eof)
-                    throw(EDOM, "%s: corrupted entry -- missing trailer",
-                            g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                    throw (EDOM, "%s: corrupted entry -- missing trailer",
+                           g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
             }
             check = g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_crc;
             if (check != g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_check)
-                throw(EDOM, "%s: corrupted entry -- crc32 mismatch",
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                throw (EDOM, "%s: corrupted entry -- crc32 mismatch",
+                       g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
             if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_clen != (clen & LOW32) ||
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_ulen !=
-                    (g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_tot & LOW32))
-                throw(EDOM, "%s: corrupted entry -- length mismatch",
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].zip_ulen !=
+                (g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_tot & LOW32))
+                throw (EDOM, "%s: corrupted entry -- length mismatch",
+                       g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
             more = more_zip_entries();  // see if more entries, get comment
         } else if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].form == 1) {     // zlib (big-endian) trailer
             check = (unsigned long) (GET()) << 24;
@@ -3813,23 +3816,23 @@ local void infchk(void) {
             check += (unsigned) (GET()) << 8;
             check += GET();
             if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_eof)
-                throw(EDOM, "%s: corrupted -- missing trailer",
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                throw (EDOM, "%s: corrupted -- missing trailer",
+                       g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
             if (check != g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_check)
-                throw(EDOM, "%s: corrupted -- adler32 mismatch",
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                throw (EDOM, "%s: corrupted -- adler32 mismatch",
+                       g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
         } else {                      // gzip trailer
             check = GET4();
             len = GET4();
             if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_eof)
-                throw(EDOM, "%s: corrupted -- missing trailer",
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                throw (EDOM, "%s: corrupted -- missing trailer",
+                       g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
             if (check != g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_check)
-                throw(EDOM, "%s: corrupted -- crc32 mismatch",
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                throw (EDOM, "%s: corrupted -- crc32 mismatch",
+                       g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
             if (len != (g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_tot & LOW32))
-                throw(EDOM, "%s: corrupted -- length mismatch",
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                throw (EDOM, "%s: corrupted -- length mismatch",
+                       g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
         }
 
         // show file information if requested
@@ -3845,25 +3848,25 @@ local void infchk(void) {
 
     // gzip -cdf copies junk after gzip stream directly to output
     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].form == 0 && ret == -2 &&
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].force &&
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].pipeout &&
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode != 2 &&
-            !g[small_map[*((int *) (pthread_getspecific(gtid)))]].list)
+        g[small_map[*((int *) (pthread_getspecific(gtid)))]].force &&
+        g[small_map[*((int *) (pthread_getspecific(gtid)))]].pipeout &&
+        g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode != 2 &&
+        !g[small_map[*((int *) (pthread_getspecific(gtid)))]].list)
         cat();
 
-    // check for more entries in zip file
+        // check for more entries in zip file
     else if (more) {
         //        complain("warning: %s: entries after the first were ignored",
         //                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].keep = 1;         // don't delete the .zip file
     }
 
-    // check for non-gzip after gzip stream, or anything after zlib stream
+        // check for non-gzip after gzip stream, or anything after zlib stream
     else if ((g[small_map[*((int *) (pthread_getspecific(gtid)))]].verbosity > 1 &&
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].form == 0 && ret != -1) ||
-            (g[small_map[*((int *) (pthread_getspecific(gtid)))]].form == 1 &&
-             (GET(), !g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_eof))){}
-        //        complain("warning: %s: trailing junk was ignored", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+              g[small_map[*((int *) (pthread_getspecific(gtid)))]].form == 0 && ret != -1) ||
+             (g[small_map[*((int *) (pthread_getspecific(gtid)))]].form == 1 &&
+              (GET(), !g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_eof))) {}
+    //        complain("warning: %s: trailing junk was ignored", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
 }
 
 // --- decompress Unix compress (LZW) input ---
@@ -3901,20 +3904,20 @@ local void unlzw(void) {
     // process remainder of compress header -- a flags byte
     g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_tot = 0;
     if (NOMORE())
-        throw(EDOM, "%s: lzw premature end", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+        throw (EDOM, "%s: lzw premature end", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
     flags = NEXT();
     if (flags & 0x60)
-        throw(EDOM, "%s: unknown lzw flags set", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+        throw (EDOM, "%s: unknown lzw flags set", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
     max = flags & 0x1f;
     if (max < 9 || max > 16)
-        throw(EDOM, "%s: lzw bits out of range", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+        throw (EDOM, "%s: lzw bits out of range", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
     if (max == 9)                           // 9 doesn't really mean 9
         max = 10;
     flags &= 0x80;                          // true if block compress
 
     // mark the start of the compressed data for computing the first flush
     mark = g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot -
-        g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;
+           g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;
 
     // clear table, start at nine bits per symbol
     bits = 9;
@@ -3927,16 +3930,16 @@ local void unlzw(void) {
         return;
     buf = NEXT();
     if (NOMORE())
-        throw(EDOM, "%s: lzw premature end",
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);  // need nine bits
+        throw (EDOM, "%s: lzw premature end",
+               g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);  // need nine bits
     buf += NEXT() << 8;
     final = prev = buf & mask;              // code
     buf >>= bits;
     left = 16 - bits;
     if (prev > 255)
-        throw(EDOM, "%s: invalid lzw code", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+        throw (EDOM, "%s: invalid lzw code", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
     out_buf[small_map[*((int *) (pthread_getspecific(
-                    gtid)))]][0] = (unsigned char) final;      // write first decompressed byte
+            gtid)))]][0] = (unsigned char) final;      // write first decompressed byte
     outcnt = 1;
 
     // decode codes
@@ -3950,7 +3953,7 @@ local void unlzw(void) {
             // machine instruction!)
             {
                 unsigned rem = ((g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot -
-                            g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left) - mark) % bits;
+                                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left) - mark) % bits;
                 if (rem) {
                     rem = bits - rem;
                     if (NOMORE())
@@ -3958,8 +3961,8 @@ local void unlzw(void) {
                     while (rem > g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left) {
                         rem -= g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;
                         if (load() == 0)
-                            throw(EDOM, "%s: lzw premature end",
-                                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                            throw (EDOM, "%s: lzw premature end",
+                                   g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
                     }
                     g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left -= rem;
                     g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next += rem;
@@ -3970,7 +3973,7 @@ local void unlzw(void) {
 
             // mark this new location for computing the next flush
             mark = g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot -
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;
+                   g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;
 
             // go to the next number of bits per symbol
             bits++;
@@ -3985,7 +3988,7 @@ local void unlzw(void) {
         left += 8;
         if (left < bits) {
             if (NOMORE())
-                throw(EDOM, "%s: lzw premature end", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                throw (EDOM, "%s: lzw premature end", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
             buf += (bits_t) (NEXT()) << left;
             left += 8;
         }
@@ -3998,14 +4001,14 @@ local void unlzw(void) {
             // flush unused input bits and bytes to next 8*bits bit boundary
             {
                 unsigned rem = ((g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot -
-                            g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left) - mark) % bits;
+                                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left) - mark) % bits;
                 if (rem) {
                     rem = bits - rem;
                     while (rem > g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left) {
                         rem -= g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;
                         if (load() == 0)
-                            throw(EDOM, "%s: lzw premature end",
-                                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                            throw (EDOM, "%s: lzw premature end",
+                                   g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
                     }
                     g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left -= rem;
                     g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_next += rem;
@@ -4016,7 +4019,7 @@ local void unlzw(void) {
 
             // mark this new location for computing the next flush
             mark = g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot -
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;
+                   g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_left;
 
             // go back to nine bits per symbol
             bits = 9;                       // initialize bits and mask
@@ -4033,7 +4036,7 @@ local void unlzw(void) {
                 // code we drop through (prev) will be a valid index so that
                 // random input does not cause an exception
                 if (code != end + 1 || prev > end)
-                    throw(EDOM, "%s: invalid lzw code", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                    throw (EDOM, "%s: invalid lzw code", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
                 match[stack++] = (unsigned char) final;
                 code = prev;
             }
@@ -4064,7 +4067,7 @@ local void unlzw(void) {
             g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_tot += outcnt;
             if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode == 1)
                 writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                        out_buf[small_map[*((int *) (pthread_getspecific(gtid)))]], outcnt);
+                       out_buf[small_map[*((int *) (pthread_getspecific(gtid)))]], outcnt);
             outcnt = 0;
         }
         do {
@@ -4076,7 +4079,7 @@ local void unlzw(void) {
     g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_tot += outcnt;
     if (outcnt && g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode == 1)
         writen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd,
-                out_buf[small_map[*((int *) (pthread_getspecific(gtid)))]], outcnt);
+               out_buf[small_map[*((int *) (pthread_getspecific(gtid)))]], outcnt);
 }
 
 // --- file processing ---
@@ -4145,14 +4148,14 @@ local void out_push(void) {
     int ret = fsync(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd);
 #endif
     if (ret == -1)
-        throw(errno, "sync error on %s (%s)", g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf,
-                strerror(errno));
+        throw (errno, "sync error on %s (%s)", g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf,
+               strerror(errno));
 }
 
 // Process provided input file, or stdin if path is NULL. process() can call
 // itself for recursive directory processing[small_map[*((int*)(pthread_getspecific(gtid)))]].
 void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, atomic_int *wDone,
-        pair<char *, int> &L, atomic_int *qNum) {
+             pair<char *, int> &L, atomic_int *qNum) {
 
     //printf("0000\n");
     volatile int method = -1;       // get_header() return value
@@ -4161,7 +4164,7 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
     ball_t err;                     // error information from throw()
     // all compressed suffixes for decoding search, in length order
     char *sufs[] = {".z", "-z", "_z", ".Z", ".gz", "-gz", ".zz", "-zz",
-        ".zip", ".ZIP", ".tgz", NULL};
+                    ".zip", ".ZIP", ".tgz", NULL};
     // open input file with name in, descriptor ind -- set name and mtime
     if (path == NULL) {
         vstrcpy(&g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,
@@ -4169,8 +4172,8 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].ind = 0;
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].name = NULL;
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].mtime =
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].headis & 2 ?
-            (fstat(g[small_map[*((int *) (pthread_getspecific(gtid)))]].ind, &st) ? time(NULL) : st.st_mtime) : 0;
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].headis & 2 ?
+                (fstat(g[small_map[*((int *) (pthread_getspecific(gtid)))]].ind, &st) ? time(NULL) : st.st_mtime) : 0;
         len = 0;
     } else {
         // set input file name (already set if recursed here)
@@ -4183,7 +4186,7 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
         // name with compressed suffixes
         if (lstat(g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf, &st)) {
             if (errno == ENOENT && (g[small_map[*((int *) (pthread_getspecific(gtid)))]].list ||
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode)) {
+                                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode)) {
                 char **sufx = sufs;
                 do {
                     if (*sufx == NULL)
@@ -4209,15 +4212,15 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
         // only process regular files or named pipes, but allow symbolic links
         // if -f, recurse into directory if -r
         if ((st.st_mode & S_IFMT) != S_IFREG &&
-                (st.st_mode & S_IFMT) != S_IFIFO &&
-                (st.st_mode & S_IFMT) != S_IFLNK &&
-                (st.st_mode & S_IFMT) != S_IFDIR) {
+            (st.st_mode & S_IFMT) != S_IFIFO &&
+            (st.st_mode & S_IFMT) != S_IFLNK &&
+            (st.st_mode & S_IFMT) != S_IFDIR) {
             complain("skipping: %s is a special file or device",
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                     g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
             return;
         }
         if ((st.st_mode & S_IFMT) == S_IFLNK && !g[small_map[*((int *) (pthread_getspecific(gtid)))]].force &&
-                !g[small_map[*((int *) (pthread_getspecific(gtid)))]].pipeout) {
+            !g[small_map[*((int *) (pthread_getspecific(gtid)))]].pipeout) {
             complain("skipping: %s is a symbolic link", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
             return;
         }
@@ -4240,22 +4243,22 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
                 return;
             while ((next = readdir(here)) != NULL) {
                 if (next->d_name[0] == 0 ||
-                        (next->d_name[0] == '.' && (next->d_name[1] == 0 ||
-                                                    (next->d_name[1] == '.' && next->d_name[2] == 0))))
+                    (next->d_name[0] == '.' && (next->d_name[1] == 0 ||
+                                                (next->d_name[1] == '.' && next->d_name[2] == 0))))
                     continue;
                 off = vstrcpy(&roll, &size, off, next->d_name);
             }
             closedir(here);
-            vstrcpy(&roll, &size, off,(void *)  "");
+            vstrcpy(&roll, &size, off, (void *) "");
 
             // run process() for each entry in the directory
             base = len && g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf[len - 1] != (unsigned char) '/' ?
-                vstrcpy(&g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,
-                        &g[small_map[*((int *) (pthread_getspecific(gtid)))]].inz, len,(void *)  "/") - 1 : len;
+                   vstrcpy(&g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,
+                           &g[small_map[*((int *) (pthread_getspecific(gtid)))]].inz, len, (void *) "/") - 1 : len;
             for (off = 0; roll[off]; off += strlen(roll + off) + 1) {
                 vstrcpy(&g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,
                         &g[small_map[*((int *) (pthread_getspecific(gtid)))]].inz, base, roll + off);
-                process(g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf, Q, wDone, L ,qNum);
+                process(g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf, Q, wDone, L, qNum);
             }
             g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf[len] = 0;
 
@@ -4266,25 +4269,25 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
 
         // don't compress .gz (or provided suffix) files, unless -f
         if (!(g[small_map[*((int *) (pthread_getspecific(gtid)))]].force ||
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].list ||
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode) &&
-                len >= strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].sufx) &&
-                strcmp(g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf + len -
-                    strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].sufx),
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].sufx) == 0) {
+              g[small_map[*((int *) (pthread_getspecific(gtid)))]].list ||
+              g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode) &&
+            len >= strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].sufx) &&
+            strcmp(g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf + len -
+                   strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].sufx),
+                   g[small_map[*((int *) (pthread_getspecific(gtid)))]].sufx) == 0) {
             complain("skipping: %s ends with %s", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].sufx);
+                     g[small_map[*((int *) (pthread_getspecific(gtid)))]].sufx);
             return;
         }
 
         // create output file only if input file has compressed suffix
         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode == 1 &&
-                !g[small_map[*((int *) (pthread_getspecific(gtid)))]].pipeout &&
-                !g[small_map[*((int *) (pthread_getspecific(gtid)))]].list) {
+            !g[small_map[*((int *) (pthread_getspecific(gtid)))]].pipeout &&
+            !g[small_map[*((int *) (pthread_getspecific(gtid)))]].list) {
             size_t suf = compressed_suffix(g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
             if (suf == 0) {
                 complain("skipping: %s does not have compressed suffix",
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                         g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
                 return;
             }
             len -= suf;
@@ -4294,15 +4297,15 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].ind = open(
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf, O_RDONLY, 0);
         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].ind < 0)
-            throw(errno, "read error on %s (%s)", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,
-                    strerror(errno));
+            throw (errno, "read error on %s (%s)", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,
+                   strerror(errno));
 
         // prepare gzip header information for compression
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].name =
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].headis & 1 ? justname(
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf) : NULL;
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].headis & 1 ? justname(
+                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf) : NULL;
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].mtime =
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].headis & 2 ? st.st_mtime : 0;
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].headis & 2 ? st.st_mtime : 0;
     }
     SET_BINARY_MODE(g[small_map[*((int *) (pthread_getspecific(gtid)))]].ind);
 
@@ -4311,11 +4314,11 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
         in_init();
         method = get_header(1);
         if (method != 8 && method != 257 &&
-                // gzip -cdf acts like cat on uncompressed input
-                !((method == -1 || method == -2) && g[small_map[*((int *) (pthread_getspecific(gtid)))]].force &&
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].pipeout &&
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode != 2 &&
-                    !g[small_map[*((int *) (pthread_getspecific(gtid)))]].list)) {
+            // gzip -cdf acts like cat on uncompressed input
+            !((method == -1 || method == -2) && g[small_map[*((int *) (pthread_getspecific(gtid)))]].force &&
+              g[small_map[*((int *) (pthread_getspecific(gtid)))]].pipeout &&
+              g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode != 2 &&
+              !g[small_map[*((int *) (pthread_getspecific(gtid)))]].list)) {
             load_end();
             //            complain(method == -6 ? "skipping: %s corrupt: header crc error" :
             //                     method == -1 ? "skipping: %s empty" :
@@ -4328,23 +4331,23 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
         // if requested, test input file (possibly a test list)
         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode == 2) {
             try
-            {
-                if (method == 8)
-                    infchk();
-                else {
-                    unlzw();
-                    if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].list) {
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot -= 3;
-                        show_info(method, 0, g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_tot, 0);
-                    }
-                }
-            }
-            catch(err)
-            {
+                        {
+                            if (method == 8)
+                                infchk();
+                            else {
+                                unlzw();
+                                if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].list) {
+                                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot -= 3;
+                                    show_info(method, 0, g[small_map[*((int *) (pthread_getspecific(gtid)))]].out_tot,
+                                              0);
+                                }
+                            }
+                        }
+            catch (err) {
                 if (err.code != EDOM)
-                    punt(err);
+                            punt (err);
                 complain("skipping: %s", err.why);
-                drop(err);
+                        drop(err);
                 outb(NULL, NULL, 0);
             }
             load_end();
@@ -4362,14 +4365,15 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
     // create output file out, descriptor outd
     if (path == NULL || g[small_map[*((int *) (pthread_getspecific(gtid)))]].pipeout) {
         // write to stdout
-        g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf = static_cast<char *>(alloc(NULL, strlen("<stdout>") + 1));
+        g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf = static_cast<char *>(alloc(NULL,
+                                                                                              strlen("<stdout>") + 1));
         strcpy(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf, "<stdout>");
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd = 1;
         if (!g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode &&
-                !g[small_map[*((int *) (pthread_getspecific(gtid)))]].force &&
-                isatty(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd))
-            throw(EINVAL, "trying to write compressed data to a terminal"
-                    " (use -f to force)");
+            !g[small_map[*((int *) (pthread_getspecific(gtid)))]].force &&
+            isatty(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd))
+            throw (EINVAL, "trying to write compressed data to a terminal"
+                           " (use -f to force)");
     } else {
         char *to = g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf, *sufx = "";
         size_t pre = 0;
@@ -4379,13 +4383,13 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
             // for -dN or -dNT, use the path from the input file and the name
             // from the header, stripping any path in the header name
             if ((g[small_map[*((int *) (pthread_getspecific(gtid)))]].headis & 1) != 0 &&
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].hname != NULL) {
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].hname != NULL) {
                 pre = (size_t)(justname(g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf) -
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                               g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
                 to = justname(g[small_map[*((int *) (pthread_getspecific(gtid)))]].hname);
                 len = strlen(to);
             }
-            // for -d or -dNn, replace abbreviated suffixes
+                // for -d or -dNn, replace abbreviated suffixes
             else if (strcmp(to + len, ".tgz") == 0)
                 sufx = ".tar";
         } else
@@ -4394,15 +4398,17 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
 
         // create output file and open to write, overwriting any existing file
         // of the same name only if requested with --force or -f
-        g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf = static_cast<char *>(alloc(NULL, pre + len + strlen(sufx) + 1));
+        g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf = static_cast<char *>(alloc(NULL,
+                                                                                              pre + len + strlen(sufx) +
+                                                                                              1));
         memcpy(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf,
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf, pre);
+               g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf, pre);
         memcpy(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf + pre, to, len);
         strcpy(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf + pre + len, sufx);
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd = open(
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf, O_CREAT | O_TRUNC | O_WRONLY |
-                (g[small_map[*((int *) (pthread_getspecific(
-                                                            gtid)))]].force ? 0 : O_EXCL), 0600);
+                                                                           (g[small_map[*((int *) (pthread_getspecific(
+                                                                                   gtid)))]].force ? 0 : O_EXCL), 0600);
         // if it exists and wasn't forced, give the user a chance to overwrite
         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd < 0 && errno == EEXIST) {
             int overwrite = 0;
@@ -4436,8 +4442,8 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
 
         // if some other error, give up
         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd < 0)
-            throw(errno, "write error on %s (%s)", g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf,
-                    strerror(errno));
+            throw (errno, "write error on %s (%s)", g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf,
+                   strerror(errno));
     }
     SET_BINARY_MODE(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd);
     // process ind to outd
@@ -4445,23 +4451,22 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
     //    fprintf(stderr, "%s to %s ", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf);
     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode) {
         try
-        {
-            if (method == 8)
-                infchk();
-            else if (method == 257)
-                unlzw();
-            else
-                cat();
-        }
-        catch(err)
-        {
+                    {
+                        if (method == 8)
+                            infchk();
+                        else if (method == 257)
+                            unlzw();
+                        else
+                            cat();
+                    }
+        catch (err) {
             if (err.code != EDOM)
-                punt(err);
+                        punt (err);
             complain("skipping: %s", err.why);
-            drop(err);
+                    drop(err);
             outb(NULL, NULL, 0);
             if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd != -1 &&
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd != 1) {
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd != 1) {
                 close(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd);
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd = -1;
                 unlink(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf);
@@ -4471,7 +4476,7 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
     }
 #ifndef NOTHREAD
     else if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].procs > 1)
-        parallel_compress( Q, wDone, L, qNum);
+        parallel_compress(Q, wDone, L, qNum);
 #endif
     else
         single_compress(0);
@@ -4482,91 +4487,91 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
     // finish up, copy attributes, set times, delete original
     load_end();
     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd != -1 &&
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd != 1) {
+        g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd != 1) {
         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].sync)
             out_push();         // push to permanent storage
         if (close(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd))
-            throw(errno, "write error on %s (%s)", g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf,
-                    strerror(errno));
+            throw (errno, "write error on %s (%s)", g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf,
+                   strerror(errno));
         g[small_map[*((int *) (pthread_getspecific(gtid)))]].outd = -1;            // now prevent deletion on interrupt
         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].ind != 0) {
             copymeta(g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf,
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf);
+                     g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf);
             if (!g[small_map[*((int *) (pthread_getspecific(gtid)))]].keep)
                 unlink(g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
         }
         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode &&
-                (g[small_map[*((int *) (pthread_getspecific(gtid)))]].headis & 2) != 0 &&
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].stamp)
+            (g[small_map[*((int *) (pthread_getspecific(gtid)))]].headis & 2) != 0 &&
+            g[small_map[*((int *) (pthread_getspecific(gtid)))]].stamp)
             touch(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf,
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].stamp);
+                  g[small_map[*((int *) (pthread_getspecific(gtid)))]].stamp);
     }
     RELEASE(g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf);
 }
 
 local char *helptext[] = {
-    "Usage: pigz [options] [files ...]",
-    "  will compress files in place, adding the suffix '.gz'. If no files are",
+        "Usage: pigz [options] [files ...]",
+        "  will compress files in place, adding the suffix '.gz'. If no files are",
 #ifdef NOTHREAD
-    "  specified, stdin will be compressed to stdout. pigz does what gzip does.",
+        "  specified, stdin will be compressed to stdout. pigz does what gzip does.",
 #else
-    "  specified, stdin will be compressed to stdout. pigz does what gzip does,",
-    "  but spreads the work over multiple processors and cores when compressing[small_map[*((int*)(pthread_getspecific(gtid)))]].",
+        "  specified, stdin will be compressed to stdout. pigz does what gzip does,",
+        "  but spreads the work over multiple processors and cores when compressing[small_map[*((int*)(pthread_getspecific(gtid)))]].",
 #endif
-    "",
-    "Options:",
+        "",
+        "Options:",
 #ifdef NOZOPFLI
-    "  -0 to -9             Compression level",
+        "  -0 to -9             Compression level",
 #else
-    "  -0 to -9, -11        Compression level (level 11, zopfli, is much slower)",
+        "  -0 to -9, -11        Compression level (level 11, zopfli, is much slower)",
 #endif
-    "  --fast, --best       Compression levels 1 and 9 respectively",
-    "  -A, --alias xxx      Use xxx as the name for any --zip entry from stdin",
-    "  -b, --blocksize mmm  Set compression block size to mmmK (default 128K)",
-    "  -c, --stdout         Write all processed output to stdout (won't delete)",
-    "  -C, --comment ccc    Put comment ccc in the gzip or zip header",
-    "  -d, --decompress     Decompress the compressed input",
-    "  -f, --force          Force overwrite, compress .gz, links, and to terminal",
+        "  --fast, --best       Compression levels 1 and 9 respectively",
+        "  -A, --alias xxx      Use xxx as the name for any --zip entry from stdin",
+        "  -b, --blocksize mmm  Set compression block size to mmmK (default 128K)",
+        "  -c, --stdout         Write all processed output to stdout (won't delete)",
+        "  -C, --comment ccc    Put comment ccc in the gzip or zip header",
+        "  -d, --decompress     Decompress the compressed input",
+        "  -f, --force          Force overwrite, compress .gz, links, and to terminal",
 #ifndef NOZOPFLI
-    "  -F  --first          Do iterations first, before block split for -11",
+        "  -F  --first          Do iterations first, before block split for -11",
 #endif
-    "  -h, --help           Display a help screen and quit",
-    "  -H, --huffman        Use only Huffman coding for compression",
-    "  -i, --independent    Compress blocks independently for damage recovery",
+        "  -h, --help           Display a help screen and quit",
+        "  -H, --huffman        Use only Huffman coding for compression",
+        "  -i, --independent    Compress blocks independently for damage recovery",
 #ifndef NOZOPFLI
-    "  -I, --iterations n   Number of iterations for -11 optimization",
-    "  -J, --maxsplits n    Maximum number of split blocks for -11",
+        "  -I, --iterations n   Number of iterations for -11 optimization",
+        "  -J, --maxsplits n    Maximum number of split blocks for -11",
 #endif
-    "  -k, --keep           Do not delete original file after processing",
-    "  -K, --zip            Compress to PKWare zip (.zip) single entry format",
-    "  -l, --list           List the contents of the compressed input",
-    "  -L, --license        Display the pigz license and quit",
-    "  -m, --no-time        Do not store or restore mod time",
-    "  -M, --time           Store or restore mod time",
-    "  -n, --no-name        Do not store or restore file name or mod time",
-    "  -N, --name           Store or restore file name and mod time",
+        "  -k, --keep           Do not delete original file after processing",
+        "  -K, --zip            Compress to PKWare zip (.zip) single entry format",
+        "  -l, --list           List the contents of the compressed input",
+        "  -L, --license        Display the pigz license and quit",
+        "  -m, --no-time        Do not store or restore mod time",
+        "  -M, --time           Store or restore mod time",
+        "  -n, --no-name        Do not store or restore file name or mod time",
+        "  -N, --name           Store or restore file name and mod time",
 #ifndef NOZOPFLI
-    "  -O  --oneblock       Do not split into smaller blocks for -11",
+        "  -O  --oneblock       Do not split into smaller blocks for -11",
 #endif
 #ifndef NOTHREAD
-    "  -p, --processes n    Allow up to n compression threads (default is the",
-    "                       number of online processors, or 8 if unknown)",
+        "  -p, --processes n    Allow up to n compression threads (default is the",
+        "                       number of online processors, or 8 if unknown)",
 #endif
-    "  -q, --quiet          Print no messages, even on error",
-    "  -r, --recursive      Process the contents of all subdirectories",
-    "  -R, --rsyncable      Input-determined block locations for rsync",
-    "  -S, --suffix .sss    Use suffix .sss instead of .gz (for compression)",
-    "  -t, --test           Test the integrity of the compressed input",
-    "  -U, --rle            Use run-length encoding for compression",
+        "  -q, --quiet          Print no messages, even on error",
+        "  -r, --recursive      Process the contents of all subdirectories",
+        "  -R, --rsyncable      Input-determined block locations for rsync",
+        "  -S, --suffix .sss    Use suffix .sss instead of .gz (for compression)",
+        "  -t, --test           Test the integrity of the compressed input",
+        "  -U, --rle            Use run-length encoding for compression",
 #ifdef PIGZ_DEBUG
-    "  -v, --verbose        Provide more verbose output (-vv to debug)",
+        "  -v, --verbose        Provide more verbose output (-vv to debug)",
 #else
-    "  -v, --verbose        Provide more verbose output",
+        "  -v, --verbose        Provide more verbose output",
 #endif
-    "  -V  --version        Show the version of pigz",
-    "  -Y  --synchronous    Force output file write to permanent storage",
-    "  -z, --zlib           Compress to zlib (.zz) instead of gzip format",
-    "  --                   All arguments after \"--\" are treated as files"
+        "  -V  --version        Show the version of pigz",
+        "  -Y  --synchronous    Force output file write to permanent storage",
+        "  -z, --zlib           Compress to zlib (.zz) instead of gzip format",
+        "  --                   All arguments after \"--\" are treated as files"
 };
 
 // Display the help text above.
@@ -4627,10 +4632,10 @@ local void defaults(void) {
 #endif
     g[small_map[*((int *) (pthread_getspecific(gtid)))]].rsync = 0;                    // don't do rsync blocking
     g[small_map[*((int *) (pthread_getspecific(
-                    gtid)))]].setdict = 1;                  // initialize dictionary each threadPigz
+            gtid)))]].setdict = 1;                  // initialize dictionary each threadPigz
     g[small_map[*((int *) (pthread_getspecific(gtid)))]].verbosity = 1;                // normal message level
     g[small_map[*((int *) (pthread_getspecific(
-                    gtid)))]].headis = 3;                   // store name and time (low bits == 11),
+            gtid)))]].headis = 3;                   // store name and time (low bits == 11),
     // restore neither (next bits == 00),
     // where 01 is name and 10 is time
     g[small_map[*((int *) (pthread_getspecific(gtid)))]].pipeout = 0;                  // don't force output to stdout
@@ -4639,9 +4644,9 @@ local void defaults(void) {
     g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode = 0;                   // compress
     g[small_map[*((int *) (pthread_getspecific(gtid)))]].list = 0;                     // compress
     g[small_map[*((int *) (pthread_getspecific(
-                    gtid)))]].keep = 0;                     // delete input file once compressed
+            gtid)))]].keep = 0;                     // delete input file once compressed
     g[small_map[*((int *) (pthread_getspecific(
-                    gtid)))]].force = 0;                    // don't overwrite, don't compress links
+            gtid)))]].force = 0;                    // don't overwrite, don't compress links
     g[small_map[*((int *) (pthread_getspecific(gtid)))]].sync = 0;                     // don't force a flush on output
     g[small_map[*((int *) (pthread_getspecific(gtid)))]].recurse = 0;                  // don't go into directories
     g[small_map[*((int *) (pthread_getspecific(gtid)))]].form = 0;                     // use gzip format
@@ -4649,19 +4654,19 @@ local void defaults(void) {
 
 // Long options conversion to short options.
 local char *longopts[][2] = {
-    {"LZW", "Z"}, {"lzw", "Z"}, {"alias", "A"}, {"ascii", "a"}, {"best", "9"},
-    {"bits", "Z"}, {"blocksize", "b"}, {"decompress", "d"}, {"fast", "1"},
-    {"force", "f"}, {"comment", "C"},
+        {"LZW", "Z"}, {"lzw", "Z"}, {"alias", "A"}, {"ascii", "a"}, {"best", "9"},
+        {"bits", "Z"}, {"blocksize", "b"}, {"decompress", "d"}, {"fast", "1"},
+        {"force", "f"}, {"comment", "C"},
 #ifndef NOZOPFLI
-    {"first", "F"}, {"iterations", "I"}, {"maxsplits", "J"}, {"oneblock", "O"},
+        {"first", "F"}, {"iterations", "I"}, {"maxsplits", "J"}, {"oneblock", "O"},
 #endif
-    {"help", "h"}, {"independent", "i"}, {"keep", "k"}, {"license", "L"},
-    {"list", "l"}, {"name", "N"}, {"no-name", "n"}, {"no-time", "m"},
-    {"processes", "p"}, {"quiet", "q"}, {"recursive", "r"}, {"rsyncable", "R"},
-    {"silent", "q"}, {"stdout", "c"}, {"suffix", "S"}, {"synchronous", "Y"},
-    {"test", "t"}, {"time", "M"}, {"to-stdout", "c"}, {"uncompress", "d"},
-    {"verbose", "v"}, {"version", "V"}, {"zip", "K"}, {"zlib", "z"},
-    {"huffman", "H"}, {"rle", "U"}};
+        {"help", "h"}, {"independent", "i"}, {"keep", "k"}, {"license", "L"},
+        {"list", "l"}, {"name", "N"}, {"no-name", "n"}, {"no-time", "m"},
+        {"processes", "p"}, {"quiet", "q"}, {"recursive", "r"}, {"rsyncable", "R"},
+        {"silent", "q"}, {"stdout", "c"}, {"suffix", "S"}, {"synchronous", "Y"},
+        {"test", "t"}, {"time", "M"}, {"to-stdout", "c"}, {"uncompress", "d"},
+        {"verbose", "v"}, {"version", "V"}, {"zip", "K"}, {"zlib", "z"},
+        {"huffman", "H"}, {"rle", "U"}};
 #define NLOPTS (sizeof(longopts) / (sizeof(char *) << 1))
 
 // Either new buffer size, new compression level, or new number of processes.
@@ -4680,11 +4685,11 @@ local size_t num(char *arg) {
     size_t val = 0;
 
     if (*str == 0)
-        throw(EINVAL, "internal error: empty parameter");
+        throw (EINVAL, "internal error: empty parameter");
     do {
         if (*str < '0' || *str > '9' ||
-                (val && ((~(size_t) 0) - (size_t)(*str - '0')) / val < 10))
-            throw(EINVAL, "invalid numeric parameter: %s", arg);
+            (val && ((~(size_t) 0) - (size_t)(*str - '0')) / val < 10))
+            throw (EINVAL, "invalid numeric parameter: %s", arg);
         val = val * 10 + (size_t)(*str - '0');
     } while (*++str);
     return val;
@@ -4720,7 +4725,7 @@ local int option(char *arg) {
                     break;
                 }
             if (j < 0)
-                throw(EINVAL, "invalid option: %s", arg - 2);
+                throw (EINVAL, "invalid option: %s", arg - 2);
         }
 
         // process short options (more than one allowed after dash)
@@ -4729,11 +4734,11 @@ local int option(char *arg) {
             // options until we have the parameter
             if (getPigz[small_map[*((int *) (pthread_getspecific(gtid)))]]) {
                 if (getPigz[small_map[*((int *) (pthread_getspecific(gtid)))]] == 3)
-                    throw(EINVAL,
-                            "invalid usage: -S must be followed by space");
+                    throw (EINVAL,
+                           "invalid usage: -S must be followed by space");
                 if (getPigz[small_map[*((int *) (pthread_getspecific(gtid)))]] == 7)
-                    throw(EINVAL,
-                            "invalid usage: -C must be followed by space");
+                    throw (EINVAL,
+                           "invalid usage: -C must be followed by space");
                 break;      // allow -*nnn to fall to parameter code
             }
 
@@ -4753,15 +4758,15 @@ local int option(char *arg) {
                     g[small_map[*((int *) (pthread_getspecific(gtid)))]].level = *arg - '0';
                     while (arg[1] >= '0' && arg[1] <= '9') {
                         if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level &&
-                                (INT_MAX - (arg[1] - '0')) / g[small_map[*((int *) (pthread_getspecific(gtid)))]].level <
-                                10)
-                            throw(EINVAL, "only levels 0..9 and 11 are allowed");
+                            (INT_MAX - (arg[1] - '0')) / g[small_map[*((int *) (pthread_getspecific(gtid)))]].level <
+                            10)
+                            throw (EINVAL, "only levels 0..9 and 11 are allowed");
                         g[small_map[*((int *) (pthread_getspecific(gtid)))]].level =
-                            g[small_map[*((int *) (pthread_getspecific(gtid)))]].level * 10 + *++arg - '0';
+                                g[small_map[*((int *) (pthread_getspecific(gtid)))]].level * 10 + *++arg - '0';
                     }
                     if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].level == 10 ||
-                            g[small_map[*((int *) (pthread_getspecific(gtid)))]].level > 11)
-                        throw(EINVAL, "only levels 0..9 and 11 are allowed");
+                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].level > 11)
+                        throw (EINVAL, "only levels 0..9 and 11 are allowed");
                     break;
                 case 'A':
                     getPigz[small_map[*((int *) (pthread_getspecific(gtid)))]] = 6;
@@ -4823,11 +4828,11 @@ local int option(char *arg) {
                     break;
                 case 'Z':
                     throw(EINVAL, "invalid option: LZW output not supported: %s",
-                            bad);
+                          bad);
                     break;          // avoid warning
                 case 'a':
                     throw(EINVAL, "invalid option: no ascii conversion: %s",
-                            bad);
+                          bad);
                     break;          // avoid warning
                 case 'b':
                     getPigz[small_map[*((int *) (pthread_getspecific(gtid)))]] = 1;
@@ -4904,29 +4909,29 @@ local int option(char *arg) {
                     g[small_map[*((int *) (pthread_getspecific(gtid)))]].block, 3);
 #endif
             if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].block < DICT)
-                throw(EINVAL, "block size too small (must be >= 32K)");
+                throw (EINVAL, "block size too small (must be >= 32K)");
             if (n != g[small_map[*((int *) (pthread_getspecific(gtid)))]].block >> 10 ||
-                    OUTPOOL(g[small_map[*((int *) (pthread_getspecific(gtid)))]].block) <
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].block ||
-                    (ssize_t)OUTPOOL(g[small_map[*((int *) (pthread_getspecific(gtid)))]].block) < 0 ||
-                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].block >
-                    (1UL << 29))          // limited by append_len()
-                throw(EINVAL, "block size too large: %s", arg);
+                OUTPOOL(g[small_map[*((int *) (pthread_getspecific(gtid)))]].block) <
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].block ||
+                (ssize_t)OUTPOOL(g[small_map[*((int *) (pthread_getspecific(gtid)))]].block) < 0 ||
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].block >
+                (1UL << 29))          // limited by append_len()
+                throw (EINVAL, "block size too large: %s", arg);
         } else if (getPigz[small_map[*((int *) (pthread_getspecific(gtid)))]] == 2) {
             n = num(arg);
             g[small_map[*((int *) (pthread_getspecific(gtid)))]].procs = (int) n;                   // # processes
             if (g[small_map[*((int *) (pthread_getspecific(gtid)))]].procs < 1)
-                throw(EINVAL, "invalid number of processes: %s", arg);
+                throw (EINVAL, "invalid number of processes: %s", arg);
             if ((size_t) g[small_map[*((int *) (pthread_getspecific(gtid)))]].procs != n ||
-                    INBUFS(g[small_map[*((int *) (pthread_getspecific(gtid)))]].procs) < 1)
-                throw(EINVAL, "too many processes: %s", arg);
+                INBUFS(g[small_map[*((int *) (pthread_getspecific(gtid)))]].procs) < 1)
+                throw (EINVAL, "too many processes: %s", arg);
 #ifdef NOTHREAD
             if (g[small_map[*((int*)(pthread_getspecific(gtid)))]].procs > 1)
                 throw(EINVAL, "compiled without threads");
 #endif
         } else if (getPigz[small_map[*((int *) (pthread_getspecific(gtid)))]] == 3) {
             if (*arg == 0)
-                throw(EINVAL, "suffix cannot be empty");
+                throw (EINVAL, "suffix cannot be empty");
             g[small_map[*((int *) (pthread_getspecific(gtid)))]].sufx = arg;                       // gz suffix
         }
 #ifndef NOZOPFLI
@@ -4960,7 +4965,7 @@ pthread_mutex_t mutexPigz;
 
 // Process command line arguments.
 int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q,
-              atomic_int *wDone,  pair<char *, int> &L, atomic_int *qNum) {
+              atomic_int *wDone, pair<char *, int> &L, atomic_int *qNum) {
     //printf("pigz* gettid = %u\n", syscall(SYS_gettid));
     int tid = small_hash(syscall(SYS_gettid));
     //printf("pigz* tid = %d\n", tid);
@@ -4970,8 +4975,8 @@ int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, 
     pthread_mutex_lock(&mutexPigz);
     small_map[tid] = threadCnt;
     threadCnt++;
-    if(threadCnt==1){
-       // printf("init...\n");
+    if (threadCnt == 1) {
+        // printf("init...\n");
         for (int i = 0; i < MAX_PIGZTHREAD_T_NUMBER; i++) {
             compress_have[i] = NULL;
             getPigz[i] = 0;
@@ -4979,7 +4984,7 @@ int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, 
             cthreads[i] = 0;
             strm[i] = NULL;
             outb_write_more[i] = NULL;
-#ifdef PIGZ_DEBUG 
+#ifdef PIGZ_DEBUG
             log_tail[i] = NULL;
             log_lock[i] = NULL;
 #endif
@@ -5009,142 +5014,141 @@ int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, 
 
     g[small_map[*((int *) (pthread_getspecific(gtid)))]].ret = 0;
     try
-    {
-        // initialize globals
-        g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf = NULL;
-        g[small_map[*((int *) (pthread_getspecific(gtid)))]].inz = 0;
+                {
+                    // initialize globals
+                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf = NULL;
+                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].inz = 0;
 #ifndef NOTHREAD
-        g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_which = -1;
+                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_which = -1;
 #endif
-        g[small_map[*((int *) (pthread_getspecific(gtid)))]].alias = "-";
-        g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf = NULL;
-        g[small_map[*((int *) (pthread_getspecific(gtid)))]].first = 1;
-        g[small_map[*((int *) (pthread_getspecific(gtid)))]].hname = NULL;
-        g[small_map[*((int *) (pthread_getspecific(gtid)))]].hcomm = NULL;
+                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].alias = "-";
+                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].outf = NULL;
+                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].first = 1;
+                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].hname = NULL;
+                    g[small_map[*((int *) (pthread_getspecific(gtid)))]].hcomm = NULL;
 
-        // save pointer to program name for error messages
-        p = strrchr(argv[0], '/');
-        p = p == NULL ? argv[0] : p + 1;
-        if(*p){
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].prog=p;
-        }else{
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].prog="pigz";
-        }
-        // prepare for interrupts and logging
-        signal(SIGINT, cut_short);
+                    // save pointer to program name for error messages
+                    p = strrchr(argv[0], '/');
+                    p = p == NULL ? argv[0] : p + 1;
+                    if (*p) {
+                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].prog = p;
+                    } else {
+                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].prog = "pigz";
+                    }
+                    // prepare for interrupts and logging
+                    signal(SIGINT, cut_short);
 #ifndef NOTHREAD
-        yarn_prefix = g[small_map[*((int *) (pthread_getspecific(
-                        gtid)))]].prog;           // prefix for yarn error messages
-        yarn_abort = cut_yarn;          // call on threadPigz error
+                    yarn_prefix = g[small_map[*((int *) (pthread_getspecific(
+                            gtid)))]].prog;           // prefix for yarn error messages
+                    yarn_abort = cut_yarn;          // call on threadPigz error
 #endif
 #ifdef PIGZ_DEBUG
-        gettimeofday(&start[small_map[*((int*)(pthread_getspecific(gtid)))]], NULL);     // starting time for log entries
-        log_init();                     // initialize logging
+                    gettimeofday(&start[small_map[*((int*)(pthread_getspecific(gtid)))]], NULL);     // starting time for log entries
+                    log_init();                     // initialize logging
 #endif
-        // set all options to defaults
-        defaults();
-        // check zlib version
-        if (zlib_vernum() < 0x1230)
-            throw(EINVAL, "zlib version less than 1.2.3");
+                    // set all options to defaults
+                    defaults();
+                    // check zlib version
+                    if (zlib_vernum() < 0x1230)
+                        throw (EINVAL, "zlib version less than 1.2.3");
 
-        // create CRC table, in case zlib compiled with dynamic tables
-        get_crc_table();
-        // process user environment variable defaults in GZIP
-        opts = getenv("GZIP");
-        if (opts != NULL) {
-            while (*opts) {
-                while (*opts == ' ' || *opts == '\t')
-                    opts++;
-                p = opts;
-                while (*p && *p != ' ' && *p != '\t')
-                    p++;
-                n = *p;
-                *p = 0;
-                if (!option(opts))
-                    throw(EINVAL, "cannot provide files in "
-                            "GZIP environment variable");
-                opts = p + (n ? 1 : 0);
+                    // create CRC table, in case zlib compiled with dynamic tables
+                    get_crc_table();
+                    // process user environment variable defaults in GZIP
+                    opts = getenv("GZIP");
+                    if (opts != NULL) {
+                        while (*opts) {
+                            while (*opts == ' ' || *opts == '\t')
+                                opts++;
+                            p = opts;
+                            while (*p && *p != ' ' && *p != '\t')
+                                p++;
+                            n = *p;
+                            *p = 0;
+                            if (!option(opts))
+                                throw (EINVAL, "cannot provide files in "
+                                               "GZIP environment variable");
+                            opts = p + (n ? 1 : 0);
+                        }
+                        option(NULL);           // check for missing parameter
+                    }
+                    // process user environment variable defaults in PIGZ as well
+                    opts = getenv("PIGZ");
+                    if (opts != NULL) {
+                        while (*opts) {
+                            while (*opts == ' ' || *opts == '\t')
+                                opts++;
+                            p = opts;
+                            while (*p && *p != ' ' && *p != '\t')
+                                p++;
+                            n = *p;
+                            *p = 0;
+                            if (!option(opts))
+                                throw (EINVAL, "cannot provide files in "
+                                               "PIGZ environment variable");
+                            opts = p + (n ? 1 : 0);
+                        }
+                        option(NULL);           // check for missing parameter
+                    }
+
+                    // decompress if named "unpigz" or "gunzip", to stdout if "*cat"
+                    if (strcmp(g[small_map[*((int *) (pthread_getspecific(gtid)))]].prog, "unpigz") == 0 ||
+                        strcmp(g[small_map[*((int *) (pthread_getspecific(gtid)))]].prog, "gunzip") == 0) {
+                        if (!g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode)
+                            g[small_map[*((int *) (pthread_getspecific(gtid)))]].headis >>= 2;
+                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode = 1;
+                    }
+                    if ((k = strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].prog)) > 2 &&
+                        strcmp(g[small_map[*((int *) (pthread_getspecific(gtid)))]].prog + k - 3, "cat") == 0) {
+                        if (!g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode)
+                            g[small_map[*((int *) (pthread_getspecific(gtid)))]].headis >>= 2;
+                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode = 1;
+                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].pipeout = 1;
+                    }
+
+                    // if no arguments and compressed data to/from terminal, show help
+                    if (argc < 2 && isatty(g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode ? 0 : 1))
+                        help();
+                    // process all command-line options first
+                    nop = argc;
+                    for (n = 1; n < argc; n++)
+                        if (strcmp(argv[n], "--") == 0) {
+                            nop = n;                // after this, "-" is the name "-"
+                            argv[n] = NULL;         // remove option
+                            break;                  // ignore options after "--"
+                        } else if (option(argv[n]))   // process argument
+                            argv[n] = NULL;         // remove if option
+                    option(NULL);                   // check for missing parameter
+
+
+                    //printf("verbose is %d\n", g[small_map[*((int *) (pthread_getspecific(gtid)))]].verbosity);
+
+                    // process command-line filenames
+                    done = 0;
+                    for (n = 1; n < argc; n++)
+                        if (argv[n] != NULL) {
+                            if (done == 1 && g[small_map[*((int *) (pthread_getspecific(gtid)))]].pipeout &&
+                                !g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode &&
+                                !g[small_map[*((int *) (pthread_getspecific(gtid)))]].list &&
+                                g[small_map[*((int *) (pthread_getspecific(gtid)))]].form > 1) {}
+                            //                    complain("warning: output will be concatenated zip files"
+                            //                             " -- %s will not be able to extract",
+                            //                             g[small_map[*((int *) (pthread_getspecific(gtid)))]].prog);
+                            process(n < nop && strcmp(argv[n], "-") == 0 ? NULL : argv[n], Q, wDone, L, qNum);
+                            done++;
+                        }
+                    // list stdin or compress stdin to stdout if no file names provided
+                    if (done == 0)
+                        process(NULL, Q, wDone, L, qNum);
+                }
+        always
+            {
+                // release_pigz resources
+                RELEASE(g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+                g[small_map[*((int *) (pthread_getspecific(gtid)))]].inz = 0;
+                new_opts();
             }
-            option(NULL);           // check for missing parameter
-        }
-        // process user environment variable defaults in PIGZ as well
-        opts = getenv("PIGZ");
-        if (opts != NULL) {
-            while (*opts) {
-                while (*opts == ' ' || *opts == '\t')
-                    opts++;
-                p = opts;
-                while (*p && *p != ' ' && *p != '\t')
-                    p++;
-                n = *p;
-                *p = 0;
-                if (!option(opts))
-                    throw(EINVAL, "cannot provide files in "
-                            "PIGZ environment variable");
-                opts = p + (n ? 1 : 0);
-            }
-            option(NULL);           // check for missing parameter
-        }
-
-        // decompress if named "unpigz" or "gunzip", to stdout if "*cat"
-        if (strcmp(g[small_map[*((int *) (pthread_getspecific(gtid)))]].prog, "unpigz") == 0 ||
-                strcmp(g[small_map[*((int *) (pthread_getspecific(gtid)))]].prog, "gunzip") == 0) {
-            if (!g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode)
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].headis >>= 2;
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode = 1;
-        }
-        if ((k = strlen(g[small_map[*((int *) (pthread_getspecific(gtid)))]].prog)) > 2 &&
-                strcmp(g[small_map[*((int *) (pthread_getspecific(gtid)))]].prog + k - 3, "cat") == 0) {
-            if (!g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode)
-                g[small_map[*((int *) (pthread_getspecific(gtid)))]].headis >>= 2;
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode = 1;
-            g[small_map[*((int *) (pthread_getspecific(gtid)))]].pipeout = 1;
-        }
-
-        // if no arguments and compressed data to/from terminal, show help
-        if (argc < 2 && isatty(g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode ? 0 : 1))
-            help();
-        // process all command-line options first
-        nop = argc;
-        for (n = 1; n < argc; n++)
-            if (strcmp(argv[n], "--") == 0) {
-                nop = n;                // after this, "-" is the name "-"
-                argv[n] = NULL;         // remove option
-                break;                  // ignore options after "--"
-            } else if (option(argv[n]))   // process argument
-                argv[n] = NULL;         // remove if option
-        option(NULL);                   // check for missing parameter
-            
-
-        //printf("verbose is %d\n", g[small_map[*((int *) (pthread_getspecific(gtid)))]].verbosity);
-
-        // process command-line filenames
-        done = 0;
-        for (n = 1; n < argc; n++)
-            if (argv[n] != NULL) {
-                if (done == 1 && g[small_map[*((int *) (pthread_getspecific(gtid)))]].pipeout &&
-                        !g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode &&
-                        !g[small_map[*((int *) (pthread_getspecific(gtid)))]].list &&
-                        g[small_map[*((int *) (pthread_getspecific(gtid)))]].form > 1) {}
-                //                    complain("warning: output will be concatenated zip files"
-                //                             " -- %s will not be able to extract",
-                //                             g[small_map[*((int *) (pthread_getspecific(gtid)))]].prog);
-                process(n < nop && strcmp(argv[n], "-") == 0 ? NULL : argv[n],Q,wDone,L,qNum);
-                done++;
-            }
-        // list stdin or compress stdin to stdout if no file names provided
-        if (done == 0)
-            process(NULL,Q,wDone,L,qNum);
-    }
-    always
-    {
-        // release_pigz resources
-        RELEASE(g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
-        g[small_map[*((int *) (pthread_getspecific(gtid)))]].inz = 0;
-        new_opts();
-    }
-    catch(err)
-    {
+    catch (err) {
         THREADABORT(err);
     }
     // show log (if any)

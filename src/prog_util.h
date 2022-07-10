@@ -27,6 +27,7 @@
 
 #ifndef PROGRAMS_PROG_UTIL_H
 #define PROGRAMS_PROG_UTIL_H
+
 #include "lib/libdeflatePugz.h"
 
 #include <limits.h>
@@ -109,60 +110,66 @@ wmain(int argc, wchar_t** argv);
 
 #endif /* !_WIN32 */
 
-extern const tchar* _program_invocation_name;
+extern const tchar *_program_invocation_name;
 
-extern void _printf(1, 2) msg(const char* fmt, ...);
-extern void _printf(1, 2) msg_errno(const char* fmt, ...);
+extern void _printf(1, 2) msg(const char *fmt, ...);
+
+extern void _printf(1, 2) msg_errno(const char *fmt, ...);
 
 extern uint64_t
 timer_ticks(void);
+
 extern uint64_t
 timer_ticks_to_ms(uint64_t ticks);
+
 extern uint64_t
 timer_MB_per_s(uint64_t bytes, uint64_t ticks);
 
-extern const tchar*
-get_filename(const tchar* path);
+extern const tchar *
+get_filename(const tchar *path);
 
-struct file_stream
-{
-    int          fd;
-    const tchar* name;
-    bool         is_standard_stream;
-    void*        mmap_token;
-    void*        mmap_mem;
-    size_t       mmap_size;
+struct file_stream {
+    int fd;
+    const tchar *name;
+    bool is_standard_stream;
+    void *mmap_token;
+    void *mmap_mem;
+    size_t mmap_size;
 };
 
 extern int
-xopen_for_read(const tchar* path, bool symlink_ok, struct file_stream* strm);
+xopen_for_read(const tchar *path, bool symlink_ok, struct file_stream *strm);
+
 extern int
-xopen_for_write(const tchar* path, bool force, struct file_stream* strm);
+xopen_for_write(const tchar *path, bool force, struct file_stream *strm);
+
 extern int
-map_file_contents(struct file_stream* strm, uint64_t size);
+map_file_contents(struct file_stream *strm, uint64_t size);
 
 extern ssize_t
-xread(struct file_stream* strm, void* buf, size_t count);
-extern int
-full_write(struct file_stream* strm, const void* buf, size_t count);
+xread(struct file_stream *strm, void *buf, size_t count);
 
 extern int
-xclose(struct file_stream* strm);
+full_write(struct file_stream *strm, const void *buf, size_t count);
 
 extern int
-parse_compression_level(tchar opt_char, const tchar* arg);
+xclose(struct file_stream *strm);
 
-extern struct libdeflate_compressor*
+extern int
+parse_compression_level(tchar opt_char, const tchar *arg);
+
+extern struct libdeflate_compressor *
 alloc_compressor(int level);
-extern struct libdeflate_decompressor*
+
+extern struct libdeflate_decompressor *
 alloc_decompressor(void);
 
 /* tgetopt.c */
 
-extern tchar* toptarg;
-extern int    toptind, topterr, toptopt;
+extern tchar *toptarg;
+extern int toptind, topterr, toptopt;
 
 extern int
-tgetopt(int argc, tchar* argv[], const tchar* optstring);
+tgetopt(int argc, tchar *argv[], const tchar *optstring);
 
 #endif /* PROGRAMS_PROG_UTIL_H */

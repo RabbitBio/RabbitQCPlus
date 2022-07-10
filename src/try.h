@@ -255,12 +255,15 @@
 #include <string.h>
 #include <assert.h>
 #include <setjmp.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 /* If pthreads are used, uncomment this include to make try thread-safe. */
 #ifndef NOTHREAD
+
 #  include <pthread.h>
+
 #endif
 
 /* The exposed names can be changed here. */
@@ -301,8 +304,8 @@ struct try_s_ {
    threads will fail with an assert, by virtue of reaching the end of the
    stack. */
 #ifdef PTHREAD_ONCE_INIT
-    extern pthread_key_t try_key_;
-    void try_setup_(void);
+extern pthread_key_t try_key_;
+void try_setup_(void);
 #   define try_stack_ ((try_t_ *)pthread_getspecific(try_key_))
 #   define try_stack_set_(next) \
         do { \
@@ -310,7 +313,7 @@ struct try_s_ {
                    "try: pthread_setspecific() failed"); \
         } while (0)
 #else /* !PTHREAD_ONCE_INIT */
-    extern try_t_ *try_stack_;
+extern try_t_ *try_stack_;
 #   define try_setup_()
 #   define try_stack_set_(next) try_stack_ = (next)
 #endif /* PTHREAD_ONCE_INIT */
@@ -421,6 +424,7 @@ struct try_s_ {
 
    try.c must be compiled and linked to provide the try_throw_() function. */
 void try_throw_(int code, char *fmt, ...);
+
 #define TRY_THROW_(...) try_throw_(__VA_ARGS__, NULL)
 
 /* Retry the try block.  This will start over at the beginning of the try

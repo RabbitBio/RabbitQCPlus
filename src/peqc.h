@@ -26,6 +26,7 @@
 #include "pigz.h"
 
 #define CIPair std::pair<char *, int>
+
 class PeQc {
 public:
     PeQc(CmdInfo *cmd_info);
@@ -74,9 +75,9 @@ private:
 
     void PugzTask2();
 
-	void PigzTask1();
+    void PigzTask1();
 
-	void PigzTask2();
+    void PigzTask2();
 
 private:
     CmdInfo *cmd_info_;
@@ -99,18 +100,22 @@ private:
     bool out_is_zip_;
 
 
-    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pugzQueue1;
-    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pugzQueue2;
+    moodycamel::ReaderWriterQueue<std::pair < char * , int>> *
+    pugzQueue1;
+    moodycamel::ReaderWriterQueue<std::pair < char * , int>> *
+    pugzQueue2;
     std::atomic_int pugzDone1;
     std::atomic_int pugzDone2;
-    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pigzQueue1;
+    moodycamel::ReaderWriterQueue<std::pair < char * , int>> *
+    pigzQueue1;
     pair<char *, int> pigzLast1;
-    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pigzQueue2;
+    moodycamel::ReaderWriterQueue<std::pair < char * , int>> *
+    pigzQueue2;
     pair<char *, int> pigzLast2;
 
 
-	std::atomic_int producerDone;
- 	std::atomic_int writerDone1;
+    std::atomic_int producerDone;
+    std::atomic_int writerDone1;
     std::atomic_int queue1P1;
     std::atomic_int queue1P2;
     std::atomic_int queueNumNow1;
@@ -118,7 +123,7 @@ private:
     std::atomic_int pigzQueueNumNow1;
     std::atomic_int pigzQueueSizeLim1;
 
-  	std::atomic_int writerDone2;
+    std::atomic_int writerDone2;
     std::atomic_int queue2P1;
     std::atomic_int queue2P2;
     std::atomic_int queueNumNow2;

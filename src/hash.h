@@ -25,6 +25,7 @@ The hash for ZopfliFindLongestMatch of lz77.c.
 #define ZOPFLI_HASH_H_
 
 #include "utilPigz.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -71,6 +72,7 @@ correctly.
 */
 void ZopfliWarmupHash(const unsigned char *array, size_t pos, size_t end,
                       ZopfliHash *h);
+
 #ifdef __cplusplus
 }
 #endif

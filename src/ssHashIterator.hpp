@@ -15,8 +15,7 @@
  * hash values for successive k-mers.
  */
 
-class ssHashIterator
-{
+class ssHashIterator {
 
 public:
 
@@ -24,9 +23,8 @@ public:
      * Default constructor. Creates an iterator pointing to
      * the end of the iterator range.
     */
-    ssHashIterator():
-        m_pos(std::numeric_limits<std::size_t>::max())
-    {}
+    ssHashIterator() :
+            m_pos(std::numeric_limits<std::size_t>::max()) {}
 
     /**
      * Constructor.
@@ -34,31 +32,28 @@ public:
      * @param k k-mer size
      * @param h number of hashes
     */
-    ssHashIterator(const std::string& seq, const std::vector<bool>& seed, unsigned k, size_t pos = 0):
-        m_seq(seq), m_seed(seed), m_k(k), m_hVal(0), m_sVal(0), m_pos(pos)
-    {
+    ssHashIterator(const std::string &seq, const std::vector<bool> &seed, unsigned k, size_t pos = 0) :
+            m_seq(seq), m_seed(seed), m_k(k), m_hVal(0), m_sVal(0), m_pos(pos) {
         init();
     }
 
     /** Initialize internal state of iterator */
-    void init()
-    {
+    void init() {
         if (m_k > m_seq.length()) {
             m_pos = std::numeric_limits<std::size_t>::max();
             return;
         }
-        m_sVal = NTS64(m_seq.data()+m_pos, m_seed, m_k, m_hVal);
+        m_sVal = NTS64(m_seq.data() + m_pos, m_seed, m_k, m_hVal);
     }
 
     /** Advance iterator right to the next valid k-mer */
-    void next()
-    {
+    void next() {
         ++m_pos;
-        if (m_pos >= m_seq.length()-m_k+1) {
+        if (m_pos >= m_seq.length() - m_k + 1) {
             m_pos = std::numeric_limits<std::size_t>::max();
             return;
         }
-        m_sVal = NTS64(m_seq.data()+m_pos, m_seed, m_seq.at(m_pos-1), m_seq.at(m_pos-1+m_k), m_k, m_hVal);
+        m_sVal = NTS64(m_seq.data() + m_pos, m_seed, m_seq.at(m_pos - 1), m_seq.at(m_pos - 1 + m_k), m_k, m_hVal);
     }
 
     size_t pos() const {
@@ -66,33 +61,28 @@ public:
     }
 
     /** get pointer to hash values for current k-mer */
-    uint64_t operator*() const
-    {
+    uint64_t operator*() const {
         return m_sVal;
     }
 
     /** test equality with another iterator */
-    bool operator==(const ssHashIterator& it) const
-    {
+    bool operator==(const ssHashIterator &it) const {
         return m_pos == it.m_pos;
     }
 
     /** test inequality with another iterator */
-    bool operator!=(const ssHashIterator& it) const
-    {
+    bool operator!=(const ssHashIterator &it) const {
         return !(*this == it);
     }
 
     /** pre-increment operator */
-    ssHashIterator& operator++()
-    {
+    ssHashIterator &operator++() {
         next();
         return *this;
     }
 
     /** iterator pointing to one past last element */
-    static const ssHashIterator end()
-    {
+    static const ssHashIterator end() {
         return ssHashIterator();
     }
 
