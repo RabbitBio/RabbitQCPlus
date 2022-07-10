@@ -34,7 +34,6 @@ TGSStats::TGSStats(int minLen) {
         mTop5QualReads[i] = {0, 0};
         mTop5LengReads[i] = {0, 0};
     }
-
 }
 
 TGSStats::~TGSStats() {
@@ -84,14 +83,14 @@ void TGSStats::tgsStatRead(neoReference &ref, bool isPhred64) {
     char c1, c2;
     mTotalReadsLen.push_back(rlen);
     int phredSub = 33;
-    if (isPhred64)phredSub = 64;
+    if (isPhred64) phredSub = 64;
     int sumQual = 0;
     for (int i = 0; i < rlen; i++) {
         int qual = (quality[i] - phredSub);
         sumQual += qual;
-        if (qual >= 5)mBases51015Num[0]++;
-        if (qual >= 10)mBases51015Num[1]++;
-        if (qual >= 15)mBases51015Num[2]++;
+        if (qual >= 5) mBases51015Num[0]++;
+        if (qual >= 10) mBases51015Num[1]++;
+        if (qual >= 15) mBases51015Num[2]++;
     }
     updateTop5(rlen, 1.0 * sumQual / rlen);
     //if (rlen > mMinlen) {
@@ -112,7 +111,6 @@ void TGSStats::tgsStatRead(neoReference &ref, bool isPhred64) {
         } else if (c1 == 'G') {
             head_seq_pos_count[3][i]++;
         }
-
     }
     //--tail
     for (i = rlen - 1; i >= rlen - size_range; --i) {
@@ -209,13 +207,11 @@ TGSStats *TGSStats::merge(std::vector<TGSStats *> &list) {
             s->updateTop5(ds->mTop5QualReads[i].second, ds->mTop5QualReads[i].first);
             s->updateTop5(ds->mTop5LengReads[i].first, ds->mTop5LengReads[i].second);
         }
-
     }
 
 
     //s->head_qual_mean = s->head_qual_sum/s->mLengths.size()
     return s;
-
 }
 
 void TGSStats::CalReadsLens() {
@@ -230,7 +226,7 @@ void TGSStats::CalReadsLens() {
     mMaxReadsLen /= Ppre;
     mMaxReadsLen += Ppre;
     readsLens = new int[mMaxReadsLen];
-    for (int i = 0; i < mMaxReadsLen; i++)readsLens[i] = 0;
+    for (int i = 0; i < mMaxReadsLen; i++) readsLens[i] = 0;
     for (auto item: mTotalReadsLen) {
         readsLens[(item + Ppre - 1) / Ppre]++;
     }

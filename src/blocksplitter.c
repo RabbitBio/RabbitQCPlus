@@ -57,7 +57,7 @@ static size_t FindMinimum(FindMinimumFun f, void *context,
         return result;
     } else {
         /* Try to find minimum faster by recursively checking multiple points. */
-#define NUM 9  /* Good value: 9. */
+#define NUM 9 /* Good value: 9. */
         size_t i;
         size_t p[NUM];
         double vp[NUM];
@@ -222,7 +222,7 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions *options,
     unsigned char *done;
     double splitcost, origcost;
 
-    if (lz77->size < 10) return;  /* This code fails on tiny files. */
+    if (lz77->size < 10) return; /* This code fails on tiny files. */
 
     done = (unsigned char *) malloc(lz77->size);
     if (!done) exit(-1); /* Allocation failed. */
@@ -256,8 +256,8 @@ void ZopfliBlockSplitLZ77(const ZopfliOptions *options,
         }
 
         if (!FindLargestSplittableBlock(
-                lz77->size, done, *splitpoints, *npoints, &lstart, &lend)) {
-            break;  /* No further split will probably reduce compression. */
+                    lz77->size, done, *splitpoints, *npoints, &lstart, &lend)) {
+            break; /* No further split will probably reduce compression. */
         }
 
         if (lend - lstart < 10) {

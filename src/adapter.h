@@ -5,19 +5,19 @@
 #ifndef RERABBITQC_ADAPTER_H
 #define RERABBITQC_ADAPTER_H
 
-#include <iostream>
-#include <vector>
-#include <cstring>
-#include <map>
-#include <unordered_map>
 #include <algorithm>
+#include <cstring>
+#include <iostream>
+#include <map>
 #include <omp.h>
 #include <set>
+#include <unordered_map>
+#include <vector>
 
-#include "Reference.h"
-#include "repoter.h"
 #include "Formater.h"
+#include "Reference.h"
 #include "nucleotidetree.h"
+#include "repoter.h"
 
 struct OverlapRes {
     bool overlapped;
@@ -33,18 +33,18 @@ public:
     static std::string int2seq(unsigned int val, int seqlen);
 
     static int seq2int(const char *seq, int pos, int keylen, int lastVal);
-//    static int seq2int(std::string &seq, int pos, int keylen, int lastVal);
+    //    static int seq2int(std::string &seq, int pos, int keylen, int lastVal);
 
     static std::string matchKnownAdapter(std::string seq);
 
-    static void PreOverAnalyze(std::string file_name, std::vector <std::string> &ho_seqs, int &eva_len);
+    static void PreOverAnalyze(std::string file_name, std::vector<std::string> &ho_seqs, int &eva_len);
 
     static std::string AutoDetect(std::string file_name, int trim_tail);
 
     static int EvalMaxLen(std::string file_name);
 
     static std::string
-    getAdapterWithSeed(int seed, std::vector <neoReference> loadedReads, long records, int keylen, int trim_tail);
+    getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, long records, int keylen, int trim_tail);
 
     static OverlapRes AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require);
 
@@ -60,9 +60,7 @@ public:
     static int TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2 = false);
 
     static int CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap_res, bool isPhred64);
-
-
 };
 
 
-#endif //RERABBITQC_ADAPTER_H
+#endif//RERABBITQC_ADAPTER_H

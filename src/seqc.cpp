@@ -18,7 +18,7 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != std::string::npos;
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != std::string::npos;
     if (cmd_info1->write_data_) {
-        out_queue_ = new moodycamel::ConcurrentQueue<std::pair < char * , int>>;
+        out_queue_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>;
         queueNumNow = 0;
         queueSizeLim = 1 << 6;
         if (out_is_zip_) {
@@ -95,7 +95,7 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
 
     rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize = 1 << 20;
-    if (cmd_info_->seq_len_ <= 200)tmpSize = 1 << 14;
+    if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
     fqFileReader = new rabbit::fq::FastqFileReader(file, *fastq_data_pool, "", in_is_zip_, tmpSize);
     int64_t n_chunks = 0;
 
@@ -111,7 +111,7 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
             //std::cout << "readed chunk: " << n_chunks << std::endl;
             dq.Push(n_chunks, fqdatachunk);
         }
-        delete[]last_info.first;
+        delete[] last_info.first;
     } else {
         while (true) {
             rabbit::fq::FastqDataChunk *fqdatachunk;
@@ -127,7 +127,6 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
     dq.SetCompleted();
     delete fqFileReader;
     producerDone = 1;
-
 }
 //
 //void SeQc::PrintRead(neoReference &ref) {
@@ -172,7 +171,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 
     if (cmd_info_->is_TGS_) {
         while (dq.Pop(id, fqdatachunk)) {
-            std::vector <neoReference> data;
+            std::vector<neoReference> data;
             rabbit::fq::chunkFormat(fqdatachunk, data, true);
             for (auto item: data) {
                 thread_info->TGS_state_->tgsStatRead(item, cmd_info_->isPhred64_);
@@ -181,8 +180,8 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
         }
     } else {
         while (dq.Pop(id, fqdatachunk)) {
-            std::vector <neoReference> data;
-            std::vector <neoReference> pass_data;
+            std::vector<neoReference> data;
+            std::vector<neoReference> pass_data;
             rabbit::fq::chunkFormat(fqdatachunk, data, true);
             int out_len = 0;
             for (auto item: data) {
@@ -262,10 +261,8 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 
             fastq_data_pool->Release(fqdatachunk);
         }
-
     }
     done_thread_number_++;
-
 }
 
 /**
@@ -286,7 +283,7 @@ void SeQc::WriteSeFastqTask() {
             }
             usleep(100);
         }
-        if (overWhile)break;
+        if (overWhile) break;
         queueNumNow--;
         if (out_is_zip_) {
             if (cmd_info_->use_pigz_) {
@@ -310,7 +307,6 @@ void SeQc::WriteSeFastqTask() {
             out_stream_.write(now.first, now.second);
             delete[] now.first;
         }
-
     }
 
     if (out_is_zip_) {
@@ -429,7 +425,7 @@ void SeQc::ProcessSeFastq() {
 
     //TODO bind ?
     std::thread producer(
-    std::bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, std::ref(queue1)));
+            std::bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, std::ref(queue1)));
     auto **threads = new std::thread *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         threads[t] = new std::thread(
@@ -441,13 +437,13 @@ void SeQc::ProcessSeFastq() {
 
     producer.join();
 #ifdef Verbose
-    printf("producer cost %.4f\n",GetTime()-t0);
+    printf("producer cost %.4f\n", GetTime() - t0);
 #endif
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         threads[t]->join();
     }
 #ifdef Verbose
-    printf("consumer cost %.4f\n",GetTime()-t0);
+    printf("consumer cost %.4f\n", GetTime() - t0);
 #endif
     if (cmd_info_->write_data_) {
         write_thread->join();
@@ -460,8 +456,8 @@ void SeQc::ProcessSeFastq() {
     printf("all thrad done\n");
     printf("now merge thread info\n");
 #endif
-    std::vector < State * > pre_vec_state;
-    std::vector < State * > aft_vec_state;
+    std::vector<State *> pre_vec_state;
+    std::vector<State *> aft_vec_state;
 
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         pre_vec_state.push_back(p_thread_info[t]->pre_state1_);
@@ -470,9 +466,9 @@ void SeQc::ProcessSeFastq() {
     auto pre_state = State::MergeStates(pre_vec_state);
     auto aft_state = State::MergeStates(aft_vec_state);
 #ifdef Verbose
-    if(cmd_info_->do_overrepresentation_){
-        printf("orp cost %lf\n",pre_state->GetOrpCost()+aft_state->GetOrpCost());
-    }  
+    if (cmd_info_->do_overrepresentation_) {
+        printf("orp cost %lf\n", pre_state->GetOrpCost() + aft_state->GetOrpCost());
+    }
     printf("merge done\n");
 #endif
     printf("\nprint read (before filter) info :\n");
@@ -500,10 +496,11 @@ void SeQc::ProcessSeFastq() {
 
         string out_name = "se_" + srr_name + "_before_ORP_sequences.txt";
         ofs.open(out_name, ifstream::out);
-        ofs << "sequence count" << "\n";
+        ofs << "sequence count"
+            << "\n";
         int cnt1 = 0;
         for (int i = 0; i < hash_num1; i++) {
-            if (!overRepPassed(hash_graph1[i].seq, hash_graph1[i].cnt, spg))continue;
+            if (!overRepPassed(hash_graph1[i].seq, hash_graph1[i].cnt, spg)) continue;
             ofs << hash_graph1[i].seq << " " << hash_graph1[i].cnt << "\n";
             cnt1++;
         }
@@ -514,10 +511,11 @@ void SeQc::ProcessSeFastq() {
 
         out_name = "se_" + srr_name + "_after_ORP_sequences.txt";
         ofs.open(out_name, ifstream::out);
-        ofs << "sequence count" << "\n";
+        ofs << "sequence count"
+            << "\n";
         int cnt2 = 0;
         for (int i = 0; i < hash_num2; i++) {
-            if (!overRepPassed(hash_graph2[i].seq, hash_graph2[i].cnt, spg))continue;
+            if (!overRepPassed(hash_graph2[i].seq, hash_graph2[i].cnt, spg)) continue;
             ofs << hash_graph2[i].seq << " " << hash_graph2[i].cnt << "\n";
             cnt2++;
         }
@@ -525,7 +523,6 @@ void SeQc::ProcessSeFastq() {
         printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name.c_str(),
                cnt2, out_name.c_str());
         printf("\n");
-
     }
 
 
@@ -542,7 +539,6 @@ void SeQc::ProcessSeFastq() {
         printf("Duplication rate (may be overestimated since this is SE data): %.5f %%\n", dupRate * 100.0);
         delete[] dupHist;
         delete[] dupMeanGC;
-
     }
     std::string srr_name = cmd_info_->in_file_name1_;
     srr_name = PaseFileName(srr_name);
@@ -566,7 +562,6 @@ void SeQc::ProcessSeFastq() {
     if (cmd_info_->write_data_) {
         delete write_thread;
     }
-
 }
 
 void SeQc::ProcessSeTGS() {
@@ -585,7 +580,7 @@ void SeQc::ProcessSeTGS() {
         p_thread_info[t] = new ThreadInfo(cmd_info_, false);
     }
     std::thread producer(
-    std::bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, std::ref(queue1)));
+            std::bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, std::ref(queue1)));
     auto **threads = new std::thread *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         threads[t] = new std::thread(
@@ -604,7 +599,7 @@ void SeQc::ProcessSeTGS() {
     printf("all thrad done\n");
     printf("now merge thread info\n");
 #endif
-    std::vector < TGSStats * > vec_state;
+    std::vector<TGSStats *> vec_state;
 
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         vec_state.push_back(p_thread_info[t]->TGS_state_);

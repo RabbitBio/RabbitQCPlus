@@ -86,7 +86,7 @@ double ZopfliCalculateBlockSizeAutoType(const ZopfliLZ77Store *lz77,
                                         size_t lstart, size_t lend);
 
 #ifdef __cplusplus
-}  // extern "C"
+}// extern "C"
 #endif
 
-#endif  /* ZOPFLI_DEFLATE_H_ */
+#endif /* ZOPFLI_DEFLATE_H_ */

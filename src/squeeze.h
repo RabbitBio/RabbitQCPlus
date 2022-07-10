@@ -65,4 +65,4 @@ void ZopfliLZ77OptimalFixed(ZopfliBlockState *s,
 #ifdef __cplusplus
 }
 #endif
-#endif  /* ZOPFLI_SQUEEZE_H_ */
+#endif /* ZOPFLI_SQUEEZE_H_ */

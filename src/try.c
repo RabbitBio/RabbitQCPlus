@@ -9,9 +9,9 @@
    pthread.h is included in try.h. */
 
 #include "try.h"
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdarg.h>
 
 /* Set up the try stack with a global pointer to the next try block.  The
    global is thread-unique if pthread.h is included in try.h. */
@@ -29,7 +29,7 @@ void try_setup_(void) {
     assert(ret == 0 && "try: pthread_once() failed");
 }
 
-#else /* !PTHREAD_ONCE_INIT */
+#else  /* !PTHREAD_ONCE_INIT */
 try_t_ *try_stack_ = NULL;
 #endif /* PTHREAD_ONCE_INIT */
 

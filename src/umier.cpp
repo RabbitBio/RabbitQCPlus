@@ -128,7 +128,6 @@ void Umier::ProcessPe(neoReference &r1, neoReference &r2) {
         r2.lqual -= trim_len2;
         addUmiToName(r1, umiMerged);
         addUmiToName(r2, umiMerged);
-
     }
 
     if (cmd_info_->umi_loc_ != UMI_LOC_PER_INDEX && cmd_info_->umi_loc_ != UMI_LOC_PER_READ) {
@@ -171,8 +170,5 @@ void Umier::addUmiToName(neoReference &ref, std::string umi) {
         memcpy(new_name + pos, ref.base + ref.pname + spacePos, ref.lname - spacePos);
         ref.lname = ref.lname + tag.length();
         ref.pname = reinterpret_cast<uint64_t>(new_name) - reinterpret_cast<uint64_t>(ref.base);
-
     }
-
 }
-

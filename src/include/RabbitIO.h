@@ -1,6 +1,6 @@
-#include <algorithm>
 #include "Globals.h"
 #include "utils.h"
+#include <algorithm>
 
 namespace rabbit {
 
@@ -8,7 +8,7 @@ namespace rabbit {
 
 #define USE_64BIT_MEMORY 1
 
-/**
+        /**
  * @brief: buffer to store chunk data
  */
         class Buffer {
@@ -90,18 +90,18 @@ namespace rabbit {
             uint64 size;
         };
 
-/**
+        /**
  * @brief: rabbitio chunk data wapper
  */
         struct DataChunk {
             /// default swap buffer size
-            static const uint64 DefaultBufferSize = 1 << 20;  // 1 << 22
+            static const uint64 DefaultBufferSize = 1 << 20;// 1 << 22
             /// chunk data
             Buffer data;
             /// chunk size
             uint64 size;
             /// list to matain all sequence chunk in one part
-            DataChunk *next = NULL;  //list structre, for all seqchunk in one part
+            DataChunk *next = NULL;//list structre, for all seqchunk in one part
 
             DataChunk(const uint64 bufferSize_ = DefaultBufferSize) : data(bufferSize_), size(0) {}
 
@@ -116,7 +116,7 @@ namespace rabbit {
             DataChunk *right_part;
         };
 
-//[file:s] <util.h>
+        //[file:s] <util.h>
         template<uint32 _TBitNum>
         class TBitMask {
         public:
@@ -172,7 +172,7 @@ namespace rabbit {
             power /= 10;
             for (uint32 i = 0; power; ++i, power /= 10) {
                 int32 d = value / power;
-                str[i] = (uchar)('0' + d);
+                str[i] = (uchar) ('0' + d);
                 value -= d * power;
             }
 
@@ -249,8 +249,8 @@ namespace rabbit {
             }
             return 64;
         }
-//[file:d] <util.h>
+        //[file:d] <util.h>
 
-    }  // namespace core
+    }// namespace core
 
-}  // namespace rabbit
+}// namespace rabbit

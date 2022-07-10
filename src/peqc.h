@@ -6,24 +6,24 @@
 #define RERABBITQC_PEQC_H
 
 #include <atomic>
+#include <cstring>
 #include <fstream>
 #include <functional>
-#include <cstring>
-#include <sys/time.h>
 #include <queue>
+#include <sys/time.h>
 
-#include "Globals.h"
 #include "Formater.h"
-#include "cmdinfo.h"
-#include "threadinfo.h"
-#include "filter.h"
-#include "state.h"
+#include "Globals.h"
 #include "adapter.h"
+#include "cmdinfo.h"
 #include "duplicate.h"
-#include "polyx.h"
-#include "umier.h"
-#include "pugz.h"
+#include "filter.h"
 #include "pigz.h"
+#include "polyx.h"
+#include "pugz.h"
+#include "state.h"
+#include "threadinfo.h"
+#include "umier.h"
 
 #define CIPair std::pair<char *, int>
 
@@ -39,21 +39,20 @@ public:
 
 
 private:
-
-//    void PrintRead(neoReference &ref);
+    //    void PrintRead(neoReference &ref);
 
     std::string Read2String(neoReference &ref);
 
     void Read2Chars(neoReference &ref, char *out_data, int &pos);
 
-//
-//    void ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool1,
-//                             rabbit::fq::FastqDataPool *fastqPool2,
-//                             rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
-//
-//    void ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool1,
-//                             rabbit::fq::FastqDataPool *fastqPool2,
-//                             rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
+    //
+    //    void ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool1,
+    //                             rabbit::fq::FastqDataPool *fastqPool2,
+    //                             rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
+    //
+    //    void ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool1,
+    //                             rabbit::fq::FastqDataPool *fastqPool2,
+    //                             rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
 
     void ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
@@ -87,7 +86,7 @@ private:
     CIPair *out_queue1_;
     //moodycamel::ConcurrentQueue<std::pair<char *, int>> *out_queue2_;
     CIPair *out_queue2_;
-//TODO replace concurrentqueue with char*[]
+    //TODO replace concurrentqueue with char*[]
     std::atomic_int done_thread_number_;
     std::fstream out_stream1_;
     std::fstream out_stream2_;
@@ -100,17 +99,17 @@ private:
     bool out_is_zip_;
 
 
-    moodycamel::ReaderWriterQueue<std::pair < char * , int>> *
-    pugzQueue1;
-    moodycamel::ReaderWriterQueue<std::pair < char * , int>> *
-    pugzQueue2;
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *
+            pugzQueue1;
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *
+            pugzQueue2;
     std::atomic_int pugzDone1;
     std::atomic_int pugzDone2;
-    moodycamel::ReaderWriterQueue<std::pair < char * , int>> *
-    pigzQueue1;
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *
+            pigzQueue1;
     pair<char *, int> pigzLast1;
-    moodycamel::ReaderWriterQueue<std::pair < char * , int>> *
-    pigzQueue2;
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *
+            pigzQueue2;
     pair<char *, int> pigzLast2;
 
 
@@ -131,9 +130,7 @@ private:
     std::atomic_int pigzQueueNumNow2;
     std::atomic_int pigzQueueSizeLim2;
     std::mutex mylock;
-
-
 };
 
 
-#endif //RERABBITQC_PEQC_H
+#endif//RERABBITQC_PEQC_H

@@ -6,14 +6,14 @@
 #define RERABBITQC_DUPLICATE_H
 
 
+#include <cmath>
+#include <cstring>
 #include <iostream>
 #include <mutex>
-#include <cstring>
-#include <cmath>
 
-#include "cmdinfo.h"
-#include "Reference.h"
 #include "Globals.h"
+#include "Reference.h"
+#include "cmdinfo.h"
 
 using namespace std;
 
@@ -42,8 +42,7 @@ public:
     uint16_t *counts_;
     uint8_t *gcs_;
     mutex lok_;
-
 };
 
 
-#endif //RERABBITQC_DUPLICATE_H
+#endif//RERABBITQC_DUPLICATE_H

@@ -19,7 +19,7 @@ Filter::Filter(CmdInfo *cmd_info1) {
     4:fail because too many bases < q15
  */
 int Filter::ReadFiltering(neoReference &ref, bool trim_res, bool isPhred64) {
-    if (!trim_res)return 2;
+    if (!trim_res) return 2;
     int seq_len = ref.lseq;
     int qul_len = ref.lqual;
     ASSERT(seq_len == qul_len);
@@ -35,7 +35,7 @@ int Filter::ReadFiltering(neoReference &ref, bool trim_res, bool isPhred64) {
     char *quals = reinterpret_cast<char *>(ref.base + ref.pqual);
 
     int phredSub = 33;
-    if (isPhred64)phredSub = 64;
+    if (isPhred64) phredSub = 64;
     for (int i = 0; i < seq_len; i++) {
         int q = std::max(0, quals[i] - phredSub);
         if (q < 15) {
@@ -45,24 +45,23 @@ int Filter::ReadFiltering(neoReference &ref, bool trim_res, bool isPhred64) {
             n_number++;
         }
     }
-    if (low_qual_number > cmd_info->low_qual_perc_limit_ * seq_len / 100.0)return 4;
-    if (n_number > cmd_info->n_number_limit_)return 1;
+    if (low_qual_number > cmd_info->low_qual_perc_limit_ * seq_len / 100.0) return 4;
+    if (n_number > cmd_info->n_number_limit_) return 1;
     return 0;
-
 }
 
 
 bool Filter::TrimSeq(neoReference &ref, int front, int tail) {
 
     int new_seq_len = ref.lseq - front - tail;
-    if (new_seq_len <= 0)return false;
+    if (new_seq_len <= 0) return false;
 
     int w = cmd_info->cut_window_size_;
     int l = ref.lseq;
     const char *seq = reinterpret_cast<const char *>(ref.base + ref.pseq);
     const char *qualstr = reinterpret_cast<const char *>(ref.base + ref.pqual);
     int phredSub = 33;
-    if (cmd_info->isPhred64_)phredSub = 64;
+    if (cmd_info->isPhred64_) phredSub = 64;
     // quality cutting forward
     if (cmd_info->trim_5end_) {
         int s = front;
@@ -146,5 +145,4 @@ bool Filter::TrimSeq(neoReference &ref, int front, int tail) {
  * @brief Print filtering result, for example xx refs because too short......
  */
 void Filter::PrintResult() {
-
 }

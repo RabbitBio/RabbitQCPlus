@@ -88,7 +88,7 @@ void ZopfliCompress(const ZopfliOptions *options, ZopfliFormat output_type,
                     unsigned char **out, size_t *outsize);
 
 #ifdef __cplusplus
-}  // extern "C"
+}// extern "C"
 #endif
 
-#endif  /* ZOPFLI_ZOPFLI_H_ */
+#endif /* ZOPFLI_ZOPFLI_H_ */

@@ -6,8 +6,8 @@
 #define RERABBITQC_STATE_H
 
 #include <cstring>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <unordered_map>
 
@@ -155,6 +155,7 @@ private:
     int64_t over_representation_pcnt_;
     int64_t *bf_zone_;
     double orpCost;
+
 public:
     int64_t pass_reads_;
     int64_t fail_short_;
@@ -167,4 +168,4 @@ public:
 };
 
 
-#endif //RERABBITQC_STATE_H
+#endif//RERABBITQC_STATE_H

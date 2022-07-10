@@ -25,8 +25,8 @@ Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 
 #include "katajainen.h"
 #include <assert.h>
-#include <stdlib.h>
 #include <limits.h>
+#include <stdlib.h>
 
 typedef struct Node Node;
 
@@ -34,16 +34,16 @@ typedef struct Node Node;
 Nodes forming chains. Also used to represent leaves.
 */
 struct Node {
-    size_t weight;  /* Total weight (symbol count) of this chain. */
-    Node *tail;  /* Previous node(s) of this chain, or 0 if none. */
-    int count;  /* Leaf symbol index, or number of leaves before this chain. */
+    size_t weight; /* Total weight (symbol count) of this chain. */
+    Node *tail;    /* Previous node(s) of this chain, or 0 if none. */
+    int count;     /* Leaf symbol index, or number of leaves before this chain. */
 };
 
 /*
 Memory pool for nodes.
 */
 typedef struct NodePool {
-    Node *next;  /* Pointer to a free node in the pool. */
+    Node *next; /* Pointer to a free node in the pool. */
 } NodePool;
 
 /*
@@ -70,7 +70,7 @@ static void BoundaryPM(Node *(*lists)[2], Node *leaves, int numsymbols,
                        NodePool *pool, int index) {
     Node *newchain;
     Node *oldchain;
-    int lastcount = lists[index][1]->count;  /* Count of last chain of list. */
+    int lastcount = lists[index][1]->count; /* Count of last chain of list. */
 
     if (index == 0 && lastcount >= numsymbols) return;
 
@@ -102,7 +102,7 @@ static void BoundaryPM(Node *(*lists)[2], Node *leaves, int numsymbols,
 
 static void BoundaryPMFinal(Node *(*lists)[2],
                             Node *leaves, int numsymbols, NodePool *pool, int index) {
-    int lastcount = lists[index][1]->count;  /* Count of last chain of list. */
+    int lastcount = lists[index][1]->count; /* Count of last chain of list. */
 
     size_t sum = lists[index - 1][0]->weight + lists[index - 1][1]->weight;
 
@@ -173,7 +173,7 @@ int ZopfliLengthLimitedCodeLengths(
         const size_t *frequencies, int n, int maxbits, unsigned *bitlengths) {
     NodePool pool;
     int i;
-    int numsymbols = 0;  /* Amount of symbols with frequency > 0. */
+    int numsymbols = 0; /* Amount of symbols with frequency > 0. */
     int numBoundaryPMRuns;
     Node *nodes;
 
@@ -193,7 +193,7 @@ int ZopfliLengthLimitedCodeLengths(
     for (i = 0; i < n; i++) {
         if (frequencies[i]) {
             leaves[numsymbols].weight = frequencies[i];
-            leaves[numsymbols].count = i;  /* Index of symbol this leaf represents. */
+            leaves[numsymbols].count = i; /* Index of symbol this leaf represents. */
             numsymbols++;
         }
     }
@@ -201,16 +201,16 @@ int ZopfliLengthLimitedCodeLengths(
     /* Check special cases and error conditions. */
     if ((1 << maxbits) < numsymbols) {
         free(leaves);
-        return 1;  /* Error, too few maxbits to represent symbols. */
+        return 1; /* Error, too few maxbits to represent symbols. */
     }
     if (numsymbols == 0) {
         free(leaves);
-        return 0;  /* No symbols at all. OK. */
+        return 0; /* No symbols at all. OK. */
     }
     if (numsymbols == 1) {
         bitlengths[leaves[0].count] = 1;
         free(leaves);
-        return 0;  /* Only one symbol, give it bitlength 1, not 0. OK. */
+        return 0; /* Only one symbol, give it bitlength 1, not 0. OK. */
     }
     if (numsymbols == 2) {
         bitlengths[leaves[0].count]++;
@@ -225,7 +225,7 @@ int ZopfliLengthLimitedCodeLengths(
         if (leaves[i].weight >=
             ((size_t) 1 << (sizeof(leaves[0].weight) * CHAR_BIT - 9))) {
             free(leaves);
-            return 1;  /* Error, we need 9 bits for the count. */
+            return 1; /* Error, we need 9 bits for the count. */
         }
         leaves[i].weight = (leaves[i].weight << 9) | leaves[i].count;
     }
@@ -242,7 +242,7 @@ int ZopfliLengthLimitedCodeLengths(
     nodes = (Node *) malloc(maxbits * 2 * numsymbols * sizeof(Node));
     pool.next = nodes;
 
-    lists = (Node *(*)[2]) malloc(maxbits * sizeof(*lists));
+    lists = (Node * (*) [2]) malloc(maxbits * sizeof(*lists));
     InitLists(&pool, leaves, maxbits, lists);
 
     /* In the last list, 2 * numsymbols - 2 active chains need to be created. Two
@@ -258,5 +258,5 @@ int ZopfliLengthLimitedCodeLengths(
     free(lists);
     free(leaves);
     free(nodes);
-    return 0;  /* OK. */
+    return 0; /* OK. */
 }

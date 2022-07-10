@@ -1,14 +1,14 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <algorithm>
+#include <iostream>
+#include <mutex>
 #include <stdlib.h>
 #include <string>
-#include <iostream>
-#include <vector>
 #include <sys/stat.h>
-#include <algorithm>
 #include <time.h>
-#include <mutex>
+#include <vector>
 
 using namespace std;
 
@@ -53,7 +53,7 @@ inline string trim(const string &str) {
     return str.substr(pos);
 }
 
-inline int split(const string &str, vector <string> &ret_, string sep = ",") {
+inline int split(const string &str, vector<string> &ret_, string sep = ",") {
     if (str.empty()) {
         return 0;
     }
@@ -108,7 +108,7 @@ inline string basename(const string &filename) {
     if (pos == string::npos)
         return filename;
     else if (pos == filename.length() - 1)
-        return "";  // a bad filename
+        return "";// a bad filename
     else
         return filename.substr(pos + 1, filename.length() - pos - 1);
 }

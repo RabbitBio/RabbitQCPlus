@@ -1,9 +1,9 @@
 #ifndef SSHASH__ITERATOR_H
 #define SSHASH__ITERATOR_H 1
 
-#include <string>
-#include <limits>
 #include "nthash.hpp"
+#include <limits>
+#include <string>
 
 
 /**
@@ -18,13 +18,11 @@
 class ssHashIterator {
 
 public:
-
     /**
      * Default constructor. Creates an iterator pointing to
      * the end of the iterator range.
     */
-    ssHashIterator() :
-            m_pos(std::numeric_limits<std::size_t>::max()) {}
+    ssHashIterator() : m_pos(std::numeric_limits<std::size_t>::max()) {}
 
     /**
      * Constructor.
@@ -32,8 +30,7 @@ public:
      * @param k k-mer size
      * @param h number of hashes
     */
-    ssHashIterator(const std::string &seq, const std::vector<bool> &seed, unsigned k, size_t pos = 0) :
-            m_seq(seq), m_seed(seed), m_k(k), m_hVal(0), m_sVal(0), m_pos(pos) {
+    ssHashIterator(const std::string &seq, const std::vector<bool> &seed, unsigned k, size_t pos = 0) : m_seq(seq), m_seed(seed), m_k(k), m_hVal(0), m_sVal(0), m_pos(pos) {
         init();
     }
 
@@ -91,7 +88,6 @@ public:
     }
 
 private:
-
     /** DNA sequence */
     std::string m_seq;
 

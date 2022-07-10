@@ -30,22 +30,22 @@ The hash for ZopfliFindLongestMatch of lz77.c.
 extern "C" {
 #endif
 typedef struct ZopfliHash {
-    int *head;  /* Hash value to index of its most recent occurrence. */
-    unsigned short *prev;  /* Index to index of prev. occurrence of same hash. */
-    int *hashval;  /* Index to hash value at this index. */
-    int val;  /* Current hash value. */
+    int *head;            /* Hash value to index of its most recent occurrence. */
+    unsigned short *prev; /* Index to index of prev. occurrence of same hash. */
+    int *hashval;         /* Index to hash value at this index. */
+    int val;              /* Current hash value. */
 
 #ifdef ZOPFLI_HASH_SAME_HASH
     /* Fields with similar purpose as the above hash, but for the second hash with
     a value that is calculated differently.  */
-    int *head2;  /* Hash value to index of its most recent occurrence. */
-    unsigned short *prev2;  /* Index to index of prev. occurrence of same hash. */
-    int *hashval2;  /* Index to hash value at this index. */
-    int val2;  /* Current hash value. */
+    int *head2;            /* Hash value to index of its most recent occurrence. */
+    unsigned short *prev2; /* Index to index of prev. occurrence of same hash. */
+    int *hashval2;         /* Index to hash value at this index. */
+    int val2;              /* Current hash value. */
 #endif
 
 #ifdef ZOPFLI_HASH_SAME
-    unsigned short *same;  /* Amount of repetitions of same byte after this .*/
+    unsigned short *same; /* Amount of repetitions of same byte after this .*/
 #endif
 } ZopfliHash;
 
@@ -76,4 +76,4 @@ void ZopfliWarmupHash(const unsigned char *array, size_t pos, size_t end,
 #ifdef __cplusplus
 }
 #endif
-#endif  /* ZOPFLI_HASH_H_ */
+#endif /* ZOPFLI_HASH_H_ */

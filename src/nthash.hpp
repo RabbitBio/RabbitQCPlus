@@ -14,81 +14,80 @@
 #include <vector>
 
 static const uint8_t RCconvertTab[256] = {
-        255, 255, 255, 255, 255, 255, 255, 255, // 0..7
-        255, 255, 255, 255, 255, 255, 255, 255, // 8..15
-        255, 255, 255, 255, 255, 255, 255, 255, // 16..23
-        255, 255, 255, 255, 255, 255, 255, 255, // 24..31
-        255, 255, 255, 255, 255, 255, 255, 255, // 32..39
-        255, 255, 255, 255, 255, 255, 255, 255, // 40..47
-        255, 255, 255, 255, 255, 255, 255, 255, // 48..55
-        255, 255, 255, 255, 255, 255, 255, 255, // 56..63
-        255, 3, 255, 2, 255, 255, 255, 1, // 64..71
-        255, 255, 255, 255, 255, 255, 255, 255, // 72..79
-        255, 255, 255, 255, 0, 3, 255, 255, // 80..87
-        255, 255, 255, 255, 255, 255, 255, 255, // 88..95
-        255, 3, 255, 2, 255, 255, 255, 1, // 96..103
-        255, 255, 255, 255, 255, 255, 255, 255, // 104..111
-        255, 255, 255, 255, 0, 3, 255, 255, // 112..119
-        255, 255, 255, 255, 255, 255, 255, 255, // 120..127
-        255, 255, 255, 255, 255, 255, 255, 255, // 128..135
-        255, 255, 255, 255, 255, 255, 255, 255, // 136..143
-        255, 255, 255, 255, 255, 255, 255, 255, // 144..151
-        255, 255, 255, 255, 255, 255, 255, 255, // 152..159
-        255, 255, 255, 255, 255, 255, 255, 255, // 160..167
-        255, 255, 255, 255, 255, 255, 255, 255, // 168..175
-        255, 255, 255, 255, 255, 255, 255, 255, // 176..183
-        255, 255, 255, 255, 255, 255, 255, 255, // 184..191
-        255, 255, 255, 255, 255, 255, 255, 255, // 192..199
-        255, 255, 255, 255, 255, 255, 255, 255, // 200..207
-        255, 255, 255, 255, 255, 255, 255, 255, // 208..215
-        255, 255, 255, 255, 255, 255, 255, 255, // 216..223
-        255, 255, 255, 255, 255, 255, 255, 255, // 224..231
-        255, 255, 255, 255, 255, 255, 255, 255, // 232..239
-        255, 255, 255, 255, 255, 255, 255, 255, // 240..247
-        255, 255, 255, 255, 255, 255, 255, 255  // 248..255
+        255, 255, 255, 255, 255, 255, 255, 255,// 0..7
+        255, 255, 255, 255, 255, 255, 255, 255,// 8..15
+        255, 255, 255, 255, 255, 255, 255, 255,// 16..23
+        255, 255, 255, 255, 255, 255, 255, 255,// 24..31
+        255, 255, 255, 255, 255, 255, 255, 255,// 32..39
+        255, 255, 255, 255, 255, 255, 255, 255,// 40..47
+        255, 255, 255, 255, 255, 255, 255, 255,// 48..55
+        255, 255, 255, 255, 255, 255, 255, 255,// 56..63
+        255, 3, 255, 2, 255, 255, 255, 1,      // 64..71
+        255, 255, 255, 255, 255, 255, 255, 255,// 72..79
+        255, 255, 255, 255, 0, 3, 255, 255,    // 80..87
+        255, 255, 255, 255, 255, 255, 255, 255,// 88..95
+        255, 3, 255, 2, 255, 255, 255, 1,      // 96..103
+        255, 255, 255, 255, 255, 255, 255, 255,// 104..111
+        255, 255, 255, 255, 0, 3, 255, 255,    // 112..119
+        255, 255, 255, 255, 255, 255, 255, 255,// 120..127
+        255, 255, 255, 255, 255, 255, 255, 255,// 128..135
+        255, 255, 255, 255, 255, 255, 255, 255,// 136..143
+        255, 255, 255, 255, 255, 255, 255, 255,// 144..151
+        255, 255, 255, 255, 255, 255, 255, 255,// 152..159
+        255, 255, 255, 255, 255, 255, 255, 255,// 160..167
+        255, 255, 255, 255, 255, 255, 255, 255,// 168..175
+        255, 255, 255, 255, 255, 255, 255, 255,// 176..183
+        255, 255, 255, 255, 255, 255, 255, 255,// 184..191
+        255, 255, 255, 255, 255, 255, 255, 255,// 192..199
+        255, 255, 255, 255, 255, 255, 255, 255,// 200..207
+        255, 255, 255, 255, 255, 255, 255, 255,// 208..215
+        255, 255, 255, 255, 255, 255, 255, 255,// 216..223
+        255, 255, 255, 255, 255, 255, 255, 255,// 224..231
+        255, 255, 255, 255, 255, 255, 255, 255,// 232..239
+        255, 255, 255, 255, 255, 255, 255, 255,// 240..247
+        255, 255, 255, 255, 255, 255, 255, 255 // 248..255
 };
 
 static const uint8_t convertTab[256] = {
-        255, 255, 255, 255, 255, 255, 255, 255, // 0..7
-        255, 255, 255, 255, 255, 255, 255, 255, // 8..15
-        255, 255, 255, 255, 255, 255, 255, 255, // 16..23
-        255, 255, 255, 255, 255, 255, 255, 255, // 24..31
-        255, 255, 255, 255, 255, 255, 255, 255, // 32..39
-        255, 255, 255, 255, 255, 255, 255, 255, // 40..47
-        255, 255, 255, 255, 255, 255, 255, 255, // 48..55
-        255, 255, 255, 255, 255, 255, 255, 255, // 56..63
-        255, 0, 255, 1, 255, 255, 255, 2, // 64..71
-        255, 255, 255, 255, 255, 255, 255, 255, // 72..79
-        255, 255, 255, 255, 3, 0, 255, 255, // 80..87
-        255, 255, 255, 255, 255, 255, 255, 255, // 88..95
-        255, 0, 255, 1, 255, 255, 255, 2, // 96..103
-        255, 255, 255, 255, 255, 255, 255, 255, // 104..111
-        255, 255, 255, 255, 3, 0, 255, 255, // 112..119
-        255, 255, 255, 255, 255, 255, 255, 255, // 120..127
-        255, 255, 255, 255, 255, 255, 255, 255, // 128..135
-        255, 255, 255, 255, 255, 255, 255, 255, // 136..143
-        255, 255, 255, 255, 255, 255, 255, 255, // 144..151
-        255, 255, 255, 255, 255, 255, 255, 255, // 152..159
-        255, 255, 255, 255, 255, 255, 255, 255, // 160..167
-        255, 255, 255, 255, 255, 255, 255, 255, // 168..175
-        255, 255, 255, 255, 255, 255, 255, 255, // 176..183
-        255, 255, 255, 255, 255, 255, 255, 255, // 184..191
-        255, 255, 255, 255, 255, 255, 255, 255, // 192..199
-        255, 255, 255, 255, 255, 255, 255, 255, // 200..207
-        255, 255, 255, 255, 255, 255, 255, 255, // 208..215
-        255, 255, 255, 255, 255, 255, 255, 255, // 216..223
-        255, 255, 255, 255, 255, 255, 255, 255, // 224..231
-        255, 255, 255, 255, 255, 255, 255, 255, // 232..239
-        255, 255, 255, 255, 255, 255, 255, 255, // 240..247
-        255, 255, 255, 255, 255, 255, 255, 255  // 248..255
+        255, 255, 255, 255, 255, 255, 255, 255,// 0..7
+        255, 255, 255, 255, 255, 255, 255, 255,// 8..15
+        255, 255, 255, 255, 255, 255, 255, 255,// 16..23
+        255, 255, 255, 255, 255, 255, 255, 255,// 24..31
+        255, 255, 255, 255, 255, 255, 255, 255,// 32..39
+        255, 255, 255, 255, 255, 255, 255, 255,// 40..47
+        255, 255, 255, 255, 255, 255, 255, 255,// 48..55
+        255, 255, 255, 255, 255, 255, 255, 255,// 56..63
+        255, 0, 255, 1, 255, 255, 255, 2,      // 64..71
+        255, 255, 255, 255, 255, 255, 255, 255,// 72..79
+        255, 255, 255, 255, 3, 0, 255, 255,    // 80..87
+        255, 255, 255, 255, 255, 255, 255, 255,// 88..95
+        255, 0, 255, 1, 255, 255, 255, 2,      // 96..103
+        255, 255, 255, 255, 255, 255, 255, 255,// 104..111
+        255, 255, 255, 255, 3, 0, 255, 255,    // 112..119
+        255, 255, 255, 255, 255, 255, 255, 255,// 120..127
+        255, 255, 255, 255, 255, 255, 255, 255,// 128..135
+        255, 255, 255, 255, 255, 255, 255, 255,// 136..143
+        255, 255, 255, 255, 255, 255, 255, 255,// 144..151
+        255, 255, 255, 255, 255, 255, 255, 255,// 152..159
+        255, 255, 255, 255, 255, 255, 255, 255,// 160..167
+        255, 255, 255, 255, 255, 255, 255, 255,// 168..175
+        255, 255, 255, 255, 255, 255, 255, 255,// 176..183
+        255, 255, 255, 255, 255, 255, 255, 255,// 184..191
+        255, 255, 255, 255, 255, 255, 255, 255,// 192..199
+        255, 255, 255, 255, 255, 255, 255, 255,// 200..207
+        255, 255, 255, 255, 255, 255, 255, 255,// 208..215
+        255, 255, 255, 255, 255, 255, 255, 255,// 216..223
+        255, 255, 255, 255, 255, 255, 255, 255,// 224..231
+        255, 255, 255, 255, 255, 255, 255, 255,// 232..239
+        255, 255, 255, 255, 255, 255, 255, 255,// 240..247
+        255, 255, 255, 255, 255, 255, 255, 255 // 248..255
 };
 
 static const uint64_t dimerTab[16] = {
         5015898201438948509U, 5225361804584821669U, 6423762225589857229U, 5783394398799547583U,
         6894017875502584557U, 5959461383092338133U, 4833978511655400893U, 5364573296520205007U,
         9002561594443973180U, 8212239310050454788U, 6941810030513055084U, 7579897184553533982U,
-        7935738758488558809U, 7149836515649299425U, 8257540373175577481U, 8935100007508790523U
-};
+        7935738758488558809U, 7149836515649299425U, 8257540373175577481U, 8935100007508790523U};
 
 static const uint64_t trimerTab[64] = {
         13237172352163388750U, 13451082378889146998U, 12324706752351386142U, 11704099346423635308U,
@@ -106,8 +105,7 @@ static const uint64_t trimerTab[64] = {
         16197524846324948423U, 17136496960994620159U, 18190301010467109527U, 17660752969549176293U,
         18084590689685816247U, 17861669045228104847U, 16591430392433501415U, 17233003275094786965U,
         15689030113991676774U, 15321980360070757470U, 14196301091602199606U, 14727918144983470916U,
-        14660430141886012803U, 14297932370981794491U, 15550237822687034067U, 16044915679164358049U
-};
+        14660430141886012803U, 14297932370981794491U, 15550237822687034067U, 16044915679164358049U};
 
 static const uint64_t tetramerTab[256] = {
         6047278271377325800U, 6842100033257738704U, 5716751207778949560U, 5058261232784932554U,
@@ -173,8 +171,7 @@ static const uint64_t tetramerTab[256] = {
         12277767672444305266U, 12068343612890878026U, 13176021535246260258U, 13816435502572994384U,
         12705517425460601090U, 13640043170446921274U, 12460006250421962322U, 11929369723008524576U,
         10597232027372843475U, 11387585128312430315U, 10351852510211364483U, 9713802769929286129U,
-        9357917249443839798U, 10143859113470169102U, 11342251114164164710U, 10664720106027613972U
-};
+        9357917249443839798U, 10143859113470169102U, 11342251114164164710U, 10664720106027613972U};
 
 // offset for the complement base in the random seeds table
 const uint8_t cpOff = 0x07;
@@ -193,46 +190,45 @@ static const uint64_t seedT = 0x295549f54be24456;
 static const uint64_t seedN = 0x0000000000000000;
 
 static const uint64_t seedTab[256] = {
-        seedN, seedT, seedN, seedG, seedA, seedA, seedN, seedC, // 0..7
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 8..15
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 16..23
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 24..31
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 32..39
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 40..47
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 48..55
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 56..63
-        seedN, seedA, seedN, seedC, seedN, seedN, seedN, seedG, // 64..71
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 72..79
-        seedN, seedN, seedN, seedN, seedT, seedT, seedN, seedN, // 80..87
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 88..95
-        seedN, seedA, seedN, seedC, seedN, seedN, seedN, seedG, // 96..103
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 104..111
-        seedN, seedN, seedN, seedN, seedT, seedT, seedN, seedN, // 112..119
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 120..127
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 128..135
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 136..143
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 144..151
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 152..159
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 160..167
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 168..175
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 176..183
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 184..191
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 192..199
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 200..207
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 208..215
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 216..223
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 224..231
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 232..239
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN, // 240..247
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN  // 248..255
+        seedN, seedT, seedN, seedG, seedA, seedA, seedN, seedC,// 0..7
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 8..15
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 16..23
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 24..31
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 32..39
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 40..47
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 48..55
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 56..63
+        seedN, seedA, seedN, seedC, seedN, seedN, seedN, seedG,// 64..71
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 72..79
+        seedN, seedN, seedN, seedN, seedT, seedT, seedN, seedN,// 80..87
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 88..95
+        seedN, seedA, seedN, seedC, seedN, seedN, seedN, seedG,// 96..103
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 104..111
+        seedN, seedN, seedN, seedN, seedT, seedT, seedN, seedN,// 112..119
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 120..127
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 128..135
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 136..143
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 144..151
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 152..159
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 160..167
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 168..175
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 176..183
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 184..191
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 192..199
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 200..207
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 208..215
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 216..223
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 224..231
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 232..239
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,// 240..247
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN // 248..255
 };
 
 static const uint64_t A33r[33] = {
         0x195c60474, 0x12b8c08e9, 0x571811d3, 0xae3023a6, 0x15c60474c, 0xb8c08e99, 0x171811d32, 0xe3023a65, 0x1c60474ca,
         0x18c08e995, 0x11811d32b, 0x3023a657, 0x60474cae, 0xc08e995c, 0x1811d32b8, 0x1023a6571, 0x474cae3, 0x8e995c6,
         0x11d32b8c, 0x23a65718, 0x474cae30, 0x8e995c60, 0x11d32b8c0, 0x3a657181, 0x74cae302, 0xe995c604, 0x1d32b8c08,
-        0x1a6571811, 0x14cae3023, 0x995c6047, 0x132b8c08e, 0x6571811d, 0xcae3023a
-};
+        0x1a6571811, 0x14cae3023, 0x995c6047, 0x132b8c08e, 0x6571811d, 0xcae3023a};
 
 static const uint64_t A31l[31] = {
         0x3c8bfbb200000000, 0x7917f76400000000, 0xf22feec800000000, 0xe45fdd9200000000, 0xc8bfbb2600000000,
@@ -241,15 +237,13 @@ static const uint64_t A31l[31] = {
         0xfdd93c8a00000000, 0xfbb2791600000000, 0xf764f22e00000000, 0xeec9e45e00000000, 0xdd93c8be00000000,
         0xbb27917e00000000, 0x764f22fe00000000, 0xec9e45fc00000000, 0xd93c8bfa00000000, 0xb27917f600000000,
         0x64f22fee00000000, 0xc9e45fdc00000000, 0x93c8bfba00000000, 0x27917f7600000000, 0x4f22feec00000000,
-        0x9e45fdd800000000
-};
+        0x9e45fdd800000000};
 
 static const uint64_t C33r[33] = {
         0x162a02b4c, 0xc5405699, 0x18a80ad32, 0x115015a65, 0x2a02b4cb, 0x54056996, 0xa80ad32c, 0x15015a658, 0xa02b4cb1,
         0x140569962, 0x80ad32c5, 0x1015a658a, 0x2b4cb15, 0x569962a, 0xad32c54, 0x15a658a8, 0x2b4cb150, 0x569962a0,
         0xad32c540, 0x15a658a80, 0xb4cb1501, 0x169962a02, 0xd32c5405, 0x1a658a80a, 0x14cb15015, 0x9962a02b, 0x132c54056,
-        0x658a80ad, 0xcb15015a, 0x1962a02b4, 0x12c540569, 0x58a80ad3, 0xb15015a6
-};
+        0x658a80ad, 0xcb15015a, 0x1962a02b4, 0x12c540569, 0x58a80ad3, 0xb15015a6};
 
 static const uint64_t C31l[31] = {
         0x3193c18400000000, 0x6327830800000000, 0xc64f061000000000, 0x8c9e0c2200000000, 0x193c184600000000,
@@ -258,16 +252,14 @@ static const uint64_t C31l[31] = {
         0xe0c2319200000000, 0xc184632600000000, 0x8308c64e00000000, 0x6118c9e00000000, 0xc23193c00000000,
         0x1846327800000000, 0x308c64f000000000, 0x6118c9e000000000, 0xc23193c000000000, 0x8463278200000000,
         0x8c64f0600000000, 0x118c9e0c00000000, 0x23193c1800000000, 0x4632783000000000, 0x8c64f06000000000,
-        0x18c9e0c200000000
-};
+        0x18c9e0c200000000};
 
 
 static const uint64_t G33r[33] = {
         0x82572324, 0x104ae4648, 0x95c8c91, 0x12b91922, 0x25723244, 0x4ae46488, 0x95c8c910, 0x12b919220, 0x57232441,
         0xae464882, 0x15c8c9104, 0xb9192209, 0x172324412, 0xe4648825, 0x1c8c9104a, 0x191922095, 0x12324412b, 0x46488257,
         0x8c9104ae, 0x11922095c, 0x324412b9, 0x64882572, 0xc9104ae4, 0x1922095c8, 0x124412b91, 0x48825723, 0x9104ae46,
-        0x122095c8c, 0x4412b919, 0x88257232, 0x1104ae464, 0x2095c8c9, 0x412b9192
-};
+        0x122095c8c, 0x4412b919, 0x88257232, 0x1104ae464, 0x2095c8c9, 0x412b9192};
 
 static const uint64_t G31l[31] = {
         0x20323ed000000000, 0x40647da000000000, 0x80c8fb4000000000, 0x191f68200000000, 0x323ed0400000000,
@@ -276,15 +268,13 @@ static const uint64_t G31l[31] = {
         0x1f68203200000000, 0x3ed0406400000000, 0x7da080c800000000, 0xfb41019000000000, 0xf682032200000000,
         0xed04064600000000, 0xda080c8e00000000, 0xb410191e00000000, 0x6820323e00000000, 0xd040647c00000000,
         0xa080c8fa00000000, 0x410191f600000000, 0x820323ec00000000, 0x40647da00000000, 0x80c8fb400000000,
-        0x10191f6800000000
-};
+        0x10191f6800000000};
 
 static const uint64_t T33r[33] = {
         0x14be24456, 0x97c488ad, 0x12f89115a, 0x5f1222b5, 0xbe24456a, 0x17c488ad4, 0xf89115a9, 0x1f1222b52, 0x1e24456a5,
         0x1c488ad4b, 0x189115a97, 0x11222b52f, 0x24456a5f, 0x488ad4be, 0x9115a97c, 0x1222b52f8, 0x4456a5f1, 0x88ad4be2,
         0x1115a97c4, 0x22b52f89, 0x456a5f12, 0x8ad4be24, 0x115a97c48, 0x2b52f891, 0x56a5f122, 0xad4be244, 0x15a97c488,
-        0xb52f8911, 0x16a5f1222, 0xd4be2445, 0x1a97c488a, 0x152f89115, 0xa5f1222b
-};
+        0xb52f8911, 0x16a5f1222, 0xd4be2445, 0x1a97c488a, 0x152f89115, 0xa5f1222b};
 
 static const uint64_t T31l[31] = {
         0x295549f400000000, 0x52aa93e800000000, 0xa55527d000000000, 0x4aaa4fa200000000, 0x95549f4400000000,
@@ -293,93 +283,90 @@ static const uint64_t T31l[31] = {
         0xa4fa295400000000, 0x49f452aa00000000, 0x93e8a55400000000, 0x27d14aaa00000000, 0x4fa2955400000000,
         0x9f452aa800000000, 0x3e8a555200000000, 0x7d14aaa400000000, 0xfa29554800000000, 0xf452aa9200000000,
         0xe8a5552600000000, 0xd14aaa4e00000000, 0xa295549e00000000, 0x452aa93e00000000, 0x8a55527c00000000,
-        0x14aaa4fa00000000
-};
+        0x14aaa4fa00000000};
 
 static const uint64_t N33r[33] = {
         seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,
         seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,
         seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,
         seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,
-        seedN
-};
+        seedN};
 
 static const uint64_t N31l[31] = {
         seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,
         seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,
         seedN, seedN, seedN, seedN, seedN, seedN, seedN, seedN,
-        seedN, seedN, seedN, seedN, seedN, seedN, seedN
-};
+        seedN, seedN, seedN, seedN, seedN, seedN, seedN};
 
 
 static const uint64_t *msTab33r[256] = {
-        N33r, T33r, N33r, G33r, A33r, A33r, N33r, C33r, // 0..7
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 8..15
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 16..23
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 24..31
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 32..39
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 40..47
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 48..55
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 56..63
-        N33r, A33r, N33r, C33r, N33r, N33r, N33r, G33r, // 64..71
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 72..79
-        N33r, N33r, N33r, N33r, T33r, T33r, N33r, N33r, // 80..87
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 88..95
-        N33r, A33r, N33r, C33r, N33r, N33r, N33r, G33r, // 96..103
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 104..111
-        N33r, N33r, N33r, N33r, T33r, T33r, N33r, N33r, // 112..119
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 120..127
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 128..135
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 136..143
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 144..151
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 152..159
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 160..167
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 168..175
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 176..183
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 184..191
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 192..199
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 200..207
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 208..215
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 216..223
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 224..231
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 232..239
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r, // 240..247
-        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r  // 248..255
+        N33r, T33r, N33r, G33r, A33r, A33r, N33r, C33r,// 0..7
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 8..15
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 16..23
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 24..31
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 32..39
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 40..47
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 48..55
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 56..63
+        N33r, A33r, N33r, C33r, N33r, N33r, N33r, G33r,// 64..71
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 72..79
+        N33r, N33r, N33r, N33r, T33r, T33r, N33r, N33r,// 80..87
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 88..95
+        N33r, A33r, N33r, C33r, N33r, N33r, N33r, G33r,// 96..103
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 104..111
+        N33r, N33r, N33r, N33r, T33r, T33r, N33r, N33r,// 112..119
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 120..127
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 128..135
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 136..143
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 144..151
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 152..159
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 160..167
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 168..175
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 176..183
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 184..191
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 192..199
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 200..207
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 208..215
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 216..223
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 224..231
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 232..239
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r,// 240..247
+        N33r, N33r, N33r, N33r, N33r, N33r, N33r, N33r // 248..255
 };
 
 static const uint64_t *msTab31l[256] = {
-        N31l, T31l, N31l, G31l, A31l, A31l, N31l, C31l, // 0..7
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 8..15
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 16..23
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 24..31
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 32..39
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 40..47
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 48..55
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 56..63
-        N31l, A31l, N31l, C31l, N31l, N31l, N31l, G31l, // 64..71
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 72..79
-        N31l, N31l, N31l, N31l, T31l, T31l, N31l, N31l, // 80..87
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 88..95
-        N31l, A31l, N31l, C31l, N31l, N31l, N31l, G31l, // 96..103
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 104..111
-        N31l, N31l, N31l, N31l, T31l, T31l, N31l, N31l, // 112..119
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 120..127
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 128..135
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 136..143
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 144..151
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 152..159
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 160..167
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 168..175
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 176..183
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 184..191
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 192..199
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 200..207
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 208..215
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 216..223
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 224..231
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 232..239
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l, // 240..247
-        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l  // 248..255
+        N31l, T31l, N31l, G31l, A31l, A31l, N31l, C31l,// 0..7
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 8..15
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 16..23
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 24..31
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 32..39
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 40..47
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 48..55
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 56..63
+        N31l, A31l, N31l, C31l, N31l, N31l, N31l, G31l,// 64..71
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 72..79
+        N31l, N31l, N31l, N31l, T31l, T31l, N31l, N31l,// 80..87
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 88..95
+        N31l, A31l, N31l, C31l, N31l, N31l, N31l, G31l,// 96..103
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 104..111
+        N31l, N31l, N31l, N31l, T31l, T31l, N31l, N31l,// 112..119
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 120..127
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 128..135
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 136..143
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 144..151
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 152..159
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 160..167
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 168..175
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 176..183
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 184..191
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 192..199
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 200..207
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 208..215
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 216..223
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 224..231
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 232..239
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l,// 240..247
+        N31l, N31l, N31l, N31l, N31l, N31l, N31l, N31l // 248..255
 };
 
 // rotate "v" to the left 1 position
@@ -804,7 +791,6 @@ inline uint64_t maskHash(uint64_t &fkVal, uint64_t &rkVal, const char *seedSeq, 
                       msTab33r[(unsigned char) kmerSeq[i]][(k - 1 - i) % 33]);
             rsVal ^= (msTab31l[(unsigned char) kmerSeq[i] & cpOff][i % 31] |
                       msTab33r[(unsigned char) kmerSeq[i] & cpOff][i % 33]);
-
         }
     }
     return (rsVal < fsVal) ? rsVal : fsVal;
@@ -851,7 +837,7 @@ NTS64(const char *kmerSeq, const std::vector<bool> &seed, const unsigned char ch
 
 // strand-aware multihash spaced seed ntHash
 inline bool
-NTMS64(const char *kmerSeq, const std::vector <std::vector<unsigned>> &seedSeq, const unsigned k, const unsigned m,
+NTMS64(const char *kmerSeq, const std::vector<std::vector<unsigned>> &seedSeq, const unsigned k, const unsigned m,
        uint64_t &fhVal, uint64_t &rhVal, unsigned &locN, uint64_t *hVal, bool *hStn) {
     fhVal = rhVal = 0;
     locN = 0;
@@ -884,7 +870,7 @@ NTMS64(const char *kmerSeq, const std::vector <std::vector<unsigned>> &seedSeq, 
 }
 
 // strand-aware multihash spaced seed ntHash for sliding k-mers
-inline void NTMS64(const char *kmerSeq, const std::vector <std::vector<unsigned>> &seedSeq, const unsigned char charOut,
+inline void NTMS64(const char *kmerSeq, const std::vector<std::vector<unsigned>> &seedSeq, const unsigned char charOut,
                    const unsigned char charIn, const unsigned k, const unsigned m, uint64_t &fhVal, uint64_t &rhVal,
                    uint64_t *hVal, bool *hStn) {
     fhVal = NTF64(fhVal, k, charOut, charIn);
@@ -895,7 +881,8 @@ inline void NTMS64(const char *kmerSeq, const std::vector <std::vector<unsigned>
             fsVal ^= (msTab31l[(unsigned char) kmerSeq[*i]][(k - 1 - *i) % 31] |
                       msTab33r[(unsigned char) kmerSeq[*i]][(k - 1 - *i) % 33]);
             rsVal ^= (msTab31l[(unsigned char) kmerSeq[*i] & cpOff][*i % 31] |
-                      msTab33r[(unsigned char) kmerSeq[*i] & cpOff][*i % 33]);;
+                      msTab33r[(unsigned char) kmerSeq[*i] & cpOff][*i % 33]);
+            ;
         }
         hStn[j] = rsVal < fsVal;
         hVal[j] = hStn[j] ? rsVal : fsVal;
@@ -904,7 +891,7 @@ inline void NTMS64(const char *kmerSeq, const std::vector <std::vector<unsigned>
 
 // strand-aware multihash spaced seed ntHash with multiple hashes per seed
 inline bool
-NTMSM64(const char *kmerSeq, const std::vector <std::vector<unsigned>> &seedSeq, const unsigned k, const unsigned m,
+NTMSM64(const char *kmerSeq, const std::vector<std::vector<unsigned>> &seedSeq, const unsigned k, const unsigned m,
         const unsigned m2,
         uint64_t &fhVal, uint64_t &rhVal, unsigned &locN, uint64_t *hVal, bool *hStn) {
     fhVal = rhVal = 0;
@@ -945,7 +932,7 @@ NTMSM64(const char *kmerSeq, const std::vector <std::vector<unsigned>> &seedSeq,
 
 // strand-aware multihash spaced seed ntHash for sliding k-mers with multiple hashes per seed
 inline void
-NTMSM64(const char *kmerSeq, const std::vector <std::vector<unsigned>> &seedSeq, const unsigned char charOut,
+NTMSM64(const char *kmerSeq, const std::vector<std::vector<unsigned>> &seedSeq, const unsigned char charOut,
         const unsigned char charIn,
         const unsigned k, const unsigned m, const unsigned m2, uint64_t &fhVal, uint64_t &rhVal, uint64_t *hVal,
         bool *hStn) {

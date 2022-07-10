@@ -62,7 +62,6 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
                 zip_out_stream2 = gzopen(cmd_info1->out_file_name2_.c_str(), "w");
                 gzsetparams(zip_out_stream2, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
                 gzbuffer(zip_out_stream2, 1024 * 1024);
-
             }
         } else {
 #ifdef Verbose
@@ -101,7 +100,6 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
     producerDone = 0;
     writerDone1 = 0;
     writerDone2 = 0;
-
 }
 
 
@@ -118,8 +116,6 @@ PeQc::~PeQc() {
     if (cmd_info_->add_umi_) {
         delete umier_;
     }
-
-
 }
 
 //
@@ -158,7 +154,7 @@ void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool 
 
     rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize = 1 << 20;
-    if (cmd_info_->seq_len_ <= 200)tmpSize = 1 << 14;
+    if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
     fqFileReader = new rabbit::fq::FastqFileReader(file, *fastq_data_pool, "", in_is_zip_);
     int64_t n_chunks = 0;
     while (true) {
@@ -185,7 +181,7 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
 
     rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize = 1 << 20;
-    if (cmd_info_->seq_len_ <= 200)tmpSize = 1 << 14;
+    if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
     fqFileReader = new rabbit::fq::FastqFileReader(file, *fastqPool, file2, in_is_zip_, tmpSize);
     int n_chunks = 0;
 
@@ -205,8 +201,8 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
             n_chunks++;
             dq.Push(n_chunks, fqdatachunk);
         }
-        delete[]last1.first;
-        delete[]last2.first;
+        delete[] last1.first;
+        delete[] last2.first;
     } else {
         while (true) {
             rabbit::fq::FastqDataPairChunk *fqdatachunk;
@@ -237,8 +233,8 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataPairChunk *fqdatachunk;
     while (dq.Pop(id, fqdatachunk)) {
-        std::vector <neoReference> data1, data2;
-        std::vector <neoReference> pass_data1, pass_data2;
+        std::vector<neoReference> data1, data2;
+        std::vector<neoReference> pass_data1, pass_data2;
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->left_part), data1, true);
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->right_part), data2, true);
         ASSERT(data1.size() == data2.size());
@@ -367,7 +363,6 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                 thread_info->aft_state1_->AddFailN();
                 thread_info->aft_state1_->AddFailN();
             }
-
         }
         if (cmd_info_->write_data_) {
             if (cmd_info_->interleaved_out_) {
@@ -438,8 +433,8 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;
     while (dq.Pop(id, fqdatachunk)) {
-        std::vector <neoReference> data;
-        std::vector <neoReference> pass_data1, pass_data2;
+        std::vector<neoReference> data;
+        std::vector<neoReference> pass_data1, pass_data2;
         rabbit::fq::chunkFormat(fqdatachunk, data, true);
 
         int out_len1 = 0, out_len2 = 0;
@@ -648,7 +643,7 @@ void PeQc::WriteSeFastqTask1() {
             }
             usleep(100);
         }
-        if (overWhile)break;
+        if (overWhile) break;
         now = out_queue1_[queue1P1++];
         queueNumNow1--;
         if (out_is_zip_) {
@@ -710,7 +705,7 @@ void PeQc::WriteSeFastqTask2() {
             }
             usleep(100);
         }
-        if (overWhile)break;
+        if (overWhile) break;
         now = out_queue2_[queue2P1++];
         queueNumNow2--;
         if (out_is_zip_) {
@@ -732,7 +727,6 @@ void PeQc::WriteSeFastqTask2() {
                 }
 
                 delete[] now.first;
-
             }
         } else {
 
@@ -874,8 +868,8 @@ void PeQc::ProcessPeFastq() {
         }
 
         std::thread producer(
-        std::bind(&PeQc::ProducerPeInterFastqTask, this, cmd_info_->in_file_name1_, fastqPool,
-                  std::ref(queue1)));
+                std::bind(&PeQc::ProducerPeInterFastqTask, this, cmd_info_->in_file_name1_, fastqPool,
+                          std::ref(queue1)));
         auto **threads = new std::thread *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             threads[t] = new std::thread(
@@ -894,10 +888,10 @@ void PeQc::ProcessPeFastq() {
         printf("all thrad done\n");
         printf("now merge thread info\n");
 #endif
-        std::vector < State * > pre_vec_state1;
-        std::vector < State * > pre_vec_state2;
-        std::vector < State * > aft_vec_state1;
-        std::vector < State * > aft_vec_state2;
+        std::vector<State *> pre_vec_state1;
+        std::vector<State *> pre_vec_state2;
+        std::vector<State *> aft_vec_state1;
+        std::vector<State *> aft_vec_state2;
 
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             pre_vec_state1.push_back(p_thread_info[t]->pre_state1_);
@@ -957,9 +951,10 @@ void PeQc::ProcessPeFastq() {
             ofs.open(out_name1, ifstream::out);
 
             int cnt1 = 0;
-            ofs << "sequence count" << "\n";
+            ofs << "sequence count"
+                << "\n";
             for (int i = 0; i < pre_hash_num1; i++) {
-                if (!overRepPassed(pre_hash_graph1[i].seq, pre_hash_graph1[i].cnt, spg))continue;
+                if (!overRepPassed(pre_hash_graph1[i].seq, pre_hash_graph1[i].cnt, spg)) continue;
                 ofs << pre_hash_graph1[i].seq << " " << pre_hash_graph1[i].cnt << "\n";
                 cnt1++;
             }
@@ -970,9 +965,10 @@ void PeQc::ProcessPeFastq() {
             string out_name2 = "pe_" + srr_name2 + "_before_ORP_sequences.txt";
             ofs.open(out_name2, ifstream::out);
             int cnt2 = 0;
-            ofs << "sequence count" << "\n";
+            ofs << "sequence count"
+                << "\n";
             for (int i = 0; i < pre_hash_num2; i++) {
-                if (!overRepPassed(pre_hash_graph2[i].seq, pre_hash_graph2[i].cnt, spg))continue;
+                if (!overRepPassed(pre_hash_graph2[i].seq, pre_hash_graph2[i].cnt, spg)) continue;
                 ofs << pre_hash_graph2[i].seq << " " << pre_hash_graph2[i].cnt << "\n";
                 cnt2++;
             }
@@ -984,9 +980,10 @@ void PeQc::ProcessPeFastq() {
             out_name1 = "pe_" + srr_name1 + "_after_ORP_sequences.txt";
             ofs.open(out_name1, ifstream::out);
             cnt1 = 0;
-            ofs << "sequence count" << "\n";
+            ofs << "sequence count"
+                << "\n";
             for (int i = 0; i < aft_hash_num1; i++) {
-                if (!overRepPassed(aft_hash_graph1[i].seq, aft_hash_graph1[i].cnt, spg))continue;
+                if (!overRepPassed(aft_hash_graph1[i].seq, aft_hash_graph1[i].cnt, spg)) continue;
                 ofs << aft_hash_graph1[i].seq << " " << aft_hash_graph1[i].cnt << "\n";
                 cnt1++;
             }
@@ -997,9 +994,10 @@ void PeQc::ProcessPeFastq() {
             out_name2 = "pe_" + srr_name2 + "_after_ORP_sequences.txt";
             ofs.open(out_name2, ifstream::out);
             cnt2 = 0;
-            ofs << "sequence count" << "\n";
+            ofs << "sequence count"
+                << "\n";
             for (int i = 0; i < aft_hash_num2; i++) {
-                if (!overRepPassed(aft_hash_graph2[i].seq, aft_hash_graph2[i].cnt, spg))continue;
+                if (!overRepPassed(aft_hash_graph2[i].seq, aft_hash_graph2[i].cnt, spg)) continue;
                 ofs << aft_hash_graph2[i].seq << " " << aft_hash_graph2[i].cnt << "\n";
                 cnt2++;
             }
@@ -1022,7 +1020,6 @@ void PeQc::ProcessPeFastq() {
             printf("Duplication rate : %.5f %%\n", dupRate * 100.0);
             delete[] dupHist;
             delete[] dupMeanGC;
-
         }
 
         int64_t *merge_insert_size;
@@ -1037,7 +1034,7 @@ void PeQc::ProcessPeFastq() {
             }
             int mx_id = 0;
             for (int i = 0; i < cmd_info_->max_insert_size_; i++) {
-                if (merge_insert_size[i] > merge_insert_size[mx_id])mx_id = i;
+                if (merge_insert_size[i] > merge_insert_size[mx_id]) mx_id = i;
             }
             //printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
             printf("Insert size peak (based on PE overlap analyze): %d\n", mx_id);
@@ -1105,8 +1102,8 @@ void PeQc::ProcessPeFastq() {
                 pigzer2 = new thread(bind(&PeQc::PigzTask2, this));
         }
         std::thread producer(
-        std::bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_,
-                  fastqPool, std::ref(queue1)));
+                std::bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_,
+                          fastqPool, std::ref(queue1)));
         auto **threads = new std::thread *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             threads[t] = new std::thread(
@@ -1141,10 +1138,10 @@ void PeQc::ProcessPeFastq() {
         printf("all thrad done\n");
         printf("now merge thread info\n");
 #endif
-        std::vector < State * > pre_vec_state1;
-        std::vector < State * > pre_vec_state2;
-        std::vector < State * > aft_vec_state1;
-        std::vector < State * > aft_vec_state2;
+        std::vector<State *> pre_vec_state1;
+        std::vector<State *> pre_vec_state2;
+        std::vector<State *> aft_vec_state1;
+        std::vector<State *> aft_vec_state2;
 
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             pre_vec_state1.push_back(p_thread_info[t]->pre_state1_);
@@ -1157,8 +1154,8 @@ void PeQc::ProcessPeFastq() {
         auto aft_state1 = State::MergeStates(aft_vec_state1);
         auto aft_state2 = State::MergeStates(aft_vec_state2);
 #ifdef Verbose
-        if(cmd_info_->do_overrepresentation_){
-            printf("orp cost %f\n",pre_state1->GetOrpCost()+pre_state2->GetOrpCost()+aft_state1->GetOrpCost()+aft_state2->GetOrpCost());
+        if (cmd_info_->do_overrepresentation_) {
+            printf("orp cost %f\n", pre_state1->GetOrpCost() + pre_state2->GetOrpCost() + aft_state1->GetOrpCost() + aft_state2->GetOrpCost());
         }
         printf("merge done\n");
 #endif
@@ -1206,9 +1203,10 @@ void PeQc::ProcessPeFastq() {
             ofs.open(out_name1, ifstream::out);
 
             int cnt1 = 0;
-            ofs << "sequence count" << "\n";
+            ofs << "sequence count"
+                << "\n";
             for (int i = 0; i < pre_hash_num1; i++) {
-                if (!overRepPassed(pre_hash_graph1[i].seq, pre_hash_graph1[i].cnt, spg))continue;
+                if (!overRepPassed(pre_hash_graph1[i].seq, pre_hash_graph1[i].cnt, spg)) continue;
                 ofs << pre_hash_graph1[i].seq << " " << pre_hash_graph1[i].cnt << "\n";
                 cnt1++;
             }
@@ -1219,9 +1217,10 @@ void PeQc::ProcessPeFastq() {
             string out_name2 = "pe_" + srr_name2 + "_before_ORP_sequences.txt";
             ofs.open(out_name2, ifstream::out);
             int cnt2 = 0;
-            ofs << "sequence count" << "\n";
+            ofs << "sequence count"
+                << "\n";
             for (int i = 0; i < pre_hash_num2; i++) {
-                if (!overRepPassed(pre_hash_graph2[i].seq, pre_hash_graph2[i].cnt, spg))continue;
+                if (!overRepPassed(pre_hash_graph2[i].seq, pre_hash_graph2[i].cnt, spg)) continue;
                 ofs << pre_hash_graph2[i].seq << " " << pre_hash_graph2[i].cnt << "\n";
                 cnt2++;
             }
@@ -1233,9 +1232,10 @@ void PeQc::ProcessPeFastq() {
             out_name1 = "pe_" + srr_name1 + "_after_ORP_sequences.txt";
             ofs.open(out_name1, ifstream::out);
             cnt1 = 0;
-            ofs << "sequence count" << "\n";
+            ofs << "sequence count"
+                << "\n";
             for (int i = 0; i < aft_hash_num1; i++) {
-                if (!overRepPassed(aft_hash_graph1[i].seq, aft_hash_graph1[i].cnt, spg))continue;
+                if (!overRepPassed(aft_hash_graph1[i].seq, aft_hash_graph1[i].cnt, spg)) continue;
                 ofs << aft_hash_graph1[i].seq << " " << aft_hash_graph1[i].cnt << "\n";
                 cnt1++;
             }
@@ -1246,9 +1246,10 @@ void PeQc::ProcessPeFastq() {
             out_name2 = "pe_" + srr_name2 + "_after_ORP_sequences.txt";
             ofs.open(out_name2, ifstream::out);
             cnt2 = 0;
-            ofs << "sequence count" << "\n";
+            ofs << "sequence count"
+                << "\n";
             for (int i = 0; i < aft_hash_num2; i++) {
-                if (!overRepPassed(aft_hash_graph2[i].seq, aft_hash_graph2[i].cnt, spg))continue;
+                if (!overRepPassed(aft_hash_graph2[i].seq, aft_hash_graph2[i].cnt, spg)) continue;
                 ofs << aft_hash_graph2[i].seq << " " << aft_hash_graph2[i].cnt << "\n";
                 cnt2++;
             }
@@ -1271,7 +1272,6 @@ void PeQc::ProcessPeFastq() {
             printf("Duplication rate : %.5f %%\n", dupRate * 100.0);
             delete[] dupHist;
             delete[] dupMeanGC;
-
         }
 
         int64_t *merge_insert_size;
@@ -1286,7 +1286,7 @@ void PeQc::ProcessPeFastq() {
             }
             int mx_id = 0;
             for (int i = 0; i < cmd_info_->max_insert_size_; i++) {
-                if (merge_insert_size[i] > merge_insert_size[mx_id])mx_id = i;
+                if (merge_insert_size[i] > merge_insert_size[mx_id]) mx_id = i;
             }
             //printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
             printf("Insert size peak (based on PE overlap analyze): %d\n", mx_id);
@@ -1322,6 +1322,4 @@ void PeQc::ProcessPeFastq() {
                 delete write_thread2;
         }
     }
-
-
 }

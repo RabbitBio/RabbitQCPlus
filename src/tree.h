@@ -55,4 +55,4 @@ void ZopfliCalculateEntropy(const size_t *count, size_t n, double *bitlengths);
 #ifdef __cplusplus
 }
 #endif
-#endif  /* ZOPFLI_TREE_H_ */
+#endif /* ZOPFLI_TREE_H_ */

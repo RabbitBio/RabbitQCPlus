@@ -1,9 +1,9 @@
 #ifndef STHASH__ITERATOR_H
 #define STHASH__ITERATOR_H 1
 
-#include <string>
-#include <limits>
 #include "nthash.hpp"
+#include <limits>
+#include <string>
 
 
 /**
@@ -18,9 +18,8 @@
 class stHashIterator {
 
 public:
-
-    static std::vector <std::vector<unsigned>> parseSeed(const std::vector <std::string> &seedString) {
-        std::vector <std::vector<unsigned>> seedSet;
+    static std::vector<std::vector<unsigned>> parseSeed(const std::vector<std::string> &seedString) {
+        std::vector<std::vector<unsigned>> seedSet;
         for (unsigned i = 0; i < seedString.size(); i++) {
             std::vector<unsigned> sSeed;
             for (unsigned j = 0; j < seedString[i].size(); j++) {
@@ -35,10 +34,9 @@ public:
      * Default constructor. Creates an iterator pointing to
      * the end of the iterator range.
     */
-    stHashIterator() :
-            m_hVec(NULL),
-            m_hStn(NULL),
-            m_pos(std::numeric_limits<std::size_t>::max()) {}
+    stHashIterator() : m_hVec(NULL),
+                       m_hStn(NULL),
+                       m_pos(std::numeric_limits<std::size_t>::max()) {}
 
     /**
      * Constructor.
@@ -48,10 +46,9 @@ public:
      * @param h number of seeds
      * @param h2 number of hashes per seed
     */
-    stHashIterator(const std::string &seq, const std::vector <std::vector<unsigned>> &seed, unsigned h, unsigned h2,
-                   unsigned k, size_t pos = 0) :
-            m_seq(seq), m_seed(seed), m_h(h), m_h2(h2), m_k(k), m_hVec(new uint64_t[h * h2]), m_hStn(new bool[h * h2]),
-            m_pos(pos) {
+    stHashIterator(const std::string &seq, const std::vector<std::vector<unsigned>> &seed, unsigned h, unsigned h2,
+                   unsigned k, size_t pos = 0) : m_seq(seq), m_seed(seed), m_h(h), m_h2(h2), m_k(k), m_hVec(new uint64_t[h * h2]), m_hStn(new bool[h * h2]),
+                                                 m_pos(pos) {
         init();
     }
 
@@ -130,12 +127,11 @@ public:
     }
 
 private:
-
     /** DNA sequence */
     std::string m_seq;
 
     /** Spaced Seed sequence */
-    std::vector <std::vector<unsigned>> m_seed;
+    std::vector<std::vector<unsigned>> m_seed;
 
     /** number of seeds */
     unsigned m_h;

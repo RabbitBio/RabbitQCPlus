@@ -12,18 +12,18 @@
 
 #include "Globals.h"
 
-#include <vector>
-#include <iostream>
 #include <algorithm>
+#include <iostream>
+#include <vector>
 
 #ifdef USE_BOOST_THREAD
 #include <boost/thread.hpp>
 namespace th = boost;
 #else
 
-#include <thread>
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
+#include <thread>
 
 namespace th = std;
 #endif
@@ -32,7 +32,7 @@ namespace rabbit {
 
     namespace core {
 
-/**
+        /**
  * @brief DataPool class 
  * This class provide an data pool for reusing memory space
  */
@@ -61,7 +61,7 @@ namespace rabbit {
              * @param bufferPartsize_ Bytes of each part in DataPool (eg. 1<<22 means 4MB each part)
              */
             TDataPool(uint32 maxPartNum_ = DefaultMaxPartNum, uint32 bufferPartSize_ = DefaultBufferPartSize)
-                    : maxPartNum(maxPartNum_), bufferPartSize(bufferPartSize_), partNum(0) {
+                : maxPartNum(maxPartNum_), bufferPartSize(bufferPartSize_), partNum(0) {
                 availablePartsPool.resize(maxPartNum);
                 allocatedPartsPool.reserve(maxPartNum);
             }
@@ -80,7 +80,7 @@ namespace rabbit {
              * @param part_ the pointer to acquireed space
              */
             void Acquire(DataType *&part_) {
-                th::unique_lock <th::mutex> lock(mutex);
+                th::unique_lock<th::mutex> lock(mutex);
 
                 while (partNum >= maxPartNum) partsAvailableCondition.wait(lock);
 
@@ -105,7 +105,7 @@ namespace rabbit {
              * @param part_ the pointer to be realesed to DataPool
              */
             void Release(const DataType *part_) {
-                th::lock_guard <th::mutex> lock(mutex);
+                th::lock_guard<th::mutex> lock(mutex);
 
                 ASSERT(part_ != NULL);
                 ASSERT(partNum != 0 && partNum <= maxPartNum);
@@ -118,8 +118,8 @@ namespace rabbit {
             }
         };
 
-    }  // namespace core
+    }// namespace core
 
-}  // namespace rabbit
+}// namespace rabbit
 
-#endif  // H_DATA_POOL
+#endif// H_DATA_POOL

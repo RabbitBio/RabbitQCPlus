@@ -6,11 +6,11 @@
 #define RERABBITQC_TGSSTATE_H
 
 #include <cstring>
-#include <vector>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <unordered_map>
+#include <vector>
 
 #include "Reference.h"
 
@@ -99,8 +99,7 @@ public:
     const std::pair<int, double> *GetTop5LengReads() const;
 
     int *GetReadsLens() const;
-
 };
 
 
-#endif //RERABBITQC_TGSSTATE_H
+#endif//RERABBITQC_TGSSTATE_H

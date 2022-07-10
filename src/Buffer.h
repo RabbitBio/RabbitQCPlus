@@ -12,9 +12,9 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
-#include <algorithm>
 #include "Globals.h"
 #include "utils.h"
+#include <algorithm>
 
 namespace rabbit {
 
@@ -22,7 +22,7 @@ namespace rabbit {
 
 #define USE_64BIT_MEMORY 1
 
-/**
+        /**
  * @brief: buffer to store chunk data
  */
         class Buffer {
@@ -104,19 +104,19 @@ namespace rabbit {
             uint64 size;
         };
 
-/**
+        /**
  * @brief: rabbitio chunk data wapper
  */
         struct DataChunk {
             /// default swap buffer size
-            static const uint64 DefaultBufferSize = 1 << 20;  // 1 << 22
+            static const uint64 DefaultBufferSize = 1 << 20;// 1 << 22
 
             /// chunk data
             Buffer data;
             /// chunk size
             uint64 size;
             /// list to matain all sequence chunk in one part
-            DataChunk *next = NULL;  //[haoz:]added for all seqchunk in one part
+            DataChunk *next = NULL;//[haoz:]added for all seqchunk in one part
 
             DataChunk(const uint64 bufferSize_ = DefaultBufferSize) : data(bufferSize_), size(0) {}
 
@@ -131,8 +131,8 @@ namespace rabbit {
             DataChunk *right_part;
         };
 
-    }  // namespace core
+    }// namespace core
 
-}  // namespace rabbit
+}// namespace rabbit
 
-#endif  // BUFFER_H
+#endif// BUFFER_H

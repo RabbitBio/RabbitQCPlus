@@ -5,10 +5,10 @@
 #ifndef RERABBITQC_CMDINFO_H
 #define RERABBITQC_CMDINFO_H
 
+#include "Globals.h"
 #include <map>
 #include <unordered_map>
 #include <vector>
-#include "Globals.h"
 
 class CmdInfo {
 public:
@@ -85,8 +85,8 @@ public:
     //overrepresentation_analysis
     bool do_overrepresentation_;
     int overrepresentation_sampling_;
-    std::vector <std::string> hot_seqs_;
-    std::vector <std::string> hot_seqs2_;
+    std::vector<std::string> hot_seqs_;
+    std::vector<std::string> hot_seqs2_;
     int eva_len_;
     int eva_len2_;
     bool print_ORP_seqs_;
@@ -108,9 +108,7 @@ public:
     bool use_pigz_;
     int pugz_threads_;
     int pigz_threads_;
-
-
 };
 
 
-#endif //RERABBITQC_CMDINFO_H
+#endif//RERABBITQC_CMDINFO_H

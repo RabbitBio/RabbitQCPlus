@@ -39,15 +39,14 @@ uint64_t Duplicate::seq2int(const char *data, int start, int key_len, bool &vali
         }
         ret += valAGCT[data[start + i] & 0x07];
         // if it's not the last one, shift it by 2 bits
-
     }
     return ret;
 }
 
 
 void Duplicate::addRecord(uint32_t key, uint64_t kmer32, uint8_t gc) {
-//    lok.lock();
-//    printf("thread %d is duplicating ...\n", this_thread::get_id());
+    //    lok.lock();
+    //    printf("thread %d is duplicating ...\n", this_thread::get_id());
     //TODO what if kmer1 == kmer2 but gc1 != gc2 (of cause key1 == key2)
     //even if set lock in this function, it is stall thread unsafe.
     //now change code to make it thread safe, but maybe it can be case a logic error.
@@ -60,14 +59,14 @@ void Duplicate::addRecord(uint32_t key, uint64_t kmer32, uint8_t gc) {
             counts_[key]++;
             //add this
             //TODO check it is still logic correct or not
-            if (gcs_[key] > gc)gcs_[key] = gc;
+            if (gcs_[key] > gc) gcs_[key] = gc;
         } else if (dups_[key] > kmer32) {
             dups_[key] = kmer32;
             counts_[key] = 1;
             gcs_[key] = gc;
         }
     }
-//    lok.unlock();
+    //    lok.unlock();
 }
 
 void Duplicate::statRead(neoReference &ref) {
@@ -101,7 +100,7 @@ void Duplicate::statRead(neoReference &ref) {
     __m512i ad1 = _mm512_set1_epi32(1);
 
     __m128i gcC = _mm_set1_epi8('C');
-    __m128i gcT = _mm_set1_epi8('T');
+    __m128i gcT = _mm_set1_epi8('G');
     for (; i + 16 <= ref.lseq; i += 16) {
         __m128i ide = _mm_maskz_loadu_epi8(0xFFFF, data + i);
         __mmask16 mk1 = _mm_cmpeq_epi8_mask(ide, gcC);
@@ -110,19 +109,19 @@ void Duplicate::statRead(neoReference &ref) {
         gcV = _mm512_mask_add_epi32(gcV, mk1, gcV, ad1);
     }
     for (; i < ref.lseq; i++) {
-        if (data[i] == 'C' || data[i] == 'T')
+        if (data[i] == 'C' || data[i] == 'G')
             gc++;
     }
     int cnt[16];
     _mm512_store_epi32(cnt, gcV);
-    for (int k = 0; k < 16; k++)gc += cnt[k];
+    for (int k = 0; k < 16; k++) gc += cnt[k];
 #else
     for (int i = 0; i < ref.lseq; i++) {
-        if (data[i] == 'C' || data[i] == 'T')
+        if (data[i] == 'C' || data[i] == 'G')
             gc++;
     }
 #endif
-//    }
+    //    }
     gc = int(255.0 * gc / ref.lseq + 0.5);
 
     addRecord(key, kmer32, (uint8_t) gc);

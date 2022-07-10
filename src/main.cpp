@@ -1,9 +1,9 @@
-#include <iostream>
 #include "CLI11.hpp"
-#include "seqc.h"
-#include "peqc.h"
-#include "cmdinfo.h"
 #include "Globals.h"
+#include "cmdinfo.h"
+#include "peqc.h"
+#include "seqc.h"
+#include <iostream>
 
 
 int main(int argc, char **argv) {
@@ -91,7 +91,6 @@ int main(int argc, char **argv) {
     stringstream ss;
     for (int i = 0; i < argc; i++) {
         ss << argv[i] << " ";
-
     }
     string command = ss.str();
 
@@ -132,8 +131,8 @@ int main(int argc, char **argv) {
         error_exit("-i/--inFile1 can't be null");
     }
     printf("inFile1 is %s\n", cmd_info.in_file_name1_.c_str());
-    if (cmd_info.isStdout_)cmd_info.out_file_name1_ = "/dev/stdout";
-    if (cmd_info.in_file_name2_.length())printf("inFile2 is %s\n", cmd_info.in_file_name2_.c_str());
+    if (cmd_info.isStdout_) cmd_info.out_file_name1_ = "/dev/stdout";
+    if (cmd_info.in_file_name2_.length()) printf("inFile2 is %s\n", cmd_info.in_file_name2_.c_str());
     if (cmd_info.out_file_name1_.length()) {
         remove(cmd_info.out_file_name1_.c_str());
         printf("outFile1 is %s\n", cmd_info.out_file_name1_.c_str());
@@ -144,7 +143,7 @@ int main(int argc, char **argv) {
     }
 
 
-    if (cmd_info.no_trim_adapter_)cmd_info.trim_adapter_ = false;
+    if (cmd_info.no_trim_adapter_) cmd_info.trim_adapter_ = false;
     ASSERT(cmd_info.no_trim_adapter_ != cmd_info.trim_adapter_);
     if (!cmd_info.trim_adapter_) {
         cmd_info.se_auto_detect_adapter_ = false;
@@ -278,7 +277,6 @@ int main(int argc, char **argv) {
             printf("read1 trim front %d bases\n", cmd_info.trim_front1_);
             cmd_info.trim_front2_ = cmd_info.trim_front1_;
             printf("read2 trim front %d bases\n", cmd_info.trim_front2_);
-
         }
         if (cmd_info.trim_tail1_) {
             printf("read1 trim tail %d bases\n", cmd_info.trim_tail1_);

@@ -1,12 +1,11 @@
 #include <cstdio>
-#include <vector>
 #include <map>
-#include <cstdio>
+#include <vector>
 
-#include "Reference.h"
-#include "Formater.h"
 #include "Buffer.h"
 #include "FastxStream.h"
+#include "Formater.h"
+#include "Reference.h"
 
 using namespace std;
 
@@ -14,8 +13,8 @@ namespace rabbit {
 
     namespace fa {
 
-// FIXME:support enter = \n only
-/**
+        // FIXME:support enter = \n only
+        /**
  * @brief Get Sequence from chunk start at position
  * @param chunk The data to get sequence from
  * @param pos start postion at `chunk` data
@@ -53,8 +52,8 @@ namespace rabbit {
             return "";
         }
 
-// only support uinx-like '\n'
-/**
+        // only support uinx-like '\n'
+        /**
  * @brief Get a new line from chunk start at position
  * @param chunk The data to get line from
  * @param pos start postion at `chunk` data
@@ -78,13 +77,13 @@ namespace rabbit {
             return string(data + start_pos, pos - start_pos);
         }
 
-/**
+        /**
  * @brief Format FASTA chunks(listed) into a vector os `Refenece` struct
  * @param fachunk Source FASTA chunk data to format
  * @param refs Destation vector to store at
  * @return Total number of Reference instance in vector refs.
  */
-        int chunkListFormat(FastaChunk &fachunk, vector <Reference> &refs) {
+        int chunkListFormat(FastaChunk &fachunk, vector<Reference> &refs) {
             auto tmp = fachunk.chunk;
             uint64 chunk_seq_start = fachunk.start;
             Reference *current = NULL;
@@ -105,7 +104,7 @@ namespace rabbit {
                         }
                         current = new Reference();
                         int str_pos = line.find_first_of(' ');
-                        current->name = line.substr(1, str_pos - 1);  // remove '>' and ' '
+                        current->name = line.substr(1, str_pos - 1);// remove '>' and ' '
                         if (str_pos < line.size()) current->comment = line.substr(str_pos + 1);
                         current->gid = chunk_seq_start;
                         current->seq = "";
@@ -128,13 +127,13 @@ namespace rabbit {
             return refs.size();
         }
 
-/**
+        /**
  * @brief Format FASTA chunks into a vector os `Refenece` struct
  * @param fachunk Source FASTA chunk data to format
  * @param refs Destation vector to store at
  * @return Total number of Reference instance in vector refs.
  */
-        int chunkFormat(FastaChunk &fachunk, vector <Reference> &refs) {
+        int chunkFormat(FastaChunk &fachunk, vector<Reference> &refs) {
             uint64 pos = 0;
             bool done = false;
             // cerr << "into chunkFormat" << endl;
@@ -149,19 +148,19 @@ namespace rabbit {
             return refs.size();
         }
 
-// design to filter out kmer apps
-/**
+        // design to filter out kmer apps
+        /**
  * @brief Format FASTA chunks into a vector of `Refenece` struct (filter out sequence length < kmerSize)
  * @param fachunk Source FASTA chunk data to format
  * @param refs Destation vector to store at
  * @param kmerSize Formated Reference's sequence length < kmerSize will be dropout
  * @return Total number of Reference instance in vector refs.
  */
-        int chunkFormat(FastaChunk &fachunk, vector <Reference> &refs, int kmerSize) {
+        int chunkFormat(FastaChunk &fachunk, vector<Reference> &refs, int kmerSize) {
             uint64 pos = 0;
             bool done = false;
             // cerr << "into chunkFormat" << endl;
-            uint64 short_count = 0;  // counter for seqs shorter than kmer
+            uint64 short_count = 0;// counter for seqs shorter than kmer
             while (true) {
                 Reference ref = getNextSeq(fachunk, done, pos);
                 if (done) break;
@@ -176,7 +175,7 @@ namespace rabbit {
             return refs.size();
         }
 
-/**
+        /**
  * @brief Get next `Refenece` data
  * @param fachunk Source FASTA chunk data to format
  * @param done If reach the end of fachunk
@@ -204,7 +203,7 @@ namespace rabbit {
             } else {
                 string line = getLine(fachunk.chunk, pos);
                 int str_pos = line.find_first_of(' ');
-                ref.name = line.substr(1, str_pos - 1);  // remove '>' and ' '
+                ref.name = line.substr(1, str_pos - 1);// remove '>' and ' '
                 if (str_pos < line.size()) ref.comment = line.substr(str_pos + 1);
                 // cerr << "name: " << ref.name << endl << flush;
                 ref.seq = getSequence(fachunk.chunk, pos);
@@ -217,7 +216,7 @@ namespace rabbit {
             return ref;
         }
 
-    }  // namespace fa
+    }// namespace fa
 
     namespace fq {
 
@@ -228,14 +227,14 @@ namespace rabbit {
             std::cout << std::string((char *) ref.base + ref.pqual, ref.lqual) << std::endl;
         }
 
-/**
+        /**
  * @brief Format FASTQ chunks into a vector of `neoRefenece` struct (no-copy format)
  * @param fqchunk Source FASTQ chunk data to format
  * @param data Destation vector to store at
  * @param mHasQuality If the FASTQ data has quality infomation (default: true)
  * @return Total number of neoReference instance in vector `data`.
  */
-        int chunkFormat(FastqChunk *fqChunk, std::vector <neoReference> &data, bool mHasQuality = true) {
+        int chunkFormat(FastqChunk *fqChunk, std::vector<neoReference> &data, bool mHasQuality = true) {
             FastqDataChunk *chunk = fqChunk->chunk;
             uint64_t seq_count = 0;
             uint64_t line_count = 0;
@@ -262,7 +261,7 @@ namespace rabbit {
             return seq_count;
         }
 
-        int chunkFormat(FastqDataChunk *fqDataChunk, std::vector <neoReference> &data, bool mHasQuality = true) {
+        int chunkFormat(FastqDataChunk *fqDataChunk, std::vector<neoReference> &data, bool mHasQuality = true) {
             FastqDataChunk *chunk = fqDataChunk;
             uint64_t seq_count = 0;
             uint64_t line_count = 0;
@@ -281,7 +280,7 @@ namespace rabbit {
                 neoGetLine(chunk, pos_, ref.lstrand);
                 ref.pqual = pos_;
                 neoGetLine(chunk, pos_, ref.lqual);
-//                data[seq_count] = ref;
+                //                data[seq_count] = ref;
                 data.emplace_back(ref);
                 seq_count++;
                 // print_read(ref);
@@ -290,14 +289,14 @@ namespace rabbit {
             return seq_count;
         }
 
-/**
+        /**
  * @brief Format FASTQ chunks into a vector of `Refenece` struct (copy format)
  * @param fqchunk Source FASTQ chunk data to format
  * @param data Destation vector to store at
  * @param mHasQuality If the FASTQ data has quality infomation (default: true)
  * @return Total number of Reference instance in vector `data`.
  */
-        int chunkFormat(FastqChunk *fqChunk, std::vector <Reference> &data, bool mHasQuality = true) {
+        int chunkFormat(FastqChunk *fqChunk, std::vector<Reference> &data, bool mHasQuality = true) {
             //format a whole chunk and return number of reads
             FastqDataChunk *chunk = fqChunk->chunk;
             int seq_count = 0;
@@ -342,7 +341,7 @@ namespace rabbit {
             return seq_count;
         }
 
-        int chunkFormat(FastqDataChunk *fqDataChunk, std::vector <Reference> &data, bool mHasQuality = true) {
+        int chunkFormat(FastqDataChunk *fqDataChunk, std::vector<Reference> &data, bool mHasQuality = true) {
             //format a whole chunk and return number of reads
             FastqDataChunk *chunk = fqDataChunk;
             int seq_count = 0;
@@ -426,6 +425,6 @@ namespace rabbit {
             }
             return 0;
         }
-    }  // namespace fq
+    }// namespace fq
 
-}  // namespace rabbit
+}// namespace rabbit

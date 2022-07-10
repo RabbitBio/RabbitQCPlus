@@ -2,8 +2,8 @@
 // Created by ylf9811 on 2021/7/14.
 //
 
-#include <fstream>
 #include "polyx.h"
+#include <fstream>
 
 PolyX::PolyX() {
 }
@@ -107,23 +107,23 @@ void PolyX::trimPolyX(neoReference &ref, int compareReq) {
 
     // has polyX
     if (pos + 1 >= compareReq && pos < rlen) {
-//        std::string namer = std::string(reinterpret_cast<const char *>(ref.base + ref.pname), ref.lname);
-//
-//        static int cnt = 0;
-//        static bool okk = 0;
-//        static std::ofstream out_stream_;
-//        if (okk == 0) {
-//            out_stream_.open("info.txt");
-//            okk = 1;
-//        }
-//        out_stream_ << "name " << namer << " " << cnt << " " << pos << " ";
-//        if (cnt == 45691) {
-//            out_stream_ << std::string(reinterpret_cast<const char *>(ref.base + ref.pseq), ref.lseq) << std::endl;
-//            out_stream_ << atcgNumbers[0] << " " << atcgNumbers[1] << " " << atcgNumbers[2] << " " << atcgNumbers[3]
-//                        << std::endl;
-//            out_stream_ << ref.lseq << std::endl;
-//        }
-//        cnt++;
+        //        std::string namer = std::string(reinterpret_cast<const char *>(ref.base + ref.pname), ref.lname);
+        //
+        //        static int cnt = 0;
+        //        static bool okk = 0;
+        //        static std::ofstream out_stream_;
+        //        if (okk == 0) {
+        //            out_stream_.open("info.txt");
+        //            okk = 1;
+        //        }
+        //        out_stream_ << "name " << namer << " " << cnt << " " << pos << " ";
+        //        if (cnt == 45691) {
+        //            out_stream_ << std::string(reinterpret_cast<const char *>(ref.base + ref.pseq), ref.lseq) << std::endl;
+        //            out_stream_ << atcgNumbers[0] << " " << atcgNumbers[1] << " " << atcgNumbers[2] << " " << atcgNumbers[3]
+        //                        << std::endl;
+        //            out_stream_ << ref.lseq << std::endl;
+        //        }
+        //        cnt++;
 
         // find the poly
         int poly;
@@ -137,9 +137,9 @@ void PolyX::trimPolyX(neoReference &ref, int compareReq) {
         char polyBase = atcgBases[poly];
         while (data[rlen - pos - 1] != polyBase && pos >= 0)
             pos--;
-//        out_stream_ << pos << std::endl;
+        //        out_stream_ << pos << std::endl;
         ref.lseq = rlen - pos - 1;
         ref.lqual = rlen - pos - 1;
-//          r->resize(rlen - pos - 1);
+        //          r->resize(rlen - pos - 1);
     }
 }

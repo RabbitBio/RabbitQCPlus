@@ -77,4 +77,4 @@ void ZopfliBlockSplitSimple(const unsigned char *in,
 #ifdef __cplusplus
 }
 #endif
-#endif  /* ZOPFLI_BLOCKSPLITTER_H_ */
+#endif /* ZOPFLI_BLOCKSPLITTER_H_ */

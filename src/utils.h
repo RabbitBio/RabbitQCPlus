@@ -152,7 +152,7 @@ namespace rabbit {
         }
 
         inline uint64_t seq2int(const char *data, int start, int keylen, bool &valid) {
-            uint8_t mask = 0x06; //not general only works for DNA sequences, it's just a trick.
+            uint8_t mask = 0x06;//not general only works for DNA sequences, it's just a trick.
             uint64_t res = 0;
             const int end = start + keylen;
             for (int i = start; i < end; i++) {
@@ -171,7 +171,7 @@ namespace rabbit {
 
         const int revmap[4] = {2, 3, 0, 1};
 
-//NOTICE: ensure there is no 'N' in key
+        //NOTICE: ensure there is no 'N' in key
         inline uint64_t kmer_reverse_complete(uint64_t key, int keylen) {
             uint64_t res;
             for (int i = 0; i < keylen; ++i) {
@@ -182,7 +182,7 @@ namespace rabbit {
             return res;
         }
 
-//^0x02 -> complete
+        //^0x02 -> complete
         inline void reverse_complement(const char *src, char *dest, int length) {
             char table[4] = {'T', 'G', 'A', 'C'};
             for (int i = 0; i < length; i++) {
@@ -214,8 +214,8 @@ namespace rabbit {
                 c &= 0xdf;
         }
 
-    }  // namespace core
+    }// namespace core
 
-}  // namespace rabbit
+}// namespace rabbit
 
 #endif

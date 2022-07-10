@@ -47,10 +47,10 @@ void ZopfliResetHash(size_t window_size, ZopfliHash *h) {
 
     h->val = 0;
     for (i = 0; i < 65536; i++) {
-        h->head[i] = -1;  /* -1 indicates no head so far. */
+        h->head[i] = -1; /* -1 indicates no head so far. */
     }
     for (i = 0; i < window_size; i++) {
-        h->prev[i] = i;  /* If prev[j] == j, then prev[j] is uninitialized. */
+        h->prev[i] = i; /* If prev[j] == j, then prev[j] is uninitialized. */
         h->hashval[i] = -1;
     }
 
@@ -104,12 +104,12 @@ void ZopfliUpdateHash(const unsigned char *array, size_t pos, size_t end,
     size_t amount = 0;
 #endif
 
-    UpdateHashValue(h, pos + ZOPFLI_MIN_MATCH <= end ?
-                       array[pos + ZOPFLI_MIN_MATCH - 1] : 0);
+    UpdateHashValue(h, pos + ZOPFLI_MIN_MATCH <= end ? array[pos + ZOPFLI_MIN_MATCH - 1] : 0);
     h->hashval[hpos] = h->val;
     if (h->head[h->val] != -1 && h->hashval[h->head[h->val]] == h->val) {
         h->prev[hpos] = h->head[h->val];
-    } else h->prev[hpos] = hpos;
+    } else
+        h->prev[hpos] = hpos;
     h->head[h->val] = hpos;
 
 #ifdef ZOPFLI_HASH_SAME
@@ -129,7 +129,8 @@ void ZopfliUpdateHash(const unsigned char *array, size_t pos, size_t end,
     h->hashval2[hpos] = h->val2;
     if (h->head2[h->val2] != -1 && h->hashval2[h->head2[h->val2]] == h->val2) {
         h->prev2[hpos] = h->head2[h->val2];
-    } else h->prev2[hpos] = hpos;
+    } else
+        h->prev2[hpos] = hpos;
     h->head2[h->val2] = hpos;
 #endif
 }

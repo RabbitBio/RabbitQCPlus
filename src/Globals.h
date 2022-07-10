@@ -18,10 +18,10 @@ Version: 2.00
 //
 #if defined(_WIN32)
 #define _CRT_SECURE_NO_WARNINGS
-#pragma warning(disable : 4996)  // D_SCL_SECURE
-#pragma warning(disable : 4244)  // conversion uint64 to uint32
+#pragma warning(disable : 4996)// D_SCL_SECURE
+#pragma warning(disable : 4244)// conversion uint64 to uint32
 #pragma warning(disable : 4267)
-#pragma warning(disable : 4800)  // conversion byte to bool
+#pragma warning(disable : 4800)// conversion byte to bool
 #endif
 
 // assertions
@@ -32,7 +32,7 @@ Version: 2.00
 
 #define ASSERT(x) assert(x)
 #else
-#define ASSERT(x) (void)(x)
+#define ASSERT(x) (void) (x)
 #endif
 #define UMI_LOC_NONE 0
 #define UMI_LOC_INDEX1 1
@@ -42,14 +42,14 @@ Version: 2.00
 #define UMI_LOC_PER_INDEX 5
 #define UMI_LOC_PER_READ 6
 
-#include <string>
-#include <stdexcept>
-#include <sys/time.h>
-#include <atomic>
-#include "readerwriterqueue.h"
-#include "concurrentqueue.h"
 #include "atomicops.h"
+#include "concurrentqueue.h"
+#include "readerwriterqueue.h"
 #include "util.h"
+#include <atomic>
+#include <stdexcept>
+#include <string>
+#include <sys/time.h>
 
 
 inline double GetTime() {
@@ -89,13 +89,13 @@ inline string PaseFileName(string file_name) {
     int p1 = n_size;
     int p2 = n_size;
     int p3 = n_size;
-    if (file_name.find(".fastq") != string::npos)p1 = file_name.find(".fastq");
-    if (file_name.find(".fq") != string::npos)p2 = file_name.find(".fq");
-    if (file_name.find(".sra") != string::npos)p3 = file_name.find(".sra");
+    if (file_name.find(".fastq") != string::npos) p1 = file_name.find(".fastq");
+    if (file_name.find(".fq") != string::npos) p2 = file_name.find(".fq");
+    if (file_name.find(".sra") != string::npos) p3 = file_name.find(".sra");
     suffix_pos = min(suffix_pos, p1);
     suffix_pos = min(suffix_pos, p2);
     suffix_pos = min(suffix_pos, p3);
-    if (prefix_pos >= suffix_pos)return file_name;
+    if (prefix_pos >= suffix_pos) return file_name;
     return file_name.substr(prefix_pos, suffix_pos - prefix_pos);
 }
 
@@ -134,12 +134,12 @@ namespace rabbit {
 
         ~RioException() throw() {}
 
-        const char *what() const throw()  // for std::exception interface
+        const char *what() const throw()// for std::exception interface
         {
             return message.c_str();
         }
     };
 
-}  // namespace rabbit
+}// namespace rabbit
 
-#endif  // H_GLOBALS
+#endif// H_GLOBALS

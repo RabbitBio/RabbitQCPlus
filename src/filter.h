@@ -32,4 +32,4 @@ private:
 };
 
 
-#endif //RERABBITQC_FILTER_H
+#endif//RERABBITQC_FILTER_H

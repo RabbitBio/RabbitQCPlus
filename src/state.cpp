@@ -70,8 +70,8 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
         double t0 = GetTime();
         head_hash_graph_ = new int[(1 << MODB) + 100];
         bf_zone_ = new int64_t[(1 << MODB) / 64 + 100];
-        for (int i = 0; i < (1 << MODB) + 10; i++)head_hash_graph_[i] = -1;
-        for (int i = 0; i < (1 << MODB) / 64 + 10; i++)bf_zone_[i] = 0;
+        for (int i = 0; i < (1 << MODB) + 10; i++) head_hash_graph_[i] = -1;
+        for (int i = 0; i < (1 << MODB) / 64 + 10; i++) bf_zone_[i] = 0;
         if (is_read2_) {
             hash_graph_ = new node[cmd_info->hot_seqs2_.size()];
             t0 = GetTime();
@@ -88,7 +88,6 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
 
         //	HashState();
     }
-
 }
 
 
@@ -105,7 +104,6 @@ State::~State() {
         delete[] hash_graph_;
         delete[] head_hash_graph_;
     }
-
 }
 
 #define BB 233ll
@@ -128,29 +126,28 @@ void State::HashInsert(const char *seq, int len, int eva_len) {
 
 void State::HashState() {
     int cntTotal[100];
-    for (int i = 0; i < 100; i++)cntTotal[i] = 0;
+    for (int i = 0; i < 100; i++) cntTotal[i] = 0;
     for (int ha = 0; ha < (1 << MODB); ha++) {
         int cnt = 0;
         for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre) {
             cnt++;
         }
         cntTotal[cnt]++;
-
     }
     printf("print hash table state info ===========================\n");
     for (int i = 1; i < 100; i++) {
-        if (cntTotal[i])printf("%d %d\n", i, cntTotal[i]);
+        if (cntTotal[i]) printf("%d %d\n", i, cntTotal[i]);
     }
     printf("=======================================================\n");
-
 }
 
 inline bool State::HashQueryAndAdd(uint64_t now, int offset, int len, int eva_len) {
     over_representation_qcnt_++;
     int ha_big = now & ((1 << MODB) - 1);
     bool pass_bf = bf_zone_[ha_big >> 6] & (1ll << (ha_big & 0x3f));
-    if (!pass_bf)return 0;
-    else over_representation_pcnt_++;
+    if (!pass_bf) return 0;
+    else
+        over_representation_pcnt_++;
     int ha = now & ((1 << MODB) - 1);
     for (int i = head_hash_graph_[ha]; i != -1; i = hash_graph_[i].pre) {
         //over_representation_pcnt_++;
@@ -190,7 +187,6 @@ void State::ExtendBuffer(int old_len, int new_len) {
     memcpy(newBuf, len_cnt_, sizeof(int64_t) * old_len);
     delete len_cnt_;
     len_cnt_ = newBuf;
-
 }
 
 
@@ -223,7 +219,7 @@ void State::StateInfo(neoReference &ref) {
     int qul_tot = 0;
     int kmer = 0;
     int phredSub = 33;
-    if (cmd_info_->isPhred64_)phredSub = 64;
+    if (cmd_info_->isPhred64_) phredSub = 64;
 
 #ifdef Vec512
     int i = 0;
@@ -284,10 +280,10 @@ void State::StateInfo(neoReference &ref) {
         _mm512_i32scatter_epi64(p4, idx, v4, 8);
 
         for (int j = i; j < i + 8; j++) {
-            if (bases[j] == 'N')flag = 5;
+            if (bases[j] == 'N') flag = 5;
             int val = valAGCT[bases[j] & 0x07];
             kmer = ((kmer << 2) & 0x3FC) | val;
-            if (flag <= 0)kmer_[kmer]++;
+            if (flag <= 0) kmer_[kmer]++;
             flag--;
         }
     }
@@ -297,7 +293,7 @@ void State::StateInfo(neoReference &ref) {
         qul_tot += tmp[ii];
     for (; i < slen; i++) {
         char b = bases[i] & 0x07;
-        if (b == 3 || b == 7)gc_cnt++;
+        if (b == 3 || b == 7) gc_cnt++;
         int q = std::max(0, quals[i] - phredSub);
         qul_tot += q;
         if (q >= 30) {
@@ -308,10 +304,10 @@ void State::StateInfo(neoReference &ref) {
         }
         pos_cnt_[i * 8 + b]++;
         pos_qul_[i * 8 + b] += q;
-        if (bases[i] == 'N')flag = 5;
+        if (bases[i] == 'N') flag = 5;
         int val = valAGCT[bases[i] & 0x07];
         kmer = ((kmer << 2) & 0x3FC) | val;
-        if (flag <= 0)kmer_[kmer]++;
+        if (flag <= 0) kmer_[kmer]++;
         flag--;
     }
 
@@ -319,7 +315,7 @@ void State::StateInfo(neoReference &ref) {
 #elif Vec256
     for (int i = 0; i < slen; i++) {
         char b = bases[i] & 0x07;
-        if (b == 3 || b == 7)gc_cnt++;
+        if (b == 3 || b == 7) gc_cnt++;
         int q = std::max(0, quals[i] - phredSub);
 
         qul_tot += q;
@@ -331,17 +327,16 @@ void State::StateInfo(neoReference &ref) {
         }
         pos_cnt_[i * 8 + b]++;
         pos_qul_[i * 8 + b] += q;
-        if (bases[i] == 'N')flag = 5;
+        if (bases[i] == 'N') flag = 5;
         int val = valAGCT[b];
         kmer = ((kmer << 2) & 0x3FC) | val;
-        if (flag <= 0)kmer_[kmer]++;
+        if (flag <= 0) kmer_[kmer]++;
         flag--;
-
     }
 #else
     for (int i = 0; i < slen; i++) {
         char b = bases[i] & 0x07;
-        if (b == 3 || b == 7)gc_cnt++;
+        if (b == 3 || b == 7) gc_cnt++;
         int q = std::max(0, quals[i] - phredSub);
 
         qul_tot += q;
@@ -353,12 +348,11 @@ void State::StateInfo(neoReference &ref) {
         }
         pos_cnt_[i * 8 + b]++;
         pos_qul_[i * 8 + b] += q;
-        if (bases[i] == 'N')flag = 5;
+        if (bases[i] == 'N') flag = 5;
         int val = valAGCT[b];
         kmer = ((kmer << 2) & 0x3FC) | val;
-        if (flag <= 0)kmer_[kmer]++;
+        if (flag <= 0) kmer_[kmer]++;
         flag--;
-
     }
 #endif
 
@@ -407,30 +401,32 @@ HashQueryAndAdd(hVal, i+1, steps[s], eva_len);
 void State::StateORP(neoReference &ref) {
     int slen = ref.lseq;
     int eva_len = 0;
-    if (is_read2_)eva_len = cmd_info_->eva_len2_;
-    else eva_len = cmd_info_->eva_len_;
+    if (is_read2_) eva_len = cmd_info_->eva_len2_;
+    else
+        eva_len = cmd_info_->eva_len_;
     int steps[5] = {10, 20, 40, 100, std::min(150, eva_len - 2)};
     char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
     std::string seqs = std::string(seq, slen);
     for (int s = 0; s < 5; s++) {
-        if (steps[s] > slen)continue;
+        if (steps[s] > slen) continue;
         int k = steps[s];
         uint64_t hVal = NT64(seq, k);
         int lim = 0;
         bool res = HashQueryAndAdd(hVal, 0, steps[s], eva_len);
-        if (res)lim = k;
+        if (res) lim = k;
         for (int i = 0; i < slen - k - 1; i++) {
             hVal = NTF64(hVal, k, seq[i], seq[i + k]);
             if (lim == 0) {
                 res = HashQueryAndAdd(hVal, i + 1, steps[s], eva_len);
-                if (res)lim = k;
-            } else lim--;
+                if (res) lim = k;
+            } else
+                lim--;
         }
     }
 }
 
 void State::Summarize() {
-    if (has_summarize_)return;
+    if (has_summarize_) return;
 
     kmer_min_ = kmer_[0];
     kmer_max_ = kmer_[0];
@@ -460,8 +456,9 @@ State *State::MergeStates(const std::vector<State *> &states) {
     auto *res_state = new State(states[0]->cmd_info_, now_seq_len, states[0]->qul_range_, states[0]->is_read2_);
     res_state->real_seq_len_ = now_seq_len;
     int eva_len = 0;
-    if (states[0]->is_read2_)eva_len = states[0]->cmd_info_->eva_len2_;
-    else eva_len = states[0]->cmd_info_->eva_len_;
+    if (states[0]->is_read2_) eva_len = states[0]->cmd_info_->eva_len2_;
+    else
+        eva_len = states[0]->cmd_info_->eva_len_;
 
     for (auto item: states) {
         res_state->orpCost = max(res_state->orpCost, item->orpCost);
@@ -525,7 +522,6 @@ State *State::MergeStates(const std::vector<State *> &states) {
                 }
             }
         }
-
     }
 
     res_state->avg_len = 1.0 * res_state->tot_bases_ / res_state->lines_;
@@ -554,7 +550,6 @@ void State::PrintAdapterToFile(const State *state) {
         tot_trimmed_base += (item.first.length()) * (item.second);
     }
     ooff.close();
-
 }
 
 void State::PrintFilterResults(const State *state) {
@@ -568,9 +563,9 @@ void State::PrintFilterResults(const State *state) {
     if (state->cmd_info_->print_what_trimmed_)
         printf("trimmed adapter read number: %lld (all trimmed adapter (len >= %d) can be find in *_trimmed_adapters.txt)\n",
                state->trim_adapter_, state->cmd_info_->adapter_len_lim_);
-    else printf("trimmed adapter read number: %lld \n", state->trim_adapter_);
+    else
+        printf("trimmed adapter read number: %lld \n", state->trim_adapter_);
     printf("trimmed base number due to adapter: %lld\n", state->trim_adapter_bases_);
-
 }
 
 /**
@@ -612,8 +607,6 @@ void State::PrintStates(const State *state) {
     //    for (int i = 0; i < state->real_seq_len_; i++) {
     //        printf("seq_len %d, ref_number %lld\n", i + 1, state->len_cnt_[i]);
     //    }
-
-
 }
 
 int64_t State::GetQ20Bases() const {

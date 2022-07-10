@@ -40,8 +40,7 @@ int toptind = 1, topterr = 1, toptopt;
  *	- Option-related arguments retained in argv, not nulled out
  *	- '+' and '-' characters in optstring
  */
-int
-tgetopt(int argc, tchar *argv[], const tchar *optstring) {
+int tgetopt(int argc, tchar *argv[], const tchar *optstring) {
     static tchar empty[1];
     static tchar *nextchar;
     static bool done;

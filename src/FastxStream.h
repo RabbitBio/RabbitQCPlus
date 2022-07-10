@@ -15,24 +15,24 @@ last modified by Zekun Yin 2020/5/18
 
 #include "Buffer.h"
 #include "FastxChunk.h"
+#include "FileReader.h"
+#include "Reference.h"
 #include "utils.h"
 #include <iostream>
 #include <string>
-#include <zlib.h>  //support gziped files, functional but inefficient
-#include "Reference.h"
-#include "FileReader.h"
+#include <zlib.h>//support gziped files, functional but inefficient
 
 #if defined(_WIN32)
 #define _CRT_SECURE_NO_WARNINGS
-#pragma warning(disable : 4996)  // D_SCL_SECURE
-#pragma warning(disable : 4244)  // conversion uint64 to uint32
+#pragma warning(disable : 4996)// D_SCL_SECURE
+#pragma warning(disable : 4244)// conversion uint64 to uint32
 //# pragma warning(disable : 4267)
 #define FOPEN fopen
 #define FDOPEN fdopen
 #define FSEEK _fseeki64
 #define FTELL _ftelli64
 #define FCLOSE fclose
-#elif __APPLE__  // Apple by default suport 64 bit file operations (Darwin 10.5+)
+#elif __APPLE__// Apple by default suport 64 bit file operations (Darwin 10.5+)
 #define FOPEN fopen
 #define FDOPEN fdopen
 #define FSEEK fseek
@@ -69,7 +69,7 @@ namespace rabbit {
         class FastaFileReader {
         private:
             /// Swap buffer size (16M default)
-            static const uint32 SwapBufferSize = 1 << 26;  // 16MB
+            static const uint32 SwapBufferSize = 1 << 26;// 16MB
             /// Fasta data data pool
             FastaDataPool &recordsPool;
 
@@ -83,14 +83,14 @@ namespace rabbit {
              */
             FastaFileReader(const std::string &fileName_, FastaDataPool &pool_, uint64 halo = 21,
                             bool isZippedNew = false)
-                    : swapBuffer(SwapBufferSize),
-                      bufferSize(0),
-                      eof(false),
-                      usesCrlf(false),
-                      totalSeqs(0),
-                      mHalo(halo),
-                      isZipped(isZippedNew),
-                      recordsPool(pool_) {
+                : swapBuffer(SwapBufferSize),
+                  bufferSize(0),
+                  eof(false),
+                  usesCrlf(false),
+                  totalSeqs(0),
+                  mHalo(halo),
+                  isZipped(isZippedNew),
+                  recordsPool(pool_) {
                 // if(ends_with(fileName_,".gz"))
                 if (isZipped) {
                     mZipFile = gzopen(fileName_.c_str(), "r");
@@ -102,7 +102,8 @@ namespace rabbit {
                     if (mFile == NULL) {
                         throw RioException(
                                 ("Can not open file to read: " +
-                                 fileName_).c_str());  //--------------need to change----------//
+                                 fileName_)
+                                        .c_str());//--------------need to change----------//
                     }
                 }
             }
@@ -115,25 +116,25 @@ namespace rabbit {
              * @param isZippedNew if true, it will use gzopen to read fileName_
              */
             FastaFileReader(int fd, FastaDataPool &pool_, uint64 halo = 21, bool isZippedNew = false)
-                    : swapBuffer(SwapBufferSize),
-                      bufferSize(0),
-                      eof(false),
-                      usesCrlf(false),
-                      totalSeqs(0),
-                      mHalo(halo),
-                      isZipped(isZippedNew),
-                      recordsPool(pool_) {
+                : swapBuffer(SwapBufferSize),
+                  bufferSize(0),
+                  eof(false),
+                  usesCrlf(false),
+                  totalSeqs(0),
+                  mHalo(halo),
+                  isZipped(isZippedNew),
+                  recordsPool(pool_) {
                 if (isZipped) {
                     mZipFile = gzdopen(fd, "r");
                     if (mZipFile == NULL) {
-                        throw RioException("Can not open file to read!");  //--------------need to change----------//
+                        throw RioException("Can not open file to read!");//--------------need to change----------//
                     }
                     gzrewind(mZipFile);
 
                 } else {
                     mFile = FDOPEN(fd, "rb");
                     if (mFile == NULL) {
-                        throw RioException("Can not open file to read!");  //--------------need to change----------//
+                        throw RioException("Can not open file to read!");//--------------need to change----------//
                     }
                 }
             }
@@ -296,7 +297,7 @@ namespace rabbit {
             }
         };
 
-    }  // namespace fa
+    }// namespace fa
 
     namespace fq {
         class FastqFileReader {
@@ -314,15 +315,15 @@ namespace rabbit {
              */
             FastqFileReader(const std::string &fileName_, FastqDataPool &pool_,
                             std::string fileName2_ = "", bool isZippedNew = false, uint32 mxLen_ = 1 << 20)
-                    : swapBuffer(SwapBufferSize),
-                      swapBuffer2(SwapBufferSize),
-                      bufferSize(0),
-                      bufferSize2(0),
-                      eof(false),
-                      usesCrlf(false),
-                      isZipped(isZippedNew),
-                      numParts(0),
-                      recordsPool(pool_) {
+                : swapBuffer(SwapBufferSize),
+                  swapBuffer2(SwapBufferSize),
+                  bufferSize(0),
+                  bufferSize2(0),
+                  eof(false),
+                  usesCrlf(false),
+                  isZipped(isZippedNew),
+                  numParts(0),
+                  recordsPool(pool_) {
                 GetNxtBuffSize = mxLen_;
                 mFqReader = new FileReader(fileName_, isZipped);
                 if (fileName2_ != "") {
@@ -338,15 +339,15 @@ namespace rabbit {
              * @param isZippedNew if true, it will use gzopen to read fd and fd2
              */
             FastqFileReader(int fd, FastqDataPool &pool_, int fd2 = -1, bool isZippedNew = false)
-                    : swapBuffer(SwapBufferSize),
-                      swapBuffer2(SwapBufferSize),
-                      bufferSize(0),
-                      bufferSize2(0),
-                      eof(false),
-                      usesCrlf(false),
-                      isZipped(isZippedNew),
-                      numParts(0),
-                      recordsPool(pool_) {
+                : swapBuffer(SwapBufferSize),
+                  swapBuffer2(SwapBufferSize),
+                  bufferSize(0),
+                  bufferSize2(0),
+                  eof(false),
+                  usesCrlf(false),
+                  isZipped(isZippedNew),
+                  numParts(0),
+                  recordsPool(pool_) {
                 if (isZippedNew) {
                 } else {
                     mFile = FDOPEN(fd, "rb");
@@ -362,51 +363,35 @@ namespace rabbit {
             }
 
             ~FastqFileReader() {
-                if (mFqReader != NULL)delete mFqReader;
-                if (mFqReader2 != NULL)delete mFqReader2;
+                if (mFqReader != NULL) delete mFqReader;
+                if (mFqReader2 != NULL) delete mFqReader2;
             }
 
             // added from fastxIO.h
             FastqDataChunk *readNextChunk();
 
-            FastqDataChunk *readNextChunk(moodycamel::ReaderWriterQueue<std::pair < char * , int>>
-
-            *q,
-            atomic_int *d, pair<char *, int>
-            &l);
+            FastqDataChunk *readNextChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, atomic_int *d, pair<char *, int> &l);
 
             void readChunk();
 
             bool ReadNextChunk_(FastqDataChunk *chunk_);
 
-            bool ReadNextChunk_(FastqDataChunk *chunk_, moodycamel::ReaderWriterQueue<std::pair < char * , int>>
-
-            *q,
-            atomic_int *d, pair<char *, int>
-            &l);
+            bool ReadNextChunk_(FastqDataChunk *chunk_, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, atomic_int *d, pair<char *, int> &l);
 
             FastqDataPairChunk *readNextPairChunk();
 
             FastqDataPairChunk *readNextPairChunkParallel();
 
-            FastqDataPairChunk *readNextPairChunkParallel(moodycamel::ReaderWriterQueue<std::pair < char * , int>>
-
-            *q1,
-            moodycamel::ReaderWriterQueue<std::pair < char * , int>> *q2,
-            atomic_int *d1, atomic_int
-            *d2,
-            pair<char *, int> &last1, pair<char *, int>
-            &last2);
+            FastqDataPairChunk *readNextPairChunkParallel(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q1,
+                                                          moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q2,
+                                                          atomic_int *d1, atomic_int *d2,
+                                                          pair<char *, int> &last1, pair<char *, int> &last2);
 
 
-            FastqDataPairChunk *readNextPairChunk(moodycamel::ReaderWriterQueue<std::pair < char * , int>>
-
-            *q1,
-            moodycamel::ReaderWriterQueue<std::pair < char * , int>> *q2,
-            atomic_int *d1, atomic_int
-            *d2,
-            pair<char *, int> &last1, pair<char *, int>
-            &last2);
+            FastqDataPairChunk *readNextPairChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q1,
+                                                  moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q2,
+                                                  atomic_int *d1, atomic_int *d2,
+                                                  pair<char *, int> &last1, pair<char *, int> &last2);
 
             FastqDataChunk *readNextPairChunkInterleaved();
 
@@ -460,8 +445,8 @@ namespace rabbit {
             void SkipToEol(uchar *data_, uint64 &pos_, const uint64 size_);
         };
 
-    }  // namespace fq
+    }// namespace fq
 
-}  // namespace rabbit
+}// namespace rabbit
 
-#endif  // H_FASTQSTREAM
+#endif// H_FASTQSTREAM

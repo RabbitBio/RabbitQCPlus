@@ -57,4 +57,4 @@ int ZopfliGetDistSymbolExtraBits(int s);
 #ifdef __cplusplus
 }
 #endif
-#endif  /* ZOPFLI_SYMBOLS_H_ */
+#endif /* ZOPFLI_SYMBOLS_H_ */

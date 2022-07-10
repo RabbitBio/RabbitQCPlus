@@ -12,8 +12,8 @@ last modified by Zekun Yin 2020/5/18
 #include <iostream>
 #include <string>
 
-#include "Reference.h"
 #include "FastxStream.h"
+#include "Reference.h"
 
 #ifdef Vec512
 
@@ -87,7 +87,7 @@ namespace rabbit {
             uchar *data = chunk_->data.Pointer();
             const uint64 cbufSize = chunk_->data.Size();
             chunk_->size = 0;
-            int64 toRead = cbufSize - bufferSize;  // buffersize: size left from last chunk
+            int64 toRead = cbufSize - bufferSize;// buffersize: size left from last chunk
 
             if (bufferSize > 0) {
                 std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
@@ -101,11 +101,11 @@ namespace rabbit {
             // std::cout << "toRead: " << toRead << std::endl;
 
             if (r > 0) {
-                if (r == toRead)  // somewhere before end
+                if (r == toRead)// somewhere before end
                 {
                     // dealing with halo region
                     uint64 chunkEnd = FindCutPos_(dataChunk_, data, cbufSize, mHalo, seqInfos);
-                    chunk_->size = chunkEnd;  // - 1; //1 char back from last '>'
+                    chunk_->size = chunkEnd;// - 1; //1 char back from last '>'
 
                     if (usesCrlf) chunk_->size -= 1;
 
@@ -123,14 +123,14 @@ namespace rabbit {
                         }
                         // std::cerr << "haloCount: " << haloCount << std::endl;
                     } else {
-                        tmpPtr = chunkEnd;  // nocopy
+                        tmpPtr = chunkEnd;// nocopy
                     }
                     std::copy(data + tmpPtr, data + cbufSize, swapBuffer.Pointer());
                     bufferSize = cbufSize - tmpPtr;
 
-                } else  // at the end of file
+                } else// at the end of file
                 {
-                    chunk_->size += r - 1;  // skip the last EOF symbol
+                    chunk_->size += r - 1;// skip the last EOF symbol
                     if (usesCrlf) chunk_->size -= 1;
 
                     // only for get seqsinfo
@@ -155,19 +155,19 @@ namespace rabbit {
                                      SeqInfos &seqInfos) {
             int count = 0;
             uint64 pos_ = 0;
-            uint64 cut_ = 0;       // cut_ point to next '>'
-            uint64 lastSeq_ = 0;   //-> the start of last sequences content
-            uint64 lastName_ = 0;  //-> the last '>'
+            uint64 cut_ = 0;     // cut_ point to next '>'
+            uint64 lastSeq_ = 0; //-> the start of last sequences content
+            uint64 lastName_ = 0;//-> the last '>'
             OneSeqInfo seqInfo;
 
             //dataChunk_ -> start and dataChunk_ -> end means start index and end index of current chunk
-            if (data_[0] == '>')  // start with '>'
+            if (data_[0] == '>')// start with '>'
             {
                 dataChunk_->start = this->totalSeqs;
                 while (pos_ < size_) {
                     if (data_[pos_] == '>') {
                         lastName_ = pos_;
-                        if (FindEol(data_, pos_, size_))  // find name
+                        if (FindEol(data_, pos_, size_))// find name
                         {
                             ++pos_;
                             lastSeq_ = pos_;
@@ -177,7 +177,7 @@ namespace rabbit {
 
                             this->totalSeqs++;
                         } else {
-                            cut_ = pos_;  // find a cut: incomplete name
+                            cut_ = pos_;// find a cut: incomplete name
                             // std::cerr << "cut char: " << (char)data_[cut_] << std::endl;
                             break;
                         }
@@ -186,12 +186,12 @@ namespace rabbit {
                     }
                 }
 
-            } else {  // start with {ACGT}
+            } else {// start with {ACGT}
                 dataChunk_->start = this->totalSeqs - 1;
                 while (pos_ < size_) {
                     if (data_[pos_] == '>') {
                         lastName_ = pos_;
-                        if (FindEol(data_, pos_, size_))  // find name
+                        if (FindEol(data_, pos_, size_))// find name
                         {
                             ++pos_;
                             lastSeq_ = pos_;
@@ -199,7 +199,7 @@ namespace rabbit {
                             seqInfos.push_back(seqInfo);
                             this->totalSeqs++;
                         } else {
-                            cut_ = pos_;  // find a cut -> '>'
+                            cut_ = pos_;// find a cut -> '>'
                             // std::cout << "cut char: " << (char)data_[cut_] << std::endl;
                             break;
                         }
@@ -246,7 +246,7 @@ namespace rabbit {
             uchar *data = chunk_->data.Pointer();
             const uint64 cbufSize = chunk_->data.Size();
             chunk_->size = 0;
-            int64 toRead = cbufSize - bufferSize;  // buffersize: size left from last chunk
+            int64 toRead = cbufSize - bufferSize;// buffersize: size left from last chunk
 
             if (bufferSize > 0) {
                 std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
@@ -260,7 +260,7 @@ namespace rabbit {
             // std::cout << "toRead: " << toRead << std::endl;
 
             if (r > 0) {
-                if (r == toRead)  // somewhere before end
+                if (r == toRead)// somewhere before end
                 {
                     if (data[0] == '>') {
                         uint64 chunkEnd = 0, pos_ = 0;
@@ -269,7 +269,7 @@ namespace rabbit {
                             chunkEnd = pos_;
                             this->totalSeqs++;
                         }
-                        if (chunkEnd == 0) {  // means this chunk is a big one, one chunk can not contain all
+                        if (chunkEnd == 0) {// means this chunk is a big one, one chunk can not contain all
                             continue_read = true;
                             chunkEnd = cbufSize;
                         } else {
@@ -279,14 +279,14 @@ namespace rabbit {
                         if (usesCrlf) chunk_->size -= 1;
                         std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
                         bufferSize = cbufSize - chunkEnd;
-                    } else {  // means this is a continue chunk for last sequence
+                    } else {// means this is a continue chunk for last sequence
                         uint64 chunkEnd = 0, pos_ = 0;
                         pos_ = chunk_->size;
                         if (find_next_seq_start(data, cbufSize, pos_)) {
                             chunkEnd = pos_;
                             this->totalSeqs++;
                         }
-                        if (chunkEnd == 0) {  // means this chunk is a big one, one chunk can not contain all
+                        if (chunkEnd == 0) {// means this chunk is a big one, one chunk can not contain all
                             continue_read = true;
                             chunkEnd = cbufSize;
                         } else {
@@ -298,7 +298,7 @@ namespace rabbit {
                         bufferSize = cbufSize - chunkEnd;
                     }
                 } else {                  // at the end of file
-                    chunk_->size += r - 1;  // skip the last eof symbol
+                    chunk_->size += r - 1;// skip the last eof symbol
                     if (usesCrlf) chunk_->size -= 1;
                     eof = true;
                 }
@@ -309,7 +309,7 @@ namespace rabbit {
             return true;
         }
 
-    }  // namespace fa
+    }// namespace fa
 
     namespace fq {
 
@@ -359,7 +359,7 @@ namespace rabbit {
             }
 
             ASSERT(part->size == 0);
-            recordsPool.Release(part);  // the last empty part
+            recordsPool.Release(part);// the last empty part
 
             // recordsQueue.SetCompleted();
         }
@@ -379,983 +379,841 @@ namespace rabbit {
             }
         }
 
-        FastqDataChunk *FastqFileReader::readNextChunk(moodycamel::ReaderWriterQueue<std::pair < char * , int>>
-
-        *q,
-        atomic_int *d, pair<char *, int>
-        &l) {
-        FastqDataChunk *part = NULL;
-        recordsPool.
-        Acquire(part);
-        if (
-        ReadNextChunk_(part, q, d, l
-        )) {
-        return
-        part;
-    }
-    else {
-    recordsPool.
-    Release(part);
-    return
-    NULL;
-}
-}
-
-FastqDataChunk *FastqFileReader::readNextPairChunkInterleaved() {
-    FastqDataChunk *part = NULL;
-    recordsPool.Acquire(part);
-    uint64 lastChunkPos1;
-    uint64 lastChunkPos2;
-    //---------read chunk------------
-    if (eof) {
-        part->size = 0;
-        // return false;
-        recordsPool.Release(part);
-        return NULL;
-    }
-
-    // flush the data from previous incomplete chunk
-    uchar *data = part->data.Pointer();
-    const uint64 cbufSize = part->data.Size();
-    part->size = 0;
-    int64 toRead;
-    toRead = cbufSize - bufferSize;
-    if (bufferSize > 0) {
-        std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
-        part->size = bufferSize;
-        bufferSize = 0;
-    }
-    int64 r;
-    r = mFqReader->Read(data + part->size, toRead);
-    if (r > 0) {
-        if (r == toRead) {
-            lastChunkPos1 = GetPreviousRecordPos_(data, cbufSize - 1, cbufSize);
-            lastChunkPos2 = GetPreviousRecordPos_(data, lastChunkPos1 - 1, cbufSize);
-
-        } else {
-            // chunkEnd = r;
-            part->size += r - 1;
-            if (usesCrlf) part->size -= 1;
-            eof = true;
-        }
-    } else {
-        eof = true;
-        return NULL;
-    }
-    //------read chunk end------//
-
-    if (!eof) {
-
-        part->size = lastChunkPos1 - 1;
-        if (usesCrlf) part->size -= 1;
-
-        std::copy(data + lastChunkPos2, data + cbufSize, swapBuffer.Pointer());
-        bufferSize = cbufSize - lastChunkPos2;
-    }
-    return part;
-
-}
-
-//add parallel in this fastq pe file read funciton
-
-
-FastqDataPairChunk *
-FastqFileReader::readNextPairChunkParallel(moodycamel::ReaderWriterQueue<std::pair < char * , int>>
-
-*q1,
-moodycamel::ReaderWriterQueue<std::pair < char * , int>> *q2,
-atomic_int *d1, atomic_int
-*d2,
-pair<char *, int> &last1, pair<char *, int>
-&last2){
-bool eof1 = false;
-bool eof2 = false;
-FastqDataPairChunk *pair = new FastqDataPairChunk;
-
-
-FastqDataChunk *leftPart = NULL;
-recordsPool.
-Acquire(leftPart);
-
-FastqDataChunk *rightPart = NULL;
-recordsPool.
-Acquire(rightPart);
-
-if (eof) {
-leftPart->
-size = 0;
-rightPart->
-size = 0;
-// return false;
-recordsPool.
-Release(leftPart);
-recordsPool.
-Release(rightPart);
-return
-NULL;
-}
-
-
-int64 left_line_count = 0;
-int64 chunkEnd = 0;
-uchar *data = NULL;
-uint64 cbufSize = 0;
-int64 r = 0;
-std::thread threadp1([&]() {
-    data = leftPart->data.Pointer();
-    cbufSize = leftPart->data.Size();
-    leftPart->size = 0;
-    int64 toRead = cbufSize - bufferSize;
-    if (bufferSize > 0) {
-        std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
-        leftPart->size = bufferSize;
-        bufferSize = 0;
-    }
-    r = mFqReader->Read(data + leftPart->size, toRead, q1, d1, last1);
-    if (r > 0) {
-        if (r == toRead) {
-            chunkEnd = cbufSize - GetNxtBuffSize;
-            chunkEnd = this->GetNextRecordPos_(data, chunkEnd, cbufSize);
-        } else {
-            leftPart->size += r - 1;
-            if (usesCrlf) leftPart->size -= 1;
-            eof1 = true;
-            chunkEnd = leftPart->size + 1;
-            cbufSize = leftPart->size + 1;
-        }
-    } else {
-        eof1 = true;
-        chunkEnd = leftPart->size + 1;
-        cbufSize = leftPart->size + 1;
-        //if (leftPart->size == 0) {
-        //    return NULL;
-        //}
-    }
-});
-//right part
-int64 right_line_count = 0;
-int64 chunkEnd_right = 0;
-uchar *data_right = NULL;
-uint64 cbufSize_right = 0;
-int64 r_right = 0;
-std::thread threadp2([&]() {
-    data_right = rightPart->data.Pointer();
-    cbufSize_right = rightPart->data.Size();
-    rightPart->size = 0;
-    int64 toRead_right = cbufSize_right - bufferSize2;
-    if (bufferSize2 > 0) {
-        std::copy(swapBuffer2.Pointer(), swapBuffer2.Pointer() + bufferSize2, data_right);
-        rightPart->size = bufferSize2;
-        bufferSize2 = 0;
-    }
-    r_right = mFqReader2->Read(data_right + rightPart->size, toRead_right, q2, d2, last2);
-    if (r_right > 0) {
-        if (r_right == toRead_right) {
-            chunkEnd_right = cbufSize_right - GetNxtBuffSize;
-            chunkEnd_right = this->GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
-        } else {
-            rightPart->size += r_right - 1;
-            if (usesCrlf) rightPart->size -= 1;
-            eof2 = true;
-            chunkEnd_right = rightPart->size + 1;
-            cbufSize_right = rightPart->size + 1;
-        }
-    } else {
-        eof2 = true;
-        chunkEnd_right = rightPart->size + 1;
-        cbufSize_right = rightPart->size + 1;
-        //if (rightPart->size == 0) {
-        //    return NULL;
-        //}
-    }
-});
-threadp1.
-
-join();
-
-threadp2.
-
-join();
-
-if(r == 0 && leftPart->size == 0)return
-NULL;
-if(r_right == 0 && rightPart->size == 0)return
-NULL;
-
-if (
-eof1 &&eof2
-)
-eof = true;
-if (!eof) {
-left_line_count = count_line(data, chunkEnd);
-right_line_count = count_line(data_right, chunkEnd_right);
-int64 difference = left_line_count - right_line_count;
-if (difference > 0) {
-while (chunkEnd >= 0) {
-if (data[chunkEnd] == '\n') {
-difference--;
-if (difference == -1) {
-chunkEnd++;
-break;
-}
-}
-chunkEnd--;
-}
-} else if (difference < 0) {
-while (chunkEnd_right >= 0) {
-if (data_right[chunkEnd_right] == '\n') {
-difference++;
-if (difference == 1) {
-chunkEnd_right++;
-break;
-}
-}
-chunkEnd_right--;
-}
-}
-leftPart->
-size = chunkEnd - 1;
-if (usesCrlf) leftPart->size -= 1;
-std::copy(data
-+ chunkEnd, data + cbufSize, swapBuffer.
-
-Pointer()
-
-);
-bufferSize = cbufSize - chunkEnd;
-rightPart->
-size = chunkEnd_right - 1;
-if (usesCrlf) rightPart->size -= 1;
-std::copy(data_right
-+ chunkEnd_right, data_right + cbufSize_right, swapBuffer2.
-
-Pointer()
-
-);
-bufferSize2 = cbufSize_right - chunkEnd_right;
-}
-pair->
-left_part = leftPart;
-pair->
-right_part = rightPart;
-return
-pair;
-}
-
-
-FastqDataPairChunk *FastqFileReader::readNextPairChunkParallel() {
-    bool eof1 = false;
-    bool eof2 = false;
-    FastqDataPairChunk *pair = new FastqDataPairChunk;
-
-
-    FastqDataChunk *leftPart = NULL;
-    recordsPool.Acquire(leftPart);
-
-    FastqDataChunk *rightPart = NULL;
-    recordsPool.Acquire(rightPart);
-
-    if (eof) {
-        leftPart->size = 0;
-        rightPart->size = 0;
-        // return false;
-        recordsPool.Release(leftPart);
-        recordsPool.Release(rightPart);
-        return NULL;
-    }
-
-
-    int64 left_line_count = 0;
-    int64 chunkEnd = 0;
-    uchar *data = NULL;
-    uint64 cbufSize = 0;
-    int64 r = 0;
-    std::thread threadp1([&]() {
-        data = leftPart->data.Pointer();
-        cbufSize = leftPart->data.Size();
-        leftPart->size = 0;
-        int64 toRead = cbufSize - bufferSize;
-        if (bufferSize > 0) {
-            std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
-            leftPart->size = bufferSize;
-            bufferSize = 0;
-        }
-        r = mFqReader->Read(data + leftPart->size, toRead);
-        if (r > 0) {
-            if (r == toRead) {
-                chunkEnd = cbufSize - GetNxtBuffSize;
-                chunkEnd = this->GetNextRecordPos_(data, chunkEnd, cbufSize);
+        FastqDataChunk *FastqFileReader::readNextChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, atomic_int *d, pair<char *, int> &l) {
+            FastqDataChunk *part = NULL;
+            recordsPool.Acquire(part);
+            if (ReadNextChunk_(part, q, d, l)) {
+                return part;
             } else {
-                leftPart->size += r - 1;
+                recordsPool.Release(part);
+                return NULL;
+            }
+        }
+
+        FastqDataChunk *FastqFileReader::readNextPairChunkInterleaved() {
+            FastqDataChunk *part = NULL;
+            recordsPool.Acquire(part);
+            uint64 lastChunkPos1;
+            uint64 lastChunkPos2;
+            //---------read chunk------------
+            if (eof) {
+                part->size = 0;
+                // return false;
+                recordsPool.Release(part);
+                return NULL;
+            }
+
+            // flush the data from previous incomplete chunk
+            uchar *data = part->data.Pointer();
+            const uint64 cbufSize = part->data.Size();
+            part->size = 0;
+            int64 toRead;
+            toRead = cbufSize - bufferSize;
+            if (bufferSize > 0) {
+                std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
+                part->size = bufferSize;
+                bufferSize = 0;
+            }
+            int64 r;
+            r = mFqReader->Read(data + part->size, toRead);
+            if (r > 0) {
+                if (r == toRead) {
+                    lastChunkPos1 = GetPreviousRecordPos_(data, cbufSize - 1, cbufSize);
+                    lastChunkPos2 = GetPreviousRecordPos_(data, lastChunkPos1 - 1, cbufSize);
+
+                } else {
+                    // chunkEnd = r;
+                    part->size += r - 1;
+                    if (usesCrlf) part->size -= 1;
+                    eof = true;
+                }
+            } else {
+                eof = true;
+                return NULL;
+            }
+            //------read chunk end------//
+
+            if (!eof) {
+
+                part->size = lastChunkPos1 - 1;
+                if (usesCrlf) part->size -= 1;
+
+                std::copy(data + lastChunkPos2, data + cbufSize, swapBuffer.Pointer());
+                bufferSize = cbufSize - lastChunkPos2;
+            }
+            return part;
+        }
+
+        //add parallel in this fastq pe file read funciton
+
+
+        FastqDataPairChunk *
+        FastqFileReader::readNextPairChunkParallel(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q1,
+                                                   moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q2,
+                                                   atomic_int *d1, atomic_int *d2,
+                                                   pair<char *, int> &last1, pair<char *, int> &last2) {
+            bool eof1 = false;
+            bool eof2 = false;
+            FastqDataPairChunk *pair = new FastqDataPairChunk;
+
+
+            FastqDataChunk *leftPart = NULL;
+            recordsPool.Acquire(leftPart);
+
+            FastqDataChunk *rightPart = NULL;
+            recordsPool.Acquire(rightPart);
+
+            if (eof) {
+                leftPart->size = 0;
+                rightPart->size = 0;
+                // return false;
+                recordsPool.Release(leftPart);
+                recordsPool.Release(rightPart);
+                return NULL;
+            }
+
+
+            int64 left_line_count = 0;
+            int64 chunkEnd = 0;
+            uchar *data = NULL;
+            uint64 cbufSize = 0;
+            int64 r = 0;
+            std::thread threadp1([&]() {
+                data = leftPart->data.Pointer();
+                cbufSize = leftPart->data.Size();
+                leftPart->size = 0;
+                int64 toRead = cbufSize - bufferSize;
+                if (bufferSize > 0) {
+                    std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
+                    leftPart->size = bufferSize;
+                    bufferSize = 0;
+                }
+                r = mFqReader->Read(data + leftPart->size, toRead, q1, d1, last1);
+                if (r > 0) {
+                    if (r == toRead) {
+                        chunkEnd = cbufSize - GetNxtBuffSize;
+                        chunkEnd = this->GetNextRecordPos_(data, chunkEnd, cbufSize);
+                    } else {
+                        leftPart->size += r - 1;
+                        if (usesCrlf) leftPart->size -= 1;
+                        eof1 = true;
+                        chunkEnd = leftPart->size + 1;
+                        cbufSize = leftPart->size + 1;
+                    }
+                } else {
+                    eof1 = true;
+                    chunkEnd = leftPart->size + 1;
+                    cbufSize = leftPart->size + 1;
+                    //if (leftPart->size == 0) {
+                    //    return NULL;
+                    //}
+                }
+            });
+            //right part
+            int64 right_line_count = 0;
+            int64 chunkEnd_right = 0;
+            uchar *data_right = NULL;
+            uint64 cbufSize_right = 0;
+            int64 r_right = 0;
+            std::thread threadp2([&]() {
+                data_right = rightPart->data.Pointer();
+                cbufSize_right = rightPart->data.Size();
+                rightPart->size = 0;
+                int64 toRead_right = cbufSize_right - bufferSize2;
+                if (bufferSize2 > 0) {
+                    std::copy(swapBuffer2.Pointer(), swapBuffer2.Pointer() + bufferSize2, data_right);
+                    rightPart->size = bufferSize2;
+                    bufferSize2 = 0;
+                }
+                r_right = mFqReader2->Read(data_right + rightPart->size, toRead_right, q2, d2, last2);
+                if (r_right > 0) {
+                    if (r_right == toRead_right) {
+                        chunkEnd_right = cbufSize_right - GetNxtBuffSize;
+                        chunkEnd_right = this->GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
+                    } else {
+                        rightPart->size += r_right - 1;
+                        if (usesCrlf) rightPart->size -= 1;
+                        eof2 = true;
+                        chunkEnd_right = rightPart->size + 1;
+                        cbufSize_right = rightPart->size + 1;
+                    }
+                } else {
+                    eof2 = true;
+                    chunkEnd_right = rightPart->size + 1;
+                    cbufSize_right = rightPart->size + 1;
+                    //if (rightPart->size == 0) {
+                    //    return NULL;
+                    //}
+                }
+            });
+            threadp1.join();
+
+            threadp2.join();
+
+            if (r == 0 && leftPart->size == 0) return NULL;
+            if (r_right == 0 && rightPart->size == 0) return NULL;
+
+            if (eof1 && eof2)
+                eof = true;
+            if (!eof) {
+                left_line_count = count_line(data, chunkEnd);
+                right_line_count = count_line(data_right, chunkEnd_right);
+                int64 difference = left_line_count - right_line_count;
+                if (difference > 0) {
+                    while (chunkEnd >= 0) {
+                        if (data[chunkEnd] == '\n') {
+                            difference--;
+                            if (difference == -1) {
+                                chunkEnd++;
+                                break;
+                            }
+                        }
+                        chunkEnd--;
+                    }
+                } else if (difference < 0) {
+                    while (chunkEnd_right >= 0) {
+                        if (data_right[chunkEnd_right] == '\n') {
+                            difference++;
+                            if (difference == 1) {
+                                chunkEnd_right++;
+                                break;
+                            }
+                        }
+                        chunkEnd_right--;
+                    }
+                }
+                leftPart->size = chunkEnd - 1;
                 if (usesCrlf) leftPart->size -= 1;
-                eof1 = true;
-                chunkEnd = leftPart->size + 1;
-                cbufSize = leftPart->size + 1;
-            }
-        } else {
-            eof1 = true;
-            chunkEnd = leftPart->size + 1;
-            cbufSize = leftPart->size + 1;
-            //if (leftPart->size == 0) {
-            //    return NULL;
-            //}
-        }
-    });
-    //right part
-    int64 right_line_count = 0;
-    int64 chunkEnd_right = 0;
-    uchar *data_right = NULL;
-    uint64 cbufSize_right = 0;
-    int64 r_right = 0;
-    std::thread threadp2([&]() {
-        data_right = rightPart->data.Pointer();
-        cbufSize_right = rightPart->data.Size();
-        rightPart->size = 0;
-        int64 toRead_right = cbufSize_right - bufferSize2;
-        if (bufferSize2 > 0) {
-            std::copy(swapBuffer2.Pointer(), swapBuffer2.Pointer() + bufferSize2, data_right);
-            rightPart->size = bufferSize2;
-            bufferSize2 = 0;
-        }
-        r_right = mFqReader2->Read(data_right + rightPart->size, toRead_right);
-        if (r_right > 0) {
-            if (r_right == toRead_right) {
-                chunkEnd_right = cbufSize_right - GetNxtBuffSize;
-                chunkEnd_right = this->GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
-            } else {
-                rightPart->size += r_right - 1;
+                std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
+                bufferSize = cbufSize - chunkEnd;
+                rightPart->size = chunkEnd_right - 1;
                 if (usesCrlf) rightPart->size -= 1;
-                eof2 = true;
-                chunkEnd_right = rightPart->size + 1;
-                cbufSize_right = rightPart->size + 1;
+                std::copy(data_right + chunkEnd_right, data_right + cbufSize_right, swapBuffer2.Pointer());
+                bufferSize2 = cbufSize_right - chunkEnd_right;
             }
-        } else {
-            eof2 = true;
-            chunkEnd_right = rightPart->size + 1;
-            cbufSize_right = rightPart->size + 1;
-            //if (rightPart->size == 0) {
-            //    return NULL;
-            //}
+            pair->left_part = leftPart;
+            pair->right_part = rightPart;
+            return pair;
         }
-    });
-    threadp1.join();
-    threadp2.join();
-    if (r == 0 && leftPart->size == 0)return NULL;
-    if (r_right == 0 && rightPart->size == 0)return NULL;
 
-    if (eof1 && eof2)eof = true;
-    if (!eof) {
-        left_line_count = count_line(data, chunkEnd);
-        right_line_count = count_line(data_right, chunkEnd_right);
-        int64 difference = left_line_count - right_line_count;
-        if (difference > 0) {
-            while (chunkEnd >= 0) {
-                if (data[chunkEnd] == '\n') {
-                    difference--;
-                    if (difference == -1) {
-                        chunkEnd++;
-                        break;
+
+        FastqDataPairChunk *FastqFileReader::readNextPairChunkParallel() {
+            bool eof1 = false;
+            bool eof2 = false;
+            FastqDataPairChunk *pair = new FastqDataPairChunk;
+
+
+            FastqDataChunk *leftPart = NULL;
+            recordsPool.Acquire(leftPart);
+
+            FastqDataChunk *rightPart = NULL;
+            recordsPool.Acquire(rightPart);
+
+            if (eof) {
+                leftPart->size = 0;
+                rightPart->size = 0;
+                // return false;
+                recordsPool.Release(leftPart);
+                recordsPool.Release(rightPart);
+                return NULL;
+            }
+
+
+            int64 left_line_count = 0;
+            int64 chunkEnd = 0;
+            uchar *data = NULL;
+            uint64 cbufSize = 0;
+            int64 r = 0;
+            std::thread threadp1([&]() {
+                data = leftPart->data.Pointer();
+                cbufSize = leftPart->data.Size();
+                leftPart->size = 0;
+                int64 toRead = cbufSize - bufferSize;
+                if (bufferSize > 0) {
+                    std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
+                    leftPart->size = bufferSize;
+                    bufferSize = 0;
+                }
+                r = mFqReader->Read(data + leftPart->size, toRead);
+                if (r > 0) {
+                    if (r == toRead) {
+                        chunkEnd = cbufSize - GetNxtBuffSize;
+                        chunkEnd = this->GetNextRecordPos_(data, chunkEnd, cbufSize);
+                    } else {
+                        leftPart->size += r - 1;
+                        if (usesCrlf) leftPart->size -= 1;
+                        eof1 = true;
+                        chunkEnd = leftPart->size + 1;
+                        cbufSize = leftPart->size + 1;
+                    }
+                } else {
+                    eof1 = true;
+                    chunkEnd = leftPart->size + 1;
+                    cbufSize = leftPart->size + 1;
+                    //if (leftPart->size == 0) {
+                    //    return NULL;
+                    //}
+                }
+            });
+            //right part
+            int64 right_line_count = 0;
+            int64 chunkEnd_right = 0;
+            uchar *data_right = NULL;
+            uint64 cbufSize_right = 0;
+            int64 r_right = 0;
+            std::thread threadp2([&]() {
+                data_right = rightPart->data.Pointer();
+                cbufSize_right = rightPart->data.Size();
+                rightPart->size = 0;
+                int64 toRead_right = cbufSize_right - bufferSize2;
+                if (bufferSize2 > 0) {
+                    std::copy(swapBuffer2.Pointer(), swapBuffer2.Pointer() + bufferSize2, data_right);
+                    rightPart->size = bufferSize2;
+                    bufferSize2 = 0;
+                }
+                r_right = mFqReader2->Read(data_right + rightPart->size, toRead_right);
+                if (r_right > 0) {
+                    if (r_right == toRead_right) {
+                        chunkEnd_right = cbufSize_right - GetNxtBuffSize;
+                        chunkEnd_right = this->GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
+                    } else {
+                        rightPart->size += r_right - 1;
+                        if (usesCrlf) rightPart->size -= 1;
+                        eof2 = true;
+                        chunkEnd_right = rightPart->size + 1;
+                        cbufSize_right = rightPart->size + 1;
+                    }
+                } else {
+                    eof2 = true;
+                    chunkEnd_right = rightPart->size + 1;
+                    cbufSize_right = rightPart->size + 1;
+                    //if (rightPart->size == 0) {
+                    //    return NULL;
+                    //}
+                }
+            });
+            threadp1.join();
+            threadp2.join();
+            if (r == 0 && leftPart->size == 0) return NULL;
+            if (r_right == 0 && rightPart->size == 0) return NULL;
+
+            if (eof1 && eof2) eof = true;
+            if (!eof) {
+                left_line_count = count_line(data, chunkEnd);
+                right_line_count = count_line(data_right, chunkEnd_right);
+                int64 difference = left_line_count - right_line_count;
+                if (difference > 0) {
+                    while (chunkEnd >= 0) {
+                        if (data[chunkEnd] == '\n') {
+                            difference--;
+                            if (difference == -1) {
+                                chunkEnd++;
+                                break;
+                            }
+                        }
+                        chunkEnd--;
+                    }
+                } else if (difference < 0) {
+                    while (chunkEnd_right >= 0) {
+                        if (data_right[chunkEnd_right] == '\n') {
+                            difference++;
+                            if (difference == 1) {
+                                chunkEnd_right++;
+                                break;
+                            }
+                        }
+                        chunkEnd_right--;
                     }
                 }
-                chunkEnd--;
+                leftPart->size = chunkEnd - 1;
+                if (usesCrlf) leftPart->size -= 1;
+                std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
+                bufferSize = cbufSize - chunkEnd;
+                rightPart->size = chunkEnd_right - 1;
+                if (usesCrlf) rightPart->size -= 1;
+                std::copy(data_right + chunkEnd_right, data_right + cbufSize_right, swapBuffer2.Pointer());
+                bufferSize2 = cbufSize_right - chunkEnd_right;
             }
-        } else if (difference < 0) {
-            while (chunkEnd_right >= 0) {
-                if (data_right[chunkEnd_right] == '\n') {
-                    difference++;
-                    if (difference == 1) {
-                        chunkEnd_right++;
-                        break;
-                    }
-                }
-                chunkEnd_right--;
-            }
+            pair->left_part = leftPart;
+            pair->right_part = rightPart;
+            return pair;
         }
-        leftPart->size = chunkEnd - 1;
-        if (usesCrlf) leftPart->size -= 1;
-        std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
-        bufferSize = cbufSize - chunkEnd;
-        rightPart->size = chunkEnd_right - 1;
-        if (usesCrlf) rightPart->size -= 1;
-        std::copy(data_right + chunkEnd_right, data_right + cbufSize_right, swapBuffer2.Pointer());
-        bufferSize2 = cbufSize_right - chunkEnd_right;
-    }
-    pair->left_part = leftPart;
-    pair->right_part = rightPart;
-    return pair;
-}
 
 
-/**
+        /**
   @brief Read the next paired chunk
   @return FastqDataPairChunk pointer if next chunk data has data, else return NULL
   */
 
-FastqDataPairChunk *FastqFileReader::readNextPairChunk() {
-    bool eof1 = false;
-    bool eof2 = false;
-    FastqDataPairChunk *pair = new FastqDataPairChunk;
+        FastqDataPairChunk *FastqFileReader::readNextPairChunk() {
+            bool eof1 = false;
+            bool eof2 = false;
+            FastqDataPairChunk *pair = new FastqDataPairChunk;
 
-    FastqDataChunk *leftPart = NULL;
-    recordsPool.Acquire(leftPart);
+            FastqDataChunk *leftPart = NULL;
+            recordsPool.Acquire(leftPart);
 
-    FastqDataChunk *rightPart = NULL;
-    recordsPool.Acquire(rightPart);
+            FastqDataChunk *rightPart = NULL;
+            recordsPool.Acquire(rightPart);
 
-    int64 left_line_count = 0;
-    int64 right_line_count = 0;
-    int64 chunkEnd = 0;
-    int64 chunkEnd_right = 0;
+            int64 left_line_count = 0;
+            int64 right_line_count = 0;
+            int64 chunkEnd = 0;
+            int64 chunkEnd_right = 0;
 
-    //---------read left chunk------------
-    if (eof) {
-        leftPart->size = 0;
-        rightPart->size = 0;
-        // return false;
-        recordsPool.Release(leftPart);
-        recordsPool.Release(rightPart);
-        return NULL;
-    }
+            //---------read left chunk------------
+            if (eof) {
+                leftPart->size = 0;
+                rightPart->size = 0;
+                // return false;
+                recordsPool.Release(leftPart);
+                recordsPool.Release(rightPart);
+                return NULL;
+            }
 
-    // flush the data from previous incomplete chunk
-    uchar *data = leftPart->data.Pointer();
-    uint64 cbufSize = leftPart->data.Size();
-    leftPart->size = 0;
-    int64 toRead;
-    toRead = cbufSize - bufferSize;
-    if (bufferSize > 0) {
-        std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
-        leftPart->size = bufferSize;
-        bufferSize = 0;
-    }
-    int64 r;
-    r = mFqReader->Read(data + leftPart->size, toRead);
-    if (r > 0) {
-        if (r == toRead) {
-            chunkEnd = cbufSize - GetNxtBuffSize;
-            chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
-        } else {
-            // chunkEnd = r;
-            leftPart->size += r - 1;
-            if (usesCrlf) leftPart->size -= 1;
-            eof1 = true;
-            chunkEnd = leftPart->size + 1;
-            cbufSize = leftPart->size + 1;
-        }
-    } else {
-        eof1 = true;
-        chunkEnd = leftPart->size + 1;
-        cbufSize = leftPart->size + 1;
-        if (leftPart->size == 0) {
-            return NULL;
-        }
-    }
-    //------read left chunk end------//
+            // flush the data from previous incomplete chunk
+            uchar *data = leftPart->data.Pointer();
+            uint64 cbufSize = leftPart->data.Size();
+            leftPart->size = 0;
+            int64 toRead;
+            toRead = cbufSize - bufferSize;
+            if (bufferSize > 0) {
+                std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
+                leftPart->size = bufferSize;
+                bufferSize = 0;
+            }
+            int64 r;
+            r = mFqReader->Read(data + leftPart->size, toRead);
+            if (r > 0) {
+                if (r == toRead) {
+                    chunkEnd = cbufSize - GetNxtBuffSize;
+                    chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
+                } else {
+                    // chunkEnd = r;
+                    leftPart->size += r - 1;
+                    if (usesCrlf) leftPart->size -= 1;
+                    eof1 = true;
+                    chunkEnd = leftPart->size + 1;
+                    cbufSize = leftPart->size + 1;
+                }
+            } else {
+                eof1 = true;
+                chunkEnd = leftPart->size + 1;
+                cbufSize = leftPart->size + 1;
+                if (leftPart->size == 0) {
+                    return NULL;
+                }
+            }
+            //------read left chunk end------//
 
-    //-----------------read right chunk---------------------//
-    uchar *data_right = rightPart->data.Pointer();
-    uint64 cbufSize_right = rightPart->data.Size();
-    rightPart->size = 0;
-    toRead = cbufSize_right - bufferSize2;
-    if (bufferSize2 > 0) {
-        std::copy(swapBuffer2.Pointer(), swapBuffer2.Pointer() + bufferSize2, data_right);
-        rightPart->size = bufferSize2;
-        bufferSize2 = 0;
-    }
-    r = mFqReader2->Read(data_right + rightPart->size, toRead);
-    if (r > 0) {
-        if (r == toRead) {
-            chunkEnd_right = cbufSize_right - GetNxtBuffSize;
-            chunkEnd_right = GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
-        } else {
-            // chunkEnd_right += r;
-            rightPart->size += r - 1;
-            if (usesCrlf) rightPart->size -= 1;
-            eof2 = true;
-            chunkEnd_right = rightPart->size + 1;
-            cbufSize_right = rightPart->size + 1;
-        }
-    } else {
-        eof2 = true;
-        chunkEnd_right = rightPart->size + 1;
-        cbufSize_right = rightPart->size + 1;
-        if (rightPart->size == 0) {
-            return NULL;
-        }
-    }
-    //--------------read right chunk end---------------------//
-    if (eof1 && eof2)eof = true;
-    if (!eof) {
-        left_line_count = count_line(data, chunkEnd);
-        right_line_count = count_line(data_right, chunkEnd_right);
-        int64 difference = left_line_count - right_line_count;
-        if (difference > 0) {
-            while (chunkEnd >= 0) {
-                if (data[chunkEnd] == '\n') {
-                    difference--;
-                    if (difference == -1) {
-                        chunkEnd++;
-                        break;
+            //-----------------read right chunk---------------------//
+            uchar *data_right = rightPart->data.Pointer();
+            uint64 cbufSize_right = rightPart->data.Size();
+            rightPart->size = 0;
+            toRead = cbufSize_right - bufferSize2;
+            if (bufferSize2 > 0) {
+                std::copy(swapBuffer2.Pointer(), swapBuffer2.Pointer() + bufferSize2, data_right);
+                rightPart->size = bufferSize2;
+                bufferSize2 = 0;
+            }
+            r = mFqReader2->Read(data_right + rightPart->size, toRead);
+            if (r > 0) {
+                if (r == toRead) {
+                    chunkEnd_right = cbufSize_right - GetNxtBuffSize;
+                    chunkEnd_right = GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
+                } else {
+                    // chunkEnd_right += r;
+                    rightPart->size += r - 1;
+                    if (usesCrlf) rightPart->size -= 1;
+                    eof2 = true;
+                    chunkEnd_right = rightPart->size + 1;
+                    cbufSize_right = rightPart->size + 1;
+                }
+            } else {
+                eof2 = true;
+                chunkEnd_right = rightPart->size + 1;
+                cbufSize_right = rightPart->size + 1;
+                if (rightPart->size == 0) {
+                    return NULL;
+                }
+            }
+            //--------------read right chunk end---------------------//
+            if (eof1 && eof2) eof = true;
+            if (!eof) {
+                left_line_count = count_line(data, chunkEnd);
+                right_line_count = count_line(data_right, chunkEnd_right);
+                int64 difference = left_line_count - right_line_count;
+                if (difference > 0) {
+                    while (chunkEnd >= 0) {
+                        if (data[chunkEnd] == '\n') {
+                            difference--;
+                            if (difference == -1) {
+                                chunkEnd++;
+                                break;
+                            }
+                        }
+                        chunkEnd--;
+                    }
+                } else if (difference < 0) {
+                    while (chunkEnd_right >= 0) {
+                        if (data_right[chunkEnd_right] == '\n') {
+                            difference++;
+                            if (difference == 1) {
+                                chunkEnd_right++;
+                                break;
+                            }
+                        }
+                        chunkEnd_right--;
                     }
                 }
-                chunkEnd--;
+                leftPart->size = chunkEnd - 1;
+                if (usesCrlf) leftPart->size -= 1;
+                std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
+                bufferSize = cbufSize - chunkEnd;
+                rightPart->size = chunkEnd_right - 1;
+                if (usesCrlf) rightPart->size -= 1;
+                std::copy(data_right + chunkEnd_right, data_right + cbufSize_right, swapBuffer2.Pointer());
+                bufferSize2 = cbufSize_right - chunkEnd_right;
             }
-        } else if (difference < 0) {
-            while (chunkEnd_right >= 0) {
-                if (data_right[chunkEnd_right] == '\n') {
-                    difference++;
-                    if (difference == 1) {
-                        chunkEnd_right++;
-                        break;
+            pair->left_part = leftPart;
+            pair->right_part = rightPart;
+            return pair;
+        }
+
+        FastqDataPairChunk *
+        FastqFileReader::readNextPairChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q1,
+                                           moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q2,
+                                           atomic_int *d1, atomic_int *d2,
+                                           pair<char *, int> &last1, pair<char *, int> &last2) {
+            bool eof1 = false;
+            bool eof2 = false;
+            FastqDataPairChunk *pair = new FastqDataPairChunk;
+
+            FastqDataChunk *leftPart = NULL;
+            recordsPool.Acquire(leftPart);// song: all in one datapool
+
+            FastqDataChunk *rightPart = NULL;
+            recordsPool.Acquire(rightPart);
+
+            int64 left_line_count = 0;
+            int64 right_line_count = 0;
+            int64 chunkEnd = 0;
+            int64 chunkEnd_right = 0;
+
+            //---------read left chunk------------
+            if (eof) {
+                leftPart->size = 0;
+                rightPart->size = 0;
+                // return false;
+                recordsPool.Release(leftPart);
+                recordsPool.Release(rightPart);
+                return NULL;
+            }
+
+            // flush the data from previous incomplete chunk
+            uchar *data = leftPart->data.Pointer();
+            uint64 cbufSize = leftPart->data.Size();
+            leftPart->size = 0;
+            int64 toRead;
+            toRead = cbufSize - bufferSize;
+            if (bufferSize > 0) {
+                std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
+                leftPart->size = bufferSize;
+                bufferSize = 0;
+            }
+            int64 r;
+            r = mFqReader->Read(data + leftPart->size, toRead, q1, d1, last1);
+            if (r > 0) {
+                if (r == toRead) {
+                    chunkEnd = cbufSize - GetNxtBuffSize;
+                    chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
+                } else {
+                    leftPart->size += r - 1;
+                    if (usesCrlf) leftPart->size -= 1;
+                    eof1 = true;
+                    chunkEnd = leftPart->size + 1;
+                    cbufSize = leftPart->size + 1;
+                }
+            } else {
+                eof1 = true;
+                chunkEnd = leftPart->size + 1;
+                cbufSize = leftPart->size + 1;
+                if (leftPart->size == 0) {
+                    return NULL;
+                }
+            }
+
+            uchar *data_right = rightPart->data.Pointer();
+            uint64 cbufSize_right = rightPart->data.Size();
+            rightPart->size = 0;
+            toRead = cbufSize_right - bufferSize2;
+            if (bufferSize2 > 0) {
+                std::copy(swapBuffer2.Pointer(), swapBuffer2.Pointer() + bufferSize2, data_right);
+                rightPart->size = bufferSize2;
+                bufferSize2 = 0;
+            }
+            r = mFqReader2->Read(data_right + rightPart->size, toRead, q2, d2, last2);
+            if (r > 0) {
+                if (r == toRead) {
+                    chunkEnd_right = cbufSize_right - GetNxtBuffSize;
+                    chunkEnd_right = GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
+                } else {
+                    rightPart->size += r - 1;
+                    if (usesCrlf) rightPart->size -= 1;
+                    eof2 = true;
+                    chunkEnd_right = rightPart->size + 1;
+                    cbufSize_right = rightPart->size + 1;
+                }
+            } else {
+                eof2 = true;
+                chunkEnd_right = rightPart->size + 1;
+                cbufSize_right = rightPart->size + 1;
+                if (rightPart->size == 0) {
+                    return NULL;
+                }
+            }
+            if (eof1 && eof2)
+                eof = true;
+            if (!eof) {
+                left_line_count = count_line(data, chunkEnd);
+                right_line_count = count_line(data_right, chunkEnd_right);
+                int64 difference = left_line_count - right_line_count;
+                if (difference > 0) {
+                    while (chunkEnd >= 0) {
+                        if (data[chunkEnd] == '\n') {
+                            difference--;
+                            if (difference == -1) {
+                                chunkEnd++;
+                                break;
+                            }
+                        }
+                        chunkEnd--;
+                    }
+                } else if (difference < 0) {
+                    while (chunkEnd_right >= 0) {
+                        if (data_right[chunkEnd_right] == '\n') {
+                            difference++;
+                            if (difference == 1) {
+                                chunkEnd_right++;
+                                break;
+                            }
+                        }
+                        chunkEnd_right--;
                     }
                 }
-                chunkEnd_right--;
+
+                leftPart->size = chunkEnd - 1;
+                if (usesCrlf) leftPart->size -= 1;
+                std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
+                bufferSize = cbufSize - chunkEnd;
+
+                rightPart->size = chunkEnd_right - 1;
+                if (usesCrlf) rightPart->size -= 1;
+                std::copy(data_right + chunkEnd_right, data_right + cbufSize_right, swapBuffer2.Pointer());
+                bufferSize2 = cbufSize_right - chunkEnd_right;
+            }
+            pair->left_part = leftPart;
+            pair->right_part = rightPart;
+            return pair;
+        }
+
+        bool FastqFileReader::ReadNextChunk_(FastqDataChunk *chunk_) {
+            if (mFqReader->FinishRead() && bufferSize == 0) {
+                chunk_->size = 0;
+                return false;
+            }
+
+            // flush the data from previous incomplete chunk
+            uchar *data = chunk_->data.Pointer();
+            uint64 cbufSize = chunk_->data.Size();
+            chunk_->size = 0;
+            int64 toRead = cbufSize - bufferSize;
+            //---------------------------------
+            if (bufferSize > 0) {
+                std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
+                chunk_->size = bufferSize;
+                bufferSize = 0;
+            }
+
+            // read the next chunk
+            int64 r = mFqReader->Read(data + chunk_->size, toRead);
+            // std::cout << "r is :" << r << std::endl;
+
+            // if (r > 0) {
+            if (!mFqReader->FinishRead()) {
+                cbufSize = r + chunk_->size;
+                uint64 chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize : GetNxtBuffSize);
+                chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
+                chunk_->size = chunkEnd - 1;
+                if (usesCrlf) chunk_->size -= 1;
+
+                std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
+                bufferSize = cbufSize - chunkEnd;
+            } else {                  // at the end of file
+                chunk_->size += r - 1;// skip the last EOF symbol
+                if (usesCrlf) chunk_->size -= 1;
+                mFqReader->setEof();
+            }
+            //}else {
+            //	mFqReader->setEof();
+            //}
+            return true;
+        }
+
+        bool FastqFileReader::ReadNextChunk_(FastqDataChunk *chunk_, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, atomic_int *d, pair<char *, int> &l) {
+            if ((mFqReader->FinishRead() || mFqReader->Eof()) && bufferSize == 0) {
+                chunk_->size = 0;
+                return false;
+            }
+
+            // flush the data from previous incomplete chunk
+            uchar *data = chunk_->data.Pointer();
+            uint64 cbufSize = chunk_->data.Size();
+            chunk_->size = 0;
+            int64 toRead = cbufSize - bufferSize;
+            //---------------------------------
+            if (bufferSize > 0) {
+                std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
+                chunk_->size = bufferSize;
+                bufferSize = 0;
+            }
+
+            // read the next chunk
+            int64 r = mFqReader->Read(data + chunk_->size, toRead, q, d, l);
+            // std::cout << "r is :" << r << std::endl;
+            // std::cout << "r is :" << r << std::endl;
+
+            // if (r > 0) {
+            if (!mFqReader->FinishRead() && !mFqReader->Eof()) {
+                cbufSize = r + chunk_->size;
+                uint64 chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize : GetNxtBuffSize);
+                chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
+                chunk_->size = chunkEnd - 1;
+                if (usesCrlf) chunk_->size -= 1;
+
+                std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
+                bufferSize = cbufSize - chunkEnd;
+            } else {                  // at the end of file
+                chunk_->size += r - 1;// skip the last EOF symbol
+                if (usesCrlf) chunk_->size -= 1;
+                mFqReader->setEof();
+            }
+            if (r != toRead) {
+                mFqReader->setEof();
+            }
+            //}else {
+            //	mFqReader->setEof();
+            //}
+            return true;
+        }
+
+        uint64 FastqFileReader::GetPreviousRecordPos_(uchar *data_, uint64 pos_, const uint64 size_) {
+            int offset = 2;
+
+            SkipToSol(data_, pos_, size_);
+            if (usesCrlf) {
+                offset = 3;
+            }
+            while (data_[pos_ + offset] != '@') {//+2
+                // std::cout<<"pos_"<<pos_<<std::endl;
+                SkipToSol(data_, pos_, size_);
+            }
+            //mark to check if the '@' is quality score
+            uint64 pos0 = pos_ + offset;
+            SkipToSol(data_, pos_, size_);
+            if (data_[pos_ + offset] == '+') {
+                // indicate that the '@' is quality score
+                SkipToSol(data_, pos_, size_);
+                SkipToSol(data_, pos_, size_);
+                //it is name
+                if (data_[pos_ + offset] != '@') {
+                    std::cout << "core dump is " << data_[pos_ + offset] << std::endl;
+                    return pos_ + offset;
+                } else {
+                    return pos_ + offset;
+                }
+            } else {
+                return pos0;
             }
         }
-        leftPart->size = chunkEnd - 1;
-        if (usesCrlf) leftPart->size -= 1;
-        std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
-        bufferSize = cbufSize - chunkEnd;
-        rightPart->size = chunkEnd_right - 1;
-        if (usesCrlf) rightPart->size -= 1;
-        std::copy(data_right + chunkEnd_right, data_right + cbufSize_right, swapBuffer2.Pointer());
-        bufferSize2 = cbufSize_right - chunkEnd_right;
-    }
-    pair->left_part = leftPart;
-    pair->right_part = rightPart;
-    return pair;
-}
 
-FastqDataPairChunk *
-FastqFileReader::readNextPairChunk(moodycamel::ReaderWriterQueue<std::pair < char * , int>>
+        uint64 FastqFileReader::GetNextRecordPos_(uchar *data_, uint64 pos_, const uint64 size_) {
+            SkipToEol(data_, pos_, size_);
+            ++pos_;
 
-*q1,
-moodycamel::ReaderWriterQueue<std::pair < char * , int>> *q2,
-atomic_int *d1, atomic_int
-*d2,
-pair<char *, int> &last1, pair<char *, int>
-&last2){
-bool eof1 = false;
-bool eof2 = false;
-FastqDataPairChunk *pair = new FastqDataPairChunk;
+            // find beginning of the next record
+            while (data_[pos_] != '@') {
+                SkipToEol(data_, pos_, size_);
+                ++pos_;
+            }
+            uint64 pos0 = pos_;
 
-FastqDataChunk *leftPart = NULL;
-recordsPool.
-Acquire(leftPart);  // song: all in one datapool
+            SkipToEol(data_, pos_, size_);
+            ++pos_;
 
-FastqDataChunk *rightPart = NULL;
-recordsPool.
-Acquire(rightPart);
-
-int64 left_line_count = 0;
-int64 right_line_count = 0;
-int64 chunkEnd = 0;
-int64 chunkEnd_right = 0;
-
-//---------read left chunk------------
-if (eof) {
-leftPart->
-size = 0;
-rightPart->
-size = 0;
-// return false;
-recordsPool.
-Release(leftPart);
-recordsPool.
-Release(rightPart);
-return
-NULL;
-}
-
-// flush the data from previous incomplete chunk
-uchar *data = leftPart->data.Pointer();
-uint64 cbufSize = leftPart->data.Size();
-leftPart->
-size = 0;
-int64 toRead;
-toRead = cbufSize - bufferSize;
-if (bufferSize > 0) {
-std::copy(swapBuffer
-.
-
-Pointer(), swapBuffer
-
-.
-
-Pointer()
-
-+ bufferSize, data);
-leftPart->
-size = bufferSize;
-bufferSize = 0;
-}
-int64 r;
-r = mFqReader->Read(data + leftPart->size, toRead, q1, d1, last1);
-if (r > 0) {
-if (r == toRead) {
-chunkEnd = cbufSize - GetNxtBuffSize;
-chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
-} else {
-leftPart->size += r - 1;
-if (usesCrlf) leftPart->size -= 1;
-eof1 = true;
-chunkEnd = leftPart->size + 1;
-cbufSize = leftPart->size + 1;
-}
-} else {
-eof1 = true;
-chunkEnd = leftPart->size + 1;
-cbufSize = leftPart->size + 1;
-if (leftPart->size == 0) {
-return
-NULL;
-}
-}
-
-uchar *data_right = rightPart->data.Pointer();
-uint64 cbufSize_right = rightPart->data.Size();
-rightPart->
-size = 0;
-toRead = cbufSize_right - bufferSize2;
-if (bufferSize2 > 0) {
-std::copy(swapBuffer2
-.
-
-Pointer(), swapBuffer2
-
-.
-
-Pointer()
-
-+ bufferSize2, data_right);
-rightPart->
-size = bufferSize2;
-bufferSize2 = 0;
-}
-r = mFqReader2->Read(data_right + rightPart->size, toRead, q2, d2, last2);
-if (r > 0) {
-if (r == toRead) {
-chunkEnd_right = cbufSize_right - GetNxtBuffSize;
-chunkEnd_right = GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
-} else {
-rightPart->size += r - 1;
-if (usesCrlf) rightPart->size -= 1;
-eof2 = true;
-chunkEnd_right = rightPart->size + 1;
-cbufSize_right = rightPart->size + 1;
-}
-} else {
-eof2 = true;
-chunkEnd_right = rightPart->size + 1;
-cbufSize_right = rightPart->size + 1;
-if (rightPart->size == 0) {
-return
-NULL;
-}
-}
-if (
-eof1 &&eof2
-)
-eof = true;
-if (!eof) {
-left_line_count = count_line(data, chunkEnd);
-right_line_count = count_line(data_right, chunkEnd_right);
-int64 difference = left_line_count - right_line_count;
-if (difference > 0) {
-while (chunkEnd >= 0) {
-if (data[chunkEnd] == '\n') {
-difference--;
-if (difference == -1) {
-chunkEnd++;
-break;
-}
-}
-chunkEnd--;
-}
-} else if (difference < 0) {
-while (chunkEnd_right >= 0) {
-if (data_right[chunkEnd_right] == '\n') {
-difference++;
-if (difference == 1) {
-chunkEnd_right++;
-break;
-}
-}
-chunkEnd_right--;
-}
-}
-
-leftPart->
-size = chunkEnd - 1;
-if (usesCrlf) leftPart->size -= 1;
-std::copy(data
-+ chunkEnd, data + cbufSize, swapBuffer.
-
-Pointer()
-
-);
-bufferSize = cbufSize - chunkEnd;
-
-rightPart->
-size = chunkEnd_right - 1;
-if (usesCrlf) rightPart->size -= 1;
-std::copy(data_right
-+ chunkEnd_right, data_right + cbufSize_right, swapBuffer2.
-
-Pointer()
-
-);
-bufferSize2 = cbufSize_right - chunkEnd_right;
-}
-pair->
-left_part = leftPart;
-pair->
-right_part = rightPart;
-return
-pair;
-}
-
-bool FastqFileReader::ReadNextChunk_(FastqDataChunk *chunk_) {
-    if (mFqReader->FinishRead() && bufferSize == 0) {
-        chunk_->size = 0;
-        return false;
-    }
-
-    // flush the data from previous incomplete chunk
-    uchar *data = chunk_->data.Pointer();
-    uint64 cbufSize = chunk_->data.Size();
-    chunk_->size = 0;
-    int64 toRead = cbufSize - bufferSize;
-    //---------------------------------
-    if (bufferSize > 0) {
-        std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
-        chunk_->size = bufferSize;
-        bufferSize = 0;
-    }
-
-    // read the next chunk
-    int64 r = mFqReader->Read(data + chunk_->size, toRead);
-    // std::cout << "r is :" << r << std::endl;
-
-    // if (r > 0) {
-    if (!mFqReader->FinishRead()) {
-        cbufSize = r + chunk_->size;
-        uint64 chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize : GetNxtBuffSize);
-        chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
-        chunk_->size = chunkEnd - 1;
-        if (usesCrlf) chunk_->size -= 1;
-
-        std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
-        bufferSize = cbufSize - chunkEnd;
-    } else {                  // at the end of file
-        chunk_->size += r - 1;  // skip the last EOF symbol
-        if (usesCrlf) chunk_->size -= 1;
-        mFqReader->setEof();
-    }
-    //}else {
-    //	mFqReader->setEof();
-    //}
-    return true;
-}
-
-bool FastqFileReader::ReadNextChunk_(FastqDataChunk *chunk_, moodycamel::ReaderWriterQueue<std::pair < char * , int>>
-
-*q,
-atomic_int *d, pair<char *, int>
-&l) {
-if ((mFqReader->
-
-FinishRead()
-
-||mFqReader->
-
-Eof()
-
-) && bufferSize == 0) {
-chunk_->
-size = 0;
-return false;
-}
-
-// flush the data from previous incomplete chunk
-uchar *data = chunk_->data.Pointer();
-uint64 cbufSize = chunk_->data.Size();
-chunk_->
-size = 0;
-int64 toRead = cbufSize - bufferSize;
-//---------------------------------
-if (bufferSize > 0) {
-std::copy(swapBuffer
-.
-
-Pointer(), swapBuffer
-
-.
-
-Pointer()
-
-+ bufferSize, data);
-chunk_->
-size = bufferSize;
-bufferSize = 0;
-}
-
-// read the next chunk
-int64 r = mFqReader->Read(data + chunk_->size, toRead, q, d, l);
-// std::cout << "r is :" << r << std::endl;
-// std::cout << "r is :" << r << std::endl;
-
-// if (r > 0) {
-if (!mFqReader->
-
-FinishRead() &&
-
-!mFqReader->
-
-Eof()
-
-) {
-cbufSize = r + chunk_->size;
-uint64 chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize : GetNxtBuffSize);
-chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
-chunk_->
-size = chunkEnd - 1;
-if (usesCrlf) chunk_->size -= 1;
-
-std::copy(data
-+ chunkEnd, data + cbufSize, swapBuffer.
-
-Pointer()
-
-);
-bufferSize = cbufSize - chunkEnd;
-} else {                  // at the end of file
-chunk_->size += r - 1;  // skip the last EOF symbol
-if (usesCrlf) chunk_->size -= 1;
-mFqReader->
-
-setEof();
-
-}
-if(r!=toRead){
-mFqReader->
-
-setEof();
-
-}
-//}else {
-//	mFqReader->setEof();
-//}
-return true;
-}
-
-uint64 FastqFileReader::GetPreviousRecordPos_(uchar *data_, uint64 pos_, const uint64 size_) {
-    int offset = 2;
-
-    SkipToSol(data_, pos_, size_);
-    if (usesCrlf) {
-        offset = 3;
-    }
-    while (data_[pos_ + offset] != '@') {  //+2
-        // std::cout<<"pos_"<<pos_<<std::endl;
-        SkipToSol(data_, pos_, size_);
-    }
-    //mark to check if the '@' is quality score
-    uint64 pos0 = pos_ + offset;
-    SkipToSol(data_, pos_, size_);
-    if (data_[pos_ + offset] == '+') {
-        // indicate that the '@' is quality score
-        SkipToSol(data_, pos_, size_);
-        SkipToSol(data_, pos_, size_);
-        //it is name
-        if (data_[pos_ + offset] != '@') {
-            std::cout << "core dump is " << data_[pos_ + offset] << std::endl;
-            return pos_ + offset;
-        } else {
-            return pos_ + offset;
+            if (data_[pos_] == '@')// previous one was a quality field
+                return pos_;
+            //-----[haoz:] is the following code necessary??-------------//
+            SkipToEol(data_, pos_, size_);
+            ++pos_;
+            if (data_[pos_] != '+') std::cout << "core dump is pos: " << pos_ << " char: " << data_[pos_] << std::endl;
+            ASSERT(data_[pos_] == '+');// pos0 was the start of tag
+            return pos0;
         }
-    } else {
-        return pos0;
-    }
-}
 
-uint64 FastqFileReader::GetNextRecordPos_(uchar *data_, uint64 pos_, const uint64 size_) {
-    SkipToEol(data_, pos_, size_);
-    ++pos_;
-
-    // find beginning of the next record
-    while (data_[pos_] != '@') {
-        SkipToEol(data_, pos_, size_);
-        ++pos_;
-    }
-    uint64 pos0 = pos_;
-
-    SkipToEol(data_, pos_, size_);
-    ++pos_;
-
-    if (data_[pos_] == '@')  // previous one was a quality field
-        return pos_;
-    //-----[haoz:] is the following code necessary??-------------//
-    SkipToEol(data_, pos_, size_);
-    ++pos_;
-    if (data_[pos_] != '+') std::cout << "core dump is pos: " << pos_ << " char: " << data_[pos_] << std::endl;
-    ASSERT(data_[pos_] == '+');  // pos0 was the start of tag
-    return pos0;
-}
-
-// uint64 FastqFileReader::GetPrevRecordPos_(uchar *data_, uint64 pos_, const uint64 size_) {
-//	while(data_[pos_] != '@'){
-//		SkipToSol(data_, pos_, size_);
-//	}
-// }
-/**
+        // uint64 FastqFileReader::GetPrevRecordPos_(uchar *data_, uint64 pos_, const uint64 size_) {
+        //	while(data_[pos_] != '@'){
+        //		SkipToSol(data_, pos_, size_);
+        //	}
+        // }
+        /**
  * @brief Skip to end of line
  * @param data_ base pointer
  * @param pos_ start position to skip
  * @param size_ data_ size
  */
-void FastqFileReader::SkipToEol(uchar *data_, uint64 &pos_, const uint64 size_) {
-    // cerr << "pos: " << pos_ << " size: " << size_ << endl;
-    ASSERT(pos_ < size_);
+        void FastqFileReader::SkipToEol(uchar *data_, uint64 &pos_, const uint64 size_) {
+            // cerr << "pos: " << pos_ << " size: " << size_ << endl;
+            ASSERT(pos_ < size_);
 
-    while (data_[pos_] != '\n' && data_[pos_] != '\r' && pos_ < size_) ++pos_;
+            while (data_[pos_] != '\n' && data_[pos_] != '\r' && pos_ < size_) ++pos_;
 
-    if (data_[pos_] == '\r' && pos_ < size_) {
-        if (data_[pos_ + 1] == '\n') {
-            usesCrlf = true;
-            ++pos_;
+            if (data_[pos_] == '\r' && pos_ < size_) {
+                if (data_[pos_ + 1] == '\n') {
+                    usesCrlf = true;
+                    ++pos_;
+                }
+            }
         }
-    }
-}
 
-/**
+        /**
  * @brief Skip to start of line
  * @param data_ base pointer
  * @param pos_ start position to skip
  * @param size_ data_ size
  */
-void FastqFileReader::SkipToSol(uchar *data_, uint64 &pos_, const uint64 size_) {
-    ASSERT(pos_ < size_);
-    if (data_[pos_] == '\n') {
-        --pos_;
-    }
-    if (data_[pos_] == '\r') {
-        usesCrlf = true;
-        pos_--;
-    }
-    // find next '\n' or \n\r
-    while (data_[pos_] != '\n' && data_[pos_] != '\r') {
-        --pos_;
-    }
-    if (data_[pos_] == '\n') {
-        --pos_;  //?? is ++pos_ ?
-    }
-    if (data_[pos_] == '\r') {
-        usesCrlf = true;
-        pos_--;
-    }
-}
+        void FastqFileReader::SkipToSol(uchar *data_, uint64 &pos_, const uint64 size_) {
+            ASSERT(pos_ < size_);
+            if (data_[pos_] == '\n') {
+                --pos_;
+            }
+            if (data_[pos_] == '\r') {
+                usesCrlf = true;
+                pos_--;
+            }
+            // find next '\n' or \n\r
+            while (data_[pos_] != '\n' && data_[pos_] != '\r') {
+                --pos_;
+            }
+            if (data_[pos_] == '\n') {
+                --pos_;//?? is ++pos_ ?
+            }
+            if (data_[pos_] == '\r') {
+                usesCrlf = true;
+                pos_--;
+            }
+        }
 
-}  // namespace fq
+    }// namespace fq
 
-}  // namespace rabbit
+}// namespace rabbit

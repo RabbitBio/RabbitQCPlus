@@ -1,10 +1,10 @@
 #ifndef __REFERENCE_H_
 #define __REFERENCE_H_
 
+#include "Globals.h"
+#include <algorithm>
 #include <string>
 #include <vector>
-#include <algorithm>
-#include "Globals.h"
 
 /**
  * @brief Reference struct that store the FASTA and FASTQ infomation
@@ -29,19 +29,19 @@ struct neoReference {
     uint64_t pcom;   /// comment offset form base
     uint64_t pseq;   /// sequence offset form base
     uint64_t pqual;  /// quality offset form base
-    uint64_t pstrand; ///strand offset form base
+    uint64_t pstrand;///strand offset form base
 
-    uint64_t lname;   /// length of name
-    uint64_t lcom;    /// length of comment
-    uint64_t lseq;    /// length of sequence
-    uint64_t lqual;   /// length of quality
-    uint64_t lstrand; /// length of strand
-    uint64_t gid;     /// global id
-    rabbit::byte *base; /// base data pointer
+    uint64_t lname;    /// length of name
+    uint64_t lcom;     /// length of comment
+    uint64_t lseq;     /// length of sequence
+    uint64_t lqual;    /// length of quality
+    uint64_t lstrand;  /// length of strand
+    uint64_t gid;      /// global id
+    rabbit::byte *base;/// base data pointer
 };
 
 /// Sequence infomations, only for FASTA data
-typedef std::vector <Reference> SeqInfos;
+typedef std::vector<Reference> SeqInfos;
 /// One sequence sequence infomation, only for FASTA data
 typedef Reference OneSeqInfo;
 

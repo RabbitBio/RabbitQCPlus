@@ -118,8 +118,8 @@ unsigned ZopfliMaxCachedSublen(const ZopfliLongestMatchCache *lmc,
 #endif
     cache = &lmc->sublen[ZOPFLI_CACHE_LENGTH * pos * 3];
     (void) length;
-    if (cache[1] == 0 && cache[2] == 0) return 0;  /* No sublen cached. */
+    if (cache[1] == 0 && cache[2] == 0) return 0; /* No sublen cached. */
     return cache[(ZOPFLI_CACHE_LENGTH - 1) * 3] + 3;
 }
 
-#endif  /* ZOPFLI_LONGEST_MATCH_CACHE */
+#endif /* ZOPFLI_LONGEST_MATCH_CACHE */

@@ -68,6 +68,6 @@ unsigned ZopfliMaxCachedSublen(const ZopfliLongestMatchCache *lmc,
 #ifdef __cplusplus
 }
 #endif
-#endif  /* ZOPFLI_LONGEST_MATCH_CACHE */
+#endif /* ZOPFLI_LONGEST_MATCH_CACHE */
 
-#endif  /* ZOPFLI_CACHE_H_ */
+#endif /* ZOPFLI_CACHE_H_ */

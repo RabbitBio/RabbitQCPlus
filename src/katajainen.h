@@ -46,4 +46,4 @@ int ZopfliLengthLimitedCodeLengths(
 #ifdef __cplusplus
 }
 #endif
-#endif  /* ZOPFLI_KATAJAINEN_H_ */
+#endif /* ZOPFLI_KATAJAINEN_H_ */

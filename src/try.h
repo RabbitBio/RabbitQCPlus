@@ -251,10 +251,10 @@
 #ifndef _TRY_H
 #define _TRY_H
 
-#include <stdlib.h>
-#include <string.h>
 #include <assert.h>
 #include <setjmp.h>
+#include <stdlib.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -262,7 +262,7 @@ extern "C" {
 /* If pthreads are used, uncomment this include to make try thread-safe. */
 #ifndef NOTHREAD
 
-#  include <pthread.h>
+#include <pthread.h>
 
 #endif
 
@@ -284,17 +284,17 @@ extern "C" {
    in try.c must also be updated accordingly.  As an example, why could be a
    structure with information for use in the catch block. */
 typedef struct {
-    int code;           /* integer code (required) */
-    int free;           /* if true, the message string was allocated */
-    char *why;          /* informational string or NULL */
+    int code;  /* integer code (required) */
+    int free;  /* if true, the message string was allocated */
+    char *why; /* informational string or NULL */
 } try_ball_t_;
 
 /* Element in the global try stack (a linked list). */
 typedef struct try_s_ try_t_;
 struct try_s_ {
-    jmp_buf env;        /* state information for longjmp() to jump back */
-    try_ball_t_ ball;   /* data passed from the throw() */
-    try_t_ *next;       /* link to the next enclosing try_t, or NULL */
+    jmp_buf env;      /* state information for longjmp() to jump back */
+    try_ball_t_ ball; /* data passed from the throw() */
+    try_t_ *next;     /* link to the next enclosing try_t, or NULL */
 };
 
 /* Global try stack.  try.c must be compiled and linked to provide the stack
@@ -306,34 +306,34 @@ struct try_s_ {
 #ifdef PTHREAD_ONCE_INIT
 extern pthread_key_t try_key_;
 void try_setup_(void);
-#   define try_stack_ ((try_t_ *)pthread_getspecific(try_key_))
-#   define try_stack_set_(next) \
-        do { \
-            assert(pthread_setspecific(try_key_, next) == 0 && \
-                   "try: pthread_setspecific() failed"); \
-        } while (0)
+#define try_stack_ ((try_t_ *) pthread_getspecific(try_key_))
+#define try_stack_set_(next)                               \
+    do {                                                   \
+        assert(pthread_setspecific(try_key_, next) == 0 && \
+               "try: pthread_setspecific() failed");       \
+    } while (0)
 #else /* !PTHREAD_ONCE_INIT */
 extern try_t_ *try_stack_;
-#   define try_setup_()
-#   define try_stack_set_(next) try_stack_ = (next)
+#define try_setup_()
+#define try_stack_set_(next) try_stack_ = (next)
 #endif /* PTHREAD_ONCE_INIT */
 
 /* Try a block.  The block should follow the invocation of try enclosed in { }.
    The block must be immediately followed by an always or a catch.  You must
    not goto or return out of the try block.  A naked break or continue in the
    try block will go to the end of the block. */
-#define TRY_TRY_ \
-    do { \
-        try_t_ try_this_; \
-        volatile int try_pushed_ = 1; \
-        try_this_.ball.code = 0; \
-        try_this_.ball.free = 0; \
-        try_this_.ball.why = NULL; \
-        try_setup_(); \
-        try_this_.next = try_stack_; \
-        try_stack_set_(&try_this_); \
+#define TRY_TRY_                       \
+    do {                               \
+        try_t_ try_this_;              \
+        volatile int try_pushed_ = 1;  \
+        try_this_.ball.code = 0;       \
+        try_this_.ball.free = 0;       \
+        try_this_.ball.why = NULL;     \
+        try_setup_();                  \
+        try_this_.next = try_stack_;   \
+        try_stack_set_(&try_this_);    \
         if (setjmp(try_this_.env) < 2) \
-            do { \
+            do {
 
 /* Execute the code between always and catch, whether or not something was
    thrown.  An always block is optional.  If present, the always block must
@@ -353,13 +353,15 @@ extern try_t_ *try_stack_;
    beginning of the try block, wiping out any change that occurred in the try
    block.  This can cause very confusing bugs until you remember that you
    didn't follow this rule. */
-#define TRY_ALWAYS_ \
-            } while (0); \
-        if (try_pushed_) { \
-            try_stack_set_(try_this_.next); \
-            try_pushed_ = 0; \
-        } \
-            do {
+#define TRY_ALWAYS_                     \
+    }                                   \
+    while (0)                           \
+        ;                               \
+    if (try_pushed_) {                  \
+        try_stack_set_(try_this_.next); \
+        try_pushed_ = 0;                \
+    }                                   \
+    do {
 
 /* Catch an error thrown in the preceding try block.  The catch block must
    follow catch and its parameter, and must be enclosed in { }.  The catch must
@@ -381,14 +383,18 @@ extern try_t_ *try_stack_;
    beginning of the try block, wiping out any change that occurred in the try
    block.  This can cause very confusing bugs until you remember that you
    didn't follow this rule. */
-#define TRY_CATCH_(try_ball_) \
-            } while (0); \
-        if (try_pushed_) { \
-            try_stack_set_(try_this_.next); \
-            try_pushed_ = 0; \
-        } \
-        try_ball_ = try_this_.ball; \
-    } while (0); \
+#define TRY_CATCH_(try_ball_)           \
+    }                                   \
+    while (0)                           \
+        ;                               \
+    if (try_pushed_) {                  \
+        try_stack_set_(try_this_.next); \
+        try_pushed_ = 0;                \
+    }                                   \
+    try_ball_ = try_this_.ball;         \
+    }                                   \
+    while (0)                           \
+        ;                               \
     if (try_ball_.code)
 
 /* Throw an error.  This can be in the try block or in any function called from
@@ -441,31 +447,31 @@ void try_throw_(int code, char *fmt, ...);
 
    We use 1 here instead of 0, since some implementations prevent returning a
    zero value from longjmp() to setjmp(). */
-#define TRY_RETRY_ \
-    do { \
-        try_setup_(); \
+#define TRY_RETRY_                                        \
+    do {                                                  \
+        try_setup_();                                     \
         assert(try_stack_ != NULL && "try: naked retry"); \
-        longjmp(try_stack_->env, 1); \
+        longjmp(try_stack_->env, 1);                      \
     } while (0)
 
 /* Punt a caught error on to the next enclosing catcher.  This is normally used
    in a catch block with same argument as the catch. */
-#define TRY_PUNT_(try_ball_) \
-    do { \
-        try_setup_(); \
+#define TRY_PUNT_(try_ball_)                             \
+    do {                                                 \
+        try_setup_();                                    \
         assert(try_stack_ != NULL && "try: naked punt"); \
-        try_stack_->ball = try_ball_; \
-        longjmp(try_stack_->env, 2); \
+        try_stack_->ball = try_ball_;                    \
+        longjmp(try_stack_->env, 2);                     \
     } while (0)
 
 /* Clean up at the end of the line in a catch (no more punts). */
-#define TRY_DROP_(try_ball_) \
-    do { \
-        if (try_ball_.free) { \
-            free(try_ball_.why); \
-            try_ball_.free = 0; \
+#define TRY_DROP_(try_ball_)      \
+    do {                          \
+        if (try_ball_.free) {     \
+            free(try_ball_.why);  \
+            try_ball_.free = 0;   \
             try_ball_.why = NULL; \
-        } \
+        }                         \
     } while (0)
 #ifdef __cplusplus
 }

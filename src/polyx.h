@@ -21,9 +21,7 @@ public:
     static void trimPolyX(neoReference &r1, neoReference &r2, int compareReq);
 
     static void trimPolyX(neoReference &ref, int compareReq);
-
-
 };
 
 
-#endif //RERABBITQC_POLYX_H
+#endif//RERABBITQC_POLYX_H

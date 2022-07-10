@@ -69,7 +69,7 @@ void ZopfliLengthsToSymbols(const unsigned *lengths, size_t n, unsigned maxbits,
 }
 
 void ZopfliCalculateEntropy(const size_t *count, size_t n, double *bitlengths) {
-    static const double kInvLog2 = 1.4426950408889;  /* 1.0 / log(2.0) */
+    static const double kInvLog2 = 1.4426950408889; /* 1.0 / log(2.0) */
     unsigned sum = 0;
     unsigned i;
     double log2sum;
@@ -82,7 +82,8 @@ void ZopfliCalculateEntropy(const size_t *count, size_t n, double *bitlengths) {
         means the symbol will appear at least once anyway, so give it the cost as if
         its count is 1.*/
         if (count[i] == 0) bitlengths[i] = log2sum;
-        else bitlengths[i] = log2sum - log(count[i]) * kInvLog2;
+        else
+            bitlengths[i] = log2sum - log(count[i]) * kInvLog2;
         /* Depending on compiler and architecture, the above subtraction of two
         floating point numbers may give a negative result very close to zero
         instead of zero (e.g. -5.973954e-17 with gcc 4.1.2 on Ubuntu 11.4). Clamp

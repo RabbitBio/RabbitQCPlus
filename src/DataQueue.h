@@ -19,8 +19,8 @@
 namespace th = boost;
 #else
 
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
 
 namespace th = std;
 #endif
@@ -29,14 +29,14 @@ namespace rabbit {
 
     namespace core {
 
-/*
+        /*
  * @brief DataQueue class 
  * This class provide an data queue for synchronize data access
  */
         template<class _TDataType>
         class TDataQueue {
             typedef _TDataType DataType;
-            typedef std::queue <std::pair<int64, DataType *>> part_queue;
+            typedef std::queue<std::pair<int64, DataType *>> part_queue;
 
             const uint32 threadNum;
             const uint32 maxPartNum;
@@ -50,8 +50,8 @@ namespace rabbit {
             th::condition_variable queueEmptyCondition;
 
         public:
-            static const uint32 DefaultMaxPartNum = 64; //default max part number
-            static const uint32 DefaultMaxThreadtNum = 64; // default max thread number
+            static const uint32 DefaultMaxPartNum = 64;   //default max part number
+            static const uint32 DefaultMaxThreadtNum = 64;// default max thread number
 
             /*
              * @brief Constructor
@@ -59,7 +59,7 @@ namespace rabbit {
              * @param threadNum_ the number of threads push data into the queue
              */
             TDataQueue(uint32 maxPartNum_ = DefaultMaxPartNum, uint32 threadNum_ = 1)
-                    : threadNum(threadNum_), maxPartNum(maxPartNum_), partNum(0), currentThreadMask(0) {
+                : threadNum(threadNum_), maxPartNum(maxPartNum_), partNum(0), currentThreadMask(0) {
                 ASSERT(maxPartNum_ > 0);
                 ASSERT(threadNum_ >= 1);
                 ASSERT(threadNum_ < 64);
@@ -80,7 +80,7 @@ namespace rabbit {
             bool IsCompleted() { return parts.empty() && currentThreadMask == completedThreadMask; }
 
             void SetCompleted() {
-                th::lock_guard <th::mutex> lock(mutex);
+                th::lock_guard<th::mutex> lock(mutex);
 
                 ASSERT(currentThreadMask != completedThreadMask);
                 currentThreadMask = (currentThreadMask << 1) | 1;
@@ -89,7 +89,7 @@ namespace rabbit {
             }
 
             void Push(int64 partId_, const DataType *part_) {
-                th::unique_lock <th::mutex> lock(mutex);
+                th::unique_lock<th::mutex> lock(mutex);
 
                 while (partNum > maxPartNum) queueFullCondition.wait(lock);
 
@@ -100,7 +100,7 @@ namespace rabbit {
             }
 
             bool Pop(int64 &partId_, DataType *&part_) {
-                th::unique_lock <th::mutex> lock(mutex);
+                th::unique_lock<th::mutex> lock(mutex);
 
                 while ((parts.size() == 0) && currentThreadMask != completedThreadMask) queueEmptyCondition.wait(lock);
 
@@ -127,8 +127,8 @@ namespace rabbit {
             }
         };
 
-    }  // namespace core
+    }// namespace core
 
-}  // namespace rabbit
+}// namespace rabbit
 
-#endif  // DATA_QUEUE_H
+#endif// DATA_QUEUE_H

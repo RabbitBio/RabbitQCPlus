@@ -88,5 +88,4 @@ std::string NucleotideTree::getDominantPath(bool &reachedLeaf) {
         }
     }
     return ss;
-
 }

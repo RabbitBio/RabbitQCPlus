@@ -5,17 +5,16 @@
 #pragma once
 
 #include "atomicops.h"
+#include <cassert>
+#include <cstdint>
+#include <cstdlib>// For malloc/free/abort & size_t
+#include <memory>
 #include <new>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
-#include <cassert>
-#include <stdexcept>
-#include <new>
-#include <cstdint>
-#include <cstdlib>        // For malloc/free/abort & size_t
-#include <memory>
 
-#if __cplusplus > 199711L || _MSC_VER >= 1700 // C++11 or VS2012
+#if __cplusplus > 199711L || _MSC_VER >= 1700// C++11 or VS2012
 #include <chrono>
 #endif
 
@@ -44,13 +43,13 @@
 #endif
 
 #ifndef MOODYCAMEL_HAS_EMPLACE
-#if !defined(_MSC_VER) || _MSC_VER >= 1800 // variadic templates: either a non-MS compiler or VS >= 2013
-#define MOODYCAMEL_HAS_EMPLACE    1
+#if !defined(_MSC_VER) || _MSC_VER >= 1800// variadic templates: either a non-MS compiler or VS >= 2013
+#define MOODYCAMEL_HAS_EMPLACE 1
 #endif
 #endif
 
 #ifndef MOODYCAMEL_MAYBE_ALIGN_TO_CACHELINE
-#if defined (__APPLE__) && defined (__MACH__) && __cplusplus >= 201703L
+#if defined(__APPLE__) && defined(__MACH__) && __cplusplus >= 201703L
 // This is required to find out what deployment target we are using
 #include <CoreFoundation/CoreFoundation.h>
 #if !defined(MAC_OS_X_VERSION_MIN_REQUIRED) || MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_14
@@ -66,9 +65,9 @@
 
 #ifdef AE_VCPP
 #pragma warning(push)
-#pragma warning(disable: 4324)	// structure was padded due to __declspec(align())
-#pragma warning(disable: 4820)	// padding was added
-#pragma warning(disable: 4127)	// conditional expression is constant
+#pragma warning(disable : 4324)// structure was padded due to __declspec(align())
+#pragma warning(disable : 4820)// padding was added
+#pragma warning(disable : 4127)// conditional expression is constant
 #endif
 
 namespace moodycamel {
@@ -104,7 +103,7 @@ namespace moodycamel {
         // at least one extra buffer block).
         AE_NO_TSAN explicit ReaderWriterQueue(size_t size = 15)
 #ifndef NDEBUG
-                : enqueuing(false), dequeuing(false)
+            : enqueuing(false), dequeuing(false)
 #endif
         {
             assert(MAX_BLOCK_SIZE == ceilToPow2(MAX_BLOCK_SIZE) && "MAX_BLOCK_SIZE must be a power of 2");
@@ -112,7 +111,7 @@ namespace moodycamel {
 
             Block *firstBlock = nullptr;
 
-            largestBlockSize = ceilToPow2(size + 1);        // We need a spare slot to fit size elements in the block
+            largestBlockSize = ceilToPow2(size + 1);// We need a spare slot to fit size elements in the block
             if (largestBlockSize > MAX_BLOCK_SIZE * 2) {
                 // We need a spare block in case the producer is writing to a different block the consumer is reading from, and
                 // wants to enqueue the maximum number of elements. We also need a spare element in each block to avoid the ambiguity
@@ -160,11 +159,12 @@ namespace moodycamel {
         // Note: The queue should not be accessed concurrently while it's
         // being moved. It's up to the user to synchronize this.
         AE_NO_TSAN ReaderWriterQueue(ReaderWriterQueue &&other)
-                : frontBlock(other.frontBlock.load()),
-                  tailBlock(other.tailBlock.load()),
-                  largestBlockSize(other.largestBlockSize)
+            : frontBlock(other.frontBlock.load()),
+              tailBlock(other.tailBlock.load()),
+              largestBlockSize(other.largestBlockSize)
 #ifndef NDEBUG
-                , enqueuing(false), dequeuing(false)
+              ,
+              enqueuing(false), dequeuing(false)
 #endif
         {
             other.largestBlockSize = 32;
@@ -183,8 +183,7 @@ namespace moodycamel {
 
         // Note: The queue should not be accessed concurrently while it's
         // being moved. It's up to the user to synchronize this.
-        ReaderWriterQueue &operator=(ReaderWriterQueue &&other) AE_NO_TSAN
-        {
+        ReaderWriterQueue &operator=(ReaderWriterQueue &&other) AE_NO_TSAN {
             Block *b = frontBlock.load();
             frontBlock = other.frontBlock.load();
             other.frontBlock = b;
@@ -226,16 +225,14 @@ namespace moodycamel {
         // Enqueues a copy of element if there is room in the queue.
         // Returns true if the element was enqueued, false otherwise.
         // Does not allocate memory.
-        AE_FORCEINLINE bool try_enqueue(T const &element) AE_NO_TSAN
-        {
+        AE_FORCEINLINE bool try_enqueue(T const &element) AE_NO_TSAN {
             return inner_enqueue<CannotAlloc>(element);
         }
 
         // Enqueues a moved copy of element if there is room in the queue.
         // Returns true if the element was enqueued, false otherwise.
         // Does not allocate memory.
-        AE_FORCEINLINE bool try_enqueue(T &&element) AE_NO_TSAN
-        {
+        AE_FORCEINLINE bool try_enqueue(T &&element) AE_NO_TSAN {
             return inner_enqueue<CannotAlloc>(std::forward<T>(element));
         }
 
@@ -243,7 +240,7 @@ namespace moodycamel {
 
         // Like try_enqueue() but with emplace semantics (i.e. construct-in-place).
         template<typename... Args>
-        AE_FORCEINLINE bool try_emplace(Args &&... args) AE_NO_TSAN {
+        AE_FORCEINLINE bool try_emplace(Args &&...args) AE_NO_TSAN {
             return inner_enqueue<CannotAlloc>(std::forward<Args>(args)...);
         }
 
@@ -252,16 +249,14 @@ namespace moodycamel {
         // Enqueues a copy of element on the queue.
         // Allocates an additional block of memory if needed.
         // Only fails (returns false) if memory allocation fails.
-        AE_FORCEINLINE bool enqueue(T const &element) AE_NO_TSAN
-        {
+        AE_FORCEINLINE bool enqueue(T const &element) AE_NO_TSAN {
             return inner_enqueue<CanAlloc>(element);
         }
 
         // Enqueues a moved copy of element on the queue.
         // Allocates an additional block of memory if needed.
         // Only fails (returns false) if memory allocation fails.
-        AE_FORCEINLINE bool enqueue(T &&element) AE_NO_TSAN
-        {
+        AE_FORCEINLINE bool enqueue(T &&element) AE_NO_TSAN {
             return inner_enqueue<CanAlloc>(std::forward<T>(element));
         }
 
@@ -269,7 +264,7 @@ namespace moodycamel {
 
         // Like enqueue() but with emplace semantics (i.e. construct-in-place).
         template<typename... Args>
-        AE_FORCEINLINE bool emplace(Args &&... args) AE_NO_TSAN {
+        AE_FORCEINLINE bool emplace(Args &&...args) AE_NO_TSAN {
             return inner_enqueue<CanAlloc>(std::forward<Args>(args)...);
         }
 
@@ -308,7 +303,7 @@ namespace moodycamel {
             if (blockFront != blockTail || blockFront != (frontBlock_->localTail = frontBlock_->tail.load())) {
                 fence(memory_order_acquire);
 
-                non_empty_front_block:
+            non_empty_front_block:
                 // Front block not empty, dequeue from here
                 auto element = reinterpret_cast<T *>(frontBlock_->data + blockFront * sizeof(T));
                 result = std::move(*element);
@@ -347,10 +342,10 @@ namespace moodycamel {
                 AE_UNUSED(nextBlockTail);
 
                 // We're done with this block, let the producer use it if it needs
-                fence(memory_order_release);        // Expose possibly pending changes to frontBlock->front from last dequeue
+                fence(memory_order_release);// Expose possibly pending changes to frontBlock->front from last dequeue
                 frontBlock = frontBlock_ = nextBlock;
 
-                compiler_fence(memory_order_release);    // Not strictly needed
+                compiler_fence(memory_order_release);// Not strictly needed
 
                 auto element = reinterpret_cast<T *>(frontBlock_->data + nextBlockFront * sizeof(T));
 
@@ -375,8 +370,7 @@ namespace moodycamel {
         // queue appears empty at the time the method is called, nullptr is
         // returned instead.
         // Must be called only from the consumer thread.
-        T *peek() const AE_NO_TSAN
-        {
+        T *peek() const AE_NO_TSAN {
 #ifndef NDEBUG
             ReentrantGuard guard(this->dequeuing);
 #endif
@@ -388,7 +382,7 @@ namespace moodycamel {
 
             if (blockFront != blockTail || blockFront != (frontBlock_->localTail = frontBlock_->tail.load())) {
                 fence(memory_order_acquire);
-                non_empty_front_block:
+            non_empty_front_block:
                 return reinterpret_cast<T *>(frontBlock_->data + blockFront * sizeof(T));
             } else if (frontBlock_ != tailBlock.load()) {
                 fence(memory_order_acquire);
@@ -416,8 +410,7 @@ namespace moodycamel {
         // Removes the front element from the queue, if any, without returning it.
         // Returns true on success, or false if the queue appeared empty at the time
         // `pop` was called.
-        bool pop() AE_NO_TSAN
-        {
+        bool pop() AE_NO_TSAN {
 #ifndef NDEBUG
             ReentrantGuard guard(this->dequeuing);
 #endif
@@ -430,7 +423,7 @@ namespace moodycamel {
             if (blockFront != blockTail || blockFront != (frontBlock_->localTail = frontBlock_->tail.load())) {
                 fence(memory_order_acquire);
 
-                non_empty_front_block:
+            non_empty_front_block:
                 auto element = reinterpret_cast<T *>(frontBlock_->data + blockFront * sizeof(T));
                 element->~T();
 
@@ -481,8 +474,7 @@ namespace moodycamel {
 
         // Returns the approximate number of items currently in the queue.
         // Safe to call from both the producer and consumer threads.
-        inline size_t size_approx() const AE_NO_TSAN
-        {
+        inline size_t size_approx() const AE_NO_TSAN {
             size_t result = 0;
             Block *frontBlock_ = frontBlock.load();
             Block *block = frontBlock_;
@@ -520,16 +512,17 @@ namespace moodycamel {
 
     private:
         enum AllocationMode {
-            CanAlloc, CannotAlloc
+            CanAlloc,
+            CannotAlloc
         };
 
 #if MOODYCAMEL_HAS_EMPLACE
 
         template<AllocationMode canAlloc, typename... Args>
-        bool inner_enqueue(Args &&... args) AE_NO_TSAN
+        bool inner_enqueue(Args &&...args) AE_NO_TSAN
 #else
         template<AllocationMode canAlloc, typename U>
-        bool inner_enqueue(U&& element) AE_NO_TSAN
+        bool inner_enqueue(U &&element) AE_NO_TSAN
 #endif
         {
 #ifndef NDEBUG
@@ -553,7 +546,7 @@ namespace moodycamel {
                 // This block has room for at least one more element
                 char *location = tailBlock_->data + blockTail * sizeof(T);
 #if MOODYCAMEL_HAS_EMPLACE
-                new(location) T(std::forward<Args>(args)...);
+                new (location) T(std::forward<Args>(args)...);
 #else
                 new (location) T(std::forward<U>(element));
 #endif
@@ -568,7 +561,7 @@ namespace moodycamel {
                     // instead of advancing to the next full block (whose values were enqueued first and so should be
                     // consumed first).
 
-                    fence(memory_order_acquire);        // Ensure we get latest writes if we got the latest frontBlock
+                    fence(memory_order_acquire);// Ensure we get latest writes if we got the latest frontBlock
 
                     // tailBlock is full, but there's a free block ahead, use it
                     Block *tailBlockNext = tailBlock_->next.load();
@@ -583,7 +576,7 @@ namespace moodycamel {
 
                     char *location = tailBlockNext->data + nextBlockTail * sizeof(T);
 #if MOODYCAMEL_HAS_EMPLACE
-                    new(location) T(std::forward<Args>(args)...);
+                    new (location) T(std::forward<Args>(args)...);
 #else
                     new (location) T(std::forward<U>(element));
 #endif
@@ -603,7 +596,7 @@ namespace moodycamel {
                     largestBlockSize = newBlockSize;
 
 #if MOODYCAMEL_HAS_EMPLACE
-                    new(newBlock->data) T(std::forward<Args>(args)...);
+                    new (newBlock->data) T(std::forward<Args>(args)...);
 #else
                     new (newBlock->data) T(std::forward<U>(element));
 #endif
@@ -665,7 +658,7 @@ namespace moodycamel {
 
         struct ReentrantGuard {
             AE_NO_TSAN ReentrantGuard(weak_atomic<bool> &_inSection)
-                    : inSection(_inSection) {
+                : inSection(_inSection) {
                 assert(!inSection &&
                        "Concurrent (or re-entrant) enqueue or dequeue operation detected (only one thread at a time may hold the producer or consumer role)");
                 inSection = true;
@@ -684,26 +677,26 @@ namespace moodycamel {
 
         struct Block {
             // Avoid false-sharing by putting highly contended variables on their own cache lines
-            weak_atomic<size_t> front;    // (Atomic) Elements are read from here
-            size_t localTail;            // An uncontended shadow copy of tail, owned by the consumer
+            weak_atomic<size_t> front;// (Atomic) Elements are read from here
+            size_t localTail;         // An uncontended shadow copy of tail, owned by the consumer
 
             char cachelineFiller0[MOODYCAMEL_CACHE_LINE_SIZE - sizeof(weak_atomic<size_t>) - sizeof(size_t)];
-            weak_atomic<size_t> tail;    // (Atomic) Elements are enqueued here
+            weak_atomic<size_t> tail;// (Atomic) Elements are enqueued here
             size_t localFront;
 
             char cachelineFiller1[MOODYCAMEL_CACHE_LINE_SIZE - sizeof(weak_atomic<size_t>) -
-                                  sizeof(size_t)];    // next isn't very contended, but we don't want it on the same cache line as tail (which is)
-            weak_atomic<Block *> next;    // (Atomic)
+                                  sizeof(size_t)];// next isn't very contended, but we don't want it on the same cache line as tail (which is)
+            weak_atomic<Block *> next;            // (Atomic)
 
-            char *data;        // Contents (on heap) are aligned to T's alignment
+            char *data;// Contents (on heap) are aligned to T's alignment
 
             const size_t sizeMask;
 
 
             // size must be a power of two (and greater than 0)
             AE_NO_TSAN Block(size_t const &_size, char *_rawThis, char *_data)
-                    : front(0UL), localTail(0), tail(0UL), localFront(0), next(nullptr), data(_data),
-                      sizeMask(_size - 1), rawThis(_rawThis) {
+                : front(0UL), localTail(0), tail(0UL), localFront(0), next(nullptr), data(_data),
+                  sizeMask(_size - 1), rawThis(_rawThis) {
             }
 
         private:
@@ -715,8 +708,7 @@ namespace moodycamel {
         };
 
 
-        static Block *make_block(size_t capacity) AE_NO_TSAN
-        {
+        static Block *make_block(size_t capacity) AE_NO_TSAN {
             // Allocate enough memory for the block itself, as well as all the elements it will contain
             auto size = sizeof(Block) + std::alignment_of<Block>::value - 1;
             size += sizeof(T) * capacity + std::alignment_of<T>::value - 1;
@@ -727,14 +719,14 @@ namespace moodycamel {
 
             auto newBlockAligned = align_for<Block>(newBlockRaw);
             auto newBlockData = align_for<T>(newBlockAligned + sizeof(Block));
-            return new(newBlockAligned) Block(capacity, newBlockRaw, newBlockData);
+            return new (newBlockAligned) Block(capacity, newBlockRaw, newBlockData);
         }
 
     private:
-        weak_atomic<Block *> frontBlock;        // (Atomic) Elements are dequeued from this block
+        weak_atomic<Block *> frontBlock;// (Atomic) Elements are dequeued from this block
 
         char cachelineFiller[MOODYCAMEL_CACHE_LINE_SIZE - sizeof(weak_atomic<Block *>)];
-        weak_atomic<Block *> tailBlock;        // (Atomic) Elements are enqueued to this block
+        weak_atomic<Block *> tailBlock;// (Atomic) Elements are enqueued to this block
 
         size_t largestBlockSize;
 
@@ -744,7 +736,7 @@ namespace moodycamel {
 #endif
     };
 
-// Like ReaderWriterQueue, but also providees blocking operations
+    // Like ReaderWriterQueue, but also providees blocking operations
     template<typename T, size_t MAX_BLOCK_SIZE = 512>
     class BlockingReaderWriterQueue {
     private:
@@ -752,13 +744,14 @@ namespace moodycamel {
 
     public:
         explicit BlockingReaderWriterQueue(size_t size = 15) AE_NO_TSAN
-                : inner(size), sema(new spsc_sema::LightweightSemaphore()) {}
+            : inner(size),
+              sema(new spsc_sema::LightweightSemaphore()) {}
 
         BlockingReaderWriterQueue(BlockingReaderWriterQueue &&other) AE_NO_TSAN
-                : inner(std::move(other.inner)), sema(std::move(other.sema)) {}
+            : inner(std::move(other.inner)),
+              sema(std::move(other.sema)) {}
 
-        BlockingReaderWriterQueue &operator=(BlockingReaderWriterQueue &&other) AE_NO_TSAN
-        {
+        BlockingReaderWriterQueue &operator=(BlockingReaderWriterQueue &&other) AE_NO_TSAN {
             std::swap(sema, other.sema);
             std::swap(inner, other.inner);
             return *this;
@@ -768,8 +761,7 @@ namespace moodycamel {
         // Enqueues a copy of element if there is room in the queue.
         // Returns true if the element was enqueued, false otherwise.
         // Does not allocate memory.
-        AE_FORCEINLINE bool try_enqueue(T const &element) AE_NO_TSAN
-        {
+        AE_FORCEINLINE bool try_enqueue(T const &element) AE_NO_TSAN {
             if (inner.try_enqueue(element)) {
                 sema->signal();
                 return true;
@@ -780,8 +772,7 @@ namespace moodycamel {
         // Enqueues a moved copy of element if there is room in the queue.
         // Returns true if the element was enqueued, false otherwise.
         // Does not allocate memory.
-        AE_FORCEINLINE bool try_enqueue(T &&element) AE_NO_TSAN
-        {
+        AE_FORCEINLINE bool try_enqueue(T &&element) AE_NO_TSAN {
             if (inner.try_enqueue(std::forward<T>(element))) {
                 sema->signal();
                 return true;
@@ -793,7 +784,7 @@ namespace moodycamel {
 
         // Like try_enqueue() but with emplace semantics (i.e. construct-in-place).
         template<typename... Args>
-        AE_FORCEINLINE bool try_emplace(Args &&... args) AE_NO_TSAN {
+        AE_FORCEINLINE bool try_emplace(Args &&...args) AE_NO_TSAN {
             if (inner.try_emplace(std::forward<Args>(args)...)) {
                 sema->signal();
                 return true;
@@ -807,8 +798,7 @@ namespace moodycamel {
         // Enqueues a copy of element on the queue.
         // Allocates an additional block of memory if needed.
         // Only fails (returns false) if memory allocation fails.
-        AE_FORCEINLINE bool enqueue(T const &element) AE_NO_TSAN
-        {
+        AE_FORCEINLINE bool enqueue(T const &element) AE_NO_TSAN {
             if (inner.enqueue(element)) {
                 sema->signal();
                 return true;
@@ -819,8 +809,7 @@ namespace moodycamel {
         // Enqueues a moved copy of element on the queue.
         // Allocates an additional block of memory if needed.
         // Only fails (returns false) if memory allocation fails.
-        AE_FORCEINLINE bool enqueue(T &&element) AE_NO_TSAN
-        {
+        AE_FORCEINLINE bool enqueue(T &&element) AE_NO_TSAN {
             if (inner.enqueue(std::forward<T>(element))) {
                 sema->signal();
                 return true;
@@ -832,7 +821,7 @@ namespace moodycamel {
 
         // Like enqueue() but with emplace semantics (i.e. construct-in-place).
         template<typename... Args>
-        AE_FORCEINLINE bool emplace(Args &&... args) AE_NO_TSAN {
+        AE_FORCEINLINE bool emplace(Args &&...args) AE_NO_TSAN {
             if (inner.emplace(std::forward<Args>(args)...)) {
                 sema->signal();
                 return true;
@@ -862,7 +851,8 @@ namespace moodycamel {
         // waits until an element is available, then dequeues it.
         template<typename U>
         void wait_dequeue(U &result) AE_NO_TSAN {
-            while (!sema->wait());
+            while (!sema->wait())
+                ;
             bool success = inner.try_dequeue(result);
             AE_UNUSED(result);
             assert(success);
@@ -897,8 +887,7 @@ namespace moodycamel {
         // Using a negative timeout indicates an indefinite timeout,
         // and is thus functionally equivalent to calling wait_dequeue.
         template<typename U, typename Rep, typename Period>
-        inline bool wait_dequeue_timed(U& result, std::chrono::duration<Rep, Period> const& timeout) AE_NO_TSAN
-        {
+        inline bool wait_dequeue_timed(U &result, std::chrono::duration<Rep, Period> const &timeout) AE_NO_TSAN {
             return wait_dequeue_timed(result, std::chrono::duration_cast<std::chrono::microseconds>(timeout).count());
         }
 #endif
@@ -909,16 +898,14 @@ namespace moodycamel {
         // queue appears empty at the time the method is called, nullptr is
         // returned instead.
         // Must be called only from the consumer thread.
-        AE_FORCEINLINE T *peek() const AE_NO_TSAN
-        {
+        AE_FORCEINLINE T *peek() const AE_NO_TSAN {
             return inner.peek();
         }
 
         // Removes the front element from the queue, if any, without returning it.
         // Returns true on success, or false if the queue appeared empty at the time
         // `pop` was called.
-        AE_FORCEINLINE bool pop() AE_NO_TSAN
-        {
+        AE_FORCEINLINE bool pop() AE_NO_TSAN {
             if (sema->tryWait()) {
                 bool result = inner.pop();
                 assert(result);
@@ -930,8 +917,7 @@ namespace moodycamel {
 
         // Returns the approximate number of items currently in the queue.
         // Safe to call from both the producer and consumer threads.
-        AE_FORCEINLINE size_t size_approx() const AE_NO_TSAN
-        {
+        AE_FORCEINLINE size_t size_approx() const AE_NO_TSAN {
             return sema->availableApprox();
         }
 
@@ -956,10 +942,10 @@ namespace moodycamel {
 
     private:
         ReaderWriterQueue inner;
-        std::unique_ptr <spsc_sema::LightweightSemaphore> sema;
+        std::unique_ptr<spsc_sema::LightweightSemaphore> sema;
     };
 
-}    // end namespace moodycamel
+}// end namespace moodycamel
 
 #ifdef AE_VCPP
 #pragma warning(pop)

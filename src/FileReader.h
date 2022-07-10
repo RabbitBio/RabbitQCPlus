@@ -1,30 +1,30 @@
 #include "Buffer.h"
 #include "FastxChunk.h"
+#include "Reference.h"
 #include "utils.h"
+#include <cstring>
 #include <iostream>
 #include <string>
-#include <cstring>
-#include "Reference.h"
 
 #if defined(USE_IGZIP)
 #include "igzip_lib.h"
 #else
 
-#include <zlib.h>  //support gziped files, functional but inefficient
+#include <zlib.h>//support gziped files, functional but inefficient
 
 #endif
 
 #if defined(_WIN32)
 #define _CRT_SECURE_NO_WARNINGS
-#pragma warning(disable : 4996)  // D_SCL_SECURE
-#pragma warning(disable : 4244)  // conversion uint64 to uint32
+#pragma warning(disable : 4996)// D_SCL_SECURE
+#pragma warning(disable : 4244)// conversion uint64 to uint32
 //# pragma warning(disable : 4267)
 #define FOPEN fopen
 #define FDOPEN fdopen
 #define FSEEK _fseeki64
 #define FTELL _ftelli64
 #define FCLOSE fclose
-#elif __APPLE__  // Apple by default suport 64 bit file operations (Darwin 10.5+)
+#elif __APPLE__// Apple by default suport 64 bit file operations (Darwin 10.5+)
 #define FOPEN fopen
 #define FDOPEN fdopen
 #define FSEEK fseek
@@ -60,8 +60,9 @@ namespace rabbit {
 
     class FileReader {
     private:
-        static const uint32 IGZIP_IN_BUF_SIZE = 1 << 22; // 4M gziped file onece fetch
+        static const uint32 IGZIP_IN_BUF_SIZE = 1 << 22;// 4M gziped file onece fetch
         static const uint32 GZIP_HEADER_BYTES_REQ = 1 << 16;
+
     public:
         FileReader(const std::string &fileName_, bool isZipped) {
             if (ends_with(fileName_, ".gz") || isZipped) {
@@ -73,7 +74,7 @@ namespace rabbit {
                 //gzrewind(mZipFile);
 #if defined(USE_IGZIP)
                 mFile = fopen(fileName_.c_str(), "rb");
-                if (mFile == NULL){
+                if (mFile == NULL) {
                     throw RioException(
                             ("Can not open file to read: " + fileName_).c_str());
                 }
@@ -85,11 +86,11 @@ namespace rabbit {
                 mStream.next_in = mIgInbuf;
                 mStream.avail_in = fread(mStream.next_in, 1, IGZIP_IN_BUF_SIZE, mFile);
 
-                int ret =0;
+                int ret = 0;
                 ret = isal_read_gzip_header(&mStream, &mIgzipHeader);
-                if( ret != ISAL_DECOMP_OK ){
+                if (ret != ISAL_DECOMP_OK) {
                     cerr << "error invalid gzip header found: " << fileName_ << endl;
-                    if(mFile != NULL){
+                    if (mFile != NULL) {
                         fclose(mFile);
                     }
                     exit(-1);
@@ -129,19 +130,19 @@ namespace rabbit {
             }
         }
 
-#if    defined(USE_IGZIP)
-        int64 igzip_read(FILE* zipFile, byte *memory_, size_t size_){
+#if defined(USE_IGZIP)
+        int64 igzip_read(FILE *zipFile, byte *memory_, size_t size_) {
             uint64_t offset = 0;
             int ret = 0;
-            do{
-                if(mStream.avail_in == 0){
+            do {
+                if (mStream.avail_in == 0) {
                     mStream.next_in = mIgInbuf;
                     mStream.avail_in = fread(mStream.next_in, 1, IGZIP_IN_BUF_SIZE, zipFile);
                 }
                 mStream.next_out = memory_ + offset;
                 mStream.avail_out = size_ - offset;
                 //printf("before inflate, avin: %d, avout: %d\n", mStream.avail_in, mStream.avail_out);
-                if(isal_inflate(&mStream) != ISAL_DECOMP_OK){
+                if (isal_inflate(&mStream) != ISAL_DECOMP_OK) {
                     cerr << "decompress error" << endl;
                     return -1;
                 }
@@ -149,9 +150,9 @@ namespace rabbit {
                 //cerr << "state block finish: " << (mStream.block_state == ISAL_BLOCK_FINISH) << endl;
                 offset = (mStream.next_out - memory_);
 
-                if(mStream.block_state == ISAL_BLOCK_FINISH) {
+                if (mStream.block_state == ISAL_BLOCK_FINISH) {
                     //cerr << "a new block" << endl;
-                    if(feof(mFile) && mStream.avail_in == 0){
+                    if (feof(mFile) && mStream.avail_in == 0) {
                         return offset;
                     }
                     // a new block begins
@@ -160,8 +161,8 @@ namespace rabbit {
                         mStream.next_in = mIgInbuf;
                         mStream.avail_in = fread(mStream.next_in, 1, IGZIP_IN_BUF_SIZE, mFile);
                         //mGzipInputUsedBytes += mStream.avail_in;
-                    } else if (mStream.avail_in >= GZIP_HEADER_BYTES_REQ){
-                        unsigned char* old_next_in = mStream.next_in;
+                    } else if (mStream.avail_in >= GZIP_HEADER_BYTES_REQ) {
+                        unsigned char *old_next_in = mStream.next_in;
                         size_t old_avail_in = mStream.avail_in;
                         isal_inflate_reset(&mStream);
                         mStream.avail_in = old_avail_in;
@@ -170,20 +171,21 @@ namespace rabbit {
                         size_t old_avail_in = mStream.avail_in;
                         memmove(mIgInbuf, mStream.next_in, mStream.avail_in);
                         size_t readed = 0;
-                        if(!feof(mFile)){
+                        if (!feof(mFile)) {
                             readed = fread(mIgInbuf + mStream.avail_in, 1, IGZIP_IN_BUF_SIZE - mStream.avail_in, mFile);
                         }
                         isal_inflate_reset(&mStream);
                         mStream.next_in = mIgInbuf;
-                        mStream.avail_in = old_avail_in + readed;;
+                        mStream.avail_in = old_avail_in + readed;
+                        ;
                     }
                     ret = isal_read_gzip_header(&mStream, &mIgzipHeader);
                     if (ret != ISAL_DECOMP_OK) {
-                        cerr << "igzip: invalid gzip header found: " << mStream.avail_in <<  " : " << mStream.avail_out << endl;
+                        cerr << "igzip: invalid gzip header found: " << mStream.avail_in << " : " << mStream.avail_out << endl;
                         exit(-1);
                     }
                 }
-            }while(mStream.avail_out > 0);
+            } while (mStream.avail_out > 0);
             assert(offset <= size_);
             return offset;
         }
@@ -217,11 +219,10 @@ namespace rabbit {
          * @param num
          * @return
          */
-        int64 Read(byte *buf, uint64 len, moodycamel::ReaderWriterQueue<std::pair < char * , int>>
+        int64 Read(byte *buf, uint64 len, moodycamel::ReaderWriterQueue<std::pair<char *, int>>
 
-        *Q,
-        std::atomic_int *done, std::pair<char *, int>
-        &L) {
+                                                  *Q,
+                   std::atomic_int *done, std::pair<char *, int> &L) {
             std::pair<char *, int> now;
             int64 ret;
             int64 got = 0;
@@ -232,7 +233,7 @@ namespace rabbit {
                     char *tmp = new char[L.second - len];
                     memcpy(tmp, L.first + len, L.second - len);
                     memcpy(L.first, tmp, L.second - len);
-                    delete[]tmp;
+                    delete[] tmp;
                     L.second = L.second - len;
                     ret = len;
                     buf += ret;
@@ -332,4 +333,4 @@ namespace rabbit {
         bool eof = false;
     };
 
-} //namespace rabbit
+}//namespace rabbit

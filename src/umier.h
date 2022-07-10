@@ -5,9 +5,9 @@
 #ifndef RERABBITQC_UMIER_H
 #define RERABBITQC_UMIER_H
 
-#include <cstring>
-#include "cmdinfo.h"
 #include "Reference.h"
+#include "cmdinfo.h"
+#include <cstring>
 
 class Umier {
 public:
@@ -31,4 +31,4 @@ private:
 };
 
 
-#endif //RERABBITQC_UMIER_H
+#endif//RERABBITQC_UMIER_H

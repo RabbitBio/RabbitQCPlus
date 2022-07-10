@@ -40,10 +40,8 @@ ThreadInfo::~ThreadInfo() {
             delete pre_state1_;
             delete aft_state1_;
         }
-
     }
     if (cmd_info_->no_insert_size_ == 0) {
-        delete[]insert_size_dist_;
+        delete[] insert_size_dist_;
     }
-
 }

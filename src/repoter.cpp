@@ -85,17 +85,17 @@ Reference Repoter::GetRevRef(neoReference &ref) {
 
 std::string HTMLHeader() {
 
-//    std::ifstream iiff("src/echarts.min.js",ios::in);
-//    if (!iiff.is_open()){
-//        cout << "read echarts.min.js fail." << endl;
-//        exit(0);
-//    }
-//    std::string jsInfo="";
-//    std::string jsTmp="";
-//    while(std::getline(iiff,jsTmp)){
-//        jsInfo+=jsTmp+"\n";
-//    }
-//    iiff.close();
+    //    std::ifstream iiff("src/echarts.min.js",ios::in);
+    //    if (!iiff.is_open()){
+    //        cout << "read echarts.min.js fail." << endl;
+    //        exit(0);
+    //    }
+    //    std::string jsInfo="";
+    //    std::string jsTmp="";
+    //    while(std::getline(iiff,jsTmp)){
+    //        jsInfo+=jsTmp+"\n";
+    //    }
+    //    iiff.close();
 
     string jsInfo = jsonData;
     /*
@@ -113,9 +113,10 @@ std::string HTMLHeader() {
                        "<head>\n"
                        "    <meta charset=\"UTF-8\">\n"
                        "    <title>RabbitQCPlus report</title>\n"
-                       "    <script>" + jsInfo + "</script>\n"
-                                                 "</head>\n"
-                                                 "<body>\n");
+                       "    <script>" +
+                       jsInfo + "</script>\n"
+                                "</head>\n"
+                                "<body>\n");
 }
 
 std::string HTMLCss() {
@@ -347,9 +348,10 @@ std::string insertOptionEnd() {
 
 std::string insertTitle(std::string text) {
     return "title: {\n"
-           "            text: \'" + text + "\',\n"
-                                           "            left:\'center\',\n"
-                                           "        },\n";
+           "            text: \'" +
+           text + "\',\n"
+                  "            left:\'center\',\n"
+                  "        },\n";
 }
 
 std::string insertxAxis(int len, int interval = 1) {
@@ -366,15 +368,16 @@ std::string insertxAxis(int len, int interval = 1) {
 std::string insertxAxis(std::string name, int len, int interval = 1) {
     std::string out("xAxis: {\n"
                     "            type: 'category',\n"
-                    "            name: \'" + name + "\',\n"
-                                                    "            nameLocation:'center',\n"
-                                                    "nameTextStyle: {\n"
-                                                    "                lineHeight: 50,\n"
-                                                    "                fontSize: 13,\n"
-                                                    "                fontFamily: \"monospace\",\n"
-                                                    "                fontWeight: \"bold\"\n"
-                                                    "            },\n"
-                                                    "            data: [");
+                    "            name: \'" +
+                    name + "\',\n"
+                           "            nameLocation:'center',\n"
+                           "nameTextStyle: {\n"
+                           "                lineHeight: 50,\n"
+                           "                fontSize: 13,\n"
+                           "                fontFamily: \"monospace\",\n"
+                           "                fontWeight: \"bold\"\n"
+                           "            },\n"
+                           "            data: [");
     for (int i = 0; i < len; i += interval) {
         out.append(std::to_string(i) + ',');
     }
@@ -384,18 +387,21 @@ std::string insertxAxis(std::string name, int len, int interval = 1) {
 
 std::string insertyAxis(std::string type, std::string name, std::string _min, std::string _max) {
     return "yAxis: {\n"
-           "            type: \'" + type + "\',\n"
-                                           "            name: \'" + name + "\',\n"
-                                                                           "            nameLocation:'center',\n"
-                                                                           "nameTextStyle: {\n"
-                                                                           "                lineHeight: 50,\n"
-                                                                           "                fontSize: 13,\n"
-                                                                           "                fontFamily: \"monospace\",\n"
-                                                                           "                fontWeight: \"bold\"\n"
-                                                                           "            },\n"
+           "            type: \'" +
+           type + "\',\n"
+                  "            name: \'" +
+           name + "\',\n"
+                  "            nameLocation:'center',\n"
+                  "nameTextStyle: {\n"
+                  "                lineHeight: 50,\n"
+                  "                fontSize: 13,\n"
+                  "                fontFamily: \"monospace\",\n"
+                  "                fontWeight: \"bold\"\n"
+                  "            },\n"
 
-                                                                           "            min:" + _min + ",\n"
-                                                                                                       "            max:" +
+                  "            min:" +
+           _min + ",\n"
+                  "            max:" +
            _max + "\n"
                   "        },\n";
 }
@@ -403,55 +409,61 @@ std::string insertyAxis(std::string type, std::string name, std::string _min, st
 
 std::string insertyAxis(std::string type, std::string _min, std::string _max) {
     return "yAxis: {\n"
-           "            type: \'" + type + "\',\n"
-                                           "            min:" + _min + ",\n"
-                                                                       "            max:" + _max + "\n"
-                                                                                                   "        },\n";
+           "            type: \'" +
+           type + "\',\n"
+                  "            min:" +
+           _min + ",\n"
+                  "            max:" +
+           _max + "\n"
+                  "        },\n";
 }
 
 std::string insertyAxis(std::string type, std::string name) {
     return "yAxis: {\n"
-           "            type: \'" + type + "\',\n"
-                                           "            name: \'" + name + "\',\n"
-                                                                           "            nameLocation:'center',\n"
-                                                                           "nameTextStyle: {\n"
-                                                                           "                lineHeight: 50,\n"
-                                                                           "                fontSize: 13,\n"
-                                                                           "                fontFamily: \"monospace\",\n"
-                                                                           "                fontWeight: \"bold\"\n"
-                                                                           "            },\n"
-                                                                           "            axisLabel: {\n"
-                                                                           "                formatter: function (value) {\n"
-                                                                           "                    if (value < 100000) return value;\n"
-                                                                           "                    var len=0;\n"
-                                                                           "                    var last=value;\n"
-                                                                           "                    while (value>9){\n"
-                                                                           "                        value=value/10;\n"
-                                                                           "                        len++;\n"
-                                                                           "                    }\n"
-                                                                           "                    return last/Math.pow(10,len)+'E+'+len;\n"
-                                                                           "              },\n"
-                                                                           "           },\n"
-                                                                           "        },\n";
+           "            type: \'" +
+           type + "\',\n"
+                  "            name: \'" +
+           name + "\',\n"
+                  "            nameLocation:'center',\n"
+                  "nameTextStyle: {\n"
+                  "                lineHeight: 50,\n"
+                  "                fontSize: 13,\n"
+                  "                fontFamily: \"monospace\",\n"
+                  "                fontWeight: \"bold\"\n"
+                  "            },\n"
+                  "            axisLabel: {\n"
+                  "                formatter: function (value) {\n"
+                  "                    if (value < 100000) return value;\n"
+                  "                    var len=0;\n"
+                  "                    var last=value;\n"
+                  "                    while (value>9){\n"
+                  "                        value=value/10;\n"
+                  "                        len++;\n"
+                  "                    }\n"
+                  "                    return last/Math.pow(10,len)+'E+'+len;\n"
+                  "              },\n"
+                  "           },\n"
+                  "        },\n";
 }
 
 
 std::string insertyAxis(std::string type) {
     return "yAxis: {\n"
-           "            type: \'" + type + "\',\n"
-                                           "            axisLabel: {\n"
-                                           "                formatter: function (value) {\n"
-                                           "                    if (value < 100000) return value;\n"
-                                           "                    var len=0;\n"
-                                           "                    var last=value;\n"
-                                           "                    while (value>9){\n"
-                                           "                        value=value/10;\n"
-                                           "                        len++;\n"
-                                           "                    }\n"
-                                           "                    return last/Math.pow(10,len)+'E+'+len;\n"
-                                           "              },\n"
-                                           "           },\n"
-                                           "        },\n";
+           "            type: \'" +
+           type + "\',\n"
+                  "            axisLabel: {\n"
+                  "                formatter: function (value) {\n"
+                  "                    if (value < 100000) return value;\n"
+                  "                    var len=0;\n"
+                  "                    var last=value;\n"
+                  "                    while (value>9){\n"
+                  "                        value=value/10;\n"
+                  "                        len++;\n"
+                  "                    }\n"
+                  "                    return last/Math.pow(10,len)+'E+'+len;\n"
+                  "              },\n"
+                  "           },\n"
+                  "        },\n";
 }
 
 std::string insertSeriesBegin() {
@@ -464,8 +476,9 @@ std::string insertSeriesEnd() {
 
 std::string insertSeriesSmoothData(std::string type, int64_t *data, int len, int interval = 1) {
     std::string out("{\n"
-                    "            type: \'" + type + "\',\n"
-                                                    "            data: [\n");
+                    "            type: \'" +
+                    type + "\',\n"
+                           "            data: [\n");
     for (int i = 0; i < len; i += interval) {
         out.append(std::to_string(data[i]) + ',');
     }
@@ -476,8 +489,9 @@ std::string insertSeriesSmoothData(std::string type, int64_t *data, int len, int
 
 std::string insertSeriesData(std::string type, int *data, int len, int interval = 1) {
     std::string out("{\n"
-                    "            type: \'" + type + "\',\n"
-                                                    "            data: [\n");
+                    "            type: \'" +
+                    type + "\',\n"
+                           "            data: [\n");
     for (int i = 0; i < len; i += interval) {
         out.append(std::to_string(data[i]) + ',');
     }
@@ -487,9 +501,11 @@ std::string insertSeriesData(std::string type, int *data, int len, int interval 
 
 std::string insertSeriesData(std::string type, std::string name, int *data, int len, int interval = 1) {
     std::string out("{\n"
-                    "            type: \'" + type + "\',\n"
-                                                    "            name: \'" + name + "\',\n"
-                                                                                    "            data: [\n             ");
+                    "            type: \'" +
+                    type + "\',\n"
+                           "            name: \'" +
+                    name + "\',\n"
+                           "            data: [\n             ");
     for (int i = 0; i < len; i += interval) {
         out.append(std::to_string(data[i]) + ',');
     }
@@ -499,8 +515,9 @@ std::string insertSeriesData(std::string type, std::string name, int *data, int 
 
 std::string insertSeriesData(std::string type, double *data, int len, int interval = 1) {
     std::string out("{\n"
-                    "            type: \'" + type + "\',\n"
-                                                    "            data: [\n            ");
+                    "            type: \'" +
+                    type + "\',\n"
+                           "            data: [\n            ");
     for (int i = 0; i < len; i += interval) {
         out.append(std::to_string(data[i]) + ',');
     }
@@ -510,9 +527,11 @@ std::string insertSeriesData(std::string type, double *data, int len, int interv
 
 std::string insertSeriesData(std::string type, std::string name, double *data, int len, int interval = 1) {
     std::string out("{\n"
-                    "            type: \'" + type + "\',\n"
-                                                    "            name: \'" + name + "\',\n"
-                                                                                    "            data: [\n");
+                    "            type: \'" +
+                    type + "\',\n"
+                           "            name: \'" +
+                    name + "\',\n"
+                           "            data: [\n");
     for (int i = 0; i < len; i += interval) {
         out.append(std::to_string(data[i]) + ',');
     }
@@ -522,15 +541,18 @@ std::string insertSeriesData(std::string type, std::string name, double *data, i
 
 std::string insertSeriesMultiDataBegin(std::string type, std::string name) {
     return "{\n"
-           "            type: \'" + type + "\',\n"
-                                           "            name:\'" + name + "\'"
-                                                                          "            data: [\n";
+           "            type: \'" +
+           type + "\',\n"
+                  "            name:\'" +
+           name + "\'"
+                  "            data: [\n";
 }
 
 std::string insertSeriesMultiDataBegin(std::string type) {
     return "{\n"
-           "            type: \'" + type + "\',\n"
-                                           "            data: [\n";
+           "            type: \'" +
+           type + "\',\n"
+                  "            data: [\n";
 }
 
 std::string insertSeriesMultiDataEnd() {
@@ -571,9 +593,10 @@ std::string insertDataZoom() {
 
 std::string insertLegend(std::string data) {
     return "legend: {\n"
-           "        data: [" + data + "],\n"
-                                      "        left:\'85%\',\n"
-                                      "    },\n";
+           "        data: [" +
+           data + "],\n"
+                  "        left:\'85%\',\n"
+                  "    },\n";
 }
 
 std::string insertTableBeginFloat() {
@@ -597,10 +620,12 @@ std::string insertTableEnd() {
 std::string insertTableTitle(std::string str1, std::string str2) {
     return "<thead>\n"
            "    <tr>\n"
-           "        <th>" + str1 + "</th>\n"
-                                   "        <th>" + str2 + "</th>\n"
-                                                           "    </tr>\n"
-                                                           "</thead>\n";
+           "        <th>" +
+           str1 + "</th>\n"
+                  "        <th>" +
+           str2 + "</th>\n"
+                  "    </tr>\n"
+                  "</thead>\n";
 }
 
 std::string insertTableTbobyBegin() {
@@ -613,9 +638,11 @@ std::string insertTableTbobyEnd() {
 
 std::string insertTableTr(std::string str1, std::string str2) {
     return "    <tr>\n"
-           "        <td>" + str1 + "</td>\n"
-                                   "        <td>" + str2 + "</td>\n"
-                                                           "    </tr>\n";
+           "        <td>" +
+           str1 + "</td>\n"
+                  "        <td>" +
+           str2 + "</td>\n"
+                  "    </tr>\n";
 }
 
 void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats *tgs_stats, std::string file_name) {
@@ -655,15 +682,15 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
     outhtml.append(insertTableTitle("", "Top 5 quality reads and their length"));
     outhtml.append(insertTableTbobyBegin());
     outhtml.append(insertTableTr("1", std::to_string(top5QualReads[0].first) + "( " +
-                                      std::to_string(top5QualReads[0].second) + " )"));
+                                              std::to_string(top5QualReads[0].second) + " )"));
     outhtml.append(insertTableTr("2", std::to_string(top5QualReads[1].first) + "( " +
-                                      std::to_string(top5QualReads[1].second) + " )"));
+                                              std::to_string(top5QualReads[1].second) + " )"));
     outhtml.append(insertTableTr("3", std::to_string(top5QualReads[2].first) + "( " +
-                                      std::to_string(top5QualReads[2].second) + " )"));
+                                              std::to_string(top5QualReads[2].second) + " )"));
     outhtml.append(insertTableTr("4", std::to_string(top5QualReads[3].first) + "( " +
-                                      std::to_string(top5QualReads[3].second) + " )"));
+                                              std::to_string(top5QualReads[3].second) + " )"));
     outhtml.append(insertTableTr("5", std::to_string(top5QualReads[4].first) + "( " +
-                                      std::to_string(top5QualReads[4].second) + " )"));
+                                              std::to_string(top5QualReads[4].second) + " )"));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
@@ -672,15 +699,15 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
     outhtml.append(insertTableTitle("", "Top 5 length reads and their quality"));
     outhtml.append(insertTableTbobyBegin());
     outhtml.append(insertTableTr("1", std::to_string(top5LengReads[0].first) + "( " +
-                                      std::to_string(top5LengReads[0].second) + " )"));
+                                              std::to_string(top5LengReads[0].second) + " )"));
     outhtml.append(insertTableTr("2", std::to_string(top5LengReads[1].first) + "( " +
-                                      std::to_string(top5LengReads[1].second) + " )"));
+                                              std::to_string(top5LengReads[1].second) + " )"));
     outhtml.append(insertTableTr("3", std::to_string(top5LengReads[2].first) + "( " +
-                                      std::to_string(top5LengReads[2].second) + " )"));
+                                              std::to_string(top5LengReads[2].second) + " )"));
     outhtml.append(insertTableTr("4", std::to_string(top5LengReads[3].first) + "( " +
-                                      std::to_string(top5LengReads[3].second) + " )"));
+                                              std::to_string(top5LengReads[3].second) + " )"));
     outhtml.append(insertTableTr("5", std::to_string(top5LengReads[4].first) + "( " +
-                                      std::to_string(top5LengReads[4].second) + " )"));
+                                              std::to_string(top5LengReads[4].second) + " )"));
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
@@ -736,8 +763,6 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
     outhtml.append(insertChartOption(LengthNumber));
 
 
-
-
     // Quality Scores cross all bases
 
     outhtml.append(insertChart(PositionQuality1));
@@ -790,7 +815,6 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
     outhtml.append(insertSeriesEnd());
     outhtml.append(insertOptionEnd());
     outhtml.append(insertChartOption(PositionQuality2));
-
 
 
     //AGCT Content
@@ -881,7 +905,7 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
     std::fstream fout = std::fstream(html_name, std::ios::out | std::ios::binary);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
-    delete[]tmp_double;
+    delete[] tmp_double;
 }
 
 std::string GetOver(State *state, bool isAfter, bool isRead2, int eva_len) {
@@ -894,11 +918,13 @@ std::string GetOver(State *state, bool isAfter, bool isRead2, int eva_len) {
     // KMER
     std::string subsection;
     if (isAfter) {
-        if (isRead2)subsection = "Read2 after filtering overrepresented sequences";
-        else subsection = "Read1 after filtering overrepresented sequences";
+        if (isRead2) subsection = "Read2 after filtering overrepresented sequences";
+        else
+            subsection = "Read1 after filtering overrepresented sequences";
     } else {
-        if (isRead2)subsection = "Read2 before filtering overrepresented sequences";
-        else subsection = "Read1 before filtering overrepresented sequences";
+        if (isRead2) subsection = "Read2 before filtering overrepresented sequences";
+        else
+            subsection = "Read1 before filtering overrepresented sequences";
     }
     std::string divName = replace(subsection, " ", "_");
     divName = replace(divName, ":", "_");
@@ -1033,8 +1059,6 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
 
 
     //Filtering result
-
-
 
 
     //Before filtering information
@@ -1310,7 +1334,7 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
         outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         gc_cnt = state1->GetGcCnt();
-        for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
+        for (int i = 0; i <= 100; i++) tmp_int64[i] = gc_cnt[i];
         outhtml.append(insertSeriesSmoothData("line", tmp_int64, 101));
         outhtml.append(insertSeriesEnd());
         outhtml.append(insertOptionEnd());
@@ -1328,7 +1352,7 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
         outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         gc_cnt = state2->GetGcCnt();
-        for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
+        for (int i = 0; i <= 100; i++) tmp_int64[i] = gc_cnt[i];
         outhtml.append(insertSeriesSmoothData("line", tmp_int64, 101));
         outhtml.append(insertSeriesEnd());
         outhtml.append(insertOptionEnd());
@@ -1341,12 +1365,11 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
     std::fstream fout = std::fstream(html_name, std::ios::out | std::ios::binary);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
-    delete[]tmp_double;
+    delete[] tmp_double;
 }
 
-void
-Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_state2, State *aft_state1, State *aft_state2,
-                      std::string file_name1, std::string file_name2, double dup, int64_t *size_info) {
+void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_state2, State *aft_state1, State *aft_state2,
+                           std::string file_name1, std::string file_name2, double dup, int64_t *size_info) {
     auto cmd_info = pre_state1->GetCmdInfo();
     int size_len_mx = cmd_info->max_insert_size_;
     int size_require = cmd_info->overlap_require_;
@@ -1547,9 +1570,9 @@ Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_state
         outhtml.append(insertyAxis("value", "read percent"));
         outhtml.append(insertSeriesBegin());
         int64_t sum_read = 0;
-        for (int i = 0; i < size_real; i++)sum_read += size_info[i];
+        for (int i = 0; i < size_real; i++) sum_read += size_info[i];
         sum_read += size_info[size_len_mx];
-        for (int i = 0; i < size_real; i++)tmp_double[i] = 100.0 * size_info[i] / sum_read;
+        for (int i = 0; i < size_real; i++) tmp_double[i] = 100.0 * size_info[i] / sum_read;
         outhtml.append(insertSeriesData("line", tmp_double, size_real));
         outhtml.append(insertSeriesEnd());
         outhtml.append(insertOptionEnd());
@@ -1827,8 +1850,6 @@ Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_state
         outhtml.append(insertSeriesEnd());
         outhtml.append(insertOptionEnd());
         outhtml.append(insertChartOption(PrePositionContent2));
-
-
     }
     {
         outhtml.append(insertChart(AftPositionContent1));
@@ -1928,7 +1949,7 @@ Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_state
         outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         int64_t *gc_cnt = pre_state1->GetGcCnt();
-        for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
+        for (int i = 0; i <= 100; i++) tmp_int64[i] = gc_cnt[i];
         outhtml.append(insertSeriesSmoothData("line", tmp_int64, 101));
         outhtml.append(insertSeriesEnd());
         outhtml.append(insertOptionEnd());
@@ -1945,12 +1966,11 @@ Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_state
         outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         gc_cnt = pre_state2->GetGcCnt();
-        for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
+        for (int i = 0; i <= 100; i++) tmp_int64[i] = gc_cnt[i];
         outhtml.append(insertSeriesSmoothData("line", tmp_int64, 101));
         outhtml.append(insertSeriesEnd());
         outhtml.append(insertOptionEnd());
         outhtml.append(insertChartOption(PreGCContent2));
-
     }
     {
         outhtml.append(insertChart(AftGCContent1));
@@ -1963,7 +1983,7 @@ Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_state
         outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         int64_t *gc_cnt = aft_state1->GetGcCnt();
-        for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
+        for (int i = 0; i <= 100; i++) tmp_int64[i] = gc_cnt[i];
         outhtml.append(insertSeriesSmoothData("line", tmp_int64, 101));
         outhtml.append(insertSeriesEnd());
         outhtml.append(insertOptionEnd());
@@ -1980,7 +2000,7 @@ Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_state
         outhtml.append(insertyAxis("value", "read number"));
         outhtml.append(insertSeriesBegin());
         gc_cnt = aft_state2->GetGcCnt();
-        for (int i = 0; i <= 100; i++)tmp_int64[i] = gc_cnt[i];
+        for (int i = 0; i <= 100; i++) tmp_int64[i] = gc_cnt[i];
         outhtml.append(insertSeriesSmoothData("line", tmp_int64, 101));
         outhtml.append(insertSeriesEnd());
         outhtml.append(insertOptionEnd());
@@ -1993,5 +2013,5 @@ Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_state
     std::fstream fout = std::fstream(html_name, std::ios::out | std::ios::binary);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
-    delete[]tmp_double;
+    delete[] tmp_double;
 }

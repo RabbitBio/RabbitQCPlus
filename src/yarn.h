@@ -111,7 +111,7 @@ extern char *yarn_prefix;
 
 extern void (*yarn_abort)(int);
 
-void yarn_mem(void *(*)(size_t), void (*)(void *));
+void yarn_mem(void *(*) (size_t), void (*)(void *));
 
 typedef struct thread_s threadPigz;
 
@@ -141,15 +141,18 @@ void release_(lock_pigz *, char const *, long);
 
 #define release_pigz(a) release_(a, __FILE__, __LINE__)
 enum twist_op {
-    TO, BY
+    TO,
+    BY
 };
 
 void twist_(lock_pigz *, enum twist_op, long, char const *, long);
 
 #define twist_pigz(a, b, c) twist_(a, b, c, __FILE__, __LINE__)
 enum wait_op {
-    TO_BE, /* or */ NOT_TO_BE, /* that is the question */
-    TO_BE_MORE_THAN, TO_BE_LESS_THAN
+    TO_BE,
+    /* or */ NOT_TO_BE, /* that is the question */
+    TO_BE_MORE_THAN,
+    TO_BE_LESS_THAN
 };
 
 void wait_for_(lock_pigz *, enum wait_op, long, char const *, long);

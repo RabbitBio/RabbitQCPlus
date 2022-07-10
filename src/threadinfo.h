@@ -6,13 +6,12 @@
 #define RERABBITQC_THREADINFO_H
 
 #include "Globals.h"
-#include "state.h"
 #include "cmdinfo.h"
+#include "state.h"
 #include "tgsstate.h"
 
 class ThreadInfo {
 public:
-
     ThreadInfo(CmdInfo *cmd_info, bool is_pre);
 
     ~ThreadInfo();
@@ -26,9 +25,7 @@ public:
     State *aft_state1_;
     State *aft_state2_;
     int64_t *insert_size_dist_;
-
-
 };
 
 
-#endif //RERABBITQC_THREADINFO_H
+#endif//RERABBITQC_THREADINFO_H

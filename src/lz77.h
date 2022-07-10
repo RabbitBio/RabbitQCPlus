@@ -45,13 +45,13 @@ ZopfliCleanLZ77Store to destroy it, and ZopfliStoreLitLenDist to append values.
 
 */
 typedef struct ZopfliLZ77Store {
-    unsigned short *litlens;  /* Lit or len. */
-    unsigned short *dists;  /* If 0: indicates literal in corresponding litlens,
+    unsigned short *litlens; /* Lit or len. */
+    unsigned short *dists;   /* If 0: indicates literal in corresponding litlens,
       if > 0: length in corresponding litlens, this is the distance. */
     size_t size;
 
-    const unsigned char *data;  /* original data */
-    size_t *pos;  /* position in data where this LZ77 command begins */
+    const unsigned char *data; /* original data */
+    size_t *pos;               /* position in data where this LZ77 command begins */
 
     unsigned short *ll_symbol;
     unsigned short *d_symbol;
@@ -152,4 +152,4 @@ void ZopfliLZ77Greedy(ZopfliBlockState *s, const unsigned char *in,
 #ifdef __cplusplus
 }
 #endif
-#endif  /* ZOPFLI_LZ77_H_ */
+#endif /* ZOPFLI_LZ77_H_ */

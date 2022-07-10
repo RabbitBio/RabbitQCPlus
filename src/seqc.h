@@ -6,23 +6,23 @@
 #define RERABBITQC_SEQC_H
 
 #include <atomic>
+#include <cstring>
 #include <fstream>
 #include <functional>
-#include <cstring>
 
-#include "Globals.h"
 #include "Formater.h"
-#include "cmdinfo.h"
-#include "threadinfo.h"
-#include "filter.h"
-#include "concurrentqueue.h"
-#include "state.h"
+#include "Globals.h"
 #include "adapter.h"
+#include "cmdinfo.h"
+#include "concurrentqueue.h"
 #include "duplicate.h"
-#include "polyx.h"
-#include "umier.h"
-#include "pugz.h"
+#include "filter.h"
 #include "pigz.h"
+#include "polyx.h"
+#include "pugz.h"
+#include "state.h"
+#include "threadinfo.h"
+#include "umier.h"
 
 
 class SeQc {
@@ -39,8 +39,7 @@ public:
 
 
 private:
-
-//    void PrintRead(neoReference &ref);
+    //    void PrintRead(neoReference &ref);
 
     std::string Read2String(neoReference &ref);
 
@@ -62,9 +61,9 @@ private:
     CmdInfo *cmd_info_;
 
     Filter *filter_;
-    moodycamel::ConcurrentQueue<std::pair < char * , int>> *
-    out_queue_;
-//TODO replace concurrentqueue with char*[]
+    moodycamel::ConcurrentQueue<std::pair<char *, int>> *
+            out_queue_;
+    //TODO replace concurrentqueue with char*[]
     std::atomic_int done_thread_number_;
     std::fstream out_stream_;
     Duplicate *duplicate_;
@@ -74,12 +73,12 @@ private:
     bool in_is_zip_;
     bool out_is_zip_;
 
-    moodycamel::ReaderWriterQueue<std::pair < char * , int>> *
-    pugzQueue;
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *
+            pugzQueue;
     std::atomic_int pugzDone;
 
-    moodycamel::ReaderWriterQueue<std::pair < char * , int>> *
-    pigzQueue;
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *
+            pigzQueue;
     pair<char *, int> pigzLast;
 
     std::atomic_int producerDone;
@@ -88,9 +87,7 @@ private:
     std::atomic_int pigzQueueNumNow;
     std::atomic_int queueSizeLim;
     std::atomic_int pigzQueueSizeLim;
-
-
 };
 
 
-#endif //RERABBITQC_SEQC_H
+#endif//RERABBITQC_SEQC_H
