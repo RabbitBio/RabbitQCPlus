@@ -25,8 +25,8 @@ basic deflate specification values and generic program options.
 #ifndef ZOPFLI_UTIL_H_
 #define ZOPFLI_UTIL_H_
 
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
 
 /* Minimum and maximum length that can be encoded in deflate. */
 #define ZOPFLI_MAX_MATCH 258
@@ -132,29 +132,27 @@ Precondition: allocated size of data is at least a power of two greater than or
 equal than *size.
 */
 #ifdef __cplusplus /* C++ cannot assign void* from malloc to *data */
-#define ZOPFLI_APPEND_DATA(/* T */ value, /* T** */ data, /* size_t* */ size)           \
-    {                                                                                   \
-        if (!((*size) & ((*size) - 1))) {                                               \
-            /*double alloc size if it's a power of two*/                                \
-            void **data_void = reinterpret_cast<void **>(data);                         \
-            *data_void = (*size) == 0 ? malloc(sizeof(**data))                          \
-                                      : realloc((*data), (*size) * 2 * sizeof(**data)); \
-        }                                                                               \
-        (*data)[(*size)] = (value);                                                     \
-        (*size)++;                                                                      \
-    }
+#define ZOPFLI_APPEND_DATA(/* T */ value, /* T** */ data, /* size_t* */ size) {\
+  if (!((*size) & ((*size) - 1))) {\
+    /*double alloc size if it's a power of two*/\
+    void** data_void = reinterpret_cast<void**>(data);\
+    *data_void = (*size) == 0 ? malloc(sizeof(**data))\
+                              : realloc((*data), (*size) * 2 * sizeof(**data));\
+  }\
+  (*data)[(*size)] = (value);\
+  (*size)++;\
+}
 #else /* C gives problems with strict-aliasing rules for (void**) cast */
-#define ZOPFLI_APPEND_DATA(/* T */ value, /* T** */ data, /* size_t* */ size)        \
-    {                                                                                \
-        if (!((*size) & ((*size) - 1))) {                                            \
-            /*double alloc size if it's a power of two*/                             \
-            (*data) = (*size) == 0 ? malloc(sizeof(**data))                          \
-                                   : realloc((*data), (*size) * 2 * sizeof(**data)); \
-        }                                                                            \
-        (*data)[(*size)] = (value);                                                  \
-        (*size)++;                                                                   \
-    }
+#define ZOPFLI_APPEND_DATA(/* T */ value, /* T** */ data, /* size_t* */ size) {\
+  if (!((*size) & ((*size) - 1))) {\
+    /*double alloc size if it's a power of two*/\
+    (*data) = (*size) == 0 ? malloc(sizeof(**data))\
+                           : realloc((*data), (*size) * 2 * sizeof(**data));\
+  }\
+  (*data)[(*size)] = (value);\
+  (*size)++;\
+}
 #endif
 
 
-#endif /* ZOPFLI_UTIL_H_ */
+#endif  /* ZOPFLI_UTIL_H_ */

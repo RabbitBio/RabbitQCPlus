@@ -29,11 +29,11 @@ ones that enhance it.
 #define ZOPFLI_BLOCKSPLITTER_H_
 
 
+
 #include <stdlib.h>
 
 #include "lz77.h"
 #include "zopfli.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -73,8 +73,7 @@ void ZopfliBlockSplitSimple(const unsigned char *in,
                             size_t instart, size_t inend,
                             size_t blocksize,
                             size_t **splitpoints, size_t *npoints);
-
 #ifdef __cplusplus
 }
 #endif
-#endif /* ZOPFLI_BLOCKSPLITTER_H_ */
+#endif  /* ZOPFLI_BLOCKSPLITTER_H_ */

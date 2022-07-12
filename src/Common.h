@@ -35,10 +35,10 @@
 
 #if defined(_WIN32)
 #define _CRT_SECURE_NO_WARNINGS
-#pragma warning(disable : 4996)// D_SCL_SECURE
-#pragma warning(disable : 4244)// conversion uint64 to uint32
+#pragma warning(disable : 4996)  // D_SCL_SECURE
+#pragma warning(disable : 4244)  // conversion uint64 to uint32
 #pragma warning(disable : 4267)
-#pragma warning(disable : 4800)// conversion byte to bool
+#pragma warning(disable : 4800)  // conversion byte to bool
 #endif
 
 // TODO: refactor raw data structs to avoid using <string> as a member
@@ -49,4 +49,4 @@
 #define COMPILE_TIME_ASSERT2(X, L) COMPILE_TIME_ASSERT1(X, L)
 #define STATIC_ASSERT(X) COMPILE_TIME_ASSERT2(X, __LINE__)
 
-#endif// _COMMON_H
+#endif  // _COMMON_H

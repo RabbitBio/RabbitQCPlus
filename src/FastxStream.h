@@ -100,10 +100,7 @@ namespace rabbit {
                 } else {
                     mFile = FOPEN(fileName_.c_str(), "rb");
                     if (mFile == NULL) {
-                        throw RioException(
-                                ("Can not open file to read: " +
-                                 fileName_)
-                                        .c_str());//--------------need to change----------//
+                        throw RioException(("Can not open file to read: " + fileName_).c_str());//--------------need to change----------//
                     }
                 }
             }
@@ -370,11 +367,15 @@ namespace rabbit {
             // added from fastxIO.h
             FastqDataChunk *readNextChunk();
 
+            FastqDataChunk *readNextInterChunk();
+
             FastqDataChunk *readNextChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, atomic_int *d, pair<char *, int> &l);
 
             void readChunk();
 
             bool ReadNextChunk_(FastqDataChunk *chunk_);
+            
+            bool ReadNextInterChunk_(FastqDataChunk *chunk_);
 
             bool ReadNextChunk_(FastqDataChunk *chunk_, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, atomic_int *d, pair<char *, int> &l);
 

@@ -25,7 +25,6 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 /*
 Outputs minimum-redundancy length-limited code bitlengths for symbols with the
 given counts. The bitlengths are limited by maxbits.
@@ -42,8 +41,7 @@ return: 0 for OK, non-0 for error.
 */
 int ZopfliLengthLimitedCodeLengths(
         const size_t *frequencies, int n, int maxbits, unsigned *bitlengths);
-
 #ifdef __cplusplus
 }
 #endif
-#endif /* ZOPFLI_KATAJAINEN_H_ */
+#endif  /* ZOPFLI_KATAJAINEN_H_ */

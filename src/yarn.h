@@ -108,61 +108,38 @@
 extern "C" {
 #endif
 extern char *yarn_prefix;
-
 extern void (*yarn_abort)(int);
 
-void yarn_mem(void *(*) (size_t), void (*)(void *));
+void yarn_mem(void *(*)(size_t), void (*)(void *));
 
 typedef struct thread_s threadPigz;
-
 threadPigz *launch_(void (*)(void *), void *, char const *, long);
-
 #define launch_pigz(a, b) launch_(a, b, __FILE__, __LINE__)
-
 void join_(threadPigz *, char const *, long);
-
 #define join_pigz(a) join_(a, __FILE__, __LINE__)
-
 int join_all_(char const *, long);
-
 #define join_all_pigz() join_all_(__FILE__, __LINE__)
 
 typedef struct lock_s lock_pigz;
-
 lock_pigz *new_lock_(long, char const *, long);
-
 #define new_lock_pigz(a) new_lock_(a, __FILE__, __LINE__)
-
 void possess_(lock_pigz *, char const *, long);
-
 #define possess_pigz(a) possess_(a, __FILE__, __LINE__)
-
 void release_(lock_pigz *, char const *, long);
-
 #define release_pigz(a) release_(a, __FILE__, __LINE__)
 enum twist_op {
-    TO,
-    BY
+    TO, BY
 };
-
 void twist_(lock_pigz *, enum twist_op, long, char const *, long);
-
 #define twist_pigz(a, b, c) twist_(a, b, c, __FILE__, __LINE__)
 enum wait_op {
-    TO_BE,
-    /* or */ NOT_TO_BE, /* that is the question */
-    TO_BE_MORE_THAN,
-    TO_BE_LESS_THAN
+    TO_BE, /* or */ NOT_TO_BE, /* that is the question */
+    TO_BE_MORE_THAN, TO_BE_LESS_THAN
 };
-
 void wait_for_(lock_pigz *, enum wait_op, long, char const *, long);
-
 #define wait_for_pigz(a, b, c) wait_for_(a, b, c, __FILE__, __LINE__)
-
 long peek_lock(lock_pigz *);
-
 void free_lock_(lock_pigz *, char const *, long);
-
 #define free_lock_pigz(a) free_lock_(a, __FILE__, __LINE__)
 #ifdef __cplusplus
 }

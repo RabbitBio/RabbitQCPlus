@@ -25,11 +25,11 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <stdio.h>
 #include <stdlib.h>
 
-void ZopfliInitOptions(ZopfliOptions *options) {
-    options->verbose = 0;
-    options->verbose_more = 0;
-    options->numiterations = 15;
-    options->blocksplitting = 1;
-    options->blocksplittinglast = 0;
-    options->blocksplittingmax = 15;
+void ZopfliInitOptions(ZopfliOptions* options) {
+  options->verbose = 0;
+  options->verbose_more = 0;
+  options->numiterations = 15;
+  options->blocksplitting = 1;
+  options->blocksplittinglast = 0;
+  options->blocksplittingmax = 15;
 }

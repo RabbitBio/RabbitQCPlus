@@ -9,6 +9,6 @@
 
 
 int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q,
-              std::atomic_int *wDone, pair<char *, int> &L, std::atomic_int *qNum = NULL);
+              std::atomic_int *wDone, pair<char *, int> &L, std::atomic_int *qNum=NULL);
 
-#endif//RERABBITQC_PIGZ_H
+#endif //RERABBITQC_PIGZ_H

@@ -21,12 +21,12 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 /* __has_builtin available in clang */
 #ifdef __has_builtin
-#if __has_builtin(__builtin_clz)
-#define ZOPFLI_HAS_BUILTIN_CLZ
-#endif
+# if __has_builtin(__builtin_clz)
+#   define ZOPFLI_HAS_BUILTIN_CLZ
+# endif
 /* __builtin_clz available beginning with GCC 3.4 */
 #elif __GNUC__ * 100 + __GNUC_MINOR__ >= 304
-#define ZOPFLI_HAS_BUILTIN_CLZ
+# define ZOPFLI_HAS_BUILTIN_CLZ
 #endif
 
 int ZopfliGetDistExtraBits(int dist) {
@@ -35,141 +35,92 @@ int ZopfliGetDistExtraBits(int dist) {
     return (31 ^ __builtin_clz(dist - 1)) - 1; /* log2(dist - 1) - 1 */
 #else
     if (dist < 5) return 0;
-    else if (dist < 9)
-        return 1;
-    else if (dist < 17)
-        return 2;
-    else if (dist < 33)
-        return 3;
-    else if (dist < 65)
-        return 4;
-    else if (dist < 129)
-        return 5;
-    else if (dist < 257)
-        return 6;
-    else if (dist < 513)
-        return 7;
-    else if (dist < 1025)
-        return 8;
-    else if (dist < 2049)
-        return 9;
-    else if (dist < 4097)
-        return 10;
-    else if (dist < 8193)
-        return 11;
-    else if (dist < 16385)
-        return 12;
-    else
-        return 13;
+    else if (dist < 9) return 1;
+    else if (dist < 17) return 2;
+    else if (dist < 33) return 3;
+    else if (dist < 65) return 4;
+    else if (dist < 129) return 5;
+    else if (dist < 257) return 6;
+    else if (dist < 513) return 7;
+    else if (dist < 1025) return 8;
+    else if (dist < 2049) return 9;
+    else if (dist < 4097) return 10;
+    else if (dist < 8193) return 11;
+    else if (dist < 16385) return 12;
+    else return 13;
 #endif
 }
 
 int ZopfliGetDistExtraBitsValue(int dist) {
 #ifdef ZOPFLI_HAS_BUILTIN_CLZ
     if (dist < 5) {
-        return 0;
+      return 0;
     } else {
-        int l = 31 ^ __builtin_clz(dist - 1); /* log2(dist - 1) */
-        return (dist - (1 + (1 << l))) & ((1 << (l - 1)) - 1);
+      int l = 31 ^ __builtin_clz(dist - 1); /* log2(dist - 1) */
+      return (dist - (1 + (1 << l))) & ((1 << (l - 1)) - 1);
     }
 #else
     if (dist < 5) return 0;
-    else if (dist < 9)
-        return (dist - 5) & 1;
-    else if (dist < 17)
-        return (dist - 9) & 3;
-    else if (dist < 33)
-        return (dist - 17) & 7;
-    else if (dist < 65)
-        return (dist - 33) & 15;
-    else if (dist < 129)
-        return (dist - 65) & 31;
-    else if (dist < 257)
-        return (dist - 129) & 63;
-    else if (dist < 513)
-        return (dist - 257) & 127;
-    else if (dist < 1025)
-        return (dist - 513) & 255;
-    else if (dist < 2049)
-        return (dist - 1025) & 511;
-    else if (dist < 4097)
-        return (dist - 2049) & 1023;
-    else if (dist < 8193)
-        return (dist - 4097) & 2047;
-    else if (dist < 16385)
-        return (dist - 8193) & 4095;
-    else
-        return (dist - 16385) & 8191;
+    else if (dist < 9) return (dist - 5) & 1;
+    else if (dist < 17) return (dist - 9) & 3;
+    else if (dist < 33) return (dist - 17) & 7;
+    else if (dist < 65) return (dist - 33) & 15;
+    else if (dist < 129) return (dist - 65) & 31;
+    else if (dist < 257) return (dist - 129) & 63;
+    else if (dist < 513) return (dist - 257) & 127;
+    else if (dist < 1025) return (dist - 513) & 255;
+    else if (dist < 2049) return (dist - 1025) & 511;
+    else if (dist < 4097) return (dist - 2049) & 1023;
+    else if (dist < 8193) return (dist - 4097) & 2047;
+    else if (dist < 16385) return (dist - 8193) & 4095;
+    else return (dist - 16385) & 8191;
 #endif
 }
 
 int ZopfliGetDistSymbol(int dist) {
 #ifdef ZOPFLI_HAS_BUILTIN_CLZ
     if (dist < 5) {
-        return dist - 1;
+      return dist - 1;
     } else {
-        int l = (31 ^ __builtin_clz(dist - 1)); /* log2(dist - 1) */
-        int r = ((dist - 1) >> (l - 1)) & 1;
-        return l * 2 + r;
+      int l = (31 ^ __builtin_clz(dist - 1)); /* log2(dist - 1) */
+      int r = ((dist - 1) >> (l - 1)) & 1;
+      return l * 2 + r;
     }
 #else
     if (dist < 193) {
-        if (dist < 13) { /* dist 0..13. */
+        if (dist < 13) {  /* dist 0..13. */
             if (dist < 5) return dist - 1;
-            else if (dist < 7)
-                return 4;
-            else if (dist < 9)
-                return 5;
-            else
-                return 6;
-        } else { /* dist 13..193. */
+            else if (dist < 7) return 4;
+            else if (dist < 9) return 5;
+            else return 6;
+        } else {  /* dist 13..193. */
             if (dist < 17) return 7;
-            else if (dist < 25)
-                return 8;
-            else if (dist < 33)
-                return 9;
-            else if (dist < 49)
-                return 10;
-            else if (dist < 65)
-                return 11;
-            else if (dist < 97)
-                return 12;
-            else if (dist < 129)
-                return 13;
-            else
-                return 14;
+            else if (dist < 25) return 8;
+            else if (dist < 33) return 9;
+            else if (dist < 49) return 10;
+            else if (dist < 65) return 11;
+            else if (dist < 97) return 12;
+            else if (dist < 129) return 13;
+            else return 14;
         }
     } else {
-        if (dist < 2049) { /* dist 193..2049. */
+        if (dist < 2049) {  /* dist 193..2049. */
             if (dist < 257) return 15;
-            else if (dist < 385)
-                return 16;
-            else if (dist < 513)
-                return 17;
-            else if (dist < 769)
-                return 18;
-            else if (dist < 1025)
-                return 19;
-            else if (dist < 1537)
-                return 20;
-            else
-                return 21;
-        } else { /* dist 2049..32768. */
+            else if (dist < 385) return 16;
+            else if (dist < 513) return 17;
+            else if (dist < 769) return 18;
+            else if (dist < 1025) return 19;
+            else if (dist < 1537) return 20;
+            else return 21;
+        } else {  /* dist 2049..32768. */
             if (dist < 3073) return 22;
-            else if (dist < 4097)
-                return 23;
-            else if (dist < 6145)
-                return 24;
-            else if (dist < 8193)
-                return 25;
-            else if (dist < 12289)
-                return 26;
-            else if (dist < 16385)
-                return 27;
-            else if (dist < 24577)
-                return 28;
-            else
-                return 29;
+            else if (dist < 4097) return 23;
+            else if (dist < 6145) return 24;
+            else if (dist < 8193) return 25;
+            else if (dist < 12289) return 26;
+            else if (dist < 16385) return 27;
+            else if (dist < 24577) return 28;
+            else return 29;
         }
     }
 #endif
@@ -192,7 +143,8 @@ int ZopfliGetLengthExtraBits(int l) {
             5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
             5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
             5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-            5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0};
+            5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0
+    };
     return table[l];
 }
 
@@ -209,7 +161,8 @@ int ZopfliGetLengthExtraBitsValue(int l) {
             18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 0, 1, 2, 3, 4, 5, 6,
             7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
             27, 28, 29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-            16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 0};
+            16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 0
+    };
     return table[l];
 }
 
@@ -246,20 +199,23 @@ int ZopfliGetLengthSymbol(int l) {
             284, 284, 284, 284, 284, 284, 284, 284,
             284, 284, 284, 284, 284, 284, 284, 284,
             284, 284, 284, 284, 284, 284, 284, 284,
-            284, 284, 284, 284, 284, 284, 284, 285};
+            284, 284, 284, 284, 284, 284, 284, 285
+    };
     return table[l];
 }
 
 int ZopfliGetLengthSymbolExtraBits(int s) {
     static const int table[29] = {
             0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
-            3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0};
+            3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0
+    };
     return table[s - 257];
 }
 
 int ZopfliGetDistSymbolExtraBits(int s) {
     static const int table[30] = {
             0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
-            9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
+            9, 9, 10, 10, 11, 11, 12, 12, 13, 13
+    };
     return table[s];
 }

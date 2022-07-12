@@ -27,12 +27,12 @@ namespace rabbit {
     namespace fa {
 
         typedef core::DataChunk FastaDataChunk;
-        /// fasta data queue
+/// fasta data queue
         typedef core::TDataQueue<FastaDataChunk> FastaDataQueue;
-        /// fasta data pool
+/// fasta data pool
         typedef core::TDataPool<FastaDataChunk> FastaDataPool;
 
-        /*
+/*
  * @brief Fasta data chunk class
  */
         struct FastaChunk {
@@ -49,7 +49,7 @@ namespace rabbit {
             }
         };
 
-    }// namespace fa
+    } // namespace fa
 
     namespace fq {
 
@@ -59,7 +59,7 @@ namespace rabbit {
         typedef core::TDataQueue<FastqDataChunk> FastqDataQueue;
         typedef core::TDataPool<FastqDataChunk> FastqDataPool;
 
-        /*
+/*
  * @brief Fastq single-end data class
  */
         struct FastqChunk {
@@ -67,7 +67,7 @@ namespace rabbit {
             FastqDataChunk *chunk;
         };
 
-        /*
+/*
  * @brief Fastq pair-end data class
  * @details Fastq pair-end data class, include left part and right part, each part is FastqChunk class
  */
@@ -76,8 +76,8 @@ namespace rabbit {
             FastqDataPairChunk *chunk;
         };
 
-    }// namespace fq
+    } // namespace fq
 
-}// namespace rabbit
+} // namespace rabbit
 
 #endif

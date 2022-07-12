@@ -379,6 +379,18 @@ namespace rabbit {
             }
         }
 
+        FastqDataChunk *FastqFileReader::readNextInterChunk() {
+            FastqDataChunk *part = NULL;
+            recordsPool.Acquire(part);
+            if (ReadNextInterChunk_(part)) {
+                return part;
+            } else {
+                recordsPool.Release(part);
+                return NULL;
+            }
+        }
+
+
         FastqDataChunk *FastqFileReader::readNextChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, atomic_int *d, pair<char *, int> &l) {
             FastqDataChunk *part = NULL;
             recordsPool.Acquire(part);
@@ -1104,6 +1116,61 @@ namespace rabbit {
             //}else {
             //	mFqReader->setEof();
             //}
+            return true;
+        }
+
+
+        bool FastqFileReader::ReadNextInterChunk_(FastqDataChunk *chunk_) {
+            if (mFqReader->FinishRead() && bufferSize == 0) {
+                chunk_->size = 0;
+                return false;
+            }
+
+            uchar *data = chunk_->data.Pointer();
+            uint64 cbufSize = chunk_->data.Size();
+            uint64 chunkEnd = 0;
+            chunk_->size = 0;
+            int64 toRead = cbufSize - bufferSize;
+            if (bufferSize > 0) {
+                std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
+                chunk_->size = bufferSize;
+                bufferSize = 0;
+            }
+
+            int64 r = mFqReader->Read(data + chunk_->size, toRead);
+
+            if (!mFqReader->FinishRead()) {
+                cbufSize = r + chunk_->size;
+                chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize : GetNxtBuffSize);
+                chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
+            } else {                  // at the end of file
+                chunk_->size += r - 1;// skip the last EOF symbol
+                if (usesCrlf) chunk_->size -= 1;
+                mFqReader->setEof();
+            }
+            if(!mFqReader->FinishRead()){
+                int line_cnout = count_line(data, chunkEnd);
+                ASSERT(line_cnout % 4 == 0);
+                int item_count = line_cnout / 4;
+                if(item_count & 1){
+                    int difference = 4;
+                    while (chunkEnd >= 0){
+                        if (data[chunkEnd] == '\n'){
+                            difference--;
+                            if (difference == -1) {
+                                chunkEnd++;
+                                break;
+                            }
+                        }
+                        chunkEnd--;
+                    }
+                    ASSERT(difference == -1);
+                }
+                chunk_->size = chunkEnd - 1;
+                if (usesCrlf) chunk_->size -= 1;
+                std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
+                bufferSize = cbufSize - chunkEnd;
+            }
             return true;
         }
 

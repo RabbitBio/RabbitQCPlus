@@ -45,13 +45,13 @@ ZopfliCleanLZ77Store to destroy it, and ZopfliStoreLitLenDist to append values.
 
 */
 typedef struct ZopfliLZ77Store {
-    unsigned short *litlens; /* Lit or len. */
-    unsigned short *dists;   /* If 0: indicates literal in corresponding litlens,
+    unsigned short *litlens;  /* Lit or len. */
+    unsigned short *dists;  /* If 0: indicates literal in corresponding litlens,
       if > 0: length in corresponding litlens, this is the distance. */
     size_t size;
 
-    const unsigned char *data; /* original data */
-    size_t *pos;               /* position in data where this LZ77 command begins */
+    const unsigned char *data;  /* original data */
+    size_t *pos;  /* position in data where this LZ77 command begins */
 
     unsigned short *ll_symbol;
     unsigned short *d_symbol;
@@ -65,21 +65,15 @@ typedef struct ZopfliLZ77Store {
 } ZopfliLZ77Store;
 
 void ZopfliInitLZ77Store(const unsigned char *data, ZopfliLZ77Store *store);
-
 void ZopfliCleanLZ77Store(ZopfliLZ77Store *store);
-
 void ZopfliCopyLZ77Store(const ZopfliLZ77Store *source, ZopfliLZ77Store *dest);
-
 void ZopfliStoreLitLenDist(unsigned short length, unsigned short dist,
                            size_t pos, ZopfliLZ77Store *store);
-
 void ZopfliAppendLZ77Store(const ZopfliLZ77Store *store,
                            ZopfliLZ77Store *target);
-
 /* Gets the amount of raw bytes that this range of LZ77 symbols spans. */
 size_t ZopfliLZ77GetByteRange(const ZopfliLZ77Store *lz77,
                               size_t lstart, size_t lend);
-
 /* Gets the histogram of lit/len and dist symbols in the given range, using the
 cumulative histograms, so faster than adding one by one for large range. Does
 not add the one end symbol of value 256. */
@@ -108,7 +102,6 @@ typedef struct ZopfliBlockState {
 void ZopfliInitBlockState(const ZopfliOptions *options,
                           size_t blockstart, size_t blockend, int add_lmc,
                           ZopfliBlockState *s);
-
 void ZopfliCleanBlockState(ZopfliBlockState *s);
 
 /*
@@ -148,8 +141,7 @@ dictionary.
 void ZopfliLZ77Greedy(ZopfliBlockState *s, const unsigned char *in,
                       size_t instart, size_t inend,
                       ZopfliLZ77Store *store, ZopfliHash *h);
-
 #ifdef __cplusplus
 }
 #endif
-#endif /* ZOPFLI_LZ77_H_ */
+#endif  /* ZOPFLI_LZ77_H_ */

@@ -74,7 +74,7 @@ static void AddWeighedStatFreqs(const SymbolStats *stats1, double w1,
         result->dists[i] =
                 (size_t) (stats1->dists[i] * w1 + stats2->dists[i] * w2);
     }
-    result->litlens[256] = 1; /* End symbol. */
+    result->litlens[256] = 1;  /* End symbol. */
 }
 
 typedef struct RanState {
@@ -90,7 +90,7 @@ static void InitRanState(RanState *state) {
 static unsigned int Ran(RanState *state) {
     state->m_z = 36969 * (state->m_z & 65535) + (state->m_z >> 16);
     state->m_w = 18000 * (state->m_w & 65535) + (state->m_w >> 16);
-    return (state->m_z << 16) + state->m_w; /* 32-bit result. */
+    return (state->m_z << 16) + state->m_w;  /* 32-bit result. */
 }
 
 static void RandomizeFreqs(RanState *state, size_t *freqs, int n) {
@@ -103,7 +103,7 @@ static void RandomizeFreqs(RanState *state, size_t *freqs, int n) {
 static void RandomizeStatFreqs(RanState *state, SymbolStats *stats) {
     RandomizeFreqs(state, stats->litlens, ZOPFLI_NUM_LL);
     RandomizeFreqs(state, stats->dists, ZOPFLI_NUM_D);
-    stats->litlens[256] = 1; /* End symbol. */
+    stats->litlens[256] = 1;  /* End symbol. */
 }
 
 static void ClearStatFreqs(SymbolStats *stats) {
@@ -126,17 +126,15 @@ static double GetCostFixed(unsigned litlen, unsigned dist, void *unused) {
     (void) unused;
     if (dist == 0) {
         if (litlen <= 143) return 8;
-        else
-            return 9;
+        else return 9;
     } else {
         int dbits = ZopfliGetDistExtraBits(dist);
         int lbits = ZopfliGetLengthExtraBits(litlen);
         int lsym = ZopfliGetLengthSymbol(litlen);
         int cost = 0;
         if (lsym <= 279) cost += 7;
-        else
-            cost += 8;
-        cost += 5; /* Every dist symbol has length 5. */
+        else cost += 8;
+        cost += 5;  /* Every dist symbol has length 5. */
         return cost + dbits + lbits;
     }
 }
@@ -165,7 +163,7 @@ distance symbols.
 static double GetCostModelMinCost(CostModelFun *costmodel, void *costcontext) {
     double mincost;
     int bestlength = 0; /* length that has lowest cost in the cost model */
-    int bestdist = 0;   /* distance that has lowest cost in the cost model */
+    int bestdist = 0; /* distance that has lowest cost in the cost model */
     int i;
     /*
     Table of distances that have a different distance symbol in the deflate
@@ -175,7 +173,8 @@ static double GetCostModelMinCost(CostModelFun *costmodel, void *costcontext) {
     */
     static const int dsymbols[30] = {
             1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513,
-            769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577};
+            769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577
+    };
 
     mincost = ZOPFLI_LARGE_FLOAT;
     for (i = 3; i < 259; i++) {
@@ -228,8 +227,7 @@ static double GetBestLengths(ZopfliBlockState *s,
     unsigned short dist;
     unsigned short sublen[259];
     size_t windowstart = instart > ZOPFLI_WINDOW_SIZE
-                                 ? instart - ZOPFLI_WINDOW_SIZE
-                                 : 0;
+                         ? instart - ZOPFLI_WINDOW_SIZE : 0;
     double result;
     double mincost = GetCostModelMinCost(costmodel, costcontext);
     double mincostaddcostj;
@@ -243,17 +241,21 @@ static double GetBestLengths(ZopfliBlockState *s,
     }
 
     for (i = 1; i < blocksize + 1; i++) costs[i] = ZOPFLI_LARGE_FLOAT;
-    costs[0] = 0; /* Because it's the start. */
+    costs[0] = 0;  /* Because it's the start. */
     length_array[0] = 0;
 
     for (i = instart; i < inend; i++) {
-        size_t j = i - instart; /* Index in the costs array and length_array. */
+        size_t j = i - instart;  /* Index in the costs array and length_array. */
         ZopfliUpdateHash(in, i, inend, h);
 
 #ifdef ZOPFLI_SHORTCUT_LONG_REPETITIONS
         /* If we're in a long repetition of the same character and have more than
         ZOPFLI_MAX_MATCH characters before and after our position. */
-        if (h->same[i & ZOPFLI_WINDOW_MASK] > ZOPFLI_MAX_MATCH * 2 && i > instart + ZOPFLI_MAX_MATCH + 1 && i + ZOPFLI_MAX_MATCH * 2 + 1 < inend && h->same[(i - ZOPFLI_MAX_MATCH) & ZOPFLI_WINDOW_MASK] > ZOPFLI_MAX_MATCH) {
+        if (h->same[i & ZOPFLI_WINDOW_MASK] > ZOPFLI_MAX_MATCH * 2
+            && i > instart + ZOPFLI_MAX_MATCH + 1
+            && i + ZOPFLI_MAX_MATCH * 2 + 1 < inend
+            && h->same[(i - ZOPFLI_MAX_MATCH) & ZOPFLI_WINDOW_MASK]
+               > ZOPFLI_MAX_MATCH) {
             double symbolcost = costmodel(ZOPFLI_MAX_MATCH, 1, costcontext);
             /* Set the length to reach each one to ZOPFLI_MAX_MATCH, and the cost to
             the cost corresponding to that length. Doing this, we skip
@@ -339,8 +341,7 @@ static void FollowPath(ZopfliBlockState *s,
                        ZopfliLZ77Store *store, ZopfliHash *h) {
     size_t i, j, pos = 0;
     size_t windowstart = instart > ZOPFLI_WINDOW_SIZE
-                                 ? instart - ZOPFLI_WINDOW_SIZE
-                                 : 0;
+                         ? instart - ZOPFLI_WINDOW_SIZE : 0;
 
     size_t total_length_test = 0;
 
@@ -404,7 +405,7 @@ static void GetStatistics(const ZopfliLZ77Store *store, SymbolStats *stats) {
             stats->dists[ZopfliGetDistSymbol(store->dists[i])]++;
         }
     }
-    stats->litlens[256] = 1; /* End symbol. */
+    stats->litlens[256] = 1;  /* End symbol. */
 
     CalculateStatistics(stats);
 }
@@ -465,7 +466,7 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
     RanState ran_state;
     int lastrandomstep = -1;
 
-    if (!costs) exit(-1);        /* Allocation failed. */
+    if (!costs) exit(-1); /* Allocation failed. */
     if (!length_array) exit(-1); /* Allocation failed. */
 
     InitRanState(&ran_state);
@@ -538,7 +539,7 @@ void ZopfliLZ77OptimalFixed(ZopfliBlockState *s,
     ZopfliHash *h = &hash;
     float *costs = (float *) malloc(sizeof(float) * (blocksize + 1));
 
-    if (!costs) exit(-1);        /* Allocation failed. */
+    if (!costs) exit(-1); /* Allocation failed. */
     if (!length_array) exit(-1); /* Allocation failed. */
 
     ZopfliAllocHash(ZOPFLI_WINDOW_SIZE, h);

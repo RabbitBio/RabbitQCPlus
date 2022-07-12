@@ -34,27 +34,26 @@
 #define _FILE_OFFSET_BITS 64
 
 // External libraries and entities referenced.
-#include <pthread.h>// pthread_t, pthread_create(), pthread_join(),
-#include <stdio.h>  // fprintf(), stderr
-#include <stdlib.h> // exit(), malloc(), free(), NULL
-// pthread_attr_t, pthread_attr_init(), pthread_attr_destroy(),
-// PTHREAD_CREATE_JOINABLE, pthread_attr_setdetachstate(),
-// pthread_self(), pthread_equal(),
-// pthread_mutex_t, PTHREAD_MUTEX_INITIALIZER, pthread_mutex_init(),
-// pthread_mutex_lock(), pthread_mutex_unlock(), pthread_mutex_destroy(),
-// pthread_cond_t, PTHREAD_COND_INITIALIZER, pthread_cond_init(),
-// pthread_cond_broadcast(), pthread_cond_wait(), pthread_cond_destroy()
-#include <errno.h>// EPERM, ESRCH, EDEADLK, ENOMEM, EBUSY, EINVAL, EAGAIN
+#include <stdio.h>      // fprintf(), stderr
+#include <stdlib.h>     // exit(), malloc(), free(), NULL
+#include <pthread.h>    // pthread_t, pthread_create(), pthread_join(),
+    // pthread_attr_t, pthread_attr_init(), pthread_attr_destroy(),
+    // PTHREAD_CREATE_JOINABLE, pthread_attr_setdetachstate(),
+    // pthread_self(), pthread_equal(),
+    // pthread_mutex_t, PTHREAD_MUTEX_INITIALIZER, pthread_mutex_init(),
+    // pthread_mutex_lock(), pthread_mutex_unlock(), pthread_mutex_destroy(),
+    // pthread_cond_t, PTHREAD_COND_INITIALIZER, pthread_cond_init(),
+    // pthread_cond_broadcast(), pthread_cond_wait(), pthread_cond_destroy()
+#include <errno.h>      // EPERM, ESRCH, EDEADLK, ENOMEM, EBUSY, EINVAL, EAGAIN
 
 // Interface definition.
 #include "yarn.h"
 
 // Constants.
-#define local static// for non-exported functions and globals
+#define local static            // for non-exported functions and globals
 
 // Error handling external globals, resettable by application.
 char *yarn_prefix = "yarn";
-
 void (*yarn_abort)(int) = NULL;
 
 
@@ -95,9 +94,7 @@ local void fail(int err, char const *file, long line, char const *func) {
 // Memory handling routines provided by user. If none are provided, malloc()
 // and free() are used, which are therefore assumed to be threadPigz-safe.
 typedef void *(*malloc_t)(size_t);
-
 typedef void (*free_t)(void *);
-
 local malloc_t my_malloc_f = malloc;
 local free_t my_free = free;
 
@@ -162,34 +159,34 @@ void twist_(lock_pigz *bolt, enum twist_op op, long val,
         fail(ret, file, line, "mutex_unlock");
 }
 
-#define until(a) while (!(a))
+#define until(a) while(!(a))
 
 void wait_for_(lock_pigz *bolt, enum wait_op op, long val,
                char const *file, long line) {
     switch (op) {
         case TO_BE:
-            until(bolt->value == val) {
+            until (bolt->value == val) {
                 int ret = pthread_cond_wait(&(bolt->cond), &(bolt->mutex));
                 if (ret)
                     fail(ret, file, line, "cond_wait");
             }
             break;
         case NOT_TO_BE:
-            until(bolt->value != val) {
+            until (bolt->value != val) {
                 int ret = pthread_cond_wait(&(bolt->cond), &(bolt->mutex));
                 if (ret)
                     fail(ret, file, line, "cond_wait");
             }
             break;
         case TO_BE_MORE_THAN:
-            until(bolt->value > val) {
+            until (bolt->value > val) {
                 int ret = pthread_cond_wait(&(bolt->cond), &(bolt->mutex));
                 if (ret)
                     fail(ret, file, line, "cond_wait");
             }
             break;
         case TO_BE_LESS_THAN:
-            until(bolt->value < val) {
+            until (bolt->value < val) {
                 int ret = pthread_cond_wait(&(bolt->cond), &(bolt->mutex));
                 if (ret)
                     fail(ret, file, line, "cond_wait");
@@ -217,23 +214,22 @@ void free_lock_(lock_pigz *bolt, char const *file, long line) {
 
 struct thread_s {
     pthread_t id;
-    int done;        // true if this threadPigz has exited
-    threadPigz *next;// for list of all launched threads
+    int done;                   // true if this threadPigz has exited
+    threadPigz *next;               // for list of all launched threads
 };
 
 // List of threads launched but not joined, count of threads exited but not
 // joined (incremented by ignition() just before exiting).
 local lock_pigz threads_lock = {
-        PTHREAD_MUTEX_INITIALIZER,
-        PTHREAD_COND_INITIALIZER,
-        0// number of threads exited but not joined
+    PTHREAD_MUTEX_INITIALIZER,
+    PTHREAD_COND_INITIALIZER,
+    0                           // number of threads exited but not joined
 };
-local threadPigz *threads = NULL;// list of extant threads
+local threadPigz *threads = NULL;       // list of extant threads
 
 // Structure in which to pass the probe and its payload to ignition().
 struct capsule {
     void (*probe)(void *);
-
     void *payload;
     char const *file;
     long line;
@@ -295,7 +291,7 @@ local void *ignition(void *arg) {
 // Not all POSIX implementations create threads as joinable by default, so that
 // is made explicit here.
 threadPigz *launch_(void (*probe)(void *), void *payload,
-                    char const *file, long line) {
+                char const *file, long line) {
     // construct the requested call and argument for the ignition() routine
     // (allocated instead of automatic so that we're sure this will still be
     // there when ignition() actually starts up -- ignition() will free this

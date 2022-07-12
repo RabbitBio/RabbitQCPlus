@@ -5,9 +5,9 @@
 #ifndef RERABBITQC_NUCLEOTIDETREE_H
 #define RERABBITQC_NUCLEOTIDETREE_H
 
-#include "Globals.h"
 #include <cstring>
 #include <sstream>
+#include "Globals.h"
 
 class NucleotideNode {
 public:
@@ -40,4 +40,4 @@ private:
 };
 
 
-#endif//RERABBITQC_NUCLEOTIDETREE_H
+#endif //RERABBITQC_NUCLEOTIDETREE_H

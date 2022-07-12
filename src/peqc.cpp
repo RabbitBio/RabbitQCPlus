@@ -159,7 +159,7 @@ void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool 
     int64_t n_chunks = 0;
     while (true) {
         rabbit::fq::FastqDataChunk *fqdatachunk;
-        //fqdatachunk = fqFileReader->readNextPairChunkInterleaved();
+        fqdatachunk = fqFileReader->readNextInterChunk();
         if (fqdatachunk == NULL) break;
         n_chunks++;
         //std::cout << "readed chunk: " << n_chunks << std::endl;
@@ -436,7 +436,8 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
         std::vector<neoReference> data;
         std::vector<neoReference> pass_data1, pass_data2;
         rabbit::fq::chunkFormat(fqdatachunk, data, true);
-
+        ASSERT(0);
+        ASSERT(data.size() % 2 == 0);
         int out_len1 = 0, out_len2 = 0;
         for (int i = 0; i + 2 <= data.size(); i += 2) {
             auto item1 = data[i];

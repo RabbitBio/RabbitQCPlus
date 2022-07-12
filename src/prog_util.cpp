@@ -25,45 +25,43 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "prog_util.h"
 #include "../lib/memory.hpp"
+#include "prog_util.h"
 
 #include <errno.h>
 #include <fcntl.h>
 #include <stdarg.h>
 #include <time.h>
-
 #ifdef _WIN32
-#include <windows.h>
+#    include <windows.h>
 #else
-
-#include <sys/mman.h>
-#include <sys/time.h>
-#include <unistd.h>
-
+#    include <unistd.h>
+#    include <sys/mman.h>
+#    include <sys/time.h>
 #endif
 
 #ifndef O_BINARY
-#define O_BINARY 0
+#    define O_BINARY 0
 #endif
 #ifndef O_SEQUENTIAL
-#define O_SEQUENTIAL 0
+#    define O_SEQUENTIAL 0
 #endif
 #ifndef O_NOFOLLOW
-#define O_NOFOLLOW 0
+#    define O_NOFOLLOW 0
 #endif
 #ifndef O_NONBLOCK
-#define O_NONBLOCK 0
+#    define O_NONBLOCK 0
 #endif
 #ifndef O_NOCTTY
-#define O_NOCTTY 0
+#    define O_NOCTTY 0
 #endif
 
 /* The invocation name of the program (filename component only) */
-const tchar *_program_invocation_name;
+const tchar* _program_invocation_name;
 
 static void
-do_msg(const char *format, bool with_errno, va_list va) {
+do_msg(const char* format, bool with_errno, va_list va)
+{
     int saved_errno = errno;
 
     fprintf(stderr, "%" TS ": ", _program_invocation_name);
@@ -77,7 +75,9 @@ do_msg(const char *format, bool with_errno, va_list va) {
 }
 
 /* Print a message to standard error */
-void msg(const char *format, ...) {
+void
+msg(const char* format, ...)
+{
     va_list va;
 
     va_start(va, format);
@@ -86,7 +86,9 @@ void msg(const char *format, ...) {
 }
 
 /* Print a message to standard error, including a description of errno */
-void msg_errno(const char *format, ...) {
+void
+msg_errno(const char* format, ...)
+{
     va_list va;
 
     va_start(va, format);
@@ -99,7 +101,8 @@ void msg_errno(const char *format, ...) {
  * point fixed at the start of program execution
  */
 uint64_t
-timer_ticks(void) {
+timer_ticks(void)
+{
 #ifdef _WIN32
     LARGE_INTEGER count;
     QueryPerformanceCounter(&count);
@@ -107,7 +110,7 @@ timer_ticks(void) {
 #elif defined(HAVE_CLOCK_GETTIME)
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (1000000000 * (uint64_t) ts.tv_sec) + ts.tv_nsec;
+    return (1000000000 * (uint64_t)ts.tv_sec) + ts.tv_nsec;
 #else
     struct timeval tv;
     gettimeofday(&tv, nullptr);
@@ -119,7 +122,8 @@ timer_ticks(void) {
  * Return the number of timer ticks per second
  */
 static uint64_t
-timer_frequency(void) {
+timer_frequency(void)
+{
 #ifdef _WIN32
     LARGE_INTEGER freq;
     QueryPerformanceFrequency(&freq);
@@ -135,7 +139,8 @@ timer_frequency(void) {
  * Convert a number of elapsed timer ticks to milliseconds
  */
 uint64_t
-timer_ticks_to_ms(uint64_t ticks) {
+timer_ticks_to_ms(uint64_t ticks)
+{
     return ticks * 1000 / timer_frequency();
 }
 
@@ -143,7 +148,8 @@ timer_ticks_to_ms(uint64_t ticks) {
  * Convert a byte count and a number of elapsed timer ticks to MB/s
  */
 uint64_t
-timer_MB_per_s(uint64_t bytes, uint64_t ticks) {
+timer_MB_per_s(uint64_t bytes, uint64_t ticks)
+{
     return bytes * timer_frequency() / ticks / 1000000;
 }
 
@@ -154,11 +160,12 @@ timer_MB_per_s(uint64_t bytes, uint64_t ticks) {
  * properly for directories, since a path to a directory might have trailing
  * slashes.
  */
-const tchar *
-get_filename(const tchar *path) {
-    const tchar *slash = tstrrchr(path, '/');
+const tchar*
+get_filename(const tchar* path)
+{
+    const tchar* slash = tstrrchr(path, '/');
 #ifdef _WIN32
-    const tchar *backslash = tstrrchr(path, '\\');
+    const tchar* backslash = tstrrchr(path, '\\');
     if (backslash != nullptr && (slash == nullptr || backslash > slash)) slash = backslash;
 #endif
     if (slash != nullptr) return slash + 1;
@@ -166,28 +173,31 @@ get_filename(const tchar *path) {
 }
 
 /* Create a copy of 'path' surrounded by double quotes */
-static tchar *
-quote_path(const tchar *path) {
-    size_t len = tstrlen(path);
-    tchar *result = new tchar[1 + len + 1 + 1];
+static tchar*
+quote_path(const tchar* path)
+{
+    size_t len    = tstrlen(path);
+    tchar* result = new tchar[1 + len + 1 + 1];
 
     if (result == nullptr) return nullptr;
     result[0] = '"';
     tmemcpy(&result[1], path, len);
-    result[1 + len] = '"';
+    result[1 + len]     = '"';
     result[1 + len + 1] = '\0';
     return result;
 }
 
 /* Open a file for reading, or set up standard input for reading */
-int xopen_for_read(const tchar *path, bool symlink_ok, struct file_stream *strm) {
+int
+xopen_for_read(const tchar* path, bool symlink_ok, struct file_stream* strm)
+{
     strm->mmap_token = nullptr;
-    strm->mmap_mem = nullptr;
+    strm->mmap_mem   = nullptr;
 
     if (path == nullptr) {
         strm->is_standard_stream = true;
-        strm->name = T("standard input");
-        strm->fd = STDIN_FILENO;
+        strm->name               = T("standard input");
+        strm->fd                 = STDIN_FILENO;
 #ifdef _WIN32
         _setmode(strm->fd, O_BINARY);
 #endif
@@ -214,16 +224,18 @@ int xopen_for_read(const tchar *path, bool symlink_ok, struct file_stream *strm)
 }
 
 /* Open a file for writing, or set up standard output for writing */
-int xopen_for_write(const tchar *path, bool overwrite, struct file_stream *strm) {
+int
+xopen_for_write(const tchar* path, bool overwrite, struct file_stream* strm)
+{
     int ret = -1;
 
     strm->mmap_token = nullptr;
-    strm->mmap_mem = nullptr;
+    strm->mmap_mem   = nullptr;
 
     if (path == nullptr) {
         strm->is_standard_stream = true;
-        strm->name = T("standard output");
-        strm->fd = STDOUT_FILENO;
+        strm->name               = T("standard output");
+        strm->fd                 = STDOUT_FILENO;
 #ifdef _WIN32
         _setmode(strm->fd, O_BINARY);
 #endif
@@ -270,16 +282,15 @@ err:
     delete strm->name;
     return ret;
 }
-
 #include <vector>
-
 /* Read the full contents of a file into memory */
 static int
-read_full_contents(struct file_stream *strm) {
-    size_t filled = 0;
-    size_t capacity = 4096;
+read_full_contents(struct file_stream* strm)
+{
+    size_t            filled   = 0;
+    size_t            capacity = 4096;
     std::vector<char> buf;
-    ssize_t ret;
+    ssize_t           ret;
 
     buf.resize(capacity);
     do {
@@ -293,7 +304,7 @@ read_full_contents(struct file_stream *strm) {
         filled += size_t(ret);
     } while (ret != 0);
 
-    strm->mmap_mem = &buf[0];
+    strm->mmap_mem  = &buf[0];
     strm->mmap_size = filled;
     return 0;
 
@@ -308,7 +319,9 @@ oom:
 }
 
 /* Map the contents of a file into memory */
-int map_file_contents(struct file_stream *strm, uint64_t size) {
+int
+map_file_contents(struct file_stream* strm, uint64_t size)
+{
     if (size == 0) /* mmap isn't supported on empty files */
         return read_full_contents(strm);
 
@@ -317,19 +330,20 @@ int map_file_contents(struct file_stream *strm, uint64_t size) {
         return -1;
     }
 #ifdef _WIN32
-    strm->mmap_token = CreateFileMapping((HANDLE) (intptr_t) _get_osfhandle(strm->fd), nullptr, PAGE_READONLY, 0, 0, nullptr);
+    strm->mmap_token
+      = CreateFileMapping((HANDLE)(intptr_t)_get_osfhandle(strm->fd), nullptr, PAGE_READONLY, 0, 0, nullptr);
     if (strm->mmap_token == nullptr) {
         DWORD err = GetLastError();
         if (err == ERROR_BAD_EXE_FORMAT) /* mmap unsupported */
             return read_full_contents(strm);
-        msg("Unable create file mapping for %" TS ": Windows error %u", strm->name, (unsigned int) err);
+        msg("Unable create file mapping for %" TS ": Windows error %u", strm->name, (unsigned int)err);
         return -1;
     }
 
-    strm->mmap_mem = MapViewOfFile((HANDLE) strm->mmap_token, FILE_MAP_READ, 0, 0, size);
+    strm->mmap_mem = MapViewOfFile((HANDLE)strm->mmap_token, FILE_MAP_READ, 0, 0, size);
     if (strm->mmap_mem == nullptr) {
-        msg("Unable to map %" TS " into memory: Windows error %u", strm->name, (unsigned int) GetLastError());
-        CloseHandle((HANDLE) strm->mmap_token);
+        msg("Unable to map %" TS " into memory: Windows error %u", strm->name, (unsigned int)GetLastError());
+        CloseHandle((HANDLE)strm->mmap_token);
         return -1;
     }
 #else /* _WIN32 */
@@ -362,8 +376,9 @@ int map_file_contents(struct file_stream *strm, uint64_t size) {
  * short count (possibly 0) to indicate EOF, or -1 to indicate error.
  */
 ssize_t
-xread(struct file_stream *strm, void *buf, size_t count) {
-    char *p = static_cast<char *>(buf);
+xread(struct file_stream* strm, void* buf, size_t count)
+{
+    char*  p          = static_cast<char*>(buf);
     size_t orig_count = count;
 
     while (count != 0) {
@@ -381,8 +396,10 @@ xread(struct file_stream *strm, void *buf, size_t count) {
 }
 
 /* Write to a file, returning 0 if all bytes were written or -1 on error */
-int full_write(struct file_stream *strm, const void *buf, size_t count) {
-    const char *p = static_cast<const char *>(buf);
+int
+full_write(struct file_stream* strm, const void* buf, size_t count)
+{
+    const char* p = static_cast<const char*>(buf);
 
     while (count != 0) {
         ssize_t res = write(strm->fd, p, std::min(count, size_t(INT_MAX)));
@@ -397,7 +414,9 @@ int full_write(struct file_stream *strm, const void *buf, size_t count) {
 }
 
 /* Close a file, returning 0 on success or -1 on error */
-int xclose(struct file_stream *strm) {
+int
+xclose(struct file_stream* strm)
+{
     int ret = 0;
 
     if (!strm->is_standard_stream) {
@@ -411,7 +430,7 @@ int xclose(struct file_stream *strm) {
     if (strm->mmap_token != nullptr) {
 #ifdef _WIN32
         UnmapViewOfFile(strm->mmap_mem);
-        CloseHandle((HANDLE) strm->mmap_token);
+        CloseHandle((HANDLE)strm->mmap_token);
 #else
         munmap(strm->mmap_mem, strm->mmap_size);
 #endif
@@ -420,7 +439,7 @@ int xclose(struct file_stream *strm) {
         free(strm->mmap_mem);
     }
     strm->mmap_mem = nullptr;
-    strm->fd = -1;
-    strm->name = nullptr;
+    strm->fd       = -1;
+    strm->name     = nullptr;
     return ret;
 }
