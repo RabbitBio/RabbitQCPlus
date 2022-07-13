@@ -406,7 +406,7 @@ void SeQc::ProcessSeFastq() {
     }
 
 
-    auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(128, 1 << 22);
     //TODO replace this queue
     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(64, 1);
 
@@ -572,7 +572,7 @@ void SeQc::ProcessSeTGS() {
     }
 
 
-    auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(128, 1 << 22);
     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(64, 1);
 
     auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];

@@ -854,7 +854,7 @@ void PeQc::PigzTask2() {
  */
 void PeQc::ProcessPeFastq() {
     if (cmd_info_->interleaved_in_) {
-        auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
+        auto *fastqPool = new rabbit::fq::FastqDataPool(128, 1 << 22);
         rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(64, 1);
         auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
@@ -1082,7 +1082,7 @@ void PeQc::ProcessPeFastq() {
         }
 
 
-        auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
+        auto *fastqPool = new rabbit::fq::FastqDataPool(128, 1 << 22);
         rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(64, 1);
         auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
@@ -1309,12 +1309,12 @@ void PeQc::ProcessPeFastq() {
         if (!cmd_info_->no_insert_size_)
             delete[] merge_insert_size;
 
-
         delete fastqPool;
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             delete p_thread_info[t];
             delete threads[t];
         }
+
         delete[] threads;
         delete[] p_thread_info;
         if (cmd_info_->write_data_) {
@@ -1322,5 +1322,6 @@ void PeQc::ProcessPeFastq() {
             if (cmd_info_->interleaved_out_ == 0)
                 delete write_thread2;
         }
+
     }
 }

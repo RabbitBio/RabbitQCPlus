@@ -1049,7 +1049,6 @@ namespace rabbit {
 
             // read the next chunk
             int64 r = mFqReader->Read(data + chunk_->size, toRead);
-            // std::cout << "r is :" << r << std::endl;
 
             // if (r > 0) {
             if (!mFqReader->FinishRead()) {

@@ -124,7 +124,7 @@ std::string Adapter::matchKnownAdapter(std::string seq) {
 void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &hot_seqs, int &eva_len) {
 
     double t0 = GetTime();
-    auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
+    auto *fastq_data_pool = new rabbit::fq::FastqDataPool(128, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
                                                         file_name.find(".gz") != std::string::npos);
     int64_t n_chunks = 0;
@@ -306,7 +306,7 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
 }
 
 int Adapter::EvalMaxLen(std::string file_name) {
-    auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
+    auto *fastq_data_pool = new rabbit::fq::FastqDataPool(128, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
                                                         file_name.find(".gz") != std::string::npos);
     int64_t n_chunks = 0;
@@ -334,7 +334,6 @@ int Adapter::EvalMaxLen(std::string file_name) {
                 break;
         }
     }
-
     for (auto item: chunks)
         fastq_data_pool->Release(item);
     delete fastq_data_pool;
@@ -344,7 +343,7 @@ int Adapter::EvalMaxLen(std::string file_name) {
 
 std::string Adapter::AutoDetect(std::string file_name, int trim_tail) {
     //printf("now auto find adapter...\n");
-    auto *fastq_data_pool = new rabbit::fq::FastqDataPool(32, 1 << 22);
+    auto *fastq_data_pool = new rabbit::fq::FastqDataPool(128, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
                                                         file_name.find(".gz") != std::string::npos);
     int64_t n_chunks = 0;

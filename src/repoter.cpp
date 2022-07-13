@@ -906,6 +906,7 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
     delete[] tmp_double;
+    delete[] tmp_int64;
 }
 
 std::string GetOver(State *state, bool isAfter, bool isRead2, int eva_len) {
@@ -1366,6 +1367,7 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
     delete[] tmp_double;
+    delete[] tmp_int64;
 }
 
 void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_state2, State *aft_state1, State *aft_state2,
@@ -1391,10 +1393,13 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
     int64_t *qul_cnt;
 
 
+    int size_real = pre_state1->GetRealSeqLen() + pre_state2->GetRealSeqLen() - size_require;
     int mx_malloc_size = size_len_mx + 1;
     mx_malloc_size = std::max(mx_malloc_size,
                               std::max(std::max(pre_mx_len1, pre_mx_len2), std::max(aft_mx_len1, aft_mx_len2)));
 
+    mx_malloc_size = std::max(mx_malloc_size, size_real);
+    mx_malloc_size = std::max(mx_malloc_size, 1010);
     tmp_double = new double[mx_malloc_size];
     int64_t *tmp_int64 = new int64_t[110];
 
@@ -1463,7 +1468,6 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
     outhtml.append(insertTableTbobyEnd());
     outhtml.append(insertTableEnd());
 
-    int size_real = pre_state1->GetRealSeqLen() + pre_state2->GetRealSeqLen() - size_require;
 
 
     std::string InsertSizeInfo("InsertSizeInfo");
@@ -2014,4 +2018,5 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
     delete[] tmp_double;
+    delete[] tmp_int64;
 }
