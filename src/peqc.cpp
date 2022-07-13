@@ -38,14 +38,16 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
                 pigzQueueSizeLim1 = 1 << 6;
                 string out_name1 = cmd_info1->out_file_name1_;
                 out_name1 = out_name1.substr(0, out_name1.find(".gz"));
-                out_stream1_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
+                //out_stream1_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
+                out_stream1_.open(out_name1);
                 out_stream1_.close();
 
                 pigzQueueNumNow2 = 0;
                 pigzQueueSizeLim2 = 1 << 6;
                 string out_name2 = cmd_info1->out_file_name2_;
                 out_name2 = out_name2.substr(0, out_name2.find(".gz"));
-                out_stream2_ = std::fstream(out_name2, std::ios::out | std::ios::binary);
+                //out_stream2_ = std::fstream(out_name2, std::ios::out | std::ios::binary);
+                out_stream2_.open(out_name2);
                 out_stream2_.close();
 #ifdef Verbose
                 printf("now use pigz to compress output data\n");
@@ -69,9 +71,12 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
             if (cmd_info_->interleaved_out_ == 0)
                 printf("open stream2 %s\n", cmd_info1->out_file_name2_.c_str());
 #endif
-            out_stream1_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
-            if (cmd_info_->interleaved_out_ == 0)
-                out_stream2_ = std::fstream(cmd_info1->out_file_name2_, std::ios::out | std::ios::binary);
+            //out_stream1_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
+            out_stream1_.open(cmd_info1->out_file_name1_);
+            if (cmd_info_->interleaved_out_ == 0){
+                //out_stream2_ = std::fstream(cmd_info1->out_file_name2_, std::ios::out | std::ios::binary);
+                out_stream2_.open(cmd_info1->out_file_name2_);
+            }
         }
     }
     duplicate_ = NULL;

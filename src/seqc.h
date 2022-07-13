@@ -65,7 +65,7 @@ private:
             out_queue_;
     //TODO replace concurrentqueue with char*[]
     std::atomic_int done_thread_number_;
-    std::fstream out_stream_;
+    std::ofstream out_stream_;
     Duplicate *duplicate_;
     Umier *umier_;
 

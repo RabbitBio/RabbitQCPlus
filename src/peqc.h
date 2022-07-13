@@ -88,8 +88,8 @@ private:
     CIPair *out_queue2_;
     //TODO replace concurrentqueue with char*[]
     std::atomic_int done_thread_number_;
-    std::fstream out_stream1_;
-    std::fstream out_stream2_;
+    std::ofstream out_stream1_;
+    std::ofstream out_stream2_;
     Duplicate *duplicate_;
     Umier *umier_;
 

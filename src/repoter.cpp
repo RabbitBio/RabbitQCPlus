@@ -902,7 +902,9 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
 
     outhtml.append("</script>");
     outhtml.append("</html>");
-    std::fstream fout = std::fstream(html_name, std::ios::out | std::ios::binary);
+    //std::fstream fout = std::fstream(html_name, std::ios::out | std::ios::binary);
+    std::ofstream fout;
+    fout.open(html_name);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
     delete[] tmp_double;
@@ -1363,7 +1365,9 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
 
     outhtml.append("</script>");
     outhtml.append("</html>");
-    std::fstream fout = std::fstream(html_name, std::ios::out | std::ios::binary);
+    //std::fstream fout = std::fstream(html_name, std::ios::out | std::ios::binary);
+    std::ofstream fout;
+    fout.open(html_name);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
     delete[] tmp_double;
@@ -2014,7 +2018,9 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
 
     outhtml.append("</script>");
     outhtml.append("</html>");
-    std::fstream fout = std::fstream(html_name, std::ios::out | std::ios::binary);
+    //std::fstream fout = std::fstream(html_name, std::ios::out | std::ios::binary);
+    std::ofstream fout;
+    fout.open(html_name);
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
     delete[] tmp_double;

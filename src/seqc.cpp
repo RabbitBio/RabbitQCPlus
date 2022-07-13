@@ -27,7 +27,8 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
                 pigzQueueSizeLim = 1 << 6;
                 string out_name1 = cmd_info1->out_file_name1_;
                 out_name1 = out_name1.substr(0, out_name1.find(".gz"));
-                out_stream_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
+                //out_stream_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
+                out_stream_.open(out_name1);
                 out_stream_.close();
 #ifdef Verbose
                 printf("now use pigz to compress output data\n");
@@ -44,7 +45,8 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
 #ifdef Verbose
             printf("open stream %s\n", cmd_info1->out_file_name1_.c_str());
 #endif
-            out_stream_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
+            //out_stream_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
+            out_stream_.open(cmd_info1->out_file_name1_);
         }
     }
     duplicate_ = NULL;
