@@ -669,8 +669,8 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
         int i = 0;
         for (; i + 32 <= leng; i += 32) {
 
-            __m256i t1 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(str1 + offset + i));
-            __m256i t2 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(str2 + i));
+            __m256i t1 = _mm256_loadu_si256((__m256i const *)(str1 + offset + i));
+            __m256i t2 = _mm256_loadu_si256((__m256i const *)(str2 + i));
             __m256i res = _mm256_cmpeq_epi8(t1, t2);
             unsigned mask = _mm256_movemask_epi8(res);
             diff_num += 32 - _mm_popcnt_u32(mask);
@@ -705,8 +705,8 @@ OverlapRes Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overl
 
         int i = 0;
         for (; i + 32 <= leng; i += 32) {
-            __m256i t1 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(str1 + i));
-            __m256i t2 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(str2 - offset + i));
+            __m256i t1 = _mm256_loadu_si256((__m256i const *)(str1 + i));
+            __m256i t2 = _mm256_loadu_si256((__m256i const *)(str2 - offset + i));
             __m256i res = _mm256_cmpeq_epi8(t1, t2);
             unsigned mask = _mm256_movemask_epi8(res);
             diff_num += 32 - _mm_popcnt_u32(mask);
@@ -855,8 +855,8 @@ int Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2)
         int l = std::max(0, -pos);
         int i = l;
         for (; i + 32 < cmplen; i += 32) {
-            __m256i t1 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(adata + i));
-            __m256i t2 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(rdata + i + pos));
+            __m256i t1 = _mm256_loadu_si256((__m256i const *)(adata + i));
+            __m256i t2 = _mm256_loadu_si256((__m256i const *)(rdata + i + pos));
             __m256i res = _mm256_cmpeq_epi8(t1, t2);
             unsigned mask = _mm256_movemask_epi8(res);
             mismatch += 32 - _mm_popcnt_u32(mask);
@@ -1005,8 +1005,8 @@ int Adapter::TrimAdapter(neoReference &ref, std::string &adapter_seq, std::unord
         int l = std::max(0, -pos);
         int i = l;
         for (; i + 32 < cmplen; i += 32) {
-            __m256i t1 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(adata + i));
-            __m256i t2 = _mm256_loadu_si256(reinterpret_cast<const __m256i_u *>(rdata + i + pos));
+            __m256i t1 = _mm256_loadu_si256((__m256i const *)(adata + i));
+            __m256i t2 = _mm256_loadu_si256((__m256i const *)(rdata + i + pos));
             __m256i res = _mm256_cmpeq_epi8(t1, t2);
             unsigned mask = _mm256_movemask_epi8(res);
             mismatch += 32 - _mm_popcnt_u32(mask);
