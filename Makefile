@@ -1,3 +1,35 @@
+GCCVERSION = $(shell gcc --version | grep ^gcc | sed 's/^.* //g')
+
+GCCVERSIONGTEQ4 := $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 4)
+GCCVERSIONGTEQ5 := $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 5)
+GCCVERSIONGTEQ6 := $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 6)
+GCCVERSIONGTEQ7 := $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 7)
+GCCVERSIONGTEQ8 := $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 8)
+GCCVERSIONGTEQ9 := $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 9)
+GCCVERSIONGTEQ10 := $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 10)
+
+InstructSet :=
+
+ifneq ($(MAKECMDGOALS),clean)
+$(info The detected gcc version is $(GCCVERSION) )
+endif
+
+
+ifneq ($(MAKECMDGOALS),clean)
+ifeq ($(GCCVERSIONGTEQ5),1)
+ifeq ($(GCCVERSIONGTEQ7),1)
+$(info gcc version >= 7, now use avx512 instruction set to accelerate code)
+InstructSet := -DVec512
+else
+$(info gcc version >= 5 but < 7, now use avx2 instruction set to accelerate code)
+InstructSet := -DVec256
+endif
+else
+$(info gcc version < 5, now let the compiler automatically select the instruction set)
+endif
+endif
+
+
 DIR_INC := ./inc
 DIR_SRC := ./src
 DIR_OBJ := ./obj
@@ -30,7 +62,8 @@ CXX = g++
 
 # you can add -DVerbose to print more log information
 
-CXXFLAGS := -DVec256 -std=c++11 -I./ -I./common -march=native  -g -O3  -w -fopenmp
+CXXFLAGS := $(InstructSet)
+CXXFLAGS += -DVerbose -std=c++11 -I./ -I./common -march=native  -g -O3  -w -fopenmp
 
 
 CXX2 = gcc
