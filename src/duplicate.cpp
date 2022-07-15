@@ -10,6 +10,14 @@
 
 #endif
 
+
+#ifdef Vec256
+
+#include <immintrin.h>
+
+#endif
+
+
 Duplicate::Duplicate(CmdInfo *cmd_info) {
     cmd_info_ = cmd_info;
     key_len_base_ = 12;
@@ -91,37 +99,40 @@ void Duplicate::statRead(neoReference &ref) {
 
     int gc = 0;
 
-    // not calculated
-    //TODO check correctness
-//    if (counts_[key] == 0) {
 #ifdef Vec512
-    int i = 0;
-    __m512i gcV = _mm512_set1_epi32(0);
-    __m512i ad1 = _mm512_set1_epi32(1);
-
-    __m128i gcC = _mm_set1_epi8('C');
-    __m128i gcT = _mm_set1_epi8('G');
-    for (; i + 16 <= ref.lseq; i += 16) {
-        __m128i ide = _mm_maskz_loadu_epi8(0xFFFF, data + i);
-        __mmask16 mk1 = _mm_cmpeq_epi8_mask(ide, gcC);
-        __mmask16 mk2 = _mm_cmpeq_epi8_mask(ide, gcT);
+    __m512i gcC = _mm512_set1_epi8('C');
+    __m512i gcG = _mm512_set1_epi8('G');
+    for (int i = 0; i < ref.lseq; i += 64) {
+        uint64_t tag = (1ll << std::min(64, int(ref.lseq) - i)) - 1;
+        __m512i item = _mm512_maskz_loadu_epi8(tag, data + i);
+        __mmask64 mk1 = _mm512_cmp_epi8_mask(item, gcC, _MM_CMPINT_EQ);
+        __mmask64 mk2 = _mm512_cmp_epi8_mask(item, gcG, _MM_CMPINT_EQ);
         mk1 = mk1 | mk2;
-        gcV = _mm512_mask_add_epi32(gcV, mk1, gcV, ad1);
+        gc += _mm_popcnt_u64(mk1);
     }
-    for (; i < ref.lseq; i++) {
+#elif Vec256
+    __m256i gcC = _mm256_set1_epi8('C');
+    __m256i gcG = _mm256_set1_epi8('G');
+    int i = 0;
+    for (; i + 32 < ref.lseq; i += 32) {
+        __m256i item = _mm256_loadu_si256((__m256i const *)(data + i));
+        __m256i res1 = _mm256_cmpeq_epi8(item, gcC);
+        __m256i res2 = _mm256_cmpeq_epi8(item, gcG);
+        unsigned mk1 = _mm256_movemask_epi8(res1);
+        unsigned mk2 = _mm256_movemask_epi8(res2);
+        mk1 = mk1 | mk2;
+        gc += _mm_popcnt_u32(mk1);
+    }
+    for(; i < ref.lseq; i++){
         if (data[i] == 'C' || data[i] == 'G')
             gc++;
     }
-    int cnt[16];
-    _mm512_store_epi32(cnt, gcV);
-    for (int k = 0; k < 16; k++) gc += cnt[k];
 #else
     for (int i = 0; i < ref.lseq; i++) {
         if (data[i] == 'C' || data[i] == 'G')
             gc++;
     }
 #endif
-    //    }
     gc = int(255.0 * gc / ref.lseq + 0.5);
 
     addRecord(key, kmer32, (uint8_t) gc);

@@ -21,6 +21,13 @@ last modified by Zekun Yin 2020/5/18
 
 #endif
 
+
+#ifdef Vec256
+
+#include "immintrin.h"
+
+#endif
+
 namespace rabbit {
 
     namespace fa {
@@ -315,17 +322,23 @@ namespace rabbit {
 
         int64 count_line(uchar *contenx, int64 read_bytes) {
             int64 count_n = 0;
-
 #ifdef Vec512
+            __m512i enter_con = _mm512_set1_epi8('\n');
+            for (int i = 0; i < read_bytes; i += 64) {
+                uint64_t tag = (1ll << std::min(64, int(read_bytes) - i)) - 1;
+                __m512i item = _mm512_maskz_loadu_epi8(tag, contenx + i);
+                __mmask64 mask = _mm512_cmp_epi8_mask(item, enter_con, _MM_CMPINT_EQ);
+                count_n += _mm_popcnt_u64(mask);
+            }
+#elif Vec256
             int i = 0;
-            __m512i conx;
-            __m128i ide;
-            __m512i enter_con = _mm512_set1_epi64('\n');
+            __m256i enter_con = _mm256_set1_epi8('\n');
 
-            for (; i + 8 <= read_bytes; i += 8) {
-                ide = _mm_maskz_loadu_epi8(0xFF, contenx + i);
-                conx = _mm512_cvtepi8_epi64(ide);
-                count_n += _mm_popcnt_u32(_mm512_cmp_epi64_mask(conx, enter_con, _MM_CMPINT_EQ));
+            for (; i + 32 <= read_bytes; i += 32) {
+                __m256i item = _mm256_loadu_si256((__m256i const *)(contenx + i));
+                __m256i res = _mm256_cmpeq_epi8(item, enter_con);
+                unsigned mask = _mm256_movemask_epi8(res);
+                count_n += _mm_popcnt_u32(mask);
             }
             for (; i < read_bytes; ++i) {
                 if (contenx[i] == '\n') count_n++;
@@ -333,7 +346,6 @@ namespace rabbit {
 #else
 
             for (int i = 0; i < read_bytes; ++i) {
-                // printf("%c",contenx[i]);
                 if (contenx[i] == '\n') count_n++;
             }
 #endif
