@@ -67,20 +67,17 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
     over_representation_qcnt_ = 0;
     over_representation_pcnt_ = 0;
     if (do_over_represent_analyze_) {
-        double t0 = GetTime();
         head_hash_graph_ = new int[(1 << MODB) + 100];
         bf_zone_ = new int64_t[(1 << MODB) / 64 + 100];
         for (int i = 0; i < (1 << MODB) + 10; i++) head_hash_graph_[i] = -1;
         for (int i = 0; i < (1 << MODB) / 64 + 10; i++) bf_zone_[i] = 0;
         if (is_read2_) {
             hash_graph_ = new node[cmd_info->hot_seqs2_.size()];
-            t0 = GetTime();
             for (auto item: cmd_info->hot_seqs2_) {
                 HashInsert(item.c_str(), item.length(), cmd_info->eva_len2_);
             }
         } else {
             hash_graph_ = new node[cmd_info->hot_seqs_.size()];
-            t0 = GetTime();
             for (auto item: cmd_info->hot_seqs_) {
                 HashInsert(item.c_str(), item.length(), cmd_info->eva_len2_);
             }
@@ -189,6 +186,37 @@ void State::ExtendBuffer(int old_len, int new_len) {
     len_cnt_ = newBuf;
 }
 
+void print128_8(__m128i var){
+    char val[16];
+    memcpy(val, &var, sizeof(val));
+    printf("Numerical: %c %c %c %c %c %c %c %c %c %c %c %c %c %c %c %c %c\n", 
+            val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9], val[10], val[11], val[12], val[13], val[14], val[15]);
+}
+void print128_32(__m128i var){
+    int val[4];
+    memcpy(val, &var, sizeof(val));
+    printf("Numerical: %d %d %d %d\n", 
+            val[0], val[1], val[2], val[3]);
+}
+void print128_64(__m128i var) {
+    int64_t v64val[2];
+    memcpy(v64val, &var, sizeof(v64val));
+    printf("Numerical: %lld %lld\n", v64val[0], v64val[1]);
+}
+
+
+void print256_32(__m256i var){
+    int val[8];
+    memcpy(val, &var, sizeof(val));
+    printf("Numerical: %d %d %d %d %d %d %d %d\n", 
+            val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7]);
+}
+void print256_64(__m256i var) {
+    int64_t v64val[4];
+    memcpy(v64val, &var, sizeof(v64val));
+    printf("Numerical: %lld %lld %lld %lld\n", v64val[0], v64val[1], v64val[2], v64val[3]);
+}
+
 
 /**
  * @brief State reference information
@@ -244,36 +272,58 @@ void State::StateInfo(neoReference &ref) {
 
     for (; i + 8 <= slen; i += 8) {
 
+
+        //int q = std::max(0, quals[i] - phredSub);
         ide = _mm_maskz_loadu_epi8(0xFF, quals + i);
         quamm = _mm512_cvtepi8_epi64(ide);
         ad2 = _mm512_sub_epi64(quamm, sub33);
         __mmask8 mmsk = _mm512_cmp_epi64_mask(ad2, q0_vec, 1);
         _mm512_mask_set1_epi64(ad2, mmsk, 0);
 
+
+        //if (q >= 30) {
+        //    q20bases_++;
+        //    q30bases_++;       
+        //} else if (q >= 20) {
+        //    q20bases_++;        
+        //}
         __mmask8 q30_mask = _mm512_cmp_epi64_mask(ad2, q30_vec, _MM_CMPINT_NLT);
         __mmask8 q20_mask = _mm512_cmp_epi64_mask(ad2, q20_vec, _MM_CMPINT_NLT);
+        q20bases_ += _mm_popcnt_u32(q20_mask);
+        q30bases_ += _mm_popcnt_u32(q30_mask);
+
+
+        //qul_tot += q;
+        qul_tot_vec = _mm512_add_epi64(qul_tot_vec, ad2);
+
+
+        //char b = bases[i] & 0x07;
         ide = _mm_maskz_loadu_epi8(0xFF, bases + i);
         idx = _mm256_cvtepi8_epi32(ide);
         idx = _mm256_and_si256(idx, and7);
 
+
+        //if (b == 3 || b == 7) gc_cnt++;
         __mmask8 gc_mask1 = _mm256_cmp_epi32_mask(idx, con3, _MM_CMPINT_EQ);
         __mmask8 gc_mask2 = _mm256_cmp_epi32_mask(idx, con7, _MM_CMPINT_EQ);
         gc_cnt += _mm_popcnt_u32(gc_mask1 | gc_mask2);
 
+
+
+        //i * 8 + b
         idx = _mm256_add_epi32(bse, idx);
+        //i++
         bse = _mm256_add_epi32(bse, add8);
 
-        q20bases_ += _mm_popcnt_u32(q20_mask);
-        q30bases_ += _mm_popcnt_u32(q30_mask);
-
-        qul_tot_vec = _mm512_add_epi64(qul_tot_vec, ad2);
 
 
+        //pos_cnt_[i * 8 + b]++
         p3 = (int64_t *) pos_cnt_;
         v3 = _mm512_i32gather_epi64(idx, p3, 8);
         v3 = _mm512_add_epi64(v3, ad1);
         _mm512_i32scatter_epi64(p3, idx, v3, 8);
 
+        //pos_qul_[i * 8 + b] += q
         p4 = (int64_t *) pos_qul_;
         v4 = _mm512_i32gather_epi64(idx, p4, 8);
         v4 = _mm512_add_epi64(v4, ad2);
@@ -313,11 +363,111 @@ void State::StateInfo(neoReference &ref) {
 
 
 #elif Vec256
-    for (int i = 0; i < slen; i++) {
+    int i = 0;
+    const long long int *p1, *p2, *p3, *p4, *p5, *p6;
+    __m256i ad0, ad1, ad2, ad3, ad4, v1, v2, v3, v4, v5, v6, sub33, quamm;
+    __m128i bse, and7, add8, idx;
+    __m128i ide;
+    bse = _mm_set_epi32(3 * 8, 2 * 8, 1 * 8, 0 * 8);
+    ad1 = _mm256_set1_epi64x(1);
+    and7 = _mm_set1_epi32(0x07);
+    add8 = _mm_set1_epi32(32);
+    sub33 = _mm256_set1_epi64x(phredSub);
+    __m128i ones_128 = _mm_set1_epi32(-1);
+    __m256i ones_256 = _mm256_set1_epi64x(-1);
+    __m256i q20_vec = _mm256_set1_epi64x(20);
+    __m256i q30_vec = _mm256_set1_epi64x(30);
+    __m256i q0_vec = _mm256_set1_epi64x(0);
+    __m128i con3 = _mm_set1_epi32(3);
+    __m128i con7 = _mm_set1_epi32(7);
+    __m256i qul_tot_vec = _mm256_set1_epi64x(0);
+
+
+    int tag = 0;
+    for (; i + 4 <= slen; i += 4) {
+        //int q = std::max(0, quals[i] - phredSub);
+        ide = _mm_loadu_si128((__m128i const*)(quals + i));
+        quamm = _mm256_cvtepi8_epi64(ide);
+        ad2 = _mm256_sub_epi64(quamm, sub33);
+        //TODO q > 0 ?
+
+
+        //if (q >= 30) {
+        //    q20bases_++;
+        //    q30bases_++;       
+        //} else if (q >= 20) {
+        //    q20bases_++;        
+        //}
+        __m256i res30 = !(_mm256_cmpgt_epi64(q30_vec, ad2));
+        int q30_mask = _mm256_movemask_epi8(res30);
+        __m256i res20 = !(_mm256_cmpgt_epi64(q20_vec, ad2));
+        int q20_mask = _mm256_movemask_epi8(res20);
+        q20bases_ += _mm_popcnt_u32(q20_mask) >> 3;
+        q30bases_ += _mm_popcnt_u32(q30_mask) >> 3;
+
+
+        //qul_tot += q;
+        qul_tot_vec = _mm256_add_epi64(qul_tot_vec, ad2);
+
+
+        //char b = bases[i] & 0x07;
+        ide = _mm_loadu_si128((__m128i const*)(bases + i));
+        idx = _mm_cvtepi8_epi32(ide);
+        idx = _mm_and_si128(idx, and7);
+
+
+        //if (b == 3 || b == 7) gc_cnt++;
+        __m128i res3 = _mm_cmpeq_epi32(idx, con3);
+        __m128i res7 = _mm_cmpeq_epi32(idx, con7);
+        int gc3_mask = _mm_movemask_epi8(res3);
+        int gc7_mask = _mm_movemask_epi8(res7);
+        gc_cnt += _mm_popcnt_u32(gc3_mask | gc7_mask) >> 2;
+
+
+
+        //i * 8 + b
+        idx = _mm_add_epi32(bse, idx);
+
+        //i++
+        bse = _mm_add_epi32(bse, add8);
+
+        //pos_cnt_[i * 8 + b]++
+        p3 = (const long long int*)pos_cnt_;
+        v3 = _mm256_i32gather_epi64(p3, idx, 8);
+        v3 = _mm256_add_epi64(v3, ad1);
+
+        //pos_qul_[i * 8 + b] += q
+        p4 = (const long long int*)pos_qul_;
+        v4 = _mm256_i32gather_epi64(p4, idx, 8);
+        v4 = _mm256_add_epi64(v4, ad2);
+
+        int idx_tmp[4];
+        memcpy(idx_tmp, &idx, 4 * sizeof(int));
+        int64_t data_tmp1[4];
+        memcpy(data_tmp1, &v3, 4 * sizeof(int64_t));
+        int64_t data_tmp2[4];
+        memcpy(data_tmp2, &v4, 4 * sizeof(int64_t));
+
+
+        for (int j = i, k = 0; j < i + 4; j++, k++) {
+            pos_cnt_[idx_tmp[k]] = data_tmp1[k];
+            pos_qul_[idx_tmp[k]] = data_tmp2[k];
+
+            if (bases[j] == 'N') flag = 5;
+            int val = valAGCT[bases[j] & 0x07];
+            kmer = ((kmer << 2) & 0x3FC) | val;
+            if (flag <= 0) kmer_[kmer]++;
+            flag--;
+        }
+    }
+    long long int tmp[4];
+    _mm256_maskstore_epi64(tmp, ones_256, qul_tot_vec);
+    for (int ii = 0; ii < 4; ii++)
+        qul_tot += tmp[ii];
+    for (; i < slen; i++) {
         char b = bases[i] & 0x07;
         if (b == 3 || b == 7) gc_cnt++;
         int q = std::max(0, quals[i] - phredSub);
-
         qul_tot += q;
         if (q >= 30) {
             q20bases_++;
@@ -328,7 +478,7 @@ void State::StateInfo(neoReference &ref) {
         pos_cnt_[i * 8 + b]++;
         pos_qul_[i * 8 + b] += q;
         if (bases[i] == 'N') flag = 5;
-        int val = valAGCT[b];
+        int val = valAGCT[bases[i] & 0x07];
         kmer = ((kmer << 2) & 0x3FC) | val;
         if (flag <= 0) kmer_[kmer]++;
         flag--;
@@ -361,13 +511,18 @@ void State::StateInfo(neoReference &ref) {
     gc_cnt_[int(1.0 * gcMax * gc_cnt / slen)]++;
     qul_cnt_[int(1.0 * qul_tot / slen)]++;
     // do overrepresentation analysis for 1 of every 20 reads
+    
+#ifdef Verbose
     double t0 = GetTime();
+#endif
     if (do_over_represent_analyze_) {
         if (lines_ % over_representation_sampling_ == 0) {
             StateORP(ref);
         }
     }
+#ifdef Verbose
     orpCost += GetTime() - t0;
+#endif
     lines_++;
 }
 
@@ -562,7 +717,7 @@ void State::PrintFilterResults(const State *state) {
     printf("not pass filter due to low quality: %lld\n", state->fail_lowq_);
     if (state->cmd_info_->print_what_trimmed_)
         printf("trimmed adapter read number: %lld (all trimmed adapter (len >= %d) can be find in *_trimmed_adapters.txt)\n",
-               state->trim_adapter_, state->cmd_info_->adapter_len_lim_);
+                state->trim_adapter_, state->cmd_info_->adapter_len_lim_);
     else
         printf("trimmed adapter read number: %lld \n", state->trim_adapter_);
     printf("trimmed base number due to adapter: %lld\n", state->trim_adapter_bases_);

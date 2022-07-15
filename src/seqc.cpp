@@ -271,7 +271,9 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
  * @brief a function to write data from out_data queue to file
  */
 void SeQc::WriteSeFastqTask() {
+#ifdef Verbose
     double t0 = GetTime();
+#endif
     int cnt = 0;
     bool overWhile = 0;
     std::pair<char *, int> now;
@@ -338,8 +340,8 @@ void SeQc::WriteSeFastqTask() {
 void SeQc::PugzTask() {
 #ifdef Verbose
     printf("pugz start\n");
-#endif
     auto t0 = GetTime();
+#endif
     main_pugz(cmd_info_->in_file_name1_, cmd_info_->pugz_threads_, pugzQueue, &producerDone);
 #ifdef Verbose
     printf("pugz cost %.5f\n", GetTime() - t0);
@@ -399,8 +401,9 @@ void SeQc::PigzTask() {
  */
 
 void SeQc::ProcessSeFastq() {
-
+#ifdef Verbose
     double t0 = GetTime();
+#endif
     thread *pugzer;
 
     if (cmd_info_->use_pugz_) {

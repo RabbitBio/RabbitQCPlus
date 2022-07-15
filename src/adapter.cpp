@@ -123,7 +123,9 @@ std::string Adapter::matchKnownAdapter(std::string seq) {
 
 void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &hot_seqs, int &eva_len) {
 
+#ifdef Verbose
     double t0 = GetTime();
+#endif
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(128, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
                                                         file_name.find(".gz") != std::string::npos);
@@ -162,7 +164,9 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
         }
     }
     //printf("part0 cost %.5f\n", GetTime() - t0);
+#ifdef Verbose
     t0 = GetTime();
+#endif
 
     int seqlen = 0;
     for (int i = 0; i < loadedReads.size(); i++) {
@@ -222,7 +226,9 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
         }
     }
     //printf("part1 cost %.5f\n", GetTime() - t0);
+#ifdef Verbose
     t0 = GetTime();
+#endif
     //printf("total hot seqs num is %d\n", num);
     //printf("now get hotseqs\n");
 
@@ -253,7 +259,9 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
     }
 
     //printf("part2 cost %.5f\n", GetTime() - t0);
+#ifdef Verbose
     t0 = GetTime();
+#endif
     //printf("now remove substrings\n");
     //printf("before size %d\n", hot_s.size());
     // remove substrings
@@ -279,7 +287,9 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
         }
     }
     //printf("part3 cost %.5f\n", GetTime() - t0);
+#ifdef Verbose
     t0 = GetTime();
+#endif
     //printf("after size %d\n", hot_seqs.size());
     // output for test
     //    for (auto iter = hot_seqs.begin(); iter != hot_seqs.end(); iter++) {
@@ -292,7 +302,9 @@ void Adapter::PreOverAnalyze(std::string file_name, std::vector<std::string> &ho
     //}
     //ofs.close();
     //printf("part4 cost %.5f\n", GetTime() - t0);
+#ifdef Verbose
     t0 = GetTime();
+#endif
     for (auto item: chunks)
         fastq_data_pool->Release(item);
     delete fastq_data_pool;

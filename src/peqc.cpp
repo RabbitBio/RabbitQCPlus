@@ -155,8 +155,9 @@ void PeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
 
 void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
                                     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
+#ifdef Verbose
     double t0 = GetTime();
-
+#endif
     rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize = 1 << 20;
     if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
@@ -182,8 +183,9 @@ void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool 
 
 void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
+#ifdef Verbose
     double t0 = GetTime();
-
+#endif
     rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize = 1 << 20;
     if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
@@ -637,7 +639,9 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
  * @brief a function to write pe data from out_data1 queue to file1
  */
 void PeQc::WriteSeFastqTask1() {
+#ifdef Verbose
     double t0 = GetTime();
+#endif
     int cnt = 0;
     bool overWhile = 0;
     std::pair<char *, int> now;
@@ -699,7 +703,9 @@ void PeQc::WriteSeFastqTask1() {
  * @brief a function to write pe data from out_data2 queue to file2
  */
 void PeQc::WriteSeFastqTask2() {
+#ifdef Verbose
     double t0 = GetTime();
+#endif
     int cnt = 0;
     bool overWhile = 0;
     std::pair<char *, int> now;
@@ -763,8 +769,8 @@ void PeQc::WriteSeFastqTask2() {
 void PeQc::PugzTask1() {
 #ifdef Verbose
     printf("pugz1 start\n");
-#endif
     double t0 = GetTime();
+#endif
     main_pugz(cmd_info_->in_file_name1_, cmd_info_->pugz_threads_, pugzQueue1, &producerDone);
     pugzDone1 = 1;
 #ifdef Verbose
@@ -775,8 +781,8 @@ void PeQc::PugzTask1() {
 void PeQc::PugzTask2() {
 #ifdef Verbose
     printf("pugz2 start\n");
-#endif
     double t0 = GetTime();
+#endif
     main_pugz(cmd_info_->in_file_name2_, cmd_info_->pugz_threads_, pugzQueue2, &producerDone);
     pugzDone2 = 1;
 #ifdef Verbose
