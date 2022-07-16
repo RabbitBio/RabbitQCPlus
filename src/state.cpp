@@ -398,9 +398,9 @@ void State::StateInfo(neoReference &ref) {
         //} else if (q >= 20) {
         //    q20bases_++;        
         //}
-        __m256i res30 = !(_mm256_cmpgt_epi64(q30_vec, ad2));
+        __m256i res30 = _mm256_xor_si256(_mm256_cmpgt_epi64(q30_vec, ad2), ones_256);
         int q30_mask = _mm256_movemask_epi8(res30);
-        __m256i res20 = !(_mm256_cmpgt_epi64(q20_vec, ad2));
+        __m256i res20 = _mm256_xor_si256(_mm256_cmpgt_epi64(q20_vec, ad2), ones_256);
         int q20_mask = _mm256_movemask_epi8(res20);
         q20bases_ += _mm_popcnt_u32(q20_mask) >> 3;
         q30bases_ += _mm_popcnt_u32(q30_mask) >> 3;

@@ -1,12 +1,16 @@
-GCCVERSION = $(shell gcc --version | grep ^gcc | sed 's/^.* //g')
+PRINTDEBUG := 0
 
-GCCVERSIONGTEQ4 := $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 4)
-GCCVERSIONGTEQ5 := $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 5)
-GCCVERSIONGTEQ6 := $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 6)
-GCCVERSIONGTEQ7 := $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 7)
-GCCVERSIONGTEQ8 := $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 8)
-GCCVERSIONGTEQ9 := $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 9)
-GCCVERSIONGTEQ10 := $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 10)
+GCCVERSION = $(shell gcc -dumpfullversion -dumpversion)
+
+GCC_GTEQ_485 := $(shell expr `gcc -dumpfullversion -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/'` \>= 40805)
+GCC_GTEQ_700 := $(shell expr `gcc -dumpfullversion -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/'` \>= 70000)
+GCC_GTEQ_1000 := $(shell expr `gcc -dumpfullversion -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/'` \>= 100000)
+ifeq ($(PRINTDEBUG),1)
+$(info The detected gcc version is $(GCCVERSION))
+$(info The detected gcc version is >= 4.8.5 : $(GCC_GTEQ_485))
+$(info The detected gcc version is >= 7.0.0 : $(GCC_GTEQ_700))
+$(info The detected gcc version is >= 10.0.0 : $(GCC_GTEQ_1000))
+endif
 
 InstructSet :=
 
@@ -16,16 +20,16 @@ endif
 
 
 ifneq ($(MAKECMDGOALS),clean)
-ifeq ($(GCCVERSIONGTEQ5),1)
-ifeq ($(GCCVERSIONGTEQ7),1)
-$(info gcc version >= 7, now use avx512 instruction set to accelerate code)
+ifeq ($(GCC_GTEQ_485),1)
+ifeq ($(GCC_GTEQ_700),1)
+$(info gcc version >= 7.0.0, now use avx512 instruction set to accelerate code)
 InstructSet := -DVec512
 else
-$(info gcc version >= 5 but < 7, now use avx2 instruction set to accelerate code)
+$(info gcc version >= 4.8.5 but < 7.0.0, now use avx2 instruction set to accelerate code)
 InstructSet := -DVec256
 endif
 else
-$(info gcc version < 5, now let the compiler automatically select the instruction set)
+$(info gcc version < 4.8.5, now let the compiler automatically select the instruction set. However, this may affect performance and we recommend that you install gcc with >= 4.8.5)
 endif
 endif
 
