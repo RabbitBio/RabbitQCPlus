@@ -8,11 +8,10 @@
 
 #if defined(USE_IGZIP)
 #include "igzip_lib.h"
-#else
-
-#include <zlib.h>//support gziped files, functional but inefficient
 
 #endif
+#include <zlib.h>//support gziped files, functional but inefficient
+
 
 #if defined(_WIN32)
 #define _CRT_SECURE_NO_WARNINGS

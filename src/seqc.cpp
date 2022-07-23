@@ -20,11 +20,11 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     if (cmd_info1->write_data_) {
         out_queue_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>;
         queueNumNow = 0;
-        queueSizeLim = 1 << 6;
+        queueSizeLim = 1 << 5;
         if (out_is_zip_) {
             if (cmd_info1->use_pigz_) {
                 pigzQueueNumNow = 0;
-                pigzQueueSizeLim = 1 << 6;
+                pigzQueueSizeLim = 1 << 5;
                 string out_name1 = cmd_info1->out_file_name1_;
                 out_name1 = out_name1.substr(0, out_name1.find(".gz"));
                 //out_stream_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
@@ -243,6 +243,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 
             if (cmd_info_->write_data_) {
                 if (pass_data.size() > 0) {
+                    //mylock.lock();
                     char *out_data = new char[out_len];
                     int pos = 0;
                     for (auto item: pass_data) {
@@ -250,14 +251,16 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                         Read2Chars(item, out_data, pos);
                     }
                     ASSERT(pos == out_len);
-                    while (queueNumNow > queueSizeLim) {
+                    while (queueNumNow >= queueSizeLim) {
 #ifdef Verbose
                         //printf("waiting to push a chunk to out queue %d\n",out_len);
 #endif
                         usleep(100);
                     }
+                    
                     out_queue_->enqueue(make_pair(out_data, out_len));
                     queueNumNow++;
+                    //mylock.unlock();
                 }
             }
 
@@ -411,9 +414,9 @@ void SeQc::ProcessSeFastq() {
     }
 
 
-    auto *fastqPool = new rabbit::fq::FastqDataPool(128, 1 << 22);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(32, 1 << 22);
     //TODO replace this queue
-    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(64, 1);
+    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(32, 1);
 
     auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
@@ -577,8 +580,8 @@ void SeQc::ProcessSeTGS() {
     }
 
 
-    auto *fastqPool = new rabbit::fq::FastqDataPool(128, 1 << 22);
-    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(64, 1);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(32, 1 << 22);
+    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(32, 1);
 
     auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {

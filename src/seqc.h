@@ -87,6 +87,7 @@ private:
     std::atomic_int pigzQueueNumNow;
     std::atomic_int queueSizeLim;
     std::atomic_int pigzQueueSizeLim;
+    std::mutex mylock;
 };
 
 

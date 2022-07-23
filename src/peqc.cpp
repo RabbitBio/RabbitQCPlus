@@ -20,22 +20,22 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != std::string::npos;
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != std::string::npos;
     if (cmd_info1->write_data_) {
-        out_queue1_ = new CIPair[1 << 25];
+        out_queue1_ = new CIPair[1 << 20];
         queue1P1 = 0;
         queue1P2 = 0;
         queueNumNow1 = 0;
-        queueSizeLim1 = 1 << 6;
+        queueSizeLim1 = 1 << 5;
         if (cmd_info_->interleaved_out_ == 0) {
-            out_queue2_ = new CIPair[1 << 25];
+            out_queue2_ = new CIPair[1 << 20];
             queue2P1 = 0;
             queue2P2 = 0;
             queueNumNow2 = 0;
-            queueSizeLim2 = 1 << 6;
+            queueSizeLim2 = 1 << 5;
         }
         if (out_is_zip_) {
             if (cmd_info1->use_pigz_) {
                 pigzQueueNumNow1 = 0;
-                pigzQueueSizeLim1 = 1 << 6;
+                pigzQueueSizeLim1 = 1 << 5;
                 string out_name1 = cmd_info1->out_file_name1_;
                 out_name1 = out_name1.substr(0, out_name1.find(".gz"));
                 //out_stream1_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
@@ -43,7 +43,7 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
                 out_stream1_.close();
 
                 pigzQueueNumNow2 = 0;
-                pigzQueueSizeLim2 = 1 << 6;
+                pigzQueueSizeLim2 = 1 << 5;
                 string out_name2 = cmd_info1->out_file_name2_;
                 out_name2 = out_name2.substr(0, out_name2.find(".gz"));
                 //out_stream2_ = std::fstream(out_name2, std::ios::out | std::ios::binary);
@@ -250,8 +250,8 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
         for (int i = 0; i < b_size; i++) {
             auto item1 = data1[i];
             auto item2 = data2[i];
-            auto name1 = std::string((char *) item1.base + item1.pname, item1.lname);
-            auto name2 = std::string((char *) item2.base + item2.pname, item2.lname);
+            //auto name1 = std::string((char *) item1.base + item1.pname, item1.lname);
+            //auto name2 = std::string((char *) item2.base + item2.pname, item2.lname);
             thread_info->pre_state1_->StateInfo(item1);
             thread_info->pre_state2_->StateInfo(item2);
             if (cmd_info_->state_duplicate_) {
@@ -383,7 +383,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     Read2Chars(item2, out_data, pos);
                 }
                 mylock.lock();
-                while (queueNumNow1 > queueSizeLim1) {
+                while (queueNumNow1 >= queueSizeLim1) {
 #ifdef Verbose
                     //printf("waiting to push a chunk to out queue1\n");
 #endif
@@ -406,17 +406,11 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                         Read2Chars(item, out_data2, pos);
                     }
                     ASSERT(pos == out_len2);
-
+                    
                     mylock.lock();
-                    while (queueNumNow1 > queueSizeLim1) {
+                    while (queueNumNow1 >= queueSizeLim1 || queueNumNow2 >= queueSizeLim2) {
 #ifdef Verbose
                         //printf("waiting to push a chunk to out queue1\n");
-#endif
-                        usleep(100);
-                    }
-                    while (queueNumNow2 > queueSizeLim2) {
-#ifdef Verbose
-                        //printf("waiting to push a chunk to out queue2\n");
 #endif
                         usleep(100);
                     }
@@ -449,8 +443,8 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
         for (int i = 0; i + 2 <= data.size(); i += 2) {
             auto item1 = data[i];
             auto item2 = data[i + 1];
-            auto name1 = std::string((char *) item1.base + item1.pname, item1.lname);
-            auto name2 = std::string((char *) item2.base + item2.pname, item2.lname);
+            //auto name1 = std::string((char *) item1.base + item1.pname, item1.lname);
+            //auto name2 = std::string((char *) item2.base + item2.pname, item2.lname);
             thread_info->pre_state1_->StateInfo(item1);
             thread_info->pre_state2_->StateInfo(item2);
             if (cmd_info_->state_duplicate_) {
@@ -583,7 +577,7 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                     Read2Chars(item2, out_data, pos);
                 }
                 mylock.lock();
-                while (queueNumNow1 > queueSizeLim1) {
+                while (queueNumNow1 >= queueSizeLim1) {
 #ifdef Verbose
                     //printf("waiting to push a chunk to out queue1\n");
 #endif
@@ -608,15 +602,9 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                     ASSERT(pos == out_len2);
 
                     mylock.lock();
-                    while (queueNumNow1 > queueSizeLim1) {
+                    while (queueNumNow1 >= queueSizeLim1 || queueNumNow2 >= queueSizeLim2) {
 #ifdef Verbose
                         //printf("waiting to push a chunk to out queue1\n");
-#endif
-                        usleep(100);
-                    }
-                    while (queueNumNow2 > queueSizeLim2) {
-#ifdef Verbose
-                        //printf("waiting to push a chunk to out queue2\n");
 #endif
                         usleep(100);
                     }
@@ -727,7 +715,7 @@ void PeQc::WriteSeFastqTask2() {
 #ifdef Verbose
                     //printf("waiting to push a chunk to pigz queue2\n");
 #endif
-                    usleep(1000000);
+                    usleep(100);
                 }
                 pigzQueue2->enqueue(now);
                 pigzQueueNumNow2++;
@@ -865,7 +853,7 @@ void PeQc::PigzTask2() {
  */
 void PeQc::ProcessPeFastq() {
     if (cmd_info_->interleaved_in_) {
-        auto *fastqPool = new rabbit::fq::FastqDataPool(128, 1 << 22);
+        auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
         rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(64, 1);
         auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
@@ -1093,7 +1081,7 @@ void PeQc::ProcessPeFastq() {
         }
 
 
-        auto *fastqPool = new rabbit::fq::FastqDataPool(128, 1 << 22);
+        auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
         rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(64, 1);
         auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
