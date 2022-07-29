@@ -185,7 +185,7 @@ void State::ExtendBuffer(int old_len, int new_len) {
     delete len_cnt_;
     len_cnt_ = newBuf;
 }
-
+/*
 void print128_8(__m128i var){
     char val[16];
     memcpy(val, &var, sizeof(val));
@@ -217,7 +217,7 @@ void print256_64(__m256i var) {
     printf("Numerical: %lld %lld %lld %lld\n", v64val[0], v64val[1], v64val[2], v64val[3]);
 }
 
-
+*/
 /**
  * @brief State reference information
  * @param ref
