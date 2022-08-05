@@ -119,7 +119,7 @@ public:
     void AddTrimAdapterBase(int cnt);
 
 
-    unordered_map<string, int> GetAdapterMap();
+    std::unordered_map<std::string, int> GetAdapterMap();
 
     CmdInfo *GetCmdInfo() const;
 
@@ -164,7 +164,7 @@ public:
     int64_t fail_lowq_;
     int64_t trim_adapter_;
     int64_t trim_adapter_bases_;
-    unordered_map<string, int> adapter_map_;
+    std::unordered_map<std::string, int> adapter_map_;
 };
 
 

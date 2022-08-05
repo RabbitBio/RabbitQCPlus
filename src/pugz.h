@@ -9,7 +9,7 @@
 #include "Globals.h"
 
 
-void main_pugz(string in_name, int threads, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q,
-               atomic_int *producerDone);
+void main_pugz(std::string in_name, int threads, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q,
+               std::atomic_int *producerDone);
 
 #endif//RERABBITQC_PUGZ_H

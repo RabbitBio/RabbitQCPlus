@@ -3,7 +3,7 @@
 //
 
 #include "tgsstate.h"
-
+using namespace std;
 
 TGSStats::TGSStats(int minLen) {
     mMinlen = minLen;
@@ -28,8 +28,8 @@ TGSStats::TGSStats(int minLen) {
     mBases51015Num[0] = 0;
     mBases51015Num[1] = 0;
     mBases51015Num[2] = 0;
-    mTop5QualReads = new std::pair<double, int>[5];
-    mTop5LengReads = new std::pair<int, double>[5];
+    mTop5QualReads = new pair<double, int>[5];
+    mTop5LengReads = new pair<int, double>[5];
     for (int i = 0; i < 5; i++) {
         mTop5QualReads[i] = {0, 0};
         mTop5LengReads[i] = {0, 0};
@@ -143,34 +143,34 @@ void TGSStats::print() {
     printf("average read length %.3f\n", this->GetAvgReadsLen());
     printf("\n");
     /*
-    //cerr << "nothing here" << std::endl;
+    //cerr << "nothing here" << endl;
     int i;
-    std::cout << "head A    T   C   G" << std::endl;
+    cout << "head A    T   C   G" << endl;
     for (i = 0; i < (mMinlen >> 1); ++i) {
-        std::cout << head_seq_pos_count[0][i] << " ";
-        std::cout << head_seq_pos_count[1][i] << " ";
-        std::cout << head_seq_pos_count[2][i] << " ";
-        std::cout << head_seq_pos_count[3][i] << " ";
-        std::cout << std::endl;
+        cout << head_seq_pos_count[0][i] << " ";
+        cout << head_seq_pos_count[1][i] << " ";
+        cout << head_seq_pos_count[2][i] << " ";
+        cout << head_seq_pos_count[3][i] << " ";
+        cout << endl;
     }
-    std::cout << "tail A    T   C   G" << std::endl;
-    //std::cout << std::endl;
+    cout << "tail A    T   C   G" << endl;
+    //cout << endl;
     for (i = 0; i < (mMinlen >> 1); ++i) {
-        std::cout << tail_seq_pos_count[0][i] << " ";
-        std::cout << tail_seq_pos_count[1][i] << " ";
-        std::cout << tail_seq_pos_count[2][i] << " ";
-        std::cout << tail_seq_pos_count[3][i] << " ";
-        std::cout << std::endl;
+        cout << tail_seq_pos_count[0][i] << " ";
+        cout << tail_seq_pos_count[1][i] << " ";
+        cout << tail_seq_pos_count[2][i] << " ";
+        cout << tail_seq_pos_count[3][i] << " ";
+        cout << endl;
     }
-    std::cout << "head and tail quality" << std::endl;
+    cout << "head and tail quality" << endl;
     for (i = 0; i < (mMinlen >> 1); ++i) {
-        std::cout << head_qual_sum[i] << " " << tail_qual_sum[i];
-        std::cout << std::endl;
+        cout << head_qual_sum[i] << " " << tail_qual_sum[i];
+        cout << endl;
     }
     */
 }
 
-TGSStats *TGSStats::merge(std::vector<TGSStats *> &list) {
+TGSStats *TGSStats::merge(vector<TGSStats *> &list) {
     int i;
     const int minLen = list[0]->mMinlen;
     TGSStats *s = new TGSStats(minLen);
@@ -239,7 +239,7 @@ bool TGSStats::isLongRead() {
     return mHalfMinlen > 300;
 }
 
-int TGSStats::base2num(std::string base) {
+int TGSStats::base2num(string base) {
     if (base == "A")
         return 0;
     else if (base == "T")
@@ -253,8 +253,8 @@ int TGSStats::base2num(std::string base) {
 }
 
 
-std::string TGSStats::list2string(double *list, int size) {
-    std::stringstream ss;
+string TGSStats::list2string(double *list, int size) {
+    stringstream ss;
     for (int i = 0; i < size; i++) {
         ss << list[i];
         if (i < size - 1)
@@ -263,8 +263,8 @@ std::string TGSStats::list2string(double *list, int size) {
     return ss.str();
 }
 
-std::string TGSStats::list2string(double *list, int size, int64_t *coords) {
-    std::stringstream ss;
+string TGSStats::list2string(double *list, int size, int64_t *coords) {
+    stringstream ss;
     for (int i = 0; i < size; i++) {
         // coords is 1,2,3,...
         int64_t start = 0;
@@ -288,8 +288,8 @@ std::string TGSStats::list2string(double *list, int size, int64_t *coords) {
     return ss.str();
 }
 
-std::string TGSStats::list2string(int64_t *list, int size) {
-    std::stringstream ss;
+string TGSStats::list2string(int64_t *list, int size) {
+    stringstream ss;
     for (int i = 0; i < size; i++) {
         ss << list[i];
         if (i < size - 1)
@@ -298,8 +298,8 @@ std::string TGSStats::list2string(int64_t *list, int size) {
     return ss.str();
 }
 
-std::string TGSStats::list2stringReversedOrder(int64_t *list, int size) {
-    std::stringstream ss;
+string TGSStats::list2stringReversedOrder(int64_t *list, int size) {
+    stringstream ss;
     for (int i = size - 1; i >= 0; --i) {
         ss << list[i];
         if (i > 0)
@@ -350,10 +350,10 @@ const int64_t *TGSStats::GetBases51015Num() const {
     return mBases51015Num;
 }
 
-const std::pair<double, int> *TGSStats::GetTop5QualReads() const {
+const pair<double, int> *TGSStats::GetTop5QualReads() const {
     return mTop5QualReads;
 }
 
-const std::pair<int, double> *TGSStats::GetTop5LengReads() const {
+const pair<int, double> *TGSStats::GetTop5LengReads() const {
     return mTop5LengReads;
 }

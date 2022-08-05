@@ -15,7 +15,6 @@
 #include "Reference.h"
 #include "cmdinfo.h"
 
-using namespace std;
 
 class Duplicate {
 public:
@@ -41,7 +40,7 @@ public:
     uint64_t *dups_;
     uint16_t *counts_;
     uint8_t *gcs_;
-    mutex lok_;
+    std::mutex lok_;
 };
 
 

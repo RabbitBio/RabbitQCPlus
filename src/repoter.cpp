@@ -3,7 +3,7 @@
 //
 
 #include "repoter.h"
-
+using namespace std;
 
 constexpr auto jsonData = R"RAWJSONDDAA(
 
@@ -97,7 +97,7 @@ std::string HTMLHeader() {
     //    }
     //    iiff.close();
 
-    string jsInfo = jsonData;
+    std::string jsInfo = jsonData;
     /*
     freopen("echarts.min.js","r",stdin);
     std::string jsInfo;
@@ -751,7 +751,7 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
     auto maxReadsLen = tgs_stats->GetMaxReadsLen();
     int maxCnt = 0;
     for (int i = 0; i < maxReadsLen; i++) {
-        maxCnt = max(maxCnt, readsLens[i]);
+        maxCnt = std::max(maxCnt, readsLens[i]);
     }
 
     outhtml.append(insertxAxis("Length (bp)", maxReadsLen * 10, 10));

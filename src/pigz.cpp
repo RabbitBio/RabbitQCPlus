@@ -526,6 +526,9 @@ buffers to about the same number.
         return pid % 91;
     }
 
+
+using namespace std;
+
 int small_map[100];
 static int threadCnt=0;
 // Globals (modified by main threadPigz only when it's the only threadPigz).

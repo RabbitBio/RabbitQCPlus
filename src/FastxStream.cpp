@@ -403,7 +403,7 @@ namespace rabbit {
         }
 
 
-        FastqDataChunk *FastqFileReader::readNextChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, atomic_int *d, pair<char *, int> &l) {
+        FastqDataChunk *FastqFileReader::readNextChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, std::atomic_int *d, std::pair<char *, int> &l) {
             FastqDataChunk *part = NULL;
             recordsPool.Acquire(part);
             if (ReadNextChunk_(part, q, d, l)) {
@@ -474,8 +474,8 @@ namespace rabbit {
         FastqDataPairChunk *
         FastqFileReader::readNextPairChunkParallel(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q1,
                                                    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q2,
-                                                   atomic_int *d1, atomic_int *d2,
-                                                   pair<char *, int> &last1, pair<char *, int> &last2) {
+                                                   std::atomic_int *d1, std::atomic_int *d2,
+                                                   std::pair<char *, int> &last1, std::pair<char *, int> &last2) {
             bool eof1 = false;
             bool eof2 = false;
             FastqDataPairChunk *pair = new FastqDataPairChunk;
@@ -907,8 +907,8 @@ namespace rabbit {
         FastqDataPairChunk *
         FastqFileReader::readNextPairChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q1,
                                            moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q2,
-                                           atomic_int *d1, atomic_int *d2,
-                                           pair<char *, int> &last1, pair<char *, int> &last2) {
+                                           std::atomic_int *d1, std::atomic_int *d2,
+                                           std::pair<char *, int> &last1, std::pair<char *, int> &last2) {
             bool eof1 = false;
             bool eof2 = false;
             FastqDataPairChunk *pair = new FastqDataPairChunk;
@@ -1083,7 +1083,7 @@ namespace rabbit {
             return true;
         }
 
-        bool FastqFileReader::ReadNextChunk_(FastqDataChunk *chunk_, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, atomic_int *d, pair<char *, int> &l) {
+        bool FastqFileReader::ReadNextChunk_(FastqDataChunk *chunk_, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, std::atomic_int *d, std::pair<char *, int> &l) {
             if ((mFqReader->FinishRead() || mFqReader->Eof()) && bufferSize == 0) {
                 chunk_->size = 0;
                 return false;

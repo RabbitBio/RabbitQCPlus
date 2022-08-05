@@ -369,7 +369,7 @@ namespace rabbit {
 
             FastqDataChunk *readNextInterChunk();
 
-            FastqDataChunk *readNextChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, atomic_int *d, pair<char *, int> &l);
+            FastqDataChunk *readNextChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, std::atomic_int *d, std::pair<char *, int> &l);
 
             void readChunk();
 
@@ -377,7 +377,7 @@ namespace rabbit {
             
             bool ReadNextInterChunk_(FastqDataChunk *chunk_);
 
-            bool ReadNextChunk_(FastqDataChunk *chunk_, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, atomic_int *d, pair<char *, int> &l);
+            bool ReadNextChunk_(FastqDataChunk *chunk_, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, std::atomic_int *d, std::pair<char *, int> &l);
 
             FastqDataPairChunk *readNextPairChunk();
 
@@ -385,14 +385,14 @@ namespace rabbit {
 
             FastqDataPairChunk *readNextPairChunkParallel(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q1,
                                                           moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q2,
-                                                          atomic_int *d1, atomic_int *d2,
-                                                          pair<char *, int> &last1, pair<char *, int> &last2);
+                                                          std::atomic_int *d1, std::atomic_int *d2,
+                                                          std::pair<char *, int> &last1, std::pair<char *, int> &last2);
 
 
             FastqDataPairChunk *readNextPairChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q1,
                                                   moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q2,
-                                                  atomic_int *d1, atomic_int *d2,
-                                                  pair<char *, int> &last1, pair<char *, int> &last2);
+                                                  std::atomic_int *d1, std::atomic_int *d2,
+                                                  std::pair<char *, int> &last1, std::pair<char *, int> &last2);
 
             FastqDataChunk *readNextPairChunkInterleaved();
 

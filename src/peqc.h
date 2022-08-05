@@ -39,20 +39,10 @@ public:
 
 
 private:
-    //    void PrintRead(neoReference &ref);
 
     std::string Read2String(neoReference &ref);
 
     void Read2Chars(neoReference &ref, char *out_data, int &pos);
-
-    //
-    //    void ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool1,
-    //                             rabbit::fq::FastqDataPool *fastqPool2,
-    //                             rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
-    //
-    //    void ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool1,
-    //                             rabbit::fq::FastqDataPool *fastqPool2,
-    //                             rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
 
     void ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
@@ -81,12 +71,9 @@ private:
 private:
     CmdInfo *cmd_info_;
     Filter *filter_;
-    //moodycamel::ConcurrentQueue<std::pair<char *, int>> *out_queue1_;
 
     CIPair *out_queue1_;
-    //moodycamel::ConcurrentQueue<std::pair<char *, int>> *out_queue2_;
     CIPair *out_queue2_;
-    //TODO replace concurrentqueue with char*[]
     std::atomic_int done_thread_number_;
     std::ofstream out_stream1_;
     std::ofstream out_stream2_;
@@ -107,10 +94,10 @@ private:
     std::atomic_int pugzDone2;
     moodycamel::ReaderWriterQueue<std::pair<char *, int>> *
             pigzQueue1;
-    pair<char *, int> pigzLast1;
+    std::pair<char *, int> pigzLast1;
     moodycamel::ReaderWriterQueue<std::pair<char *, int>> *
             pigzQueue2;
-    pair<char *, int> pigzLast2;
+    std::pair<char *, int> pigzLast2;
 
 
     std::atomic_int producerDone;

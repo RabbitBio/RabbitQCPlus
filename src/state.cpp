@@ -17,6 +17,8 @@
 
 #define MODB 20
 #define gcMax 100000
+using namespace std;
+
 
 State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
     is_read2_ = is_read2;
@@ -115,7 +117,7 @@ void State::HashInsert(const char *seq, int len, int eva_len) {
     hash_graph_[hash_num_].pre = head_hash_graph_[ha];
     head_hash_graph_[ha] = hash_num_;
     hash_graph_[hash_num_].cnt = 0;
-    hash_graph_[hash_num_].seq = std::string(seq, len);
+    hash_graph_[hash_num_].seq = string(seq, len);
     hash_graph_[hash_num_].dist = new int64_t[eva_len];
     memset(hash_graph_[hash_num_].dist, 0, sizeof(int64_t) * eva_len);
     hash_num_++;
@@ -225,20 +227,11 @@ void print256_64(__m256i var) {
 void State::StateInfo(neoReference &ref) {
     int slen = ref.lseq;
     int qlen = ref.lqual;
-    if (slen != qlen) {
-        printf("read sequence length != read quality length\n");
-        printf("%s\n", std::string((char *) ref.base + ref.pname, ref.lname).c_str());
-        printf("%s\n", std::string((char *) ref.base + ref.pseq, ref.lseq).c_str());
-        printf("%s\n", std::string((char *) ref.base + ref.pstrand, ref.lstrand).c_str());
-        printf("%s\n", std::string((char *) ref.base + ref.pqual, ref.lqual).c_str());
-        exit(0);
-    }
     ASSERT(slen == qlen);
     if (slen > malloc_seq_len_) {
-
-        ExtendBuffer(malloc_seq_len_, std::max(slen + 100, slen * 2));
+        ExtendBuffer(malloc_seq_len_, max(slen + 100, slen * 2));
     }
-    real_seq_len_ = std::max(real_seq_len_, slen);
+    real_seq_len_ = max(real_seq_len_, slen);
     len_cnt_[slen - 1]++;
     char *bases = reinterpret_cast<char *>(ref.base + ref.pseq);
     char *quals = reinterpret_cast<char *>(ref.base + ref.pqual);
@@ -273,7 +266,7 @@ void State::StateInfo(neoReference &ref) {
     for (; i + 8 <= slen; i += 8) {
 
 
-        //int q = std::max(0, quals[i] - phredSub);
+        //int q = max(0, quals[i] - phredSub);
         ide = _mm_maskz_loadu_epi8(0xFF, quals + i);
         quamm = _mm512_cvtepi8_epi64(ide);
         ad2 = _mm512_sub_epi64(quamm, sub33);
@@ -344,7 +337,7 @@ void State::StateInfo(neoReference &ref) {
     for (; i < slen; i++) {
         char b = bases[i] & 0x07;
         if (b == 3 || b == 7) gc_cnt++;
-        int q = std::max(0, quals[i] - phredSub);
+        int q = max(0, quals[i] - phredSub);
         qul_tot += q;
         if (q >= 30) {
             q20bases_++;
@@ -385,7 +378,7 @@ void State::StateInfo(neoReference &ref) {
 
     int tag = 0;
     for (; i + 4 <= slen; i += 4) {
-        //int q = std::max(0, quals[i] - phredSub);
+        //int q = max(0, quals[i] - phredSub);
         ide = _mm_loadu_si128((__m128i const*)(quals + i));
         quamm = _mm256_cvtepi8_epi64(ide);
         ad2 = _mm256_sub_epi64(quamm, sub33);
@@ -467,7 +460,7 @@ void State::StateInfo(neoReference &ref) {
     for (; i < slen; i++) {
         char b = bases[i] & 0x07;
         if (b == 3 || b == 7) gc_cnt++;
-        int q = std::max(0, quals[i] - phredSub);
+        int q = max(0, quals[i] - phredSub);
         qul_tot += q;
         if (q >= 30) {
             q20bases_++;
@@ -487,7 +480,7 @@ void State::StateInfo(neoReference &ref) {
     for (int i = 0; i < slen; i++) {
         char b = bases[i] & 0x07;
         if (b == 3 || b == 7) gc_cnt++;
-        int q = std::max(0, quals[i] - phredSub);
+        int q = max(0, quals[i] - phredSub);
 
         qul_tot += q;
         if (q >= 30) {
@@ -534,9 +527,9 @@ int slen = ref.lseq;
 int eva_len = 0;
 if (is_read2_)eva_len = cmd_info_->eva_len2_;
 else eva_len = cmd_info_->eva_len_;
-int steps[5] = {10, 20, 40, 100, std::min(150, eva_len - 2)};
+int steps[5] = {10, 20, 40, 100, min(150, eva_len - 2)};
 char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
-std::string seqs=std::string(seq,slen);
+string seqs=string(seq,slen);
 for(int s=0;s<5;s++){
 if(steps[s]>slen)continue;
 unsigned k=steps[s];
@@ -559,9 +552,9 @@ void State::StateORP(neoReference &ref) {
     if (is_read2_) eva_len = cmd_info_->eva_len2_;
     else
         eva_len = cmd_info_->eva_len_;
-    int steps[5] = {10, 20, 40, 100, std::min(150, eva_len - 2)};
+    int steps[5] = {10, 20, 40, 100, min(150, eva_len - 2)};
     char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
-    std::string seqs = std::string(seq, slen);
+    string seqs = string(seq, slen);
     for (int s = 0; s < 5; s++) {
         if (steps[s] > slen) continue;
         int k = steps[s];
@@ -602,11 +595,11 @@ void State::Summarize() {
  * @param states
  * @return
  */
-State *State::MergeStates(const std::vector<State *> &states) {
+State *State::MergeStates(const vector<State *> &states) {
     int now_seq_len = 0;
     for (auto item: states) {
         item->Summarize();
-        now_seq_len = std::max(now_seq_len, item->real_seq_len_);
+        now_seq_len = max(now_seq_len, item->real_seq_len_);
     }
     auto *res_state = new State(states[0]->cmd_info_, now_seq_len, states[0]->qul_range_, states[0]->is_read2_);
     res_state->real_seq_len_ = now_seq_len;
@@ -836,7 +829,7 @@ int64_t State::GetGcBases() const {
     return gc_bases_;
 }
 
-//const std::unordered_map<std::string, int64_t> &State::GetHotSeqsInfo() const {
+//const unordered_map<string, int64_t> &State::GetHotSeqsInfo() const {
 //    return hot_seqs_info_;
 //}
 
@@ -897,8 +890,8 @@ unordered_map<string, int> State::GetAdapterMap() {
     return adapter_map_;
 }
 
-std::string State::list2string(int64_t *list, int size) {
-    std::stringstream ss;
+string State::list2string(int64_t *list, int size) {
+    stringstream ss;
     for (int i = 0; i < size; i++) {
         ss << list[i];
         if (i < size - 1)
@@ -907,8 +900,8 @@ std::string State::list2string(int64_t *list, int size) {
     return ss.str();
 }
 
-std::string State::list2string(double *list, int size) {
-    std::stringstream ss;
+string State::list2string(double *list, int size) {
+    stringstream ss;
     for (int i = 0; i < size; i++) {
         ss << list[i];
         if (i < size - 1)

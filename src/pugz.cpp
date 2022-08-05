@@ -7,6 +7,8 @@
 #include "../lib/gzip_decompress.hpp"
 #include "prog_util.h"
 
+using namespace std;
+
 static int
 stat_file(struct file_stream *in, stat_t *stbuf, bool allow_hard_links) {
     if (tfstat(in->fd, stbuf) != 0) {

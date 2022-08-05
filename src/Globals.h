@@ -78,7 +78,7 @@ inline bool overRepPassed(std::string &seq, int64_t count, int s) {
 }
 
 
-inline string PaseFileName(string file_name) {
+inline std::string PaseFileName(std::string file_name) {
     int n_size = file_name.length();
     int suffix_pos = n_size;
     int prefix_pos = 0;
@@ -89,12 +89,12 @@ inline string PaseFileName(string file_name) {
     int p1 = n_size;
     int p2 = n_size;
     int p3 = n_size;
-    if (file_name.find(".fastq") != string::npos) p1 = file_name.find(".fastq");
-    if (file_name.find(".fq") != string::npos) p2 = file_name.find(".fq");
-    if (file_name.find(".sra") != string::npos) p3 = file_name.find(".sra");
-    suffix_pos = min(suffix_pos, p1);
-    suffix_pos = min(suffix_pos, p2);
-    suffix_pos = min(suffix_pos, p3);
+    if (file_name.find(".fastq") != std::string::npos) p1 = file_name.find(".fastq");
+    if (file_name.find(".fq") != std::string::npos) p2 = file_name.find(".fq");
+    if (file_name.find(".sra") != std::string::npos) p3 = file_name.find(".sra");
+    suffix_pos = std::min(suffix_pos, p1);
+    suffix_pos = std::min(suffix_pos, p2);
+    suffix_pos = std::min(suffix_pos, p3);
     if (prefix_pos >= suffix_pos) return file_name;
     return file_name.substr(prefix_pos, suffix_pos - prefix_pos);
 }

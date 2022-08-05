@@ -3,7 +3,7 @@
 //
 
 #include "peqc.h"
-
+using namespace std;
 
 /**
  * @brief Construct function
@@ -17,8 +17,8 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
     //printf("out_block_nums %d\n", out_block_nums);
     out_queue1_ = NULL;
     out_queue2_ = NULL;
-    in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != std::string::npos;
-    out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != std::string::npos;
+    in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != string::npos;
+    out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != string::npos;
     if (cmd_info1->write_data_) {
         out_queue1_ = new CIPair[1 << 20];
         queue1P1 = 0;
@@ -38,7 +38,6 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
                 pigzQueueSizeLim1 = 1 << 5;
                 string out_name1 = cmd_info1->out_file_name1_;
                 out_name1 = out_name1.substr(0, out_name1.find(".gz"));
-                //out_stream1_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
                 out_stream1_.open(out_name1);
                 out_stream1_.close();
 
@@ -46,7 +45,6 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
                 pigzQueueSizeLim2 = 1 << 5;
                 string out_name2 = cmd_info1->out_file_name2_;
                 out_name2 = out_name2.substr(0, out_name2.find(".gz"));
-                //out_stream2_ = std::fstream(out_name2, std::ios::out | std::ios::binary);
                 out_stream2_.open(out_name2);
                 out_stream2_.close();
 #ifdef Verbose
@@ -71,10 +69,8 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
             if (cmd_info_->interleaved_out_ == 0)
                 printf("open stream2 %s\n", cmd_info1->out_file_name2_.c_str());
 #endif
-            //out_stream1_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
             out_stream1_.open(cmd_info1->out_file_name1_);
             if (cmd_info_->interleaved_out_ == 0){
-                //out_stream2_ = std::fstream(cmd_info1->out_file_name2_, std::ios::out | std::ios::binary);
                 out_stream2_.open(cmd_info1->out_file_name2_);
             }
         }
@@ -123,19 +119,12 @@ PeQc::~PeQc() {
     }
 }
 
-//
-//void PeQc::PrintRead(neoReference &ref) {
-//    std::cout << std::string((char *) ref.base + ref.pname, ref.lname) << std::endl;
-//    std::cout << std::string((char *) ref.base + ref.pseq, ref.lseq) << std::endl;
-//    std::cout << std::string((char *) ref.base + ref.pstrand, ref.lstrand) << std::endl;
-//    std::cout << std::string((char *) ref.base + ref.pqual, ref.lqual) << std::endl;
-//}
 
-std::string PeQc::Read2String(neoReference &ref) {
-    return std::string((char *) ref.base + ref.pname, ref.lname) + "\n" +
-           std::string((char *) ref.base + ref.pseq, ref.lseq) + "\n" +
-           std::string((char *) ref.base + ref.pstrand, ref.lstrand) + "\n" +
-           std::string((char *) ref.base + ref.pqual, ref.lqual) + "\n";
+string PeQc::Read2String(neoReference &ref) {
+    return string((char *) ref.base + ref.pname, ref.lname) + "\n" +
+        string((char *) ref.base + ref.pseq, ref.lseq) + "\n" +
+        string((char *) ref.base + ref.pstrand, ref.lstrand) + "\n" +
+        string((char *) ref.base + ref.pqual, ref.lqual) + "\n";
 }
 
 void PeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
@@ -153,7 +142,7 @@ void PeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
     out_data[pos++] = '\n';
 }
 
-void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
+void PeQc::ProducerPeInterFastqTask(string file, rabbit::fq::FastqDataPool *fastq_data_pool,
                                     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
 #ifdef Verbose
     double t0 = GetTime();
@@ -168,20 +157,19 @@ void PeQc::ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool 
         fqdatachunk = fqFileReader->readNextInterChunk();
         if (fqdatachunk == NULL) break;
         n_chunks++;
-        //std::cout << "readed chunk: " << n_chunks << std::endl;
         dq.Push(n_chunks, fqdatachunk);
     }
 
     dq.SetCompleted();
     delete fqFileReader;
 #ifdef Verbose
-    std::cout << "file " << file << " has " << n_chunks << " chunks" << std::endl;
+    cout << "file " << file << " has " << n_chunks << " chunks" << endl;
     printf("producer cost %.3f\n", GetTime() - t0);
 #endif
 }
 
 
-void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
+void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataPool *fastqPool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
 #ifdef Verbose
     double t0 = GetTime();
@@ -224,7 +212,7 @@ void PeQc::ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::
     dq.SetCompleted();
     delete fqFileReader;
 #ifdef Verbose
-    std::cout << "file " << file << " has " << n_chunks << " chunks" << std::endl;
+    cout << "file " << file << " has " << n_chunks << " chunks" << endl;
     printf("producer cost %.3f\n", GetTime() - t0);
 #endif
 }
@@ -240,8 +228,8 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataPairChunk *fqdatachunk;
     while (dq.Pop(id, fqdatachunk)) {
-        std::vector<neoReference> data1, data2;
-        std::vector<neoReference> pass_data1, pass_data2;
+        vector<neoReference> data1, data2;
+        vector<neoReference> pass_data1, pass_data2;
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->left_part), data1, true);
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->right_part), data2, true);
         ASSERT(data1.size() == data2.size());
@@ -250,8 +238,6 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
         for (int i = 0; i < b_size; i++) {
             auto item1 = data1[i];
             auto item2 = data2[i];
-            //auto name1 = std::string((char *) item1.base + item1.pname, item1.lname);
-            //auto name2 = std::string((char *) item2.base + item2.pname, item2.lname);
             thread_info->pre_state1_->StateInfo(item1);
             thread_info->pre_state2_->StateInfo(item2);
             if (cmd_info_->state_duplicate_) {
@@ -434,8 +420,8 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;
     while (dq.Pop(id, fqdatachunk)) {
-        std::vector<neoReference> data;
-        std::vector<neoReference> pass_data1, pass_data2;
+        vector<neoReference> data;
+        vector<neoReference> pass_data1, pass_data2;
         rabbit::fq::chunkFormat(fqdatachunk, data, true);
         ASSERT(0);
         ASSERT(data.size() % 2 == 0);
@@ -443,8 +429,6 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
         for (int i = 0; i + 2 <= data.size(); i += 2) {
             auto item1 = data[i];
             auto item2 = data[i + 1];
-            //auto name1 = std::string((char *) item1.base + item1.pname, item1.lname);
-            //auto name2 = std::string((char *) item2.base + item2.pname, item2.lname);
             thread_info->pre_state1_->StateInfo(item1);
             thread_info->pre_state2_->StateInfo(item2);
             if (cmd_info_->state_duplicate_) {
@@ -632,7 +616,7 @@ void PeQc::WriteSeFastqTask1() {
 #endif
     int cnt = 0;
     bool overWhile = 0;
-    std::pair<char *, int> now;
+    pair<char *, int> now;
     while (true) {
         while (queueNumNow1 == 0) {
             if (done_thread_number_ == cmd_info_->thread_number_) {
@@ -696,7 +680,7 @@ void PeQc::WriteSeFastqTask2() {
 #endif
     int cnt = 0;
     bool overWhile = 0;
-    std::pair<char *, int> now;
+    pair<char *, int> now;
     while (true) {
         while (queueNumNow2 == 0) {
             if (done_thread_number_ == cmd_info_->thread_number_) {
@@ -859,21 +843,21 @@ void PeQc::ProcessPeFastq() {
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             p_thread_info[t] = new ThreadInfo(cmd_info_, true);
         }
-        std::thread *write_thread1;
-        std::thread *write_thread2;
+        thread *write_thread1;
+        thread *write_thread2;
         if (cmd_info_->write_data_) {
-            write_thread1 = new std::thread(std::bind(&PeQc::WriteSeFastqTask1, this));
+            write_thread1 = new thread(bind(&PeQc::WriteSeFastqTask1, this));
             if (cmd_info_->interleaved_out_ == 0)
-                write_thread2 = new std::thread(std::bind(&PeQc::WriteSeFastqTask2, this));
+                write_thread2 = new thread(bind(&PeQc::WriteSeFastqTask2, this));
         }
 
-        std::thread producer(
-                std::bind(&PeQc::ProducerPeInterFastqTask, this, cmd_info_->in_file_name1_, fastqPool,
-                          std::ref(queue1)));
-        auto **threads = new std::thread *[cmd_info_->thread_number_];
+        thread producer(
+                bind(&PeQc::ProducerPeInterFastqTask, this, cmd_info_->in_file_name1_, fastqPool,
+                          ref(queue1)));
+        auto **threads = new thread *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
-            threads[t] = new std::thread(
-                    std::bind(&PeQc::ConsumerPeInterFastqTask, this, p_thread_info[t], fastqPool, std::ref(queue1)));
+            threads[t] = new thread(
+                    bind(&PeQc::ConsumerPeInterFastqTask, this, p_thread_info[t], fastqPool, ref(queue1)));
         }
         producer.join();
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
@@ -888,10 +872,10 @@ void PeQc::ProcessPeFastq() {
         printf("all thrad done\n");
         printf("now merge thread info\n");
 #endif
-        std::vector<State *> pre_vec_state1;
-        std::vector<State *> pre_vec_state2;
-        std::vector<State *> aft_vec_state1;
-        std::vector<State *> aft_vec_state2;
+        vector<State *> pre_vec_state1;
+        vector<State *> pre_vec_state2;
+        vector<State *> aft_vec_state1;
+        vector<State *> aft_vec_state2;
 
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             pre_vec_state1.push_back(p_thread_info[t]->pre_state1_);
@@ -1039,9 +1023,9 @@ void PeQc::ProcessPeFastq() {
             //printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
             printf("Insert size peak (based on PE overlap analyze): %d\n", mx_id);
         }
-        std::string srr_name1 = cmd_info_->in_file_name1_;
+        string srr_name1 = cmd_info_->in_file_name1_;
         srr_name1 = PaseFileName(srr_name1);
-        std::string srr_name2 = cmd_info_->in_file_name2_;
+        string srr_name2 = cmd_info_->in_file_name2_;
         srr_name2 = PaseFileName(srr_name2);
         Repoter::ReportHtmlPe(srr_name1 + "_" + srr_name2 + "_RabbitQCPlus.html", pre_state1, pre_state2, aft_state1,
                               aft_state2, cmd_info_->in_file_name1_,
@@ -1087,12 +1071,12 @@ void PeQc::ProcessPeFastq() {
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             p_thread_info[t] = new ThreadInfo(cmd_info_, true);
         }
-        std::thread *write_thread1;
-        std::thread *write_thread2;
+        thread *write_thread1;
+        thread *write_thread2;
         if (cmd_info_->write_data_) {
-            write_thread1 = new std::thread(std::bind(&PeQc::WriteSeFastqTask1, this));
+            write_thread1 = new thread(bind(&PeQc::WriteSeFastqTask1, this));
             if (cmd_info_->interleaved_out_ == 0)
-                write_thread2 = new std::thread(std::bind(&PeQc::WriteSeFastqTask2, this));
+                write_thread2 = new thread(bind(&PeQc::WriteSeFastqTask2, this));
         }
         thread *pigzer1;
         thread *pigzer2;
@@ -1101,13 +1085,13 @@ void PeQc::ProcessPeFastq() {
             if (cmd_info_->interleaved_out_ == 0)
                 pigzer2 = new thread(bind(&PeQc::PigzTask2, this));
         }
-        std::thread producer(
-                std::bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_,
-                          fastqPool, std::ref(queue1)));
-        auto **threads = new std::thread *[cmd_info_->thread_number_];
+        thread producer(
+                bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_,
+                          fastqPool, ref(queue1)));
+        auto **threads = new thread *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
-            threads[t] = new std::thread(
-                    std::bind(&PeQc::ConsumerPeFastqTask, this, p_thread_info[t], fastqPool, std::ref(queue1)));
+            threads[t] = new thread(
+                    bind(&PeQc::ConsumerPeFastqTask, this, p_thread_info[t], fastqPool, ref(queue1)));
         }
 
         if (cmd_info_->use_pugz_) {
@@ -1138,10 +1122,10 @@ void PeQc::ProcessPeFastq() {
         printf("all thrad done\n");
         printf("now merge thread info\n");
 #endif
-        std::vector<State *> pre_vec_state1;
-        std::vector<State *> pre_vec_state2;
-        std::vector<State *> aft_vec_state1;
-        std::vector<State *> aft_vec_state2;
+        vector<State *> pre_vec_state1;
+        vector<State *> pre_vec_state2;
+        vector<State *> aft_vec_state1;
+        vector<State *> aft_vec_state2;
 
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             pre_vec_state1.push_back(p_thread_info[t]->pre_state1_);
@@ -1291,9 +1275,9 @@ void PeQc::ProcessPeFastq() {
             //printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
             printf("Insert size peak (based on PE overlap analyze): %d\n", mx_id);
         }
-        std::string srr_name1 = cmd_info_->in_file_name1_;
+        string srr_name1 = cmd_info_->in_file_name1_;
         srr_name1 = PaseFileName(srr_name1);
-        std::string srr_name2 = cmd_info_->in_file_name2_;
+        string srr_name2 = cmd_info_->in_file_name2_;
         srr_name2 = PaseFileName(srr_name2);
         Repoter::ReportHtmlPe(srr_name1 + "_" + srr_name2 + "_RabbitQCPlus.html", pre_state1, pre_state2, aft_state1,
                               aft_state2, cmd_info_->in_file_name1_,

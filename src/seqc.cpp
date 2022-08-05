@@ -2,7 +2,7 @@
 // Created by ylf9811 on 2021/7/6.
 //
 #include "seqc.h"
-
+using namespace std;
 
 /**
  * @brief Construct function
@@ -15,10 +15,10 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     int out_block_nums = int(1.0 * cmd_info1->in_file_size1_ / cmd_info1->out_block_size_);
     out_queue_ = NULL;
 
-    in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != std::string::npos;
-    out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != std::string::npos;
+    in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != string::npos;
+    out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != string::npos;
     if (cmd_info1->write_data_) {
-        out_queue_ = new moodycamel::ConcurrentQueue<std::pair<char *, int>>;
+        out_queue_ = new moodycamel::ConcurrentQueue<pair<char *, int>>;
         queueNumNow = 0;
         queueSizeLim = 1 << 5;
         if (out_is_zip_) {
@@ -27,7 +27,6 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
                 pigzQueueSizeLim = 1 << 5;
                 string out_name1 = cmd_info1->out_file_name1_;
                 out_name1 = out_name1.substr(0, out_name1.find(".gz"));
-                //out_stream_ = std::fstream(out_name1, std::ios::out | std::ios::binary);
                 out_stream_.open(out_name1);
                 out_stream_.close();
 #ifdef Verbose
@@ -45,7 +44,6 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
 #ifdef Verbose
             printf("open stream %s\n", cmd_info1->out_file_name1_.c_str());
 #endif
-            //out_stream_ = std::fstream(cmd_info1->out_file_name1_, std::ios::out | std::ios::binary);
             out_stream_.open(cmd_info1->out_file_name1_);
         }
     }
@@ -92,7 +90,7 @@ SeQc::~SeQc() {
  * @param dq : a data queue
  */
 
-void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
+void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_data_pool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
 
     rabbit::fq::FastqFileReader *fqFileReader;
@@ -110,7 +108,6 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
             fqdatachunk = fqFileReader->readNextChunk(pugzQueue, &pugzDone, last_info);
             if (fqdatachunk == NULL) break;
             n_chunks++;
-            //std::cout << "readed chunk: " << n_chunks << std::endl;
             dq.Push(n_chunks, fqdatachunk);
         }
         delete[] last_info.first;
@@ -120,7 +117,6 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
             fqdatachunk = fqFileReader->readNextChunk();
             if (fqdatachunk == NULL) break;
             n_chunks++;
-            //std::cout << "readed chunk: " << n_chunks << std::endl;
             dq.Push(n_chunks, fqdatachunk);
         }
     }
@@ -130,19 +126,12 @@ void SeQc::ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fast
     delete fqFileReader;
     producerDone = 1;
 }
-//
-//void SeQc::PrintRead(neoReference &ref) {
-//    std::cout << std::string((char *) ref.base + ref.pname, ref.lname) << std::endl;
-//    std::cout << std::string((char *) ref.base + ref.pseq, ref.lseq) << std::endl;
-//    std::cout << std::string((char *) ref.base + ref.pstrand, ref.lstrand) << std::endl;
-//    std::cout << std::string((char *) ref.base + ref.pqual, ref.lqual) << std::endl;
-//}
 
-std::string SeQc::Read2String(neoReference &ref) {
-    return std::string((char *) ref.base + ref.pname, ref.lname) + "\n" +
-           std::string((char *) ref.base + ref.pseq, ref.lseq) + "\n" +
-           std::string((char *) ref.base + ref.pstrand, ref.lstrand) + "\n" +
-           std::string((char *) ref.base + ref.pqual, ref.lqual) + "\n";
+string SeQc::Read2String(neoReference &ref) {
+    return string((char *) ref.base + ref.pname, ref.lname) + "\n" +
+           string((char *) ref.base + ref.pseq, ref.lseq) + "\n" +
+           string((char *) ref.base + ref.pstrand, ref.lstrand) + "\n" +
+           string((char *) ref.base + ref.pqual, ref.lqual) + "\n";
 }
 
 void SeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
@@ -173,7 +162,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 
     if (cmd_info_->is_TGS_) {
         while (dq.Pop(id, fqdatachunk)) {
-            std::vector<neoReference> data;
+            vector<neoReference> data;
             rabbit::fq::chunkFormat(fqdatachunk, data, true);
             for (auto item: data) {
                 thread_info->TGS_state_->tgsStatRead(item, cmd_info_->isPhred64_);
@@ -182,8 +171,8 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
         }
     } else {
         while (dq.Pop(id, fqdatachunk)) {
-            std::vector<neoReference> data;
-            std::vector<neoReference> pass_data;
+            vector<neoReference> data;
+            vector<neoReference> pass_data;
             rabbit::fq::chunkFormat(fqdatachunk, data, true);
             int out_len = 0;
             for (auto item: data) {
@@ -279,7 +268,7 @@ void SeQc::WriteSeFastqTask() {
 #endif
     int cnt = 0;
     bool overWhile = 0;
-    std::pair<char *, int> now;
+    pair<char *, int> now;
     while (true) {
         while (out_queue_->try_dequeue(now) == 0) {
             if (done_thread_number_ == cmd_info_->thread_number_) {
@@ -422,9 +411,9 @@ void SeQc::ProcessSeFastq() {
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, false);
     }
-    std::thread *write_thread;
+    thread *write_thread;
     if (cmd_info_->write_data_) {
-        write_thread = new std::thread(std::bind(&SeQc::WriteSeFastqTask, this));
+        write_thread = new thread(bind(&SeQc::WriteSeFastqTask, this));
     }
     thread *pigzer;
     if (cmd_info_->use_pigz_) {
@@ -432,12 +421,12 @@ void SeQc::ProcessSeFastq() {
     }
 
     //TODO bind ?
-    std::thread producer(
-            std::bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, std::ref(queue1)));
-    auto **threads = new std::thread *[cmd_info_->thread_number_];
+    thread producer(
+            bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, ref(queue1)));
+    auto **threads = new thread *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
-        threads[t] = new std::thread(
-                std::bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info[t], fastqPool, std::ref(queue1)));
+        threads[t] = new thread(
+                bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info[t], fastqPool, ref(queue1)));
     }
     if (cmd_info_->use_pugz_) {
         pugzer->join();
@@ -464,8 +453,8 @@ void SeQc::ProcessSeFastq() {
     printf("all thrad done\n");
     printf("now merge thread info\n");
 #endif
-    std::vector<State *> pre_vec_state;
-    std::vector<State *> aft_vec_state;
+    vector<State *> pre_vec_state;
+    vector<State *> aft_vec_state;
 
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         pre_vec_state.push_back(p_thread_info[t]->pre_state1_);
@@ -548,7 +537,7 @@ void SeQc::ProcessSeFastq() {
         delete[] dupHist;
         delete[] dupMeanGC;
     }
-    std::string srr_name = cmd_info_->in_file_name1_;
+    string srr_name = cmd_info_->in_file_name1_;
     srr_name = PaseFileName(srr_name);
     Repoter::ReportHtmlSe(srr_name + "_RabbitQCPlus.html", pre_state, aft_state, cmd_info_->in_file_name1_,
                           dupRate * 100.0);
@@ -587,12 +576,12 @@ void SeQc::ProcessSeTGS() {
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, false);
     }
-    std::thread producer(
-            std::bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, std::ref(queue1)));
-    auto **threads = new std::thread *[cmd_info_->thread_number_];
+    thread producer(
+            bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, ref(queue1)));
+    auto **threads = new thread *[cmd_info_->thread_number_];
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
-        threads[t] = new std::thread(
-                std::bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info[t], fastqPool, std::ref(queue1)));
+        threads[t] = new thread(
+                bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info[t], fastqPool, ref(queue1)));
     }
 
     if (cmd_info_->use_pugz_) {
@@ -607,7 +596,7 @@ void SeQc::ProcessSeTGS() {
     printf("all thrad done\n");
     printf("now merge thread info\n");
 #endif
-    std::vector<TGSStats *> vec_state;
+    vector<TGSStats *> vec_state;
 
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         vec_state.push_back(p_thread_info[t]->TGS_state_);
@@ -622,9 +611,9 @@ void SeQc::ProcessSeTGS() {
     mer_state->CalReadsLens();
 
     mer_state->print();
-    std::string srr_name = cmd_info_->in_file_name1_;
+    string srr_name = cmd_info_->in_file_name1_;
     srr_name = PaseFileName(srr_name);
-    std::string command = cmd_info_->command_;
+    string command = cmd_info_->command_;
     Repoter::ReportHtmlTGS(srr_name + "_RabbitQCPlus.html", command, mer_state, cmd_info_->in_file_name1_);
 
     delete fastqPool;

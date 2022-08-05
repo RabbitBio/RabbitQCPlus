@@ -16,7 +16,7 @@
 #include <immintrin.h>
 
 #endif
-
+using namespace std;
 
 Duplicate::Duplicate(CmdInfo *cmd_info) {
     cmd_info_ = cmd_info;
@@ -83,7 +83,7 @@ void Duplicate::statRead(neoReference &ref) {
 
     int start1 = 0;
     uint64_t zr = 0;
-    int start2 = std::max(zr, ref.lseq - 32 - 5);
+    int start2 = max(zr, ref.lseq - 32 - 5);
 
     const char *data = reinterpret_cast<const char *>(ref.base + ref.pseq);
     bool valid = true;
@@ -103,7 +103,7 @@ void Duplicate::statRead(neoReference &ref) {
     __m512i gcC = _mm512_set1_epi8('C');
     __m512i gcG = _mm512_set1_epi8('G');
     for (int i = 0; i < ref.lseq; i += 64) {
-        uint64_t tag = (1ll << std::min(64, int(ref.lseq) - i)) - 1;
+        uint64_t tag = (1ll << min(64, int(ref.lseq) - i)) - 1;
         __m512i item = _mm512_maskz_loadu_epi8(tag, data + i);
         __mmask64 mk1 = _mm512_cmp_epi8_mask(item, gcC, _MM_CMPINT_EQ);
         __mmask64 mk2 = _mm512_cmp_epi8_mask(item, gcG, _MM_CMPINT_EQ);

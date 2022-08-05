@@ -79,7 +79,7 @@ private:
 
     moodycamel::ReaderWriterQueue<std::pair<char *, int>> *
             pigzQueue;
-    pair<char *, int> pigzLast;
+    std::pair<char *, int> pigzLast;
 
     std::atomic_int producerDone;
     std::atomic_int writerDone;

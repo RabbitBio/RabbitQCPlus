@@ -1469,7 +1469,7 @@ struct OutputConsumer {
     }
     moodycamel::ReaderWriterQueue <std::pair<char *, int>> *P;
     int num;
-    atomic_int *pDone;
+    std::atomic_int *pDone;
 };
 
 struct LineCounter {
