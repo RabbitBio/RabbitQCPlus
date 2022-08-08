@@ -652,7 +652,8 @@ State *State::MergeStates(const vector<State *> &states) {
             for (int j = i * gcPart; j < (i + 1) * gcPart; j++) {
                 sum = max(sum, 1.0 * item->gc_cnt_[j]);
             }
-            res_state->gc_cnt_[i] += sum / gcPart;
+            //res_state->gc_cnt_[i] += sum / gcPart;
+            res_state->gc_cnt_[i] += sum;
         }
         for (int i = 0; i < res_state->kmer_buf_len_; i++) {
             res_state->kmer_[i] += item->kmer_[i];
