@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
     app.add_flag("-p,--doOverrepresentation", cmd_info.do_overrepresentation_,
                  "do over-representation sequence analysis, default is off");
     app.add_option("-P,--overrepresentationSampling", cmd_info.overrepresentation_sampling_,
-                   "do overrepresentation every [] reads, default is 1");
+                   "do overrepresentation every [] reads, default is 20");
 
     app.add_flag("--printORPSeqs", cmd_info.print_ORP_seqs_,
                  "if print overrepresentation sequences to *ORP_sequences.txt or not, default is not");
