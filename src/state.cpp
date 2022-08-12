@@ -635,7 +635,7 @@ State *State::MergeStates(const vector<State *> &states) {
         }
 
 
-        for (int i = 0; i < now_seq_len; i++) {
+        for (int i = 0; i < item->real_seq_len_; i++) {
             for (int j = 0; j < 8; j++) {
                 res_state->pos_cnt_[i * 8 + j] += item->pos_cnt_[i * 8 + j];
                 res_state->pos_qul_[i * 8 + j] += item->pos_qul_[i * 8 + j];
