@@ -779,7 +779,14 @@ void PeQc::PigzTask1() {
     memcpy(infos[2], th_num_s.c_str(), th_num_s.length());
     infos[2][th_num_s.length()] = '\0';
     infos[3] = "-k";
-    infos[4] = "-4";
+
+    string tmp_level = to_string(cmd_info_->compression_level_);
+    tmp_level = "-" + tmp_level;
+    infos[4] = new char[tmp_level.length() + 1];
+    memcpy(infos[4], tmp_level.c_str(), tmp_level.length());
+    infos[4][tmp_level.length()] = '\0';
+
+
     infos[5] = "-f";
     infos[6] = "-b";
     infos[7] = "4096";
@@ -814,7 +821,13 @@ void PeQc::PigzTask2() {
     memcpy(infos[2], th_num_s.c_str(), th_num_s.length());
     infos[2][th_num_s.length()] = '\0';
     infos[3] = "-k";
-    infos[4] = "-4";
+
+    string tmp_level = to_string(cmd_info_->compression_level_);
+    tmp_level = "-" + tmp_level;
+    infos[4] = new char[tmp_level.length() + 1];
+    memcpy(infos[4], tmp_level.c_str(), tmp_level.length());
+    infos[4][tmp_level.length()] = '\0';
+
     infos[5] = "-f";
     infos[6] = "-b";
     infos[7] = "4096";

@@ -85,7 +85,7 @@ CmdInfo::CmdInfo() {
     max_insert_size_ = 512;
 
     //gz
-    compression_level_ = 2;
+    compression_level_ = 4;
 
     //interleaved
     interleaved_in_ = false;

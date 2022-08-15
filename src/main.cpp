@@ -15,6 +15,9 @@ int main(int argc, char **argv) {
     app.add_option("-o,--outFile1", cmd_info.out_file_name1_, "output fastq name 1");
     app.add_option("-O,--outFile2", cmd_info.out_file_name2_, "output fastq name 2");
 
+
+    app.add_option("--compressLevel", cmd_info.compression_level_, "output file compression level (1 - 9), default is 4");
+
     app.add_flag("--phred64", cmd_info.isPhred64_, "input is using phred64 scoring, default is phred33");
     app.add_flag("--stdin", cmd_info.isStdin_,
                  "input from stdin, or -i /dev/stdin, only for se data or interleaved pe data(which means use --interleavedIn)");
@@ -101,6 +104,12 @@ int main(int argc, char **argv) {
     app.add_flag("-V,--version", quVersion, "application version");
 
     CLI11_PARSE(app, argc, argv);
+
+
+    if(cmd_info.compression_level_ < 1 || cmd_info.compression_level_ > 9){
+        printf("error : compression level should in [1, 9]!\n");
+        return 0;
+    }
 
     if (quVersion) {
         printf("0.0.2\n");
