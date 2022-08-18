@@ -50,6 +50,8 @@ libdeflate_gzip_decompress(const byte *in, size_t in_nbytes, unsigned nthreads, 
     size_t in_size = in_stream2.available();
     //TODO GG when gz file is not big
     //nthreads = std::min(1 + unsigned(in_size >> 25), nthreads);
+    while(nthreads * (32ull << 20) >= in_size)nthreads--;
+    if(nthreads == 0)nthreads = 1;
     nthreads = std::min(1 + unsigned(in_size >> 21), nthreads);
 
     PRINT_DEBUG("Using %u threads\n", nthreads);
