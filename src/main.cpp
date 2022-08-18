@@ -63,7 +63,6 @@ int main(int argc, char **argv) {
 
 
     //TGS
-    //TODO now just se
     app.add_flag("--TGS", cmd_info.is_TGS_, "process third generation sequencing (TGS) data (only for se data), default is off");
 
 

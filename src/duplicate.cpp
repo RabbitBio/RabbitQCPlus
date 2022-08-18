@@ -55,7 +55,7 @@ uint64_t Duplicate::seq2int(const char *data, int start, int key_len, bool &vali
 void Duplicate::addRecord(uint32_t key, uint64_t kmer32, uint8_t gc) {
     //    lok.lock();
     //    printf("thread %d is duplicating ...\n", this_thread::get_id());
-    //TODO what if kmer1 == kmer2 but gc1 != gc2 (of cause key1 == key2)
+    //what if kmer1 == kmer2 but gc1 != gc2 (of cause key1 == key2)
     //even if set lock in this function, it is stall thread unsafe.
     //now change code to make it thread safe, but maybe it can be case a logic error.
     if (counts_[key] == 0) {
@@ -66,7 +66,6 @@ void Duplicate::addRecord(uint32_t key, uint64_t kmer32, uint8_t gc) {
         if (dups_[key] == kmer32) {
             counts_[key]++;
             //add this
-            //TODO check it is still logic correct or not
             if (gcs_[key] > gc) gcs_[key] = gc;
         } else if (dups_[key] > kmer32) {
             dups_[key] = kmer32;

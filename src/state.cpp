@@ -382,7 +382,7 @@ void State::StateInfo(neoReference &ref) {
         ide = _mm_loadu_si128((__m128i const*)(quals + i));
         quamm = _mm256_cvtepi8_epi64(ide);
         ad2 = _mm256_sub_epi64(quamm, sub33);
-        //TODO q > 0 ?
+
 
 
         //if (q >= 30) {

@@ -41,7 +41,6 @@
 #pragma warning(disable : 4800)  // conversion byte to bool
 #endif
 
-// TODO: refactor raw data structs to avoid using <string> as a member
 #include <string>
 
 #define COMPILE_TIME_ASSERT(COND, MSG) typedef char static_assertion_##MSG[(!!(COND)) * 2 - 1]

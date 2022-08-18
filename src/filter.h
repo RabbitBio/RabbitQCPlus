@@ -22,12 +22,10 @@ public:
     bool TrimSeq(neoReference &r, int front, int tail);
 
 
-    //TODO
     void PrintResult();
 
 private:
     CmdInfo *cmd_info;
-    //TODO
     int64_t filter_res_cnt_[16];
 };
 

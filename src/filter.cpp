@@ -140,7 +140,6 @@ bool Filter::TrimSeq(neoReference &ref, int front, int tail) {
 }
 
 
-//TODO
 /**
  * @brief Print filtering result, for example xx refs because too short......
  */

@@ -236,7 +236,6 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     char *out_data = new char[out_len];
                     int pos = 0;
                     for (auto item: pass_data) {
-                        //TODO delete name
                         Read2Chars(item, out_data, pos);
                     }
                     ASSERT(pos == out_len);
@@ -413,7 +412,6 @@ void SeQc::ProcessSeFastq() {
 
 
     auto *fastqPool = new rabbit::fq::FastqDataPool(32, 1 << 22);
-    //TODO replace this queue
     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(32, 1);
 
     auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
@@ -429,7 +427,6 @@ void SeQc::ProcessSeFastq() {
         pigzer = new thread(bind(&SeQc::PigzTask, this));
     }
 
-    //TODO bind ?
     thread producer(
             bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, ref(queue1)));
     auto **threads = new thread *[cmd_info_->thread_number_];

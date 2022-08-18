@@ -404,7 +404,6 @@ string Adapter::AutoDetect(string file_name, int trim_tail) {
     unsigned int *counts = new unsigned int[size];
     memset(counts, 0, sizeof(unsigned int) * size);
 
-    //TODO omp ? maybe not need
     for (int i = 0; i < records; i++) {
         neoReference r = loadedReads[i];
         int key = -1;
@@ -1190,12 +1189,10 @@ int Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int ove
 
 
 int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap_res, bool isPhred64) {
-    //TODO check ？
     if (!overlap_res.overlapped)
         return 0;
 
     int ol = overlap_res.overlap_len;
-    //TODO check right ?
 
     int start1 = max(0, overlap_res.offset);
     int start2 = r2.lseq - max(0, -overlap_res.offset) - 1;
