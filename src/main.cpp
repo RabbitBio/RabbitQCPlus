@@ -206,13 +206,13 @@ int main(int argc, char **argv) {
     }
 
 
-    printf("t1, t2, t3 is %d %d %d\n", t1, t2, t3);
+    //printf("t1, t2, t3 is %d %d %d\n", t1, t2, t3);
 
-    printf(" pugz is %d\n", cmd_info.use_pugz_);
-    printf(" pigz is %d\n", cmd_info.use_pigz_);
-    printf(" pugz threads are %d\n", cmd_info.pugz_threads_);
-    printf(" pigz threads are %d\n", cmd_info.pigz_threads_);
-    printf(" qc threads are %d\n", cmd_info.thread_number_);
+    //printf(" pugz is %d\n", cmd_info.use_pugz_);
+    //printf(" pigz is %d\n", cmd_info.use_pigz_);
+    //printf(" pugz threads are %d\n", cmd_info.pugz_threads_);
+    //printf(" pigz threads are %d\n", cmd_info.pigz_threads_);
+    //printf(" qc threads are %d\n", cmd_info.thread_number_);
     if (cmd_info.isStdin_) {
         cmd_info.in_file_name1_ = "/dev/stdin";
     }
@@ -306,18 +306,18 @@ int main(int argc, char **argv) {
 
     if (cmd_info.use_pugz_) {
         if(cmd_info.pugz_threads_ > 8){
-            printf("pugz thread number must <= 8, now set pugz thread number == 8.\n");
+            //printf("pugz thread number must <= 8, now set pugz thread number == 8.\n");
             cmd_info.pugz_threads_ = 8;
         }
-        printf("now use pugz, pugz thread number is %d\n", cmd_info.pugz_threads_);
+        //printf("now use pugz, pugz thread number is %d\n", cmd_info.pugz_threads_);
     }
     if (cmd_info.use_pigz_) {
-        printf("now use pigz, pigz thread number is %d\n", cmd_info.pigz_threads_);
+        //printf("now use pigz, pigz thread number is %d\n", cmd_info.pigz_threads_);
     }
-    if (cmd_info.thread_number_ == 1)
-        printf("now use %d thread to do QC operations\n", cmd_info.thread_number_);
-    else
-        printf("now use %d threads to do QC operations\n", cmd_info.thread_number_);
+    //if (cmd_info.thread_number_ == 1)
+    //    printf("now use %d thread to do QC operations\n", cmd_info.thread_number_);
+    //else
+    //    printf("now use %d threads to do QC operations\n", cmd_info.thread_number_);
     int mx_len = Adapter::EvalMaxLen(cmd_info.in_file_name1_);
     //printf("auto detect max seqs len is %d\n", mx_len);
     cmd_info.seq_len_ = mx_len;
