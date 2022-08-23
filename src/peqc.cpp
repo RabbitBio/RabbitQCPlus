@@ -423,7 +423,6 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
         vector<neoReference> data;
         vector<neoReference> pass_data1, pass_data2;
         rabbit::fq::chunkFormat(fqdatachunk, data, true);
-        ASSERT(0);
         ASSERT(data.size() % 2 == 0);
         int out_len1 = 0, out_len2 = 0;
         for (int i = 0; i + 2 <= data.size(); i += 2) {

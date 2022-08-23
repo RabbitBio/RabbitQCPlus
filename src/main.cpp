@@ -3,9 +3,9 @@
 #include "cmdinfo.h"
 #include "peqc.h"
 #include "seqc.h"
+#include "th_ass.h"
 #include <iostream>
 using namespace std;
-
 int main(int argc, char **argv) {
 
     CmdInfo cmd_info;
@@ -20,24 +20,24 @@ int main(int argc, char **argv) {
 
     app.add_flag("--phred64", cmd_info.isPhred64_, "input is using phred64 scoring, default is phred33");
     app.add_flag("--stdin", cmd_info.isStdin_,
-                 "input from stdin, or -i /dev/stdin, only for se data or interleaved pe data(which means use --interleavedIn)");
+            "input from stdin, or -i /dev/stdin, only for se data or interleaved pe data(which means use --interleavedIn)");
     app.add_flag("--stdout", cmd_info.isStdout_,
-                 "output to stdout, or -o /dev/stdout, only for se data or interleaved pe data(which means use --interleavedOut)");
+            "output to stdout, or -o /dev/stdout, only for se data or interleaved pe data(which means use --interleavedOut)");
 
 
     app.add_flag("-a,--noTrimAdapter", cmd_info.no_trim_adapter_, "don't trim adapter, default is off");
     app.add_flag("--decAdaForSe", cmd_info.se_auto_detect_adapter_, "detect adapter for se data, default is on");
     app.add_flag("--decAdaForPe", cmd_info.pe_auto_detect_adapter_,
-                 "detect adapter for pe data, default is off, tool prefers to use overlap to find adapter");
+            "detect adapter for pe data, default is off, tool prefers to use overlap to find adapter");
     app.add_flag("--printWhatTrimmed", cmd_info.print_what_trimmed_,
-                 "if print what trimmed to *_trimmed_adapters.txt or not, default is not");
+            "if print what trimmed to *_trimmed_adapters.txt or not, default is not");
     app.add_option("--adapterSeq1", cmd_info.adapter_seq1_, "specify adapter sequence for read1");
     app.add_option("--adapterSeq2", cmd_info.adapter_seq2_, "specify adapter sequence for read2");
     //app.add_option("--adapterLengthLimit", cmd_info.adapter_len_lim_, "minimum adapter length when trimming, default is 0");
 
     app.add_flag("-c,--correctData", cmd_info.correct_data_, "correcting low quality bases using information from overlap, default is off");
 
-    app.add_option("-w,--threadNum", cmd_info.thread_number_, "number thread used to do QC, default is 4");
+    app.add_option("-w,--threadNum", cmd_info.thread_number_, "number of thread used to do QC, including (de)compression for compressed data, default is 8");
 
     //filter
     app.add_flag("-5,--trim5End", cmd_info.trim_5end_, "do sliding window from 5end to 3end to trim low quality bases, default is off");
@@ -68,28 +68,28 @@ int main(int argc, char **argv) {
 
     //overrepresentation
     app.add_flag("-p,--doOverrepresentation", cmd_info.do_overrepresentation_,
-                 "do over-representation sequence analysis, default is off");
+            "do over-representation sequence analysis, default is off");
     app.add_option("-P,--overrepresentationSampling", cmd_info.overrepresentation_sampling_,
-                   "do overrepresentation every [] reads, default is 20");
+            "do overrepresentation every [] reads, default is 20");
 
     app.add_flag("--printORPSeqs", cmd_info.print_ORP_seqs_,
-                 "if print overrepresentation sequences to *ORP_sequences.txt or not, default is not");
+            "if print overrepresentation sequences to *ORP_sequences.txt or not, default is not");
     //insert size analyze
     app.add_flag("--noInsertSize", cmd_info.no_insert_size_, "no insert size analysis (only for pe data), default is to do insert size analysis");
 
 
     //interleaved
     app.add_flag("--interleavedIn", cmd_info.interleaved_in_,
-                 "use interleaved input (only for pe data), default is off");
+            "use interleaved input (only for pe data), default is off");
     app.add_flag("--interleavedOut", cmd_info.interleaved_out_,
-                 "use interleaved output (only for pe data), default is off");
+            "use interleaved output (only for pe data), default is off");
 
 
     //parallel gz
-    app.add_flag("--usePugz", cmd_info.use_pugz_, "use pugz to decompress data, default is off");
-    app.add_flag("--usePigz", cmd_info.use_pigz_, "use pigz to compress data, default is off");
-    app.add_option("--pugzThread", cmd_info.pugz_threads_, "pugz thread number(<=8), default is 2");
-    app.add_option("--pigzThread", cmd_info.pigz_threads_, "pigz thread number, default is 2");
+    //app.add_flag("--usePugz", cmd_info.use_pugz_, "use pugz to decompress data, default is off");
+    //app.add_flag("--usePigz", cmd_info.use_pigz_, "use pigz to compress data, default is off");
+    //app.add_option("--pugzThread", cmd_info.pugz_threads_, "pugz thread number(<=8), default is 2");
+    //app.add_option("--pigzThread", cmd_info.pigz_threads_, "pigz thread number, default is 2");
     stringstream ss;
     for (int i = 0; i < argc; i++) {
         ss << argv[i] << " ";
@@ -115,18 +115,104 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    if (ends_with(cmd_info.in_file_name1_, ".gz") == 0) {
-        cmd_info.use_pugz_ = false;
+
+    int is_pe = cmd_info.in_file_name2_.length() != 0;
+
+    //check if files is ok
+    int files_ok = 1;
+    if (is_pe) {
+        if (!cmd_info.interleaved_in_){
+            if(ends_with(cmd_info.in_file_name1_, ".gz") != ends_with(cmd_info.in_file_name2_, ".gz"))
+                files_ok = 0;
+        }
+        if (!cmd_info.interleaved_out_){
+            if(ends_with(cmd_info.out_file_name1_, ".gz") != ends_with(cmd_info.out_file_name2_, ".gz"))
+                files_ok = 0;
+        }
     }
-    if (ends_with(cmd_info.out_file_name1_, ".gz") == 0 || cmd_info.pigz_threads_ == 1) {
-        cmd_info.use_pigz_ = false;
+    if(files_ok == 0){
+        printf("error : for PE data, both files must be of the same type, i.e. cannot be one compressed and one uncompressed!");
+        return 0;
     }
-    //    if (cmd_info.use_pigz_) {
-    //        string out_name1 = cmd_info.out_file_name1_;
-    //        cmd_info.out_file_name1_ = out_name1.substr(0, out_name1.find(".gz"));
-    //        string out_name2 = cmd_info.out_file_name2_;
-    //        cmd_info.out_file_name2_ = out_name2.substr(0, out_name2.find(".gz"));
-    //    }
+
+    int in_gz = ends_with(cmd_info.in_file_name1_, ".gz");
+    int out_gz = ends_with(cmd_info.out_file_name1_, ".gz");
+
+
+    int in_module = 0;
+    if (in_gz) in_module |= 1;
+    if (out_gz) in_module |= 2;
+
+    int t1, t2, t3;
+    if (is_pe) {
+        //PE
+        int tot_threads = cmd_info.thread_number_;
+        if (in_module == 3){
+            t1 = thread_assignment_pe3[tot_threads].pugz_t;
+            t2 = thread_assignment_pe3[tot_threads].w_t;
+            t3 = thread_assignment_pe3[tot_threads].pigz_t;
+        } else if (in_module == 2){
+            t1 = thread_assignment_pe2[tot_threads].pugz_t;
+            t2 = thread_assignment_pe2[tot_threads].w_t;
+            t3 = thread_assignment_pe2[tot_threads].pigz_t;
+        } else if (in_module == 1){
+            t1 = thread_assignment_pe1[tot_threads].pugz_t;
+            t2 = thread_assignment_pe1[tot_threads].w_t;
+            t3 = thread_assignment_pe1[tot_threads].pigz_t;
+        } else {
+            t1 = thread_assignment_pe0[tot_threads].pugz_t;
+            t2 = thread_assignment_pe0[tot_threads].w_t;
+            t3 = thread_assignment_pe0[tot_threads].pigz_t;
+        }
+    }else {
+        //SE
+        int tot_threads = cmd_info.thread_number_;
+        if (in_module == 3){
+            t1 = thread_assignment_se3[tot_threads].pugz_t;
+            t2 = thread_assignment_se3[tot_threads].w_t;
+            t3 = thread_assignment_se3[tot_threads].pigz_t;
+        } else if (in_module == 2){
+            t1 = thread_assignment_se2[tot_threads].pugz_t;
+            t2 = thread_assignment_se2[tot_threads].w_t;
+            t3 = thread_assignment_se2[tot_threads].pigz_t;
+        } else if (in_module == 1){
+            t1 = thread_assignment_se1[tot_threads].pugz_t;
+            t2 = thread_assignment_se1[tot_threads].w_t;
+            t3 = thread_assignment_se1[tot_threads].pigz_t;
+        } else {
+            t1 = thread_assignment_se0[tot_threads].pugz_t;
+            t2 = thread_assignment_se0[tot_threads].w_t;
+            t3 = thread_assignment_se0[tot_threads].pigz_t;
+        }
+    }
+
+    cmd_info.thread_number_ = t2;
+    if (t1 == 0){
+        cmd_info.use_pugz_ = 0;
+    } else {
+        cmd_info.use_pugz_ = 1;
+        cmd_info.pugz_threads_ = t1;
+    }
+    if (t3 <= 1){
+        cmd_info.use_pigz_ = 0;
+    } else {
+        cmd_info.use_pigz_ = 1;
+        cmd_info.pigz_threads_ = t3;
+    }
+
+    if(cmd_info.interleaved_in_ || cmd_info.interleaved_out_){
+        cmd_info.use_pugz_ = 0;
+        cmd_info.use_pigz_ = 0;
+    }
+
+
+    printf("t1, t2, t3 is %d %d %d\n", t1, t2, t3);
+
+    printf(" pugz is %d\n", cmd_info.use_pugz_);
+    printf(" pigz is %d\n", cmd_info.use_pigz_);
+    printf(" pugz threads are %d\n", cmd_info.pugz_threads_);
+    printf(" pigz threads are %d\n", cmd_info.pigz_threads_);
+    printf(" qc threads are %d\n", cmd_info.thread_number_);
     if (cmd_info.isStdin_) {
         cmd_info.in_file_name1_ = "/dev/stdin";
     }
@@ -185,7 +271,7 @@ int main(int argc, char **argv) {
         if (umiLoc.empty())
             error_exit("You've enabled UMI by (--addUmi), you should specify the UMI location by (--umiLoc)");
         if (umiLoc != "index1" && umiLoc != "index2" && umiLoc != "read1" && umiLoc != "read2" &&
-            umiLoc != "per_index" && umiLoc != "per_read") {
+                umiLoc != "per_index" && umiLoc != "per_read") {
             error_exit("UMI location can only be index1/index2/read1/read2/per_index/per_read");
         }
         if (cmd_info.in_file_name2_.length() == 0 && (umiLoc == "index2" || umiLoc == "read2"))
@@ -213,9 +299,9 @@ int main(int argc, char **argv) {
         printf("overrepresentation sampling is %d\n", cmd_info.overrepresentation_sampling_);
     }
 
-    if (cmd_info.isPhred64_) {
-        printf("now use phred64 input\n");
-    }
+    //if (cmd_info.isPhred64_) {
+    //    printf("now use phred64 input\n");
+    //}
 
 
     if (cmd_info.use_pugz_) {
@@ -235,12 +321,12 @@ int main(int argc, char **argv) {
     int mx_len = Adapter::EvalMaxLen(cmd_info.in_file_name1_);
     //printf("auto detect max seqs len is %d\n", mx_len);
     cmd_info.seq_len_ = mx_len;
-    double t1 = GetTime();
+    double t_start = GetTime();
 
     if (cmd_info.in_file_name2_.length() || cmd_info.interleaved_in_) {
         //PE
         if ((cmd_info.out_file_name1_.length() > 0 && cmd_info.out_file_name2_.length() > 0) ||
-            cmd_info.interleaved_out_) {
+                cmd_info.interleaved_out_) {
             cmd_info.write_data_ = true;
         }
 
@@ -379,6 +465,6 @@ int main(int argc, char **argv) {
         delete se_qc;
     }
     printf("cmd is %s\n", command.c_str());
-    printf("total cost %.5fs\n", GetTime() - t1);
+    printf("total cost %.5fs\n", GetTime() - t_start);
     return 0;
 }
