@@ -42,7 +42,7 @@ You can also specify the instruction set you want to use by manually modifying t
 - For SE (gzip compressed)
 
 ```bash
-./RabbitQCPlus -w 4 -i in1.fastq.gz -o p1.fastq.gz --usePugz --pugzThread 2 --usePigz --pigzThread 4
+./RabbitQCPlus -w 8 -i in1.fastq.gz -o p1.fastq.gz
 ```
 
 - For PE (not compressed)
@@ -54,7 +54,7 @@ You can also specify the instruction set you want to use by manually modifying t
 - For PE (gzip compressed)
 
 ```bash
-./RabbitQCPlus -w 4 -i in1.fastq.gz  -I in2.fastq.gz -o p1.fastq.gz -O p2.fastq.gz --usePugz --pugzThread 2 --usePigz --pigzThread 2
+./RabbitQCPlus -w 16 -i in1.fastq.gz  -I in2.fastq.gz -o p1.fastq.gz -O p2.fastq.gz
 ```
 
 ## For third generation sequencing data
@@ -68,7 +68,7 @@ You can also specify the instruction set you want to use by manually modifying t
 - gzip compressed
 
 ```bash
-./RabbitQCPlus -w 4 -i in.fastq.gz --TGS --usePugz --pugzThread 2
+./RabbitQCPlus -w 6 -i in.fastq.gz --TGS
 ```
 
 # Options
