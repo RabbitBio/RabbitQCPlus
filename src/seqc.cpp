@@ -195,7 +195,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                 }
 
                 if (trim_res && cmd_info_->trim_adapter_) {
-                    int res = false;
+                    int res = 0;
                     bool is_trimmed = false;
                     if(cmd_info_->detect_adapter1_) {
                         if (cmd_info_->print_what_trimmed_) {
@@ -216,6 +216,10 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                             res = Adapter::TrimAdapters(item, cmd_info_->adapter_from_fasta_, false);
                         }
                         if (res) {
+                            static int tot = 0, cnt = 0;
+                            tot += res;
+                            if(cnt % 1000 == 0)printf("cnt is %d\n", tot);
+                            cnt++;
                             if(!is_trimmed) thread_info->aft_state1_->AddTrimAdapter();
                             thread_info->aft_state1_->AddTrimAdapterBase(res);
                         }

@@ -1145,8 +1145,15 @@ int Adapter::TrimAdapters(neoReference &ref, vector<string> &adapter_seqs, bool 
     if(adapter_seqs.size() > 256)
         matchs = 6;
     int res = 0;
+    char *bases0 = reinterpret_cast<char *>(ref.base + ref.pseq); 
+    int len0 = ref.lseq;
     for(int i = 0; i < adapter_seqs.size(); i++) {
         res += TrimAdapter(ref, adapter_seqs[i], isR2, matchs);
+    }
+    if(res) {
+        string seq0 = string(bases0, len0);
+        string new_adapter_seq = seq0.substr(ref.lseq, len0 - ref.lseq);
+        res = new_adapter_seq.length();
     }
     return res;
 }
@@ -1166,6 +1173,7 @@ int Adapter::TrimAdapters(neoReference &ref, vector<string> &adapter_seqs, unord
     if(res) {
         string seq0 = string(bases0, len0);
         string new_adapter_seq = seq0.substr(ref.lseq, len0 - ref.lseq);
+        res = new_adapter_seq.length();
         if (new_adapter_seq.length() >= adapter_len_lim) {
             if (mp.count(new_adapter_seq) == 0) {
                 mp[new_adapter_seq] = 1;
