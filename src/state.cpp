@@ -695,8 +695,12 @@ void State::PrintAdapterToFile(const State *state) {
     ooff.open(file_name);
     ooff << "adapter count\n";
     for (auto item: state->adapter_map_) {
-        ooff << item.first << " " << item.second << endl;
-        tot_trimmed_base += (item.first.length()) * (item.second);
+        tot_trimmed_base += item.second;
+        //tot_trimmed_base += (item.first.length()) * (item.second);
+    }
+    for (auto item: state->adapter_map_) {
+        if(1.0 * item.second / tot_trimmed_base > 0.01)
+            ooff << item.first << " " << item.second << endl;
     }
     ooff.close();
 }
