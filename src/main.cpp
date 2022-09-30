@@ -326,6 +326,7 @@ int main(int argc, char **argv) {
     if(cmd_info.adapter_fasta_file_.length() > 0){
         printf("loading adatper from %s\n", cmd_info.adapter_fasta_file_.c_str());
         cmd_info.adapter_from_fasta_ = Adapter::LoadAdaptersFromFasta(cmd_info.adapter_fasta_file_);
+        sort(cmd_info.adapter_from_fasta_.begin(), cmd_info.adapter_from_fasta_.end());
         for(auto item : cmd_info.adapter_from_fasta_)printf(" --- %s ---\n", item.c_str());
     }
     double t_start = GetTime();

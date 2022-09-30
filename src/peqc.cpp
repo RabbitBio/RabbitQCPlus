@@ -143,7 +143,7 @@ void PeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
 }
 
 void PeQc::ProducerPeInterFastqTask(string file, rabbit::fq::FastqDataPool *fastq_data_pool,
-                                    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
 #ifdef Verbose
     double t0 = GetTime();
 #endif
@@ -170,7 +170,7 @@ void PeQc::ProducerPeInterFastqTask(string file, rabbit::fq::FastqDataPool *fast
 
 
 void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataPool *fastqPool,
-                               rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
 #ifdef Verbose
     double t0 = GetTime();
 #endif
@@ -191,7 +191,7 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
         while (true) {
             rabbit::fq::FastqDataPairChunk *fqdatachunk;
             fqdatachunk = fqFileReader->readNextPairChunkParallel(pugzQueue1, pugzQueue2, &pugzDone1, &pugzDone2, last1,
-                                                                  last2);
+                    last2);
             if (fqdatachunk == NULL) break;
             n_chunks++;
             dq.Push(n_chunks, fqdatachunk);
@@ -224,7 +224,7 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
  * @param dq : data queue
  */
 void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
-                               rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataPairChunk *fqdatachunk;
     while (dq.Pop(id, fqdatachunk)) {
@@ -258,12 +258,11 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
             if (trim_res1 && trim_res2 && cmd_info_->trim_polyx_) {
                 PolyX::trimPolyX(item1, item2, cmd_info_->trim_poly_len_);
             }
-
             //do pe overlap analyze
             OverlapRes overlap_res;
             if (trim_res1 && trim_res2 && cmd_info_->analyze_overlap_) {
                 overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
-                                                      cmd_info_->overlap_require_);
+                        cmd_info_->overlap_require_);
                 int now_size = cmd_info_->max_insert_size_;
                 if (overlap_res.overlapped) {
                     if (overlap_res.offset > 0)
@@ -278,11 +277,11 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                 Adapter::CorrectData(item1, item2, overlap_res, cmd_info_->isPhred64_);
             }
             if (trim_res1 && trim_res2 && cmd_info_->trim_adapter_) {
-                int trimmed;
+                int trimmed= false;
                 if (cmd_info_->print_what_trimmed_) {
                     trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len,
-                                                   thread_info->aft_state1_->adapter_map_,
-                                                   thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_);
+                            thread_info->aft_state1_->adapter_map_,
+                            thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_);
                 } else {
                     trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
                 }
@@ -291,37 +290,70 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     thread_info->aft_state1_->AddTrimAdapter();
                     thread_info->aft_state1_->AddTrimAdapterBase(trimmed);
                 }
+                int res1 = 0, res2 = 0;
+                bool is_trimmed1 = trimmed;
+                bool is_trimmed2 = trimmed;
+
                 if (!trimmed) {
-                    int res1, res2;
                     if (cmd_info_->detect_adapter1_) {
                         int res1;
                         if (cmd_info_->print_what_trimmed_) {
                             res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_,
-                                                        thread_info->aft_state1_->adapter_map_,
-                                                        cmd_info_->adapter_len_lim_, false);
+                                    thread_info->aft_state1_->adapter_map_,
+                                    cmd_info_->adapter_len_lim_, false);
                         } else {
                             res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, false);
+                        }
+                        if (res1) {
+                            is_trimmed1 = true;
+                            thread_info->aft_state1_->AddTrimAdapter();
+                            thread_info->aft_state1_->AddTrimAdapterBase(res1);
                         }
                     }
                     if (cmd_info_->detect_adapter2_) {
                         int res2;
                         if (cmd_info_->print_what_trimmed_) {
                             res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_,
-                                                        thread_info->aft_state2_->adapter_map_,
-                                                        cmd_info_->adapter_len_lim_, true);
+                                    thread_info->aft_state2_->adapter_map_,
+                                    cmd_info_->adapter_len_lim_, true);
                         } else {
                             res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, true);
                         }
+                        if (res2) {
+                            is_trimmed2 = true;
+                            thread_info->aft_state1_->AddTrimAdapter();
+                            thread_info->aft_state1_->AddTrimAdapterBase(res2);
+                        }
+
+                    }
+
+
+                }
+
+                if(cmd_info_->adapter_from_fasta_.size() > 0) {
+                    if (cmd_info_->print_what_trimmed_) {
+                        res1 = Adapter::TrimAdapters(item1, cmd_info_->adapter_from_fasta_,
+                                thread_info->aft_state1_->adapter_map_, cmd_info_->adapter_len_lim_, false);
+                    } else {
+                        res1 = Adapter::TrimAdapters(item1, cmd_info_->adapter_from_fasta_, false);
                     }
                     if (res1) {
-                        thread_info->aft_state1_->AddTrimAdapter();
+                        if(!is_trimmed1) thread_info->aft_state1_->AddTrimAdapter();
                         thread_info->aft_state1_->AddTrimAdapterBase(res1);
                     }
+
+                    if (cmd_info_->print_what_trimmed_) {
+                        res2 = Adapter::TrimAdapters(item2, cmd_info_->adapter_from_fasta_,
+                                thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_, false);
+                    } else {
+                        res2 = Adapter::TrimAdapters(item2, cmd_info_->adapter_from_fasta_, false);
+                    }
                     if (res2) {
-                        thread_info->aft_state1_->AddTrimAdapter();
+                        if(!is_trimmed2) thread_info->aft_state1_->AddTrimAdapter();
                         thread_info->aft_state1_->AddTrimAdapterBase(res2);
                     }
                 }
+
             }
 
 
@@ -392,7 +424,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                         Read2Chars(item, out_data2, pos);
                     }
                     ASSERT(pos == out_len2);
-                    
+
                     mylock.lock();
                     while (queueNumNow1 >= queueSizeLim1 || queueNumNow2 >= queueSizeLim2) {
 #ifdef Verbose
@@ -416,7 +448,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 
 
 void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
-                                    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;
     while (dq.Pop(id, fqdatachunk)) {
@@ -453,7 +485,7 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
             OverlapRes overlap_res;
             if (trim_res1 && trim_res2 && cmd_info_->analyze_overlap_) {
                 overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
-                                                      cmd_info_->overlap_require_);
+                        cmd_info_->overlap_require_);
                 int now_size = cmd_info_->max_insert_size_;
                 if (overlap_res.overlapped) {
                     if (overlap_res.offset > 0)
@@ -471,8 +503,8 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                 int trimmed;
                 if (cmd_info_->print_what_trimmed_) {
                     trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len,
-                                                   thread_info->aft_state1_->adapter_map_,
-                                                   thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_);
+                            thread_info->aft_state1_->adapter_map_,
+                            thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_);
                 } else {
                     trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
                 }
@@ -487,8 +519,8 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                         int res1;
                         if (cmd_info_->print_what_trimmed_) {
                             res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_,
-                                                        thread_info->aft_state1_->adapter_map_,
-                                                        cmd_info_->adapter_len_lim_, false);
+                                    thread_info->aft_state1_->adapter_map_,
+                                    cmd_info_->adapter_len_lim_, false);
                         } else {
                             res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, false);
                         }
@@ -497,8 +529,8 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                         int res2;
                         if (cmd_info_->print_what_trimmed_) {
                             res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_,
-                                                        thread_info->aft_state2_->adapter_map_,
-                                                        cmd_info_->adapter_len_lim_, true);
+                                    thread_info->aft_state2_->adapter_map_,
+                                    cmd_info_->adapter_len_lim_, true);
                         } else {
                             res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, true);
                         }
@@ -865,7 +897,7 @@ void PeQc::ProcessPeFastq() {
 
         thread producer(
                 bind(&PeQc::ProducerPeInterFastqTask, this, cmd_info_->in_file_name1_, fastqPool,
-                          ref(queue1)));
+                    ref(queue1)));
         auto **threads = new thread *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             threads[t] = new thread(
@@ -956,7 +988,7 @@ void PeQc::ProcessPeFastq() {
             }
             ofs.close();
             printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
-                   srr_name1.c_str(), cnt1, out_name1.c_str());
+                    srr_name1.c_str(), cnt1, out_name1.c_str());
 
             string out_name2 = "pe_" + srr_name2 + "_before_ORP_sequences.txt";
             ofs.open(out_name2, ifstream::out);
@@ -970,7 +1002,7 @@ void PeQc::ProcessPeFastq() {
             }
             ofs.close();
             printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
-                   srr_name2.c_str(), cnt2, out_name2.c_str());
+                    srr_name2.c_str(), cnt2, out_name2.c_str());
 
 
             out_name1 = "pe_" + srr_name1 + "_after_ORP_sequences.txt";
@@ -985,7 +1017,7 @@ void PeQc::ProcessPeFastq() {
             }
             ofs.close();
             printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(),
-                   cnt1, out_name1.c_str());
+                    cnt1, out_name1.c_str());
 
             out_name2 = "pe_" + srr_name2 + "_after_ORP_sequences.txt";
             ofs.open(out_name2, ifstream::out);
@@ -999,7 +1031,7 @@ void PeQc::ProcessPeFastq() {
             }
             ofs.close();
             printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(),
-                   cnt2, out_name2.c_str());
+                    cnt2, out_name2.c_str());
 
             printf("\n");
         }
@@ -1040,8 +1072,8 @@ void PeQc::ProcessPeFastq() {
         string srr_name2 = cmd_info_->in_file_name2_;
         srr_name2 = PaseFileName(srr_name2);
         Repoter::ReportHtmlPe(srr_name1 + "_" + srr_name2 + "_RabbitQCPlus.html", pre_state1, pre_state2, aft_state1,
-                              aft_state2, cmd_info_->in_file_name1_,
-                              cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
+                aft_state2, cmd_info_->in_file_name1_,
+                cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
 #ifdef Verbose
         printf("report done\n");
 #endif
@@ -1099,7 +1131,7 @@ void PeQc::ProcessPeFastq() {
         }
         thread producer(
                 bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_,
-                          fastqPool, ref(queue1)));
+                    fastqPool, ref(queue1)));
         auto **threads = new thread *[cmd_info_->thread_number_];
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             threads[t] = new thread(
@@ -1208,7 +1240,7 @@ void PeQc::ProcessPeFastq() {
             }
             ofs.close();
             printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
-                   srr_name1.c_str(), cnt1, out_name1.c_str());
+                    srr_name1.c_str(), cnt1, out_name1.c_str());
 
             string out_name2 = "pe_" + srr_name2 + "_before_ORP_sequences.txt";
             ofs.open(out_name2, ifstream::out);
@@ -1222,7 +1254,7 @@ void PeQc::ProcessPeFastq() {
             }
             ofs.close();
             printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
-                   srr_name2.c_str(), cnt2, out_name2.c_str());
+                    srr_name2.c_str(), cnt2, out_name2.c_str());
 
 
             out_name1 = "pe_" + srr_name1 + "_after_ORP_sequences.txt";
@@ -1237,7 +1269,7 @@ void PeQc::ProcessPeFastq() {
             }
             ofs.close();
             printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(),
-                   cnt1, out_name1.c_str());
+                    cnt1, out_name1.c_str());
 
             out_name2 = "pe_" + srr_name2 + "_after_ORP_sequences.txt";
             ofs.open(out_name2, ifstream::out);
@@ -1251,7 +1283,7 @@ void PeQc::ProcessPeFastq() {
             }
             ofs.close();
             printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(),
-                   cnt2, out_name2.c_str());
+                    cnt2, out_name2.c_str());
 
             printf("\n");
         }
@@ -1292,8 +1324,8 @@ void PeQc::ProcessPeFastq() {
         string srr_name2 = cmd_info_->in_file_name2_;
         srr_name2 = PaseFileName(srr_name2);
         Repoter::ReportHtmlPe(srr_name1 + "_" + srr_name2 + "_RabbitQCPlus.html", pre_state1, pre_state2, aft_state1,
-                              aft_state2, cmd_info_->in_file_name1_,
-                              cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
+                aft_state2, cmd_info_->in_file_name1_,
+                cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
 #ifdef Verbose
         printf("report done\n");
 #endif

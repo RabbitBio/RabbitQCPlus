@@ -165,7 +165,6 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
                 break;
         }
     }
-    //printf("part0 cost %.5f\n", GetTime() - t0);
 #ifdef Verbose
     t0 = GetTime();
 #endif
@@ -175,11 +174,9 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
         auto item = loadedReads[i];
         seqlen = max(seqlen, int(item.lseq));
     }
-    //printf("seqlen is %d\n", seqlen);
     eva_len = seqlen;
     int threadNumber = omp_get_num_procs();
 
-    //printf("now use %d threads\n", threadNumber);
 
     //#pragma omp parallel for num_threads(threadNumber)
     for (int it = 0; it < loadedReads.size(); it++) {
@@ -227,12 +224,9 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
             }
         }
     }
-    //printf("part1 cost %.5f\n", GetTime() - t0);
 #ifdef Verbose
     t0 = GetTime();
 #endif
-    //printf("total hot seqs num is %d\n", num);
-    //printf("now get hotseqs\n");
 
     vector<pair<string, int>> hot_s;
 
@@ -260,12 +254,9 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
         }
     }
 
-    //printf("part2 cost %.5f\n", GetTime() - t0);
 #ifdef Verbose
     t0 = GetTime();
 #endif
-    //printf("now remove substrings\n");
-    //printf("before size %d\n", hot_s.size());
     // remove substrings
 #pragma omp parallel for num_threads(threadNumber)
     for (int i = 0; i < hot_s.size(); i++) {
@@ -288,22 +279,9 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
             }
         }
     }
-    //printf("part3 cost %.5f\n", GetTime() - t0);
 #ifdef Verbose
     t0 = GetTime();
 #endif
-    //printf("after size %d\n", hot_seqs.size());
-    // output for test
-    //    for (auto iter = hot_seqs.begin(); iter != hot_seqs.end(); iter++) {
-    //        cout << iter->first << ": " << iter->first.size() << " , " << iter->second << endl;
-    //    }
-    //ofstream ofs;
-    //ofs.open("ORP.log", ifstream::out);
-    //for (auto item : mp_tmp) {
-    //    ofs << item.first << " " << item.second << "\n";
-    //}
-    //ofs.close();
-    //printf("part4 cost %.5f\n", GetTime() - t0);
 #ifdef Verbose
     t0 = GetTime();
 #endif
@@ -316,7 +294,6 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
     delete[] v;
     delete[] cnt;
     delete[] seqs;
-    //printf("part5 cost %.5f\n", GetTime() - t0);
 }
 
 
@@ -369,7 +346,6 @@ int Adapter::EvalMaxLen(string file_name) {
 }
 
 string Adapter::AutoDetect(string file_name, int trim_tail) {
-    //printf("now auto find adapter...\n");
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(128, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
             file_name.find(".gz") != string::npos);
@@ -953,7 +929,6 @@ int Adapter::TrimAdapter(neoReference &ref, string &adapter_seq, bool isR2, int 
     }
 #endif
 
-
     if (found) {
         int res_len = 0;
         if (pos < 0) {
@@ -1265,8 +1240,6 @@ int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap
     const char GOOD_QUAL = 30 + phredSub;//30
     const char BAD_QUAL = 14 + phredSub; //14
 
-    //    printf("GOOD_QUAL %d\n", GOOD_QUAL);
-    //    printf("BAD_QUAL %d\n", BAD_QUAL);
 
 
     int corrected = 0;
