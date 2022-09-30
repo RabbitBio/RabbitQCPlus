@@ -62,6 +62,8 @@ public:
     bool analyze_overlap_;
     int adapter_len_lim_;
     bool print_what_trimmed_;
+    std::vector<std::string> adapter_from_fasta_;
+    std::string adapter_fasta_file_;
 
     //duplicate
     bool state_duplicate_;

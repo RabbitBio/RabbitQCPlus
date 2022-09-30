@@ -194,23 +194,35 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     PolyX::trimPolyX(item, cmd_info_->trim_poly_len_);
                 }
 
-
-                if (trim_res && cmd_info_->trim_adapter_ && cmd_info_->detect_adapter1_) {
-                    int res;
-                    if (cmd_info_->print_what_trimmed_) {
-
-                        res = Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_,
-                                                   thread_info->aft_state1_->adapter_map_, cmd_info_->adapter_len_lim_,
-                                                   false);
-                    } else {
-                        res = Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);
+                if (trim_res && cmd_info_->trim_adapter_) {
+                    int res = false;
+                    bool is_trimmed = false;
+                    if(cmd_info_->detect_adapter1_) {
+                        if (cmd_info_->print_what_trimmed_) {
+                            res = Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, thread_info->aft_state1_->adapter_map_, cmd_info_->adapter_len_lim_, false);
+                        } else {
+                            res = Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);
+                        }
+                        if (res) {
+                            is_trimmed = true;
+                            thread_info->aft_state1_->AddTrimAdapter();
+                            thread_info->aft_state1_->AddTrimAdapterBase(res);
+                        }
                     }
-                    if (res) {
-                        thread_info->aft_state1_->AddTrimAdapter();
-                        thread_info->aft_state1_->AddTrimAdapterBase(res);
+                    if(cmd_info_->adapter_from_fasta_.size() > 0) {
+                        if (cmd_info_->print_what_trimmed_) {
+                            res = Adapter::TrimAdapters(item, cmd_info_->adapter_from_fasta_, thread_info->aft_state1_->adapter_map_, cmd_info_->adapter_len_lim_, false);
+                        } else {
+                            res = Adapter::TrimAdapters(item, cmd_info_->adapter_from_fasta_, false);
+                        }
+                        if (res) {
+                            if(!is_trimmed) thread_info->aft_state1_->AddTrimAdapter();
+                            thread_info->aft_state1_->AddTrimAdapterBase(res);
+                        }
+
                     }
                 }
-
+                
                 int filter_res = filter_->ReadFiltering(item, trim_res, cmd_info_->isPhred64_);
                 if (filter_res == 0) {
                     thread_info->aft_state1_->StateInfo(item);

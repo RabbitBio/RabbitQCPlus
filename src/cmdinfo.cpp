@@ -53,6 +53,7 @@ CmdInfo::CmdInfo() {
     analyze_overlap_ = false;
     adapter_len_lim_ = 0;
     print_what_trimmed_ = false;
+    adapter_fasta_file_ = "";
 
     //duplicate
     state_duplicate_ = true;

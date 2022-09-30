@@ -33,6 +33,7 @@ int main(int argc, char **argv) {
             "if print what trimmed to *_trimmed_adapters.txt or not, default is not");
     app.add_option("--adapterSeq1", cmd_info.adapter_seq1_, "specify adapter sequence for read1");
     app.add_option("--adapterSeq2", cmd_info.adapter_seq2_, "specify adapter sequence for read2");
+    app.add_option("--adapterFastaFile", cmd_info.adapter_fasta_file_, "specify adapter sequences use fasta file");
     //app.add_option("--adapterLengthLimit", cmd_info.adapter_len_lim_, "minimum adapter length when trimming, default is 0");
 
     app.add_flag("-c,--correctData", cmd_info.correct_data_, "correcting low quality bases using information from overlap, default is off");
@@ -244,7 +245,8 @@ int main(int argc, char **argv) {
         cmd_info.pe_auto_detect_adapter_ = false;
         cmd_info.adapter_seq1_ = "";
         cmd_info.adapter_seq2_ = "";
-        printf("no adapter trim!\n");
+        cmd_info.adapter_fasta_file_ = "";
+        printf("no adapter trim (ignore '--adapterSeq*' and '--adapterFastaFile' options) because using the '-a (--noTrimAdapter)' option!\n");
     }
 
     if (cmd_info.trim_5end_) {
@@ -321,6 +323,11 @@ int main(int argc, char **argv) {
     int mx_len = Adapter::EvalMaxLen(cmd_info.in_file_name1_);
     //printf("auto detect max seqs len is %d\n", mx_len);
     cmd_info.seq_len_ = mx_len;
+    if(cmd_info.adapter_fasta_file_.length() > 0){
+        printf("loading adatper from %s\n", cmd_info.adapter_fasta_file_.c_str());
+        cmd_info.adapter_from_fasta_ = Adapter::LoadAdaptersFromFasta(cmd_info.adapter_fasta_file_);
+        for(auto item : cmd_info.adapter_from_fasta_)printf(" --- %s ---\n", item.c_str());
+    }
     double t_start = GetTime();
 
     if (cmd_info.in_file_name2_.length() || cmd_info.interleaved_in_) {

@@ -130,7 +130,7 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
 #endif
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(128, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
-                                                        file_name.find(".gz") != string::npos);
+            file_name.find(".gz") != string::npos);
     int64_t n_chunks = 0;
     const long BASE_LIMIT = 151 * 10000;
     long records = 0;
@@ -319,10 +319,23 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
     //printf("part5 cost %.5f\n", GetTime() - t0);
 }
 
+
+vector<string> Adapter::LoadAdaptersFromFasta(string file_name) {
+    ifstream iff;
+    iff.open(file_name);
+    string name, seq;
+    vector<string> res;
+    while(iff >> name >> seq) {
+        res.push_back(seq);
+    }
+    iff.close();
+    return res;
+}
+
 int Adapter::EvalMaxLen(string file_name) {
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(128, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
-                                                        file_name.find(".gz") != string::npos);
+            file_name.find(".gz") != string::npos);
     int64_t n_chunks = 0;
     // stat up to 256K reads
     const long READ_LIMIT = 256 * 1024;
@@ -359,7 +372,7 @@ string Adapter::AutoDetect(string file_name, int trim_tail) {
     //printf("now auto find adapter...\n");
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(128, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
-                                                        file_name.find(".gz") != string::npos);
+            file_name.find(".gz") != string::npos);
     int64_t n_chunks = 0;
     // stat up to 256K reads
     const long READ_LIMIT = 256 * 1024;
@@ -499,7 +512,7 @@ string Adapter::AutoDetect(string file_name, int trim_tail) {
 
 string
 Adapter::getAdapterWithSeed(int seed, vector<neoReference> loadedReads, long records, int keylen,
-                            int trim_tail) {
+        int trim_tail) {
     // we have to shift last cycle for evaluation since it is so noisy, especially for Illumina data
     const int shiftTail = max(1, trim_tail);
     NucleotideTree *forwardTree = new NucleotideTree();
@@ -528,7 +541,7 @@ Adapter::getAdapterWithSeed(int seed, vector<neoReference> loadedReads, long rec
         auto now_it = loadedReads[it->recordsID];
         forwardTree->addSeq(
                 string(reinterpret_cast<const char *>(now_it.base + now_it.pseq + it->pos + keylen),
-                            now_it.lseq - keylen - shiftTail - it->pos));
+                    now_it.lseq - keylen - shiftTail - it->pos));
         string seq = string(reinterpret_cast<const char *>(now_it.base + now_it.pseq), it->pos);
         string rcseq = Reverse(seq);
         backwardTree->addSeq(rcseq);
@@ -815,8 +828,7 @@ Adapter::AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_lim
  * @return
  */
 
-int Adapter::TrimAdapter(neoReference &ref, string &adapter_seq, bool isR2) {
-    const int matchReq = 4;
+int Adapter::TrimAdapter(neoReference &ref, string &adapter_seq, bool isR2, int matchReq) {
     const int allowOneMismatchForEach = 8;
 
     int rlen = ref.lseq;
@@ -952,7 +964,7 @@ int Adapter::TrimAdapter(neoReference &ref, string &adapter_seq, bool isR2) {
 
         } else {
             string new_adapter_seq = string(reinterpret_cast<const char *>(ref.base + ref.pseq + pos),
-                                                      rlen - pos);
+                    rlen - pos);
             ref.lseq = pos;
             ref.lqual = pos;
             res_len = new_adapter_seq.length();
@@ -964,9 +976,7 @@ int Adapter::TrimAdapter(neoReference &ref, string &adapter_seq, bool isR2) {
 }
 
 
-int Adapter::TrimAdapter(neoReference &ref, string &adapter_seq, unordered_map<string, int> &mp,
-                         int adapter_len_lim, bool isR2) {
-    const int matchReq = 4;
+int Adapter::TrimAdapter(neoReference &ref, string &adapter_seq, unordered_map<string, int> &mp, int adapter_len_lim, bool isR2, int matchReq) {
     const int allowOneMismatchForEach = 8;
 
     int rlen = ref.lseq;
@@ -1109,7 +1119,7 @@ int Adapter::TrimAdapter(neoReference &ref, string &adapter_seq, unordered_map<s
 
         } else {
             string new_adapter_seq = string(reinterpret_cast<const char *>(ref.base + ref.pseq + pos),
-                                                      rlen - pos);
+                    rlen - pos);
             ref.lseq = pos;
             ref.lqual = pos;
             res_len = new_adapter_seq.length();
@@ -1128,6 +1138,45 @@ int Adapter::TrimAdapter(neoReference &ref, string &adapter_seq, unordered_map<s
 }
 
 
+int Adapter::TrimAdapters(neoReference &ref, vector<string> &adapter_seqs, bool isR2) {
+    int matchs = 4;
+    if(adapter_seqs.size() > 16)
+        matchs = 5;
+    if(adapter_seqs.size() > 256)
+        matchs = 6;
+    int res = 0;
+    for(int i = 0; i < adapter_seqs.size(); i++) {
+        res += TrimAdapter(ref, adapter_seqs[i], isR2, matchs);
+    }
+    return res;
+}
+
+int Adapter::TrimAdapters(neoReference &ref, vector<string> &adapter_seqs, unordered_map<string, int> &mp, int adapter_len_lim, bool isR2) {
+    int matchs = 4;
+    if(adapter_seqs.size() > 16)
+        matchs = 5;
+    if(adapter_seqs.size() > 256)
+        matchs = 6;
+    int res = 0;
+    char *bases0 = reinterpret_cast<char *>(ref.base + ref.pseq); 
+    int len0 = ref.lseq;
+    for(int i = 0; i < adapter_seqs.size(); i++) {
+        res += TrimAdapter(ref, adapter_seqs[i], isR2, matchs);
+    }
+    if(res) {
+        string seq0 = string(bases0, len0);
+        string new_adapter_seq = seq0.substr(ref.lseq, len0 - ref.lseq);
+        if (new_adapter_seq.length() >= adapter_len_lim) {
+            if (mp.count(new_adapter_seq) == 0) {
+                mp[new_adapter_seq] = 1;
+            } else {
+                mp[new_adapter_seq]++;
+            }
+        }
+    }
+    return res;
+}
+
 /**
  * @brief Trim adapter by overlap information
  * @param r1
@@ -1141,9 +1190,9 @@ int Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int ove
 
     if (overlap_len > 0 && offset < 0) {
         string adapter1 = string(reinterpret_cast<const char *>(r1.base + r1.pseq + overlap_len),
-                                           r1.lseq - overlap_len);
+                r1.lseq - overlap_len);
         string adapter2 = string(reinterpret_cast<const char *>(r2.base + r2.pseq + overlap_len),
-                                           r2.lseq - overlap_len);
+                r2.lseq - overlap_len);
         r1.lseq = overlap_len;
         r1.lqual = overlap_len;
         r2.lseq = overlap_len;
@@ -1155,15 +1204,15 @@ int Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int ove
 }
 
 int Adapter::TrimAdapter(neoReference &r1, neoReference &r2, int offset, int overlap_len,
-                         unordered_map<string, int> &mp1, unordered_map<string, int> &mp2,
-                         int adapter_len_lim) {
+        unordered_map<string, int> &mp1, unordered_map<string, int> &mp2,
+        int adapter_len_lim) {
     //    if(ov.diff<=5 && ov.overlapped && ov.offset < 0 && ol > r1->length()/3)
 
     if (overlap_len > 0 && offset < 0) {
         string adapter1 = string(reinterpret_cast<const char *>(r1.base + r1.pseq + overlap_len),
-                                           r1.lseq - overlap_len);
+                r1.lseq - overlap_len);
         string adapter2 = string(reinterpret_cast<const char *>(r2.base + r2.pseq + overlap_len),
-                                           r2.lseq - overlap_len);
+                r2.lseq - overlap_len);
         r1.lseq = overlap_len;
         r1.lqual = overlap_len;
         r2.lseq = overlap_len;

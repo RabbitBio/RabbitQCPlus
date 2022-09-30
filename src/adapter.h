@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstring>
 #include <iostream>
+#include <fstream>
 #include <map>
 #include <omp.h>
 #include <set>
@@ -43,6 +44,8 @@ public:
 
     static int EvalMaxLen(std::string file_name);
 
+    static std::vector<std::string> LoadAdaptersFromFasta(std::string file_name);
+
     static std::string
     getAdapterWithSeed(int seed, std::vector<neoReference> loadedReads, long records, int keylen, int trim_tail);
 
@@ -55,9 +58,15 @@ public:
     static int TrimAdapter(neoReference &r1, neoReference &r2, int offset, int overlap_len);
 
     static int TrimAdapter(neoReference &ref, std::string &adapter_seq, std::unordered_map<std::string, int> &mp,
+                           int adapter_len_lim, bool isR2, int matchReq = 4);
+
+    static int TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2 = false, int matchReq = 4);
+
+    static int TrimAdapters(neoReference &ref, std::vector<std::string> &adapter_seqs, std::unordered_map<std::string, int> &mp,
                            int adapter_len_lim, bool isR2);
 
-    static int TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2 = false);
+    static int TrimAdapters(neoReference &ref, std::vector<std::string> &adapter_seqs, bool isR2 = false);
+
 
     static int CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap_res, bool isPhred64);
 };
