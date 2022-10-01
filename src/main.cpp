@@ -143,6 +143,9 @@ int main(int argc, char **argv) {
     int in_module = 0;
     if (in_gz) in_module |= 1;
     if (out_gz) in_module |= 2;
+   
+    if(cmd_info.in_file_name2_.length() == 0)cmd_info.thread_number_ = min(32, cmd_info.thread_number_);
+    else cmd_info.thread_number_ = min(cmd_info.thread_number_, 64);
 
     int t1, t2, t3;
     if (is_pe) {
