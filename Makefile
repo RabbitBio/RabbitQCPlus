@@ -92,6 +92,8 @@ endif
 
 $(info            )
 
+InstructSet := -mssse3
+
 DIR_INC := ./inc
 DIR_SRC := ./src
 DIR_OBJ := ./obj
@@ -114,7 +116,8 @@ TARGET := RabbitQCPlus
 BIN_TARGET := ${TARGET}
 
 
-CXX = g++
+#CXX = g++
+CXX = clang++
 
 # you can add -DUSE_IGZIP to CXXFLAGS and -lisal to LIBS, to use igzip by default
 
@@ -128,7 +131,9 @@ CXXFLAGS := $(InstructSet)
 CXXFLAGS += -DNDUBUG -std=c++11 -I./ -I./common -march=native  -g -O3  -w -fopenmp
 
 
-CXX2 = gcc
+#CXX2 = gcc
+CXX2 = clang
+
 CXXFLAGS2 := -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
 
 LIBS := -lz -lpthread  -fopenmp  -lrt 
