@@ -5,9 +5,16 @@
 #include "seqc.h"
 #include "th_ass.h"
 #include <iostream>
+#include <fstream>
 using namespace std;
-int main(int argc, char **argv) {
 
+inline bool exists_file (const std::string& name) {
+    ifstream f(name.c_str());
+    return f.good();
+}
+
+int main(int argc, char **argv) {
+    srand(time(0));
     CmdInfo cmd_info;
     CLI::App app("RabbitQCPlus");
     app.add_option("-i,--inFile1", cmd_info.in_file_name1_, "input fastq name 1");
@@ -18,6 +25,7 @@ int main(int argc, char **argv) {
 
     app.add_option("--compressLevel", cmd_info.compression_level_, "output file compression level (1 - 9), default is 4");
 
+    app.add_flag("--overWrite", cmd_info.overWrite_, "overwrite out file if already exists.");
     app.add_flag("--phred64", cmd_info.isPhred64_, "input is using phred64 scoring, default is phred33");
     app.add_flag("--stdin", cmd_info.isStdin_,
             "input from stdin, or -i /dev/stdin, only for se data or interleaved pe data(which means use --interleavedIn)");
@@ -64,7 +72,7 @@ int main(int argc, char **argv) {
 
 
     //TGS
-    app.add_flag("--TGS", cmd_info.is_TGS_, "process third generation sequencing (TGS) data (only for se data), default is off");
+    app.add_flag("--TGS", cmd_info.is_TGS_, "process third generation sequencing (TGS) data (only for se data, does not support trimming and will not produce output files), default is off");
 
 
     //overrepresentation
@@ -116,6 +124,27 @@ int main(int argc, char **argv) {
         return 0;
     }
 
+    if(cmd_info.is_TGS_){
+        if(cmd_info.in_file_name2_.length() > 0){
+            printf("WARNING : the TGS module does not support pe inputs, so ignore the -I parameter.\n");
+            cmd_info.in_file_name2_ = "";
+        }
+        if(cmd_info.out_file_name1_.length() != 0 || cmd_info.out_file_name2_.length() != 0){
+            printf("WARNING : the TGS module does not support trimming and will not produce output files, so ignore the -o and -O parameter.\n");
+            cmd_info.out_file_name1_ = "";
+            cmd_info.out_file_name2_ = "";
+        }
+    }
+
+    if(cmd_info.in_file_name2_.length() > 0 && cmd_info.out_file_name2_.length() == 0 && cmd_info.interleaved_out_ == 0){
+        error_exit("when interleaved_out module is off, two input files can not correspond to one output.\n");
+    }
+
+
+    if(cmd_info.out_file_name2_.length() > 0 && cmd_info.in_file_name2_.length() == 0 && cmd_info.interleaved_in_ == 0){
+        error_exit("when interleaved_in module is off, one input file can not correspond to two outputs.\n");
+    }
+
 
     int is_pe = cmd_info.in_file_name2_.length() != 0;
 
@@ -143,7 +172,7 @@ int main(int argc, char **argv) {
     int in_module = 0;
     if (in_gz) in_module |= 1;
     if (out_gz) in_module |= 2;
-   
+
     if(cmd_info.in_file_name2_.length() == 0)cmd_info.thread_number_ = min(32, cmd_info.thread_number_);
     else cmd_info.thread_number_ = min(cmd_info.thread_number_, 64);
 
@@ -232,14 +261,80 @@ int main(int argc, char **argv) {
     if (cmd_info.isStdout_) cmd_info.out_file_name1_ = "/dev/stdout";
     if (cmd_info.in_file_name2_.length()) printf("inFile2 is %s\n", cmd_info.in_file_name2_.c_str());
     if (cmd_info.out_file_name1_.length()) {
-        remove(cmd_info.out_file_name1_.c_str());
+        bool res = exists_file(cmd_info.out_file_name1_);
+        if(res){
+            string tmps;
+            if(cmd_info.overWrite_){
+                tmps = "y";
+            }else{
+                char tmp[100];
+                printf("\n");
+                printf("%s already exists, overwrite it or not ? (y/n)\n", cmd_info.out_file_name1_.c_str());
+                scanf("%s", tmp);
+                tmps = string(tmp);
+                while(tmps != "y" && tmps != "n"){
+                    printf("please input y or n\n");
+                    scanf("%s", tmp);
+                    tmps = string(tmp);
+                }
+            }
+            if(tmps == "y"){
+                remove(cmd_info.out_file_name1_.c_str());
+            } else if(tmps == "n"){
+                return 0;
+            } else{
+                assert(0);
+            }
+        }
         printf("outFile1 is %s\n", cmd_info.out_file_name1_.c_str());
     }
     if (cmd_info.out_file_name2_.length()) {
-        remove(cmd_info.out_file_name2_.c_str());
+        bool res = exists_file(cmd_info.out_file_name2_);
+        if(res){
+            string tmps;
+            if(cmd_info.overWrite_){
+                tmps = "y";
+            }else{
+                char tmp[100];
+                printf("\n");
+                printf("%s already exists, overwrite it or not ? (y/n)\n", cmd_info.out_file_name2_.c_str());
+                scanf("%s", tmp);
+                tmps = string(tmp);
+                while(tmps != "y" && tmps != "n"){
+                    printf("please input y or n\n");
+                    scanf("%s", tmp);
+                    tmps = string(tmp);
+                }
+            }
+            if(tmps == "y"){
+                remove(cmd_info.out_file_name2_.c_str());
+            } else if(tmps == "n"){
+                return 0;
+            } else{
+                assert(0);
+            }
+        }
         printf("outFile2 is %s\n", cmd_info.out_file_name2_.c_str());
     }
 
+    string tmp_out1 = cmd_info.out_file_name1_;
+    string tmp_out2 = cmd_info.out_file_name2_;
+
+    if(out_gz){
+        //printf("===out1 is %s\n", cmd_info.out_file_name1_.c_str());
+        if(cmd_info.out_file_name2_.length() > 0){
+            //printf("===out2 is %s\n", cmd_info.out_file_name2_.c_str());
+        }
+        //printf("now change out file name...\n");
+        cmd_info.out_file_name1_ = "tmp_" + to_string(rand()) + tmp_out1;
+        if(cmd_info.out_file_name2_.length() > 0){
+            cmd_info.out_file_name2_ = "tmp_" + to_string(rand()) + tmp_out2;
+        }
+        //printf("===out1 is %s\n", cmd_info.out_file_name1_.c_str());
+        if(cmd_info.out_file_name2_.length() > 0){
+            //printf("===out2 is %s\n", cmd_info.out_file_name2_.c_str());
+        }
+    }
 
     if (cmd_info.no_trim_adapter_) cmd_info.trim_adapter_ = false;
     ASSERT(cmd_info.no_trim_adapter_ != cmd_info.trim_adapter_);
@@ -474,6 +569,20 @@ int main(int argc, char **argv) {
             se_qc->ProcessSeFastq();
         }
         delete se_qc;
+    }
+    if(out_gz){
+        string out_name1 = cmd_info.out_file_name1_;
+        out_name1 = out_name1.substr(0, out_name1.find(".gz"));
+        remove(out_name1.c_str());
+        if(cmd_info.out_file_name2_.length() > 0){
+            string out_name2 = cmd_info.out_file_name2_;
+            out_name2 = out_name2.substr(0, out_name2.find(".gz"));
+            remove(out_name2.c_str());
+        }
+        rename(cmd_info.out_file_name1_.c_str(), tmp_out1.c_str());
+        if(cmd_info.out_file_name2_.length() > 0){
+            rename(cmd_info.out_file_name2_.c_str(), tmp_out2.c_str());
+        }
     }
     printf("cmd is %s\n", command.c_str());
     printf("total cost %.5fs\n", GetTime() - t_start);
