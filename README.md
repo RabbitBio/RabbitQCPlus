@@ -94,4 +94,4 @@ When using default parameters, RabbitQCPlus performs the same or more comprehens
 
 # Visual output
 
-We visualized the information before and after data filtering, and [here](https://github.com/RabbitBio/RabbitQCPlus/blob/master/example.html) is an example.
+We visualized the information before and after data filtering, and [here](https://yanlifeng.github.io/someTest/example.html) is an example.
