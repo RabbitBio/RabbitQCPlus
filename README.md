@@ -1,4 +1,4 @@
-## ![image-20211220153709911](./RabbitQCPlus.png)
+## ![logo](./pics/RabbitQCPlus.png)
 
 # RabbitQCPlus Features
 
@@ -86,8 +86,8 @@ When using default parameters, RabbitQCPlus performs the same or more comprehens
 
 ## Plain FASTQ files
 
-<img src="/Users/ylf9811/Library/Application Support/typora-user-images/image-20221021153028069.png" alt="image-20221021153028069" style="zoom:50%;" />
+<img src="pics/plain.png" alt="plain" style="zoom:50%;" />
 
 ## Gzip-compressed FASTQ files
 
-<img src="/Users/ylf9811/Library/Application Support/typora-user-images/image-20221021153041098.png" alt="image-20221021153041098" style="zoom:50%;" />
+<img src="pics/gzip.png" alt="gzip" style="zoom:50%;" />
