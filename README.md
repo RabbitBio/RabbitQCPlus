@@ -91,3 +91,7 @@ When using default parameters, RabbitQCPlus performs the same or more comprehens
 ## Gzip-compressed FASTQ files
 
 <img src="pics/gzip.png" alt="gzip" style="zoom:50%;" />
+
+# Visual output
+
+We visualized the information before and after data filtering, and [here](https://github.com/RabbitBio/RabbitQCPlus/blob/master/example.html) is an example.
