@@ -317,8 +317,10 @@ int main(int argc, char **argv) {
         printf("outFile2 is %s\n", cmd_info.out_file_name2_.c_str());
     }
 
-    string tmp_out1 = cmd_info.out_file_name1_;
-    string tmp_out2 = cmd_info.out_file_name2_;
+    string prefix_name1;
+    string prefix_name2;
+    string suffix_name1;
+    string suffix_name2;
 
     if(out_gz){
         //printf("===out1 is %s\n", cmd_info.out_file_name1_.c_str());
@@ -326,9 +328,31 @@ int main(int argc, char **argv) {
             //printf("===out2 is %s\n", cmd_info.out_file_name2_.c_str());
         }
         //printf("now change out file name...\n");
-        cmd_info.out_file_name1_ = "tmp_" + to_string(rand()) + tmp_out1;
+        int real_begin1 = 0;
+        for(int i = cmd_info.out_file_name1_.length() - 1; i >= 0; i--){
+            if(cmd_info.out_file_name1_[i] == '/'){
+                real_begin1 = i + 1;
+                break;
+            }
+        }
+        prefix_name1 = cmd_info.out_file_name1_.substr(0, real_begin1);
+        suffix_name1 = cmd_info.out_file_name1_.substr(real_begin1, cmd_info.out_file_name1_.length() - real_begin1);
+        //printf("prefix_name1 %s\n", prefix_name1.c_str());
+        //printf("suffix_name1 %s\n", suffix_name1.c_str());
+        cmd_info.out_file_name1_ = prefix_name1 + "tmp_" + to_string(rand()) + suffix_name1;
         if(cmd_info.out_file_name2_.length() > 0){
-            cmd_info.out_file_name2_ = "tmp_" + to_string(rand()) + tmp_out2;
+            int real_begin2 = 0;
+            for(int i = cmd_info.out_file_name2_.length() - 1; i >= 0; i--){
+                if(cmd_info.out_file_name2_[i] == '/'){
+                    real_begin2 = i + 1;
+                    break;
+                }
+            }
+            prefix_name2 = cmd_info.out_file_name2_.substr(0, real_begin2);
+            suffix_name2 = cmd_info.out_file_name2_.substr(real_begin2, cmd_info.out_file_name2_.length() - real_begin2);
+            //printf("prefix_name2 %s\n", prefix_name2.c_str());
+            //printf("suffix_name2 %s\n", suffix_name2.c_str());
+            cmd_info.out_file_name2_ = prefix_name2 + "tmp_" + to_string(rand()) + suffix_name2;
         }
         //printf("===out1 is %s\n", cmd_info.out_file_name1_.c_str());
         if(cmd_info.out_file_name2_.length() > 0){
@@ -579,9 +603,11 @@ int main(int argc, char **argv) {
             out_name2 = out_name2.substr(0, out_name2.find(".gz"));
             remove(out_name2.c_str());
         }
-        rename(cmd_info.out_file_name1_.c_str(), tmp_out1.c_str());
+        string init_name1 = prefix_name1 + suffix_name1;
+        rename(cmd_info.out_file_name1_.c_str(), init_name1.c_str());
         if(cmd_info.out_file_name2_.length() > 0){
-            rename(cmd_info.out_file_name2_.c_str(), tmp_out2.c_str());
+            string init_name2 = prefix_name2 + suffix_name2;
+            rename(cmd_info.out_file_name2_.c_str(), init_name2.c_str());
         }
     }
     printf("cmd is %s\n", command.c_str());
