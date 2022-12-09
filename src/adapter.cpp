@@ -175,10 +175,8 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
         seqlen = max(seqlen, int(item.lseq));
     }
     eva_len = seqlen;
-    int threadNumber = omp_get_num_procs();
 
 
-    //#pragma omp parallel for num_threads(threadNumber)
     for (int it = 0; it < loadedReads.size(); it++) {
         auto item = loadedReads[it];
         int rlen = item.lseq;
@@ -258,7 +256,6 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
     t0 = GetTime();
 #endif
     // remove substrings
-#pragma omp parallel for num_threads(threadNumber)
     for (int i = 0; i < hot_s.size(); i++) {
         auto item = hot_s[i];
         auto seq = item.first;
@@ -273,7 +270,6 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
             }
         }
         if (!isSubString) {
-#pragma omp critical
             {
                 hot_seqs.push_back(seq);
             }

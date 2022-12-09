@@ -47,8 +47,8 @@
  */
 
 #include <climits>
-#include <pmmintrin.h>
-#include <tmmintrin.h>
+//#include <pmmintrin.h>
+//#include <tmmintrin.h>
 
 #include <mutex>
 #include <condition_variable>
@@ -62,8 +62,8 @@
 #include "decompressor.hpp"
 
 #include "lib/libdeflatePugz.h"
-#include "immintrin.h"
-#include "emmintrin.h"
+//#include "immintrin.h"
+//#include "emmintrin.h"
 
 
 /** The main class for the deflate decompression
@@ -429,9 +429,10 @@ namespace details {
             return repeat_t<N - 1, FunctionType, decltype(function())>::call(function);
         }
 
-    using vec_t = __m128i;
-    static constexpr size_t
-        vec_size = sizeof(vec_t);
+    //using vec_t = __m128i;
+    using vec_t = uint8_t[16];
+    static constexpr size_t vec_size = sizeof(vec_t);
+/*
 
     /// Copy size bytes of cache lines without loading the destination in caches
     static inline void *
@@ -453,13 +454,14 @@ namespace details {
 
             return _dst;
         }
+        */
 
     /// Copy sizes bytes from _dst - offset to offset, if offset < size, bytes are repeated.
     /// Size is rounded up to the next multiple of vec_size (16 bytes currently)
     static inline void *
         overlap_memcpy(void *_dst, size_t offset, size_t size) {
-            static constexpr __v16qi
-                suffle_arr[16] = {
+            static constexpr uint8_t
+                suffle_arr[16][16] = {
                     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0,  0},
                     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  0,  0,  0,  0,  0},
                     {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,  1,  0,  1,  0,  1},
@@ -488,8 +490,15 @@ namespace details {
             if (offset < vec_size) {
                 vec_t repeats;
                 memcpy(&repeats, src, vec_size);
-                repeats = _mm_shuffle_epi8(repeats, reinterpret_cast<vec_t>(suffle_arr[offset]));
-                memcpy(dst, &repeats, vec_size);
+                for(int _ii = 0; _ii < 16; _ii++){
+                    if(suffle_arr[offset][_ii] == -1){
+                        dst[_ii] = 0;
+                    } else {
+                        dst[_ii] = repeats[suffle_arr[offset][_ii] & 15];
+                    }
+                }
+                //repeats = _mm_shuffle_epi8(repeats, reinterpret_cast<vec_t>(suffle_arr[offset]));
+                //memcpy(dst, &repeats, vec_size);
 
                 src = dst - delta[offset];
                 dst += vec_size;
@@ -744,7 +753,8 @@ class SinkBuffer : public span<char_t> {
             char_t *dst = this->begin();
             this->pop_front(sz);
 
-            details::stream_memcpy(dst, data.begin(), sz * sizeof(char_t));
+            //details::stream_memcpy(dst, data.begin(), sz * sizeof(char_t));
+            memcpy(dst, data.begin(), sz * sizeof(char_t));
             return sz;
         }
 
