@@ -51,6 +51,7 @@ Version: 2.00
 #include <string>
 #include <sys/time.h>
 
+#define slave_num 64
 
 inline double GetTime() {
     struct timeval tv;

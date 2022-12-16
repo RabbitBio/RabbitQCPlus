@@ -48,7 +48,7 @@ private:
     void ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
 
-    void ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastq_data_pool,
+    void ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataPool *fastq_data_pool,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
 
     void WriteSeFastqTask();

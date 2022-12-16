@@ -2,7 +2,19 @@
 // Created by ylf9811 on 2021/7/6.
 //
 #include "seqc.h"
+#include "tuple_spawn.hpp"
 using namespace std;
+
+struct qc_data {
+    ThreadInfo **thread_info_;
+    CmdInfo *cmd_info_;
+    vector <neoReference> *data_;
+    vector <neoReference> *pass_data_;
+    int *cnt;
+};
+
+
+extern void slave_tgsfunc(qc_data *para);
 
 /**
  * @brief Construct function
@@ -18,7 +30,7 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != string::npos;
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != string::npos;
     if (cmd_info1->write_data_) {
-        out_queue_ = new moodycamel::ConcurrentQueue<pair<char *, int>>;
+        out_queue_ = new moodycamel::ConcurrentQueue<pair < char * , int>>;
         queueNumNow = 0;
         queueSizeLim = 1 << 5;
         if (out_is_zip_) {
@@ -56,10 +68,11 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
         umier_ = new Umier(cmd_info1);
     }
     if (cmd_info1->use_pugz_) {
-        pugzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 10);
+        pugzQueue = new moodycamel::ReaderWriterQueue<pair < char * , int>>
+        (1 << 10);
     }
     if (cmd_info1->use_pigz_) {
-        pigzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>;
+        pigzQueue = new moodycamel::ReaderWriterQueue<pair < char * , int>>;
         pigzLast.first = new char[1 << 24];
         pigzLast.second = 0;
     }
@@ -149,99 +162,117 @@ void SeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
     out_data[pos++] = '\n';
 }
 
-/**
- * @brief get fastq data chunks from the data queue and do QC for them
- * @param thread_info : thread information
- * @param fastq_data_pool :a fastq data pool, it will be used to release data chunk
- * @param dq : data queue
- */
-void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastq_data_pool,
+void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataPool *fastq_data_pool,
                                rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;
-
+    qc_data para;
+    para.cnt = new int[slave_num];
+    for(int i = 0; i < slave_num; i++) para.cnt[i] = 0;
+    para.cmd_info_ = cmd_info_;
+    para.thread_info_ = thread_infos;
     if (cmd_info_->is_TGS_) {
+        double t0 = GetTime();
+        double tsum = 0;
+        athread_init();
         while (dq.Pop(id, fqdatachunk)) {
-            vector<neoReference> data;
+            double tt0 = GetTime();
+            vector <neoReference> data;
             rabbit::fq::chunkFormat(fqdatachunk, data, true);
-            for (auto item: data) {
-                thread_info->TGS_state_->tgsStatRead(item, cmd_info_->isPhred64_);
-            }
+            //printf("format cost %lf\n", GetTime() - tt0);
+            tt0 = GetTime();
+            para.data_ = &data;
+            athread_spawn_tupled(slave_tgsfunc, &para);
+            athread_join();
+            //printf("slave cost %lf\n", GetTime() - tt0);
+            tsum += GetTime() - tt0;
             fastq_data_pool->Release(fqdatachunk);
         }
+        athread_halt();
+        //
+        int ttsum = 0;
+        for(int i = 0; i < slave_num; i++) ttsum += para.cnt[i];
+        printf("ttsum %d\n", ttsum);
+        printf("TGS tot cost %lf\n", GetTime() - t0);
+        printf("TGS slave cost %lf\n", tsum);
     } else {
+        int sum_ = 0;
         while (dq.Pop(id, fqdatachunk)) {
-            vector<neoReference> data;
-            vector<neoReference> pass_data;
+            vector <neoReference> data;
+            vector <neoReference> pass_data;
             rabbit::fq::chunkFormat(fqdatachunk, data, true);
             int out_len = 0;
+            sum_ += data.size();
+            printf("=== %d\n", sum_);
             for (auto item: data) {
-                thread_info->pre_state1_->StateInfo(item);
-                if (cmd_info_->state_duplicate_) {
-                    duplicate_->statRead(item);
-                }
+                //thread_info->pre_state1_->StateInfo(item);
+                //if (cmd_info_->state_duplicate_) {
+                //    duplicate_->statRead(item);
+                //}
 
-                if (cmd_info_->add_umi_) {
-                    umier_->ProcessSe(item);
-                }
-                bool trim_res = filter_->TrimSeq(item, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
+                //if (cmd_info_->add_umi_) {
+                //    umier_->ProcessSe(item);
+                //}
+                //bool trim_res = filter_->TrimSeq(item, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
 
-                if (trim_res && cmd_info_->trim_polyg_) {
-                    PolyX::trimPolyG(item, cmd_info_->trim_poly_len_);
-                }
+                //if (trim_res && cmd_info_->trim_polyg_) {
+                //    PolyX::trimPolyG(item, cmd_info_->trim_poly_len_);
+                //}
 
-                if (trim_res && cmd_info_->trim_polyx_) {
-                    PolyX::trimPolyX(item, cmd_info_->trim_poly_len_);
-                }
+                //if (trim_res && cmd_info_->trim_polyx_) {
+                //    PolyX::trimPolyX(item, cmd_info_->trim_poly_len_);
+                //}
 
-                if (trim_res && cmd_info_->trim_adapter_) {
-                    int res = 0;
-                    bool is_trimmed = false;
-                    if(cmd_info_->detect_adapter1_) {
-                        if (cmd_info_->print_what_trimmed_) {
-                            res = Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_,
-                                    thread_info->aft_state1_->adapter_map_, cmd_info_->adapter_len_lim_, false);
-                        } else {
-                            res = Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);
-                        }
-                        if (res) {
-                            is_trimmed = true;
-                            thread_info->aft_state1_->AddTrimAdapter();
-                            thread_info->aft_state1_->AddTrimAdapterBase(res);
-                        }
-                    }
-                    if(cmd_info_->adapter_from_fasta_.size() > 0) {
-                        if (cmd_info_->print_what_trimmed_) {
-                            res = Adapter::TrimAdapters(item, cmd_info_->adapter_from_fasta_,
-                                    thread_info->aft_state1_->adapter_map_, cmd_info_->adapter_len_lim_, false);
-                        } else {
-                            res = Adapter::TrimAdapters(item, cmd_info_->adapter_from_fasta_, false);
-                        }
-                        if (res) {
-                            if(!is_trimmed) thread_info->aft_state1_->AddTrimAdapter();
-                            thread_info->aft_state1_->AddTrimAdapterBase(res);
-                        }
+                //if (trim_res && cmd_info_->trim_adapter_) {
+                //    int res = 0;
+                //    bool is_trimmed = false;
+                //    if (cmd_info_->detect_adapter1_) {
+                //        if (cmd_info_->print_what_trimmed_) {
+                //            res = Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_,
+                //                                       thread_info->aft_state1_->adapter_map_,
+                //                                       cmd_info_->adapter_len_lim_, false);
+                //        } else {
+                //            res = Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);
+                //        }
+                //        if (res) {
+                //            is_trimmed = true;
+                //            thread_info->aft_state1_->AddTrimAdapter();
+                //            thread_info->aft_state1_->AddTrimAdapterBase(res);
+                //        }
+                //    }
+                //    if (cmd_info_->adapter_from_fasta_.size() > 0) {
+                //        if (cmd_info_->print_what_trimmed_) {
+                //            res = Adapter::TrimAdapters(item, cmd_info_->adapter_from_fasta_,
+                //                                        thread_info->aft_state1_->adapter_map_,
+                //                                        cmd_info_->adapter_len_lim_, false);
+                //        } else {
+                //            res = Adapter::TrimAdapters(item, cmd_info_->adapter_from_fasta_, false);
+                //        }
+                //        if (res) {
+                //            if (!is_trimmed) thread_info->aft_state1_->AddTrimAdapter();
+                //            thread_info->aft_state1_->AddTrimAdapterBase(res);
+                //        }
 
-                    }
-                }
-                
-                int filter_res = filter_->ReadFiltering(item, trim_res, cmd_info_->isPhred64_);
-                if (filter_res == 0) {
-                    thread_info->aft_state1_->StateInfo(item);
-                    thread_info->aft_state1_->AddPassReads();
-                    if (cmd_info_->write_data_) {
-                        pass_data.push_back(item);
-                        out_len += item.lname + item.lseq + item.lstrand + item.lqual + 4;
-                    }
-                } else if (filter_res == 1) {
-                    thread_info->aft_state1_->AddFailN();
-                } else if (filter_res == 2) {
-                    thread_info->aft_state1_->AddFailShort();
-                } else if (filter_res == 3) {
-                    thread_info->aft_state1_->AddFailLong();
-                } else if (filter_res == 4) {
-                    thread_info->aft_state1_->AddFailLowq();
-                }
+                //    }
+                //}
+
+                //int filter_res = filter_->ReadFiltering(item, trim_res, cmd_info_->isPhred64_);
+                //if (filter_res == 0) {
+                //    thread_info->aft_state1_->StateInfo(item);
+                //    thread_info->aft_state1_->AddPassReads();
+                //    if (cmd_info_->write_data_) {
+                //        pass_data.push_back(item);
+                //        out_len += item.lname + item.lseq + item.lstrand + item.lqual + 4;
+                //    }
+                //} else if (filter_res == 1) {
+                //    thread_info->aft_state1_->AddFailN();
+                //} else if (filter_res == 2) {
+                //    thread_info->aft_state1_->AddFailShort();
+                //} else if (filter_res == 3) {
+                //    thread_info->aft_state1_->AddFailLong();
+                //} else if (filter_res == 4) {
+                //    thread_info->aft_state1_->AddFailLowq();
+                //}
             }
 
             if (cmd_info_->write_data_) {
@@ -259,7 +290,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 #endif
                         usleep(100);
                     }
-                    
+
                     out_queue_->enqueue(make_pair(out_data, out_len));
                     queueNumNow++;
                     //mylock.unlock();
@@ -392,7 +423,6 @@ void SeQc::PigzTask() {
     infos[4][tmp_level.length()] = '\0';
 
 
-
     infos[5] = "-f";
     infos[6] = "-b";
     infos[7] = "4096";
@@ -428,8 +458,8 @@ void SeQc::ProcessSeFastq() {
     auto *fastqPool = new rabbit::fq::FastqDataPool(32, 1 << 22);
     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(32, 1);
 
-    auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
-    for (int t = 0; t < cmd_info_->thread_number_; t++) {
+    auto **p_thread_info = new ThreadInfo *[slave_num];
+    for (int t = 0; t < slave_num; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, false);
     }
     thread *write_thread;
@@ -442,12 +472,9 @@ void SeQc::ProcessSeFastq() {
     }
 
     thread producer(
-            bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, ref(queue1)));
-    auto **threads = new thread *[cmd_info_->thread_number_];
-    for (int t = 0; t < cmd_info_->thread_number_; t++) {
-        threads[t] = new thread(
-                bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info[t], fastqPool, ref(queue1)));
-    }
+    bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, ref(queue1)));
+    thread consumer(
+    bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info, fastqPool, ref(queue1)));
     if (cmd_info_->use_pugz_) {
         pugzer->join();
     }
@@ -456,9 +483,7 @@ void SeQc::ProcessSeFastq() {
 #ifdef Verbose
     printf("producer cost %.4f\n", GetTime() - t0);
 #endif
-    for (int t = 0; t < cmd_info_->thread_number_; t++) {
-        threads[t]->join();
-    }
+    consumer.join();
 #ifdef Verbose
     printf("consumer cost %.4f\n", GetTime() - t0);
 #endif
@@ -473,10 +498,10 @@ void SeQc::ProcessSeFastq() {
     printf("all thrad done\n");
     printf("now merge thread info\n");
 #endif
-    vector<State *> pre_vec_state;
-    vector<State *> aft_vec_state;
+    vector < State * > pre_vec_state;
+    vector < State * > aft_vec_state;
 
-    for (int t = 0; t < cmd_info_->thread_number_; t++) {
+    for (int t = 0; t < slave_num; t++) {
         pre_vec_state.push_back(p_thread_info[t]->pre_state1_);
         aft_vec_state.push_back(p_thread_info[t]->aft_state1_);
     }
@@ -569,12 +594,10 @@ void SeQc::ProcessSeFastq() {
     delete fastqPool;
 
 
-    for (int t = 0; t < cmd_info_->thread_number_; t++) {
-        delete threads[t];
+    for (int t = 0; t < slave_num; t++) {
         delete p_thread_info[t];
     }
 
-    delete[] threads;
     delete[] p_thread_info;
     if (cmd_info_->write_data_) {
         delete write_thread;
@@ -592,33 +615,28 @@ void SeQc::ProcessSeTGS() {
     auto *fastqPool = new rabbit::fq::FastqDataPool(32, 1 << 22);
     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(32, 1);
 
-    auto **p_thread_info = new ThreadInfo *[cmd_info_->thread_number_];
-    for (int t = 0; t < cmd_info_->thread_number_; t++) {
+    auto **p_thread_info = new ThreadInfo *[slave_num];
+    for (int t = 0; t < slave_num; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, false);
     }
     thread producer(
-            bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, ref(queue1)));
-    auto **threads = new thread *[cmd_info_->thread_number_];
-    for (int t = 0; t < cmd_info_->thread_number_; t++) {
-        threads[t] = new thread(
-                bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info[t], fastqPool, ref(queue1)));
-    }
+    bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, ref(queue1)));
+    thread consumer(
+    bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info, fastqPool, ref(queue1)));
 
     if (cmd_info_->use_pugz_) {
         pugzer->join();
     }
 
     producer.join();
-    for (int t = 0; t < cmd_info_->thread_number_; t++) {
-        threads[t]->join();
-    }
+    consumer.join();
 #ifdef Verbose
     printf("all thrad done\n");
     printf("now merge thread info\n");
 #endif
-    vector<TGSStats *> vec_state;
+    vector <TGSStats*> vec_state;
 
-    for (int t = 0; t < cmd_info_->thread_number_; t++) {
+    for (int t = 0; t < slave_num; t++) {
         vec_state.push_back(p_thread_info[t]->TGS_state_);
     }
     auto mer_state = TGSStats::merge(vec_state);
@@ -637,11 +655,11 @@ void SeQc::ProcessSeTGS() {
     Repoter::ReportHtmlTGS(srr_name + "_RabbitQCPlus.html", command, mer_state, cmd_info_->in_file_name1_);
 
     delete fastqPool;
-    for (int t = 0; t < cmd_info_->thread_number_; t++) {
-        delete threads[t];
+    //printf("111\n");
+    for (int t = 0; t < slave_num; t++) {
+        //printf("11 %d\n", t);
         delete p_thread_info[t];
     }
-
-    delete[] threads;
+    //printf("111\n");
     delete[] p_thread_info;
 }

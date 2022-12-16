@@ -16,7 +16,7 @@
 #endif
 
 #define MODB 20
-#define gcMax 100000
+#define gcMax 100
 using namespace std;
 
 
@@ -105,8 +105,6 @@ State::~State() {
     }
 }
 
-#define BB 233ll
-#define MM 1000000000000000003ll
 
 void State::HashInsert(const char *seq, int len, int eva_len) {
     uint64_t now = NT64(seq, len);

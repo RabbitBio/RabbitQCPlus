@@ -5,14 +5,6 @@
 #ifndef RERABBITQC_TGSSTATE_H
 #define RERABBITQC_TGSSTATE_H
 
-#include <cstring>
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <unordered_map>
-#include <vector>
-
-#include "Reference.h"
 
 class TGSStats {
 public:
@@ -38,6 +30,7 @@ public:
 
     int base2num(std::string base);
 
+//private:
 public:
     int mMinlen;
 
