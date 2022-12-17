@@ -59,6 +59,7 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
             out_stream_.open(cmd_info1->out_file_name1_);
         }
     }
+
     duplicate_ = NULL;
     if (cmd_info1->state_duplicate_) {
         duplicate_ = new Duplicate(cmd_info1);
@@ -69,7 +70,7 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     }
     if (cmd_info1->use_pugz_) {
         pugzQueue = new moodycamel::ReaderWriterQueue<pair < char * , int>>
-        (1 << 10);
+            (1 << 10);
     }
     if (cmd_info1->use_pigz_) {
         pigzQueue = new moodycamel::ReaderWriterQueue<pair < char * , int>>;
@@ -104,7 +105,7 @@ SeQc::~SeQc() {
  */
 
 void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_data_pool,
-                               rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
 
     rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize = 1 << 20;
@@ -143,9 +144,9 @@ void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_dat
 
 string SeQc::Read2String(neoReference &ref) {
     return string((char *) ref.base + ref.pname, ref.lname) + "\n" +
-           string((char *) ref.base + ref.pseq, ref.lseq) + "\n" +
-           string((char *) ref.base + ref.pstrand, ref.lstrand) + "\n" +
-           string((char *) ref.base + ref.pqual, ref.lqual) + "\n";
+        string((char *) ref.base + ref.pseq, ref.lseq) + "\n" +
+        string((char *) ref.base + ref.pstrand, ref.lstrand) + "\n" +
+        string((char *) ref.base + ref.pqual, ref.lqual) + "\n";
 }
 
 void SeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
@@ -164,7 +165,7 @@ void SeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
 }
 
 void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataPool *fastq_data_pool,
-                               rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;
     qc_data para;
@@ -436,6 +437,7 @@ void SeQc::PigzTask() {
 }
 
 
+
 /**
  * @brief do QC for single-end data
  */
@@ -468,9 +470,9 @@ void SeQc::ProcessSeFastq() {
     }
 
     thread producer(
-    bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, ref(queue1)));
+            bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, ref(queue1)));
     thread consumer(
-    bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info, fastqPool, ref(queue1)));
+            bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info, fastqPool, ref(queue1)));
     if (cmd_info_->use_pugz_) {
         pugzer->join();
     }
@@ -544,7 +546,7 @@ void SeQc::ProcessSeFastq() {
         }
         ofs.close();
         printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n", srr_name.c_str(),
-               cnt1, out_name.c_str());
+                cnt1, out_name.c_str());
 
 
         out_name = "se_" + srr_name + "_after_ORP_sequences.txt";
@@ -559,7 +561,7 @@ void SeQc::ProcessSeFastq() {
         }
         ofs.close();
         printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name.c_str(),
-               cnt2, out_name.c_str());
+                cnt2, out_name.c_str());
         printf("\n");
     }
 
@@ -581,7 +583,7 @@ void SeQc::ProcessSeFastq() {
     string srr_name = cmd_info_->in_file_name1_;
     srr_name = PaseFileName(srr_name);
     Repoter::ReportHtmlSe(srr_name + "_RabbitQCPlus.html", pre_state, aft_state, cmd_info_->in_file_name1_,
-                          dupRate * 100.0);
+            dupRate * 100.0);
 
 
     delete pre_state;
@@ -600,38 +602,58 @@ void SeQc::ProcessSeFastq() {
     }
 }
 
+
+void SeQc::TGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool, ThreadInfo **thread_infos){
+    rabbit::fq::FastqFileReader *fqFileReader;
+    rabbit::uint32 tmpSize = 1 << 20;
+    if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
+    fqFileReader = new rabbit::fq::FastqFileReader(file, *fastq_data_pool, "", in_is_zip_, tmpSize);
+    int64_t n_chunks = 0;
+    qc_data para;
+    para.cmd_info_ = cmd_info_;
+    para.thread_info_ = thread_infos;
+    athread_init();
+    double t0 = GetTime();
+    double tsum1 = 0;
+    double tsum2 = 0;
+    double tsum3 = 0;
+    while (true) {
+        double tt0 = GetTime();
+        rabbit::fq::FastqDataChunk *fqdatachunk;
+        fqdatachunk = fqFileReader->readNextChunk();
+        if (fqdatachunk == NULL) break;
+        n_chunks++;
+        tsum1 += GetTime() - tt0;
+        tt0 = GetTime();
+        vector <neoReference> data;
+        rabbit::fq::chunkFormat(fqdatachunk, data, true);
+        tsum2 += GetTime() - tt0;
+        //printf("format cost %lf\n", GetTime() - tt0);
+        tt0 = GetTime();
+        para.data_ = &data;
+        athread_spawn_tupled(slave_tgsfunc, &para);
+        athread_join();
+        //printf("slave cost %lf\n", GetTime() - tt0);
+        tsum3 += GetTime() - tt0;
+        fastq_data_pool->Release(fqdatachunk);
+    }
+    athread_halt();
+    printf("TGS tot cost %lf\n", GetTime() - t0);
+    printf("TGS producer cost %lf\n", tsum1);
+    printf("TGS format cost %lf\n", tsum2);
+    printf("TGS slave cost %lf\n", tsum3);
+    delete fqFileReader;
+}
+
+
 void SeQc::ProcessSeTGS() {
 
-    //athread_init();
-    thread *pugzer;
-    if (cmd_info_->use_pugz_) {
-        pugzer = new thread(bind(&::SeQc::PugzTask, this));
-    }
-
-
-    auto *fastqPool = new rabbit::fq::FastqDataPool(78, 1 << 26);
-    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(78, 1);
-
+    auto *fastqPool = new rabbit::fq::FastqDataPool(1, 1 << 26);
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, false);
     }
-    thread producer(
-    bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, ref(queue1)));
-    //ProducerSeFastqTask(cmd_info_->in_file_name1_, fastqPool, ref(queue1));
-    printf("000\n");
-    producer.join();
-
-    printf("111\n");
-    thread consumer(
-    bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info, fastqPool, ref(queue1)));
-    //ConsumerSeFastqTask(p_thread_info, fastqPool, ref(queue1));
-    if (cmd_info_->use_pugz_) {
-        pugzer->join();
-    }
-    consumer.join();
-    printf("222\n");
-    //athread_halt();
+    TGSTask(cmd_info_->in_file_name1_, fastqPool, p_thread_info);
 #ifdef Verbose
     printf("all thrad done\n");
     printf("now merge thread info\n");
@@ -657,11 +679,8 @@ void SeQc::ProcessSeTGS() {
     Repoter::ReportHtmlTGS(srr_name + "_RabbitQCPlus.html", command, mer_state, cmd_info_->in_file_name1_);
 
     delete fastqPool;
-    //printf("111\n");
     for (int t = 0; t < slave_num; t++) {
-        //printf("11 %d\n", t);
         delete p_thread_info[t];
     }
-    //printf("111\n");
     delete[] p_thread_info;
 }
