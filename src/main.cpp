@@ -462,7 +462,7 @@ int main(int argc, char **argv) {
     printf("eval len\n");
     int mx_len = Adapter::EvalMaxLen(cmd_info.in_file_name1_);
     printf("eval done\n");
-    //printf("auto detect max seqs len is %d\n", mx_len);
+    printf("auto detect max seqs len is %d\n", mx_len);
     cmd_info.seq_len_ = mx_len;
     if (cmd_info.adapter_fasta_file_.length() > 0) {
         printf("loading adatper from %s\n", cmd_info.adapter_fasta_file_.c_str());

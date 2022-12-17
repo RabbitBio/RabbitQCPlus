@@ -134,10 +134,11 @@ void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_dat
         }
     }
 
-
+    printf("pro4\n");
     dq.SetCompleted();
     delete fqFileReader;
     producerDone = 1;
+    printf("pro5\n");
 }
 
 string SeQc::Read2String(neoReference &ref) {
@@ -167,14 +168,12 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;
     qc_data para;
-    para.cnt = new int[slave_num];
-    for(int i = 0; i < slave_num; i++) para.cnt[i] = 0;
     para.cmd_info_ = cmd_info_;
     para.thread_info_ = thread_infos;
     if (cmd_info_->is_TGS_) {
+        athread_init();
         double t0 = GetTime();
         double tsum = 0;
-        athread_init();
         while (dq.Pop(id, fqdatachunk)) {
             double tt0 = GetTime();
             vector <neoReference> data;
@@ -189,10 +188,6 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
             fastq_data_pool->Release(fqdatachunk);
         }
         athread_halt();
-        //
-        int ttsum = 0;
-        for(int i = 0; i < slave_num; i++) ttsum += para.cnt[i];
-        printf("ttsum %d\n", ttsum);
         printf("TGS tot cost %lf\n", GetTime() - t0);
         printf("TGS slave cost %lf\n", tsum);
     } else {
@@ -301,6 +296,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
         }
     }
     done_thread_number_++;
+    printf("consumer done\n");
 }
 
 /**
@@ -455,8 +451,8 @@ void SeQc::ProcessSeFastq() {
     }
 
 
-    auto *fastqPool = new rabbit::fq::FastqDataPool(32, 1 << 22);
-    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(32, 1);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(4, 1 << 26);
+    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(4, 1);
 
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {
@@ -606,14 +602,15 @@ void SeQc::ProcessSeFastq() {
 
 void SeQc::ProcessSeTGS() {
 
+    //athread_init();
     thread *pugzer;
     if (cmd_info_->use_pugz_) {
         pugzer = new thread(bind(&::SeQc::PugzTask, this));
     }
 
 
-    auto *fastqPool = new rabbit::fq::FastqDataPool(32, 1 << 22);
-    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(32, 1);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(78, 1 << 26);
+    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(78, 1);
 
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {
@@ -621,15 +618,20 @@ void SeQc::ProcessSeTGS() {
     }
     thread producer(
     bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, ref(queue1)));
+    //ProducerSeFastqTask(cmd_info_->in_file_name1_, fastqPool, ref(queue1));
+    printf("000\n");
+    producer.join();
+
+    printf("111\n");
     thread consumer(
     bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info, fastqPool, ref(queue1)));
-
+    //ConsumerSeFastqTask(p_thread_info, fastqPool, ref(queue1));
     if (cmd_info_->use_pugz_) {
         pugzer->join();
     }
-
-    producer.join();
     consumer.join();
+    printf("222\n");
+    //athread_halt();
 #ifdef Verbose
     printf("all thrad done\n");
     printf("now merge thread info\n");
@@ -645,7 +647,7 @@ void SeQc::ProcessSeTGS() {
 #endif
     printf("\nprint TGS state info :\n");
 
-    //    report3(mer_state);
+    //report3(mer_state);
     mer_state->CalReadsLens();
 
     mer_state->print();
