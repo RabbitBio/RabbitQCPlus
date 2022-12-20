@@ -459,10 +459,7 @@ int main(int argc, char **argv) {
     //    printf("now use %d thread to do QC operations\n", cmd_info.thread_number_);
     //else
     //    printf("now use %d threads to do QC operations\n", cmd_info.thread_number_);
-    printf("eval len\n");
     int mx_len = Adapter::EvalMaxLen(cmd_info.in_file_name1_);
-    printf("eval done\n");
-    printf("auto detect max seqs len is %d\n", mx_len);
     cmd_info.seq_len_ = mx_len;
     if (cmd_info.adapter_fasta_file_.length() > 0) {
         printf("loading adatper from %s\n", cmd_info.adapter_fasta_file_.c_str());
@@ -605,9 +602,7 @@ int main(int argc, char **argv) {
         }
         if (cmd_info.adapter_seq1_.length() > 0)
             cmd_info.adapter_len_lim_ = min(cmd_info.adapter_len_lim_, int(cmd_info.adapter_seq1_.length()));
-        printf("000\n");
         SeQc *se_qc = new SeQc(&cmd_info);
-        printf("111\n");
         if (cmd_info.is_TGS_) {
             se_qc->ProcessSeTGS();
         } else {

@@ -44,9 +44,10 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
     qul_cnt_ = new int64_t[qul_range_];
     memset(qul_cnt_, 0, qul_range_ * sizeof(int64_t));
 
-    kmer_buf_len_ = 2 << (5 * 2);
-    kmer_ = new int64_t[kmer_buf_len_];
-    memset(kmer_, 0, sizeof(int64_t) * kmer_buf_len_);
+    //kmer_buf_len_ = 2 << (5 * 2);
+    //kmer_ = new int64_t[kmer_buf_len_];
+    //memset(kmer_, 0, sizeof(int64_t) * kmer_buf_len_);
+    //TODO
 
     tot_bases_ = 0;
     gc_bases_ = 0;
@@ -96,7 +97,8 @@ State::~State() {
     delete[] len_cnt_;
     delete[] gc_cnt_;
     delete[] qul_cnt_;
-    delete[] kmer_;
+    //delete[] kmer_;
+    //TODO
     if (do_over_represent_analyze_) {
         for (int i = 0; i < hash_num_; i++)
             delete[] hash_graph_[i].dist;
@@ -574,18 +576,19 @@ void State::StateORP(neoReference &ref) {
 void State::Summarize() {
     if (has_summarize_) return;
 
-    kmer_min_ = kmer_[0];
-    kmer_max_ = kmer_[0];
-    for (int i = 0; i < kmer_buf_len_; i++) {
-        //        printf("%d ", kmer_[i]);
-        if (kmer_[i] > kmer_max_)
-            kmer_max_ = kmer_[i];
-        if (kmer_[i] < kmer_min_)
-            kmer_min_ = kmer_[i];
-    }
+    //kmer_min_ = kmer_[0];
+    //kmer_max_ = kmer_[0];
+    //for (int i = 0; i < kmer_buf_len_; i++) {
+    //    //        printf("%d ", kmer_[i]);
+    //    if (kmer_[i] > kmer_max_)
+    //        kmer_max_ = kmer_[i];
+    //    if (kmer_[i] < kmer_min_)
+    //        kmer_min_ = kmer_[i];
+    //}
     //    printf("\n");
 
     has_summarize_ = true;
+    //TODO
 }
 
 /**
@@ -653,9 +656,9 @@ State *State::MergeStates(const vector<State *> &states) {
             //res_state->gc_cnt_[i] += sum / gcPart;
             res_state->gc_cnt_[i] += sum;
         }
-        for (int i = 0; i < res_state->kmer_buf_len_; i++) {
-            res_state->kmer_[i] += item->kmer_[i];
-        }
+        //for (int i = 0; i < res_state->kmer_buf_len_; i++) {
+        //    res_state->kmer_[i] += item->kmer_[i];
+        //}
 
         if (res_state->do_over_represent_analyze_) {
             // merge over rep seq

@@ -15,6 +15,7 @@ struct qc_data {
 
 
 extern void slave_tgsfunc(qc_data *para);
+extern void slave_ngsfunc(qc_data *para);
 
 /**
  * @brief Construct function
@@ -83,6 +84,7 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
 }
 
 SeQc::~SeQc() {
+    out_stream_.close();
     delete filter_;
     if (cmd_info_->write_data_) {
         delete out_queue_;
@@ -437,61 +439,101 @@ void SeQc::PigzTask() {
 }
 
 
+void SeQc::NGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool, ThreadInfo **thread_infos){
+    rabbit::fq::FastqFileReader *fqFileReader;
+    rabbit::uint32 tmpSize = 1 << 20;
+    if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
+    fqFileReader = new rabbit::fq::FastqFileReader(file, *fastq_data_pool, "", in_is_zip_, tmpSize);
+    int64_t n_chunks = 0;
+    qc_data para;
+    para.cmd_info_ = cmd_info_;
+    para.thread_info_ = thread_infos;
+    athread_init();
+    double t0 = GetTime();
+    double tsum1 = 0;
+    double tsum2 = 0;
+    double tsum3 = 0;
+    double tsum4 = 0;
+    char enter_char[1];
+    enter_char[0] = '\n';
+    while (true) {
+        double tt0 = GetTime();
+        rabbit::fq::FastqDataChunk *fqdatachunk;
+        fqdatachunk = fqFileReader->readNextChunk();
+        if (fqdatachunk == NULL) break;
+        n_chunks++;
+        tsum1 += GetTime() - tt0;
+        tt0 = GetTime();
+        vector <neoReference> data;
+        rabbit::fq::chunkFormat(fqdatachunk, data, true);
+        vector <neoReference> pass_data;
+        if(cmd_info_->write_data_) {
+            pass_data.resize(data.size());
+        }
+        tsum2 += GetTime() - tt0;
+        tt0 = GetTime();
+        para.data_ = &data;
+        para.pass_data_ = &pass_data;
+        athread_spawn_tupled(slave_ngsfunc, &para);
+        athread_join();
+        tsum3 += GetTime() - tt0;
+        tt0 = GetTime(); 
+        if(cmd_info_->write_data_) {
+            int tot_len = 0;
+            for(auto item : pass_data){
+                if(item.lname == 0) continue;
+                tot_len += item.lname + item.lseq + item.lstrand + item.lqual + 4;
+            }
+            char *tmp_out = new char[tot_len];
+            char *now_out = tmp_out;
+            for(auto item : pass_data) {
+                if(item.lname == 0) continue;
+                memcpy(now_out, (char *)item.base + item.pname, item.lname);
+                now_out += item.lname;
+                memcpy(now_out, enter_char, 1);
+                now_out++;
+                memcpy(now_out, (char *)item.base + item.pseq, item.lseq);
+                now_out += item.lseq;
+                memcpy(now_out, enter_char, 1);
+                now_out++;
+                memcpy(now_out, (char *)item.base + item.pstrand, item.lstrand);
+                now_out += item.lstrand;
+                memcpy(now_out, enter_char, 1);
+                now_out++;
+                memcpy(now_out, (char *)item.base + item.pqual, item.lqual);
+                now_out += item.lqual;
+                memcpy(now_out, enter_char, 1);
+                now_out++;
+            }
+            if(now_out - tmp_out != tot_len) printf("GGG\n");
+            out_stream_.write(tmp_out, tot_len);
+            delete []tmp_out;
+        }
+        tsum4 += GetTime() - tt0;
+        fastq_data_pool->Release(fqdatachunk);
+    }
+    athread_halt();
+    printf("NGS tot cost %lf\n", GetTime() - t0);
+    printf("NGS producer cost %lf\n", tsum1);
+    printf("NGS format cost %lf\n", tsum2);
+    printf("NGS slave cost %lf\n", tsum3);
+    printf("NGS write cost %lf\n", tsum4);
+    delete fqFileReader;
+}
 
 /**
  * @brief do QC for single-end data
  */
 
 void SeQc::ProcessSeFastq() {
-#ifdef Verbose
-    double t0 = GetTime();
-#endif
-    thread *pugzer;
-
-    if (cmd_info_->use_pugz_) {
-        pugzer = new thread(bind(&::SeQc::PugzTask, this));
-    }
-
-
     auto *fastqPool = new rabbit::fq::FastqDataPool(4, 1 << 26);
-    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(4, 1);
-
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, false);
     }
-    thread *write_thread;
-    if (cmd_info_->write_data_) {
-        write_thread = new thread(bind(&SeQc::WriteSeFastqTask, this));
-    }
-    thread *pigzer;
-    if (cmd_info_->use_pigz_) {
-        pigzer = new thread(bind(&SeQc::PigzTask, this));
-    }
 
-    thread producer(
-            bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, ref(queue1)));
-    thread consumer(
-            bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info, fastqPool, ref(queue1)));
-    if (cmd_info_->use_pugz_) {
-        pugzer->join();
-    }
+    NGSTask(cmd_info_->in_file_name1_, fastqPool, p_thread_info);
 
-    producer.join();
-#ifdef Verbose
-    printf("producer cost %.4f\n", GetTime() - t0);
-#endif
-    consumer.join();
-#ifdef Verbose
-    printf("consumer cost %.4f\n", GetTime() - t0);
-#endif
-    if (cmd_info_->write_data_) {
-        write_thread->join();
-        writerDone = 1;
-    }
-    if (cmd_info_->use_pigz_) {
-        pigzer->join();
-    }
 #ifdef Verbose
     printf("all thrad done\n");
     printf("now merge thread info\n");
@@ -597,9 +639,6 @@ void SeQc::ProcessSeFastq() {
     }
 
     delete[] p_thread_info;
-    if (cmd_info_->write_data_) {
-        delete write_thread;
-    }
 }
 
 

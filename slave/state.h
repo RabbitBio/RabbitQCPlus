@@ -113,7 +113,8 @@ public:
 
     CmdInfo *GetCmdInfo() const;
 
-private:
+//private:
+public:
     CmdInfo *cmd_info_;
 
     int64_t q20bases_;

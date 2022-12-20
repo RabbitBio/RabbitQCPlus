@@ -1057,6 +1057,7 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
 
     int64_t *tmp_int64 = new int64_t[110];
 
+
     outhtml.append(HTMLHeader());
     outhtml.append(HTMLCss());
     //Basic Status

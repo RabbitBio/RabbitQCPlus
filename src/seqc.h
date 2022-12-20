@@ -45,6 +45,8 @@ private:
 
     void Read2Chars(neoReference &ref, char *out_data, int &pos);
 
+    void NGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool, ThreadInfo **thread_infos);
+
     void TGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool, ThreadInfo **thread_infos);
 
     void ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
