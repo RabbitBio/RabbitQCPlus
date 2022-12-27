@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    if(cmd_info.in_file_name2_.length() > 0 && cmd_info.out_file_name2_.length() == 0 && cmd_info.interleaved_out_ == 0){
+    if(cmd_info.in_file_name2_.length() > 0 && cmd_info.out_file_name1_.length() > 0 && cmd_info.out_file_name2_.length() == 0 && cmd_info.interleaved_out_ == 0){
         error_exit("when interleaved_out module is off, two input files can not correspond to one output.\n");
     }
 
