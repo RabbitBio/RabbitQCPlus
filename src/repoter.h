@@ -25,7 +25,7 @@ public:
     static void
     ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_state2, State *aft_state1, State *aft_state2,
                  std::string file_name1,
-                 std::string file_name2, double dup, int64_t *size_info);
+                 std::string file_name2, double dup, int *size_info);
     //    static void ReportHtmlPe(State *state1, State *state2);
 
     static Reference GetRevRef(neoReference &ref);

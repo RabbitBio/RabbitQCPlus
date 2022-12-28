@@ -68,6 +68,8 @@ private:
 
     void PigzTask2();
 
+    void NGSTask(std::string file1, std::string file2, rabbit::fq::FastqDataPool *fastq_data_pool, ThreadInfo **thread_infos);
+
 private:
     CmdInfo *cmd_info_;
     Filter *filter_;

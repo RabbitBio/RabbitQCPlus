@@ -32,17 +32,16 @@ State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
     qul_range_ = qul_range;
     real_seq_len_ = 0;
     has_summarize_ = false;
-    int pos_seq_len = malloc_seq_len_ * 8;
-    pos_cnt_ = new int64_t[pos_seq_len];
-    memset(pos_cnt_, 0, pos_seq_len * sizeof(int64_t));
-    pos_qul_ = new int64_t[pos_seq_len];
-    memset(pos_qul_, 0, pos_seq_len * sizeof(int64_t));
-    len_cnt_ = new int64_t[malloc_seq_len_];
-    memset(len_cnt_, 0, malloc_seq_len_ * sizeof(int64_t));
-    gc_cnt_ = new int64_t[gcMax + 100];
-    memset(gc_cnt_, 0, (gcMax + 1) * sizeof(int64_t));
-    qul_cnt_ = new int64_t[qul_range_];
-    memset(qul_cnt_, 0, qul_range_ * sizeof(int64_t));
+    pos_cnt_ = new int[malloc_seq_len_ * 4];
+    memset(pos_cnt_, 0, malloc_seq_len_ * 4 * sizeof(int));
+    pos_qul_ = new int[malloc_seq_len_];
+    memset(pos_qul_, 0, malloc_seq_len_ * sizeof(int));
+    len_cnt_ = new int[malloc_seq_len_];
+    memset(len_cnt_, 0, malloc_seq_len_ * sizeof(int));
+    gc_cnt_ = new int[gcMax + 100];
+    memset(gc_cnt_, 0, (gcMax + 1) * sizeof(int));
+    qul_cnt_ = new int[qul_range_];
+    memset(qul_cnt_, 0, qul_range_ * sizeof(int));
 
     //kmer_buf_len_ = 2 << (5 * 2);
     //kmer_ = new int64_t[kmer_buf_len_];
@@ -166,24 +165,24 @@ inline bool State::HashQueryAndAdd(uint64_t now, int offset, int len, int eva_le
 void State::ExtendBuffer(int old_len, int new_len) {
 
     malloc_seq_len_ = new_len;
-    int64_t *newBuf = NULL;
+    int *newBuf = NULL;
 
-    newBuf = new int64_t[new_len * 8];
-    memset(newBuf, 0, sizeof(int64_t) * new_len * 8);
-    memcpy(newBuf, pos_cnt_, sizeof(int64_t) * old_len * 8);
+    newBuf = new int[new_len * 4];
+    memset(newBuf, 0, sizeof(int) * new_len * 4);
+    memcpy(newBuf, pos_cnt_, sizeof(int) * old_len * 4);
     delete pos_cnt_;
     pos_cnt_ = newBuf;
 
-    newBuf = new int64_t[new_len * 8];
-    memset(newBuf, 0, sizeof(int64_t) * new_len * 8);
-    memcpy(newBuf, pos_qul_, sizeof(int64_t) * old_len * 8);
+    newBuf = new int[new_len];
+    memset(newBuf, 0, sizeof(int) * new_len);
+    memcpy(newBuf, pos_qul_, sizeof(int) * old_len);
     delete pos_qul_;
     pos_qul_ = newBuf;
 
 
-    newBuf = new int64_t[new_len];
-    memset(newBuf, 0, sizeof(int64_t) * new_len);
-    memcpy(newBuf, len_cnt_, sizeof(int64_t) * old_len);
+    newBuf = new int[new_len];
+    memset(newBuf, 0, sizeof(int) * new_len);
+    memcpy(newBuf, len_cnt_, sizeof(int) * old_len);
     delete len_cnt_;
     len_cnt_ = newBuf;
 }
@@ -241,242 +240,6 @@ void State::StateInfo(neoReference &ref) {
     int kmer = 0;
     int phredSub = 33;
     if (cmd_info_->isPhred64_) phredSub = 64;
-
-#ifdef Vec512
-    int i = 0;
-    int64_t *p1, *p2, *p3, *p4, *p5, *p6;
-    __m512i ad0, ad1, ad2, ad3, ad4, v1, v2, v3, v4, v5, v6, sub33, quamm;
-    __m256i bse, and7, add8, idx;
-    __m128i ide;
-    bse = _mm256_set_epi32(7 * 8, 6 * 8, 5 * 8, 4 * 8, 3 * 8, 2 * 8, 1 * 8, 0 * 8);
-    ad1 = _mm512_set1_epi64(1);
-    and7 = _mm256_set1_epi32(0x07);
-    add8 = _mm256_set1_epi32(64);
-    sub33 = _mm512_set1_epi64(phredSub);
-    __m512i q20_vec = _mm512_set1_epi64(20);
-    __m512i q30_vec = _mm512_set1_epi64(30);
-    __m512i q0_vec = _mm512_set1_epi64(0);
-    __m256i con3 = _mm256_set1_epi32(3);
-    __m256i con7 = _mm256_set1_epi32(7);
-
-
-    __m512i qul_tot_vec = _mm512_set1_epi64(0);
-
-
-    for (; i + 8 <= slen; i += 8) {
-
-
-        //int q = max(0, quals[i] - phredSub);
-        ide = _mm_maskz_loadu_epi8(0xFF, quals + i);
-        quamm = _mm512_cvtepi8_epi64(ide);
-        ad2 = _mm512_sub_epi64(quamm, sub33);
-        __mmask8 mmsk = _mm512_cmp_epi64_mask(ad2, q0_vec, 1);
-        _mm512_mask_set1_epi64(ad2, mmsk, 0);
-
-
-        //if (q >= 30) {
-        //    q20bases_++;
-        //    q30bases_++;       
-        //} else if (q >= 20) {
-        //    q20bases_++;        
-        //}
-        __mmask8 q30_mask = _mm512_cmp_epi64_mask(ad2, q30_vec, _MM_CMPINT_NLT);
-        __mmask8 q20_mask = _mm512_cmp_epi64_mask(ad2, q20_vec, _MM_CMPINT_NLT);
-        q20bases_ += _mm_popcnt_u32(q20_mask);
-        q30bases_ += _mm_popcnt_u32(q30_mask);
-
-
-        //qul_tot += q;
-        qul_tot_vec = _mm512_add_epi64(qul_tot_vec, ad2);
-
-
-        //char b = bases[i] & 0x07;
-        ide = _mm_maskz_loadu_epi8(0xFF, bases + i);
-        idx = _mm256_cvtepi8_epi32(ide);
-        idx = _mm256_and_si256(idx, and7);
-
-
-        //if (b == 3 || b == 7) gc_cnt++;
-        __mmask8 gc_mask1 = _mm256_cmp_epi32_mask(idx, con3, _MM_CMPINT_EQ);
-        __mmask8 gc_mask2 = _mm256_cmp_epi32_mask(idx, con7, _MM_CMPINT_EQ);
-        gc_cnt += _mm_popcnt_u32(gc_mask1 | gc_mask2);
-
-
-
-        //i * 8 + b
-        idx = _mm256_add_epi32(bse, idx);
-        //i++
-        bse = _mm256_add_epi32(bse, add8);
-
-
-
-        //pos_cnt_[i * 8 + b]++
-        p3 = (int64_t *) pos_cnt_;
-        v3 = _mm512_i32gather_epi64(idx, p3, 8);
-        v3 = _mm512_add_epi64(v3, ad1);
-        _mm512_i32scatter_epi64(p3, idx, v3, 8);
-
-        //pos_qul_[i * 8 + b] += q
-        p4 = (int64_t *) pos_qul_;
-        v4 = _mm512_i32gather_epi64(idx, p4, 8);
-        v4 = _mm512_add_epi64(v4, ad2);
-        _mm512_i32scatter_epi64(p4, idx, v4, 8);
-
-        for (int j = i; j < i + 8; j++) {
-            if (bases[j] == 'N') flag = 5;
-            int val = valAGCT[bases[j] & 0x07];
-            kmer = ((kmer << 2) & 0x3FC) | val;
-            if (flag <= 0) kmer_[kmer]++;
-            flag--;
-        }
-    }
-    int64_t tmp[8];
-    _mm512_store_epi64(tmp, qul_tot_vec);
-    for (int ii = 0; ii < 8; ii++)
-        qul_tot += tmp[ii];
-    for (; i < slen; i++) {
-        char b = bases[i] & 0x07;
-        if (b == 3 || b == 7) gc_cnt++;
-        int q = max(0, quals[i] - phredSub);
-        qul_tot += q;
-        if (q >= 30) {
-            q20bases_++;
-            q30bases_++;
-        } else if (q >= 20) {
-            q20bases_++;
-        }
-        pos_cnt_[i * 8 + b]++;
-        pos_qul_[i * 8 + b] += q;
-        if (bases[i] == 'N') flag = 5;
-        int val = valAGCT[bases[i] & 0x07];
-        kmer = ((kmer << 2) & 0x3FC) | val;
-        if (flag <= 0) kmer_[kmer]++;
-        flag--;
-    }
-
-
-#elif Vec256
-    int i = 0;
-    const long long int *p1, *p2, *p3, *p4, *p5, *p6;
-    __m256i ad0, ad1, ad2, ad3, ad4, v1, v2, v3, v4, v5, v6, sub33, quamm;
-    __m128i bse, and7, add8, idx;
-    __m128i ide;
-    bse = _mm_set_epi32(3 * 8, 2 * 8, 1 * 8, 0 * 8);
-    ad1 = _mm256_set1_epi64x(1);
-    and7 = _mm_set1_epi32(0x07);
-    add8 = _mm_set1_epi32(32);
-    sub33 = _mm256_set1_epi64x(phredSub);
-    __m128i ones_128 = _mm_set1_epi32(-1);
-    __m256i ones_256 = _mm256_set1_epi64x(-1);
-    __m256i q20_vec = _mm256_set1_epi64x(20);
-    __m256i q30_vec = _mm256_set1_epi64x(30);
-    __m256i q0_vec = _mm256_set1_epi64x(0);
-    __m128i con3 = _mm_set1_epi32(3);
-    __m128i con7 = _mm_set1_epi32(7);
-    __m256i qul_tot_vec = _mm256_set1_epi64x(0);
-
-
-    int tag = 0;
-    for (; i + 4 <= slen; i += 4) {
-        //int q = max(0, quals[i] - phredSub);
-        ide = _mm_loadu_si128((__m128i const*)(quals + i));
-        quamm = _mm256_cvtepi8_epi64(ide);
-        ad2 = _mm256_sub_epi64(quamm, sub33);
-
-
-
-        //if (q >= 30) {
-        //    q20bases_++;
-        //    q30bases_++;       
-        //} else if (q >= 20) {
-        //    q20bases_++;        
-        //}
-        __m256i res30 = _mm256_xor_si256(_mm256_cmpgt_epi64(q30_vec, ad2), ones_256);
-        int q30_mask = _mm256_movemask_epi8(res30);
-        __m256i res20 = _mm256_xor_si256(_mm256_cmpgt_epi64(q20_vec, ad2), ones_256);
-        int q20_mask = _mm256_movemask_epi8(res20);
-        q20bases_ += _mm_popcnt_u32(q20_mask) >> 3;
-        q30bases_ += _mm_popcnt_u32(q30_mask) >> 3;
-
-
-        //qul_tot += q;
-        qul_tot_vec = _mm256_add_epi64(qul_tot_vec, ad2);
-
-
-        //char b = bases[i] & 0x07;
-        ide = _mm_loadu_si128((__m128i const*)(bases + i));
-        idx = _mm_cvtepi8_epi32(ide);
-        idx = _mm_and_si128(idx, and7);
-
-
-        //if (b == 3 || b == 7) gc_cnt++;
-        __m128i res3 = _mm_cmpeq_epi32(idx, con3);
-        __m128i res7 = _mm_cmpeq_epi32(idx, con7);
-        int gc3_mask = _mm_movemask_epi8(res3);
-        int gc7_mask = _mm_movemask_epi8(res7);
-        gc_cnt += _mm_popcnt_u32(gc3_mask | gc7_mask) >> 2;
-
-
-
-        //i * 8 + b
-        idx = _mm_add_epi32(bse, idx);
-
-        //i++
-        bse = _mm_add_epi32(bse, add8);
-
-        //pos_cnt_[i * 8 + b]++
-        p3 = (const long long int*)pos_cnt_;
-        v3 = _mm256_i32gather_epi64(p3, idx, 8);
-        v3 = _mm256_add_epi64(v3, ad1);
-
-        //pos_qul_[i * 8 + b] += q
-        p4 = (const long long int*)pos_qul_;
-        v4 = _mm256_i32gather_epi64(p4, idx, 8);
-        v4 = _mm256_add_epi64(v4, ad2);
-
-        int idx_tmp[4];
-        memcpy(idx_tmp, &idx, 4 * sizeof(int));
-        int64_t data_tmp1[4];
-        memcpy(data_tmp1, &v3, 4 * sizeof(int64_t));
-        int64_t data_tmp2[4];
-        memcpy(data_tmp2, &v4, 4 * sizeof(int64_t));
-
-
-        for (int j = i, k = 0; j < i + 4; j++, k++) {
-            pos_cnt_[idx_tmp[k]] = data_tmp1[k];
-            pos_qul_[idx_tmp[k]] = data_tmp2[k];
-
-            if (bases[j] == 'N') flag = 5;
-            int val = valAGCT[bases[j] & 0x07];
-            kmer = ((kmer << 2) & 0x3FC) | val;
-            if (flag <= 0) kmer_[kmer]++;
-            flag--;
-        }
-    }
-    long long int tmp[4];
-    _mm256_maskstore_epi64(tmp, ones_256, qul_tot_vec);
-    for (int ii = 0; ii < 4; ii++)
-        qul_tot += tmp[ii];
-    for (; i < slen; i++) {
-        char b = bases[i] & 0x07;
-        if (b == 3 || b == 7) gc_cnt++;
-        int q = max(0, quals[i] - phredSub);
-        qul_tot += q;
-        if (q >= 30) {
-            q20bases_++;
-            q30bases_++;
-        } else if (q >= 20) {
-            q20bases_++;
-        }
-        pos_cnt_[i * 8 + b]++;
-        pos_qul_[i * 8 + b] += q;
-        if (bases[i] == 'N') flag = 5;
-        int val = valAGCT[bases[i] & 0x07];
-        kmer = ((kmer << 2) & 0x3FC) | val;
-        if (flag <= 0) kmer_[kmer]++;
-        flag--;
-    }
-#else
     for (int i = 0; i < slen; i++) {
         char b = bases[i] & 0x07;
         if (b == 3 || b == 7) gc_cnt++;
@@ -489,15 +252,14 @@ void State::StateInfo(neoReference &ref) {
         } else if (q >= 20) {
             q20bases_++;
         }
-        pos_cnt_[i * 8 + b]++;
-        pos_qul_[i * 8 + b] += q;
+        pos_cnt_[i * 4 + valAGCT[b]]++;
+        pos_qul_[i] += q;
         if (bases[i] == 'N') flag = 5;
         int val = valAGCT[b];
         kmer = ((kmer << 2) & 0x3FC) | val;
         if (flag <= 0) kmer_[kmer]++;
         flag--;
     }
-#endif
 
     tot_bases_ += slen;
     gc_bases_ += gc_cnt;
@@ -518,33 +280,6 @@ void State::StateInfo(neoReference &ref) {
 #endif
     lines_++;
 }
-
-/*
-//this function is seems to be moew accurate.
-//however change to the next function to ensure that the output is exactly the same as fastp.
-void State::StateORP(neoReference &ref){
-int slen = ref.lseq;
-int eva_len = 0;
-if (is_read2_)eva_len = cmd_info_->eva_len2_;
-else eva_len = cmd_info_->eva_len_;
-int steps[5] = {10, 20, 40, 100, min(150, eva_len - 2)};
-char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
-string seqs=string(seq,slen);
-for(int s=0;s<5;s++){
-if(steps[s]>slen)continue;
-unsigned k=steps[s];
-uint64_t hVal = NT64(seq, k);
-HashQueryAndAdd(hVal, 0, steps[s], eva_len);
-for (size_t i = 0; i < slen - k; i++){
-hVal = NTF64(hVal,k, seq[i], seq[i+k]);
-HashQueryAndAdd(hVal, i+1, steps[s], eva_len);
-
-}
-
-}
-
-}
-*/
 
 void State::StateORP(neoReference &ref) {
     int slen = ref.lseq;
@@ -637,10 +372,10 @@ State *State::MergeStates(const vector<State *> &states) {
 
 
         for (int i = 0; i < item->real_seq_len_; i++) {
-            for (int j = 0; j < 8; j++) {
-                res_state->pos_cnt_[i * 8 + j] += item->pos_cnt_[i * 8 + j];
-                res_state->pos_qul_[i * 8 + j] += item->pos_qul_[i * 8 + j];
+            for (int j = 0; j < 4; j++) {
+                res_state->pos_cnt_[i * 4 + j] += item->pos_cnt_[i * 4 + j];
             }
+            res_state->pos_qul_[i] += item->pos_qul_[i];
             res_state->len_cnt_[i] += item->len_cnt_[i];
         }
         for (int i = 0; i < res_state->qul_range_; i++) {
@@ -791,23 +526,23 @@ int State::GetKmerBufLen() const {
     return kmer_buf_len_;
 }
 
-int64_t *State::GetPosQul() const {
+int *State::GetPosQul() const {
     return pos_qul_;
 }
 
-int64_t *State::GetPosCnt() const {
+int *State::GetPosCnt() const {
     return pos_cnt_;
 }
 
-int64_t *State::GetLenCnt() const {
+int *State::GetLenCnt() const {
     return len_cnt_;
 }
 
-int64_t *State::GetGcCnt() const {
+int *State::GetGcCnt() const {
     return gc_cnt_;
 }
 
-int64_t *State::GetQulCnt() const {
+int *State::GetQulCnt() const {
     return qul_cnt_;
 }
 

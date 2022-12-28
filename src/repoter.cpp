@@ -495,7 +495,7 @@ std::string insertSeriesEnd() {
     return "],\n";
 }
 
-std::string insertSeriesSmoothData(std::string type, int64_t *data, int len, int interval = 1) {
+std::string insertSeriesSmoothData(std::string type, int *data, int len, int interval = 1) {
     std::string out("{\n"
                     "            type: \'" +
                     type + "\',\n"
@@ -671,7 +671,6 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
     std::string outhtml;
     int mx_len = 100;
     double *tmp_double = new double[mx_len];
-    int64_t *tmp_int64 = new int64_t[mx_len];
     outhtml.append(HTMLHeader());
     outhtml.append(HTMLCss());
     //Basic Status
@@ -799,8 +798,8 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
     auto tot_cnt4 = tgs_stats->GetHeadSeqPosCount();
     auto tot_qul = tgs_stats->GetHeadQualSum();
     for (int i = 0; i < mx_len; i++) {
-        int64_t sum_qul = tot_qul[i];
-        int64_t sum_cnt = 0;
+        int sum_qul = tot_qul[i];
+        int sum_cnt = 0;
         for (int j = 0; j < 4; j++) {
             sum_cnt += tot_cnt4[j][i];
         }
@@ -825,8 +824,8 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
     tot_cnt4 = tgs_stats->GetTailSeqPosCount();
     tot_qul = tgs_stats->GetTailQualSum();
     for (int i = 0; i < mx_len; i++) {
-        int64_t sum_qul = tot_qul[mx_len - i - 1];
-        int64_t sum_cnt = 0;
+        int sum_qul = tot_qul[mx_len - i - 1];
+        int sum_cnt = 0;
         for (int j = 0; j < 4; j++) {
             sum_cnt += tot_cnt4[j][mx_len - i - 1];
         }
@@ -852,25 +851,25 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
 
     tot_cnt4 = tgs_stats->GetHeadSeqPosCount();
     for (int i = 0; i < mx_len; i++) {
-        int64_t sum_tot = 0.0;
+        int sum_tot = 0.0;
         for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][i];
         tmp_double[i] = 100.0 * tot_cnt4[0][i] / sum_tot;
     }
     outhtml.append(insertSeriesData("line", "A", tmp_double, mx_len));
     for (int i = 0; i < mx_len; i++) {
-        int64_t sum_tot = 0.0;
+        int sum_tot = 0.0;
         for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][i];
         tmp_double[i] = 100.0 * tot_cnt4[3][i] / sum_tot;
     }
     outhtml.append(insertSeriesData("line", "G", tmp_double, mx_len));
     for (int i = 0; i < mx_len; i++) {
-        int64_t sum_tot = 0.0;
+        int sum_tot = 0.0;
         for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][i];
         tmp_double[i] = 100.0 * tot_cnt4[2][i] / sum_tot;
     }
     outhtml.append(insertSeriesData("line", "C", tmp_double, mx_len));
     for (int i = 0; i < mx_len; i++) {
-        int64_t sum_tot = 0.0;
+        int sum_tot = 0.0;
         for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][i];
         tmp_double[i] = 100.0 * tot_cnt4[1][i] / sum_tot;
     }
@@ -893,25 +892,25 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
 
     tot_cnt4 = tgs_stats->GetTailSeqPosCount();
     for (int i = 0; i < mx_len; i++) {
-        int64_t sum_tot = 0.0;
+        int sum_tot = 0.0;
         for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][mx_len - i - 1];
         tmp_double[i] = 100.0 * tot_cnt4[0][mx_len - i - 1] / sum_tot;
     }
     outhtml.append(insertSeriesData("line", "A", tmp_double, mx_len));
     for (int i = 0; i < mx_len; i++) {
-        int64_t sum_tot = 0.0;
+        int sum_tot = 0.0;
         for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][mx_len - i - 1];
         tmp_double[i] = 100.0 * tot_cnt4[3][mx_len - i - 1] / sum_tot;
     }
     outhtml.append(insertSeriesData("line", "G", tmp_double, mx_len));
     for (int i = 0; i < mx_len; i++) {
-        int64_t sum_tot = 0.0;
+        int sum_tot = 0.0;
         for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][mx_len - i - 1];
         tmp_double[i] = 100.0 * tot_cnt4[2][mx_len - i - 1] / sum_tot;
     }
     outhtml.append(insertSeriesData("line", "C", tmp_double, mx_len));
     for (int i = 0; i < mx_len; i++) {
-        int64_t sum_tot = 0.0;
+        int sum_tot = 0.0;
         for (int j = 0; j < 4; j++) sum_tot += tot_cnt4[j][mx_len - i - 1];
         tmp_double[i] = 100.0 * tot_cnt4[1][mx_len - i - 1] / sum_tot;
     }
@@ -929,7 +928,6 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
     fout.write(outhtml.c_str(), outhtml.length());
     fout.close();
     delete[] tmp_double;
-    delete[] tmp_int64;
 }
 
 std::string GetOver(State *state, bool isAfter, bool isRead2, int eva_len) {
@@ -968,7 +966,7 @@ std::string GetOver(State *state, bool isAfter, bool isRead2, int eva_len) {
 
     for (int i = 0; i < hash_num; i++) {
         std::string seq = hash_graph[i].seq;
-        int64_t count = hash_graph[i].cnt;
+        int count = hash_graph[i].cnt;
         if (!overRepPassed(seq, count, cmd_info->overrepresentation_sampling_))
             continue;
         found++;
@@ -992,7 +990,7 @@ std::string GetOver(State *state, bool isAfter, bool isRead2, int eva_len) {
     bool first = true;
     for (int i = 0; i < hash_num; i++) {
         std::string seq = hash_graph[i].seq;
-        int64_t count = hash_graph[i].cnt;
+        int count = hash_graph[i].cnt;
         if (!overRepPassed(seq, count, cmd_info->overrepresentation_sampling_))
             continue;
 
@@ -1047,15 +1045,15 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
     int mx_len1 = state1->GetRealSeqLen();
     int mx_len2 = state2->GetRealSeqLen();
 
-    int64_t *pos_qul_;
-    int64_t *pos_cnt_;
-    int64_t *qul_cnt;
-    int64_t *gc_cnt;
+    int *pos_qul_;
+    int *pos_cnt_;
+    int *qul_cnt;
+    int *gc_cnt;
 
 
     double *tmp_double = new double[std::max(std::max(mx_len1, mx_len2), 1010)];
 
-    int64_t *tmp_int64 = new int64_t[110];
+    int *tmp_int64 = new int[110];
 
 
     outhtml.append(HTMLHeader());
@@ -1178,11 +1176,10 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
         pos_qul_ = state1->GetPosQul();
         pos_cnt_ = state1->GetPosCnt();
         for (int i = 0; i < mx_len1; i++) {
-            int64_t sum_qul = 0;
-            int64_t sum_cnt = 0;
-            for (int j = 0; j < 8; j++) {
-                sum_qul += pos_qul_[i * 8 + j];
-                sum_cnt += pos_cnt_[i * 8 + j];
+            int sum_qul = pos_qul_[i];
+            int sum_cnt = 0;
+            for (int j = 0; j < 4; j++) {
+                sum_cnt += pos_cnt_[i * 4 + j];
             }
             tmp_double[i] = 1.0 * sum_qul / sum_cnt;
         }
@@ -1206,11 +1203,10 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
         pos_qul_ = state2->GetPosQul();
         pos_cnt_ = state2->GetPosCnt();
         for (int i = 0; i < mx_len2; i++) {
-            int64_t sum_qul = 0;
-            int64_t sum_cnt = 0;
-            for (int j = 0; j < 8; j++) {
-                sum_qul += pos_qul_[i * 8 + j];
-                sum_cnt += pos_cnt_[i * 8 + j];
+            int sum_qul = pos_qul_[i];
+            int sum_cnt = 0;
+            for (int j = 0; j < 4; j++) {
+                sum_cnt += pos_cnt_[i * 4 + j];
             }
             tmp_double[i] = 1.0 * sum_qul / sum_cnt;
         }
@@ -1277,27 +1273,27 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
         outhtml.append(insertSeriesBegin());
         pos_cnt_ = state1->GetPosCnt();
         for (int i = 0; i < mx_len1; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('A' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "A", tmp_double, mx_len1));
         for (int i = 0; i < mx_len1; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('G' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "G", tmp_double, mx_len1));
         for (int i = 0; i < mx_len1; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('C' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "C", tmp_double, mx_len1));
         for (int i = 0; i < mx_len1; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('T' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "T", tmp_double, mx_len1));
         outhtml.append(insertSeriesEnd());
@@ -1318,27 +1314,27 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
 
         pos_cnt_ = state2->GetPosCnt();
         for (int i = 0; i < mx_len2; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('A' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "A", tmp_double, mx_len2));
         for (int i = 0; i < mx_len2; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('G' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "G", tmp_double, mx_len2));
         for (int i = 0; i < mx_len2; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('C' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "C", tmp_double, mx_len2));
         for (int i = 0; i < mx_len2; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('T' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "T", tmp_double, mx_len2));
         outhtml.append(insertSeriesEnd());
@@ -1398,7 +1394,7 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
 }
 
 void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_state2, State *aft_state1, State *aft_state2,
-                           std::string file_name1, std::string file_name2, double dup, int64_t *size_info) {
+                           std::string file_name1, std::string file_name2, double dup, int *size_info) {
     auto cmd_info = pre_state1->GetCmdInfo();
     int size_len_mx = cmd_info->max_insert_size_;
     int size_require = cmd_info->overlap_require_;
@@ -1415,9 +1411,9 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
     int aft_mx_len1 = aft_state1->GetRealSeqLen();
     int aft_mx_len2 = aft_state2->GetRealSeqLen();
 
-    int64_t *pos_qul_;
-    int64_t *pos_cnt_;
-    int64_t *qul_cnt;
+    int *pos_qul_;
+    int *pos_cnt_;
+    int *qul_cnt;
 
 
     int size_real = pre_state1->GetRealSeqLen() + pre_state2->GetRealSeqLen() - size_require;
@@ -1428,7 +1424,7 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
     mx_malloc_size = std::max(mx_malloc_size, size_real);
     mx_malloc_size = std::max(mx_malloc_size, 1010);
     tmp_double = new double[mx_malloc_size];
-    int64_t *tmp_int64 = new int64_t[110];
+    int *tmp_int64 = new int[110];
 
 
     outhtml.append(HTMLHeader());
@@ -1600,7 +1596,7 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
         outhtml.append(insertxAxisRange("Read length", 1, size_real));
         outhtml.append(insertyAxis("value", "Read percent (%)"));
         outhtml.append(insertSeriesBegin());
-        int64_t sum_read = 0;
+        int sum_read = 0;
         for (int i = 0; i < size_real; i++) sum_read += size_info[i];
         sum_read += size_info[size_len_mx];
         for (int i = 0; i < size_real; i++) tmp_double[i] = 100.0 * size_info[i] / sum_read;
@@ -1625,11 +1621,10 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
         pos_qul_ = pre_state1->GetPosQul();
         pos_cnt_ = pre_state1->GetPosCnt();
         for (int i = 0; i < pre_mx_len1; i++) {
-            int64_t sum_qul = 0;
-            int64_t sum_cnt = 0;
-            for (int j = 0; j < 8; j++) {
-                sum_qul += pos_qul_[i * 8 + j];
-                sum_cnt += pos_cnt_[i * 8 + j];
+            int sum_qul = pos_qul_[i];
+            int sum_cnt = 0;
+            for (int j = 0; j < 4; j++) {
+                sum_cnt += pos_cnt_[i * 4 + j];
             }
             tmp_double[i] = 1.0 * sum_qul / sum_cnt;
         }
@@ -1652,11 +1647,10 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
         pos_qul_ = pre_state2->GetPosQul();
         pos_cnt_ = pre_state2->GetPosCnt();
         for (int i = 0; i < pre_mx_len2; i++) {
-            int64_t sum_qul = 0;
-            int64_t sum_cnt = 0;
-            for (int j = 0; j < 8; j++) {
-                sum_qul += pos_qul_[i * 8 + j];
-                sum_cnt += pos_cnt_[i * 8 + j];
+            int sum_qul = pos_qul_[i];
+            int sum_cnt = 0;
+            for (int j = 0; j < 4; j++) {
+                sum_cnt += pos_cnt_[i * 4 + j];
             }
             tmp_double[i] = 1.0 * sum_qul / sum_cnt;
         }
@@ -1680,11 +1674,10 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
         pos_qul_ = aft_state1->GetPosQul();
         pos_cnt_ = aft_state1->GetPosCnt();
         for (int i = 0; i < aft_mx_len1; i++) {
-            int64_t sum_qul = 0;
-            int64_t sum_cnt = 0;
-            for (int j = 0; j < 8; j++) {
-                sum_qul += pos_qul_[i * 8 + j];
-                sum_cnt += pos_cnt_[i * 8 + j];
+            int sum_qul = pos_qul_[i];
+            int sum_cnt = 0;
+            for (int j = 0; j < 4; j++) {
+                sum_cnt += pos_cnt_[i * 4 + j];
             }
             tmp_double[i] = 1.0 * sum_qul / sum_cnt;
         }
@@ -1707,11 +1700,10 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
         pos_qul_ = aft_state2->GetPosQul();
         pos_cnt_ = aft_state2->GetPosCnt();
         for (int i = 0; i < aft_mx_len2; i++) {
-            int64_t sum_qul = 0;
-            int64_t sum_cnt = 0;
-            for (int j = 0; j < 8; j++) {
-                sum_qul += pos_qul_[i * 8 + j];
-                sum_cnt += pos_cnt_[i * 8 + j];
+            int sum_qul = pos_qul_[i];
+            int sum_cnt = 0;
+            for (int j = 0; j < 4; j++) {
+                sum_cnt += pos_cnt_[i * 4 + j];
             }
             tmp_double[i] = 1.0 * sum_qul / sum_cnt;
         }
@@ -1814,27 +1806,27 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
 
 
         for (int i = 0; i < pre_mx_len1; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('A' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "A", tmp_double, pre_mx_len1));
         for (int i = 0; i < pre_mx_len1; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('G' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "G", tmp_double, pre_mx_len1));
         for (int i = 0; i < pre_mx_len1; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('C' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "C", tmp_double, pre_mx_len1));
         for (int i = 0; i < pre_mx_len1; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('T' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "T", tmp_double, pre_mx_len1));
         outhtml.append(insertSeriesEnd());
@@ -1855,27 +1847,27 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
 
         pos_cnt_ = pre_state2->GetPosCnt();
         for (int i = 0; i < pre_mx_len2; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('A' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "A", tmp_double, pre_mx_len2));
         for (int i = 0; i < pre_mx_len2; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('G' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "G", tmp_double, pre_mx_len2));
         for (int i = 0; i < pre_mx_len2; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('C' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "C", tmp_double, pre_mx_len2));
         for (int i = 0; i < pre_mx_len2; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('T' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "T", tmp_double, pre_mx_len2));
         outhtml.append(insertSeriesEnd());
@@ -1898,27 +1890,27 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
 
 
         for (int i = 0; i < aft_mx_len1; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('A' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "A", tmp_double, aft_mx_len1));
         for (int i = 0; i < aft_mx_len1; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('G' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "G", tmp_double, aft_mx_len1));
         for (int i = 0; i < aft_mx_len1; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('C' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "C", tmp_double, aft_mx_len1));
         for (int i = 0; i < aft_mx_len1; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('T' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "T", tmp_double, aft_mx_len1));
         outhtml.append(insertSeriesEnd());
@@ -1939,27 +1931,27 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
 
         pos_cnt_ = aft_state2->GetPosCnt();
         for (int i = 0; i < aft_mx_len2; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('A' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('A' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "A", tmp_double, aft_mx_len2));
         for (int i = 0; i < aft_mx_len2; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('G' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('G' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "G", tmp_double, aft_mx_len2));
         for (int i = 0; i < aft_mx_len2; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('C' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('C' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "C", tmp_double, aft_mx_len2));
         for (int i = 0; i < aft_mx_len2; i++) {
-            int64_t sum_tot = 0.0;
-            for (int j = 0; j < 8; j++) sum_tot += pos_cnt_[i * 8 + j];
-            tmp_double[i] = 100.0 * pos_cnt_[i * 8 + ('T' & 0x07)] / sum_tot;
+            int sum_tot = 0.0;
+            for (int j = 0; j < 4; j++) sum_tot += pos_cnt_[i * 4 + j];
+            tmp_double[i] = 100.0 * pos_cnt_[i * 4 + valAGCT[('T' & 0x07)]] / sum_tot;
         }
         outhtml.append(insertSeriesData("line", "T", tmp_double, aft_mx_len2));
         outhtml.append(insertSeriesEnd());
@@ -1979,7 +1971,7 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
         outhtml.append(insertxAxisRange("Mean GC content (%)", 0, 100));
         outhtml.append(insertyAxis("value", "Read number"));
         outhtml.append(insertSeriesBegin());
-        int64_t *gc_cnt = pre_state1->GetGcCnt();
+        int *gc_cnt = pre_state1->GetGcCnt();
         for (int i = 0; i <= 100; i++) tmp_int64[i] = gc_cnt[i];
         outhtml.append(insertSeriesSmoothData("line", tmp_int64, 101));
         outhtml.append(insertSeriesEnd());
@@ -2013,7 +2005,7 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
         outhtml.append(insertxAxisRange("Mean GC content (%)", 0, 100));
         outhtml.append(insertyAxis("value", "Read number"));
         outhtml.append(insertSeriesBegin());
-        int64_t *gc_cnt = aft_state1->GetGcCnt();
+        int *gc_cnt = aft_state1->GetGcCnt();
         for (int i = 0; i <= 100; i++) tmp_int64[i] = gc_cnt[i];
         outhtml.append(insertSeriesSmoothData("line", tmp_int64, 101));
         outhtml.append(insertSeriesEnd());

@@ -78,15 +78,15 @@ public:
 
     int GetKmerBufLen() const;
 
-    int64_t *GetPosQul() const;
+    int *GetPosQul() const;
 
-    int64_t *GetPosCnt() const;
+    int *GetPosCnt() const;
 
-    int64_t *GetLenCnt() const;
+    int *GetLenCnt() const;
 
-    int64_t *GetGcCnt() const;
+    int *GetGcCnt() const;
 
-    int64_t *GetQulCnt() const;
+    int *GetQulCnt() const;
 
     int64_t *GetKmer() const;
 
@@ -134,11 +134,11 @@ public:
     int qul_range_;
     int real_seq_len_;
     int kmer_buf_len_;
-    int64_t *pos_qul_;
-    int64_t *pos_cnt_;
-    int64_t *len_cnt_;
-    int64_t *gc_cnt_;
-    int64_t *qul_cnt_;
+    int *pos_qul_;
+    int *pos_cnt_;
+    int *len_cnt_;
+    int *gc_cnt_;
+    int *qul_cnt_;
     int64_t *kmer_;
     int64_t kmer_min_;
     int64_t kmer_max_;

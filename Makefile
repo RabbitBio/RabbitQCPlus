@@ -35,13 +35,13 @@ CXX = sw5g++
 
 
 CXXFLAGS := $(InstructSet)
-CXXFLAGS += -DVerbose -std=c++11 -I./ -I./common -g -O3 -w -fopenmp
+CXXFLAGS +=  -DVerbose -std=c++11 -I./ -I./common -g -O3 -w -fopenmp
 
 
 CXX2 = sw5gcc
-CXXFLAGS2 := -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
+CXXFLAGS2 :=  -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
 
-LIBS := -static -lz -Wl,-z,muldefs -lpthread -fopenmp -lrt
+LIBS :=  -static -lz -Wl,-z,muldefs -lpthread -fopenmp -lrt
 
 
 LD_FLAGS := $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir)) $(LIBS)

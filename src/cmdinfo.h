@@ -13,6 +13,7 @@
 class CmdInfo {
 public:
     CmdInfo();
+    void CmdInfoCopy(CmdInfo *cmd_info);
 
 public:
     std::string in_file_name1_;
