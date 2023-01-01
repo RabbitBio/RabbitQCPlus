@@ -95,7 +95,7 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
 }
 
 SeQc::~SeQc() {
-    //out_stream_.close();
+    out_stream_.close();
     delete filter_;
     if (cmd_info_->write_data_) {
         delete out_queue_;

@@ -15,6 +15,15 @@
 __thread_local unsigned char local_data1[LOCALSIZE];
 __thread_local unsigned char local_data2[LOCALSIZE];
 
+
+struct OverlapRes {
+    bool overlapped;
+    int offset;
+    int overlap_len;
+    int diff_num;
+};
+
+
 struct dupInfo{
     uint32_t key;
     uint kmer32;
@@ -23,8 +32,9 @@ struct dupInfo{
 
 __thread_local dupInfo local_dup_info[BATCH_SIZE];
 
-__thread_local int  valAGCT[8]  = {-1, 0, -1, 2, 1, -1, -1, 3};
+__thread_local int valAGCT[8]  = {-1, 0, -1, 2, 1, -1, -1, 3};
 
+__thread_local char reMap[8] = {0, 'T', 0, 'G', 'A', 0, 0, 'C'};
 int max(int x,int y) {
     return x > y ? x : y;
 }
@@ -181,7 +191,6 @@ void tgsfunc(qc_data *para) {
     }
 
     dma_putn(thread_info->TGS_state_->mBases51015Num, mBases51015Num, 3);
-    //printf("=== %d base number %d\n", _PEN, base_num);
 }
 
 
@@ -351,8 +360,8 @@ int ReadFiltering(neoReference &ref, bool trim_res, bool isPhred64, CmdInfo *cmd
     int phredSub = 33;
     if (isPhred64) phredSub = 64;
     for (int i = 0; i < seq_len; i++) {
-        //int q = std::max(0, quals[i] - phredSub);
-        int q = quals[i] - phredSub;
+        int q = std::max(0, quals[i] - phredSub);
+        //int q = quals[i] - phredSub;
         if (q < 15) {
             low_qual_number++;
         }
@@ -365,7 +374,34 @@ int ReadFiltering(neoReference &ref, bool trim_res, bool isPhred64, CmdInfo *cmd
     return 0;
 }
 
-int TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2) {
+int TrimAdapterPE(neoReference &r1, neoReference &r2, neoReference &r1p, neoReference &r2p, int offset, int overlap_len) {
+    //    if(ov.diff<=5 && ov.overlapped && ov.offset < 0 && ol > r1->length()/3)
+
+    if (overlap_len > 0 && offset < 0) {
+        //string adapter1 = string(reinterpret_cast<const char *>(r1.base + r1.pseq + overlap_len),
+        //        r1.lseq - overlap_len);
+        //string adapter2 = string(reinterpret_cast<const char *>(r2.base + r2.pseq + overlap_len),
+        //        r2.lseq - overlap_len);
+        int res_len = r1.lseq - overlap_len + r2.lseq - overlap_len;
+        r1.lseq = overlap_len;
+        r1p.lseq = overlap_len;
+        r1.lqual = overlap_len;
+        r1p.lqual = overlap_len;
+        r2.lseq = overlap_len;
+        r2p.lseq = overlap_len;
+        r2.lqual = overlap_len;
+        r2p.lqual = overlap_len;
+
+        return res_len;
+        //return adapter1.length() + adapter2.length();
+    }
+    return false;
+}
+
+
+
+
+int TrimAdapter(neoReference &ref, neoReference &refp, std::string &adapter_seq, bool isR2) {
     int matchReq = 4;
     const int allowOneMismatchForEach = 8;
 
@@ -408,14 +444,18 @@ int TrimAdapter(neoReference &ref, std::string &adapter_seq, bool isR2) {
         if (pos < 0) {
             //std::string adapter = adapter_seq.substr(0, alen + pos);
             ref.lseq = 0;
+            refp.lseq = 0;
             ref.lqual = 0;
+            refp.lqual = 0;
             res_len = alen + pos;
 
         } else {
             //std::string new_adapter_seq = std::string(reinterpret_cast<const char *>(ref.base + ref.pseq + pos),
             //        rlen - pos);
             ref.lseq = pos;
+            refp.lseq = pos;
             ref.lqual = pos;
+            refp.lqual = pos;
             res_len = rlen - pos;
         }
         return res_len;
@@ -578,7 +618,6 @@ void StateDup(neoReference &ref, int ids, int bit_len) {
             gc++;
     }
     gc = int(255.0 * gc / ref.lseq + 0.5);
-    //if(key + kmer32 + gc == 12312312) printf("111\n");
     local_dup_info[ids & (BATCH_SIZE - 1)].key = key;
     local_dup_info[ids & (BATCH_SIZE - 1)].kmer32 = kmer32;
     local_dup_info[ids & (BATCH_SIZE - 1)].gc = (uint8_t)gc;
@@ -665,7 +704,6 @@ void ngsfunc(qc_data *para){
     for(int id = _PEN * BATCH_SIZE; id < data_num; id += 64 * BATCH_SIZE) {
 
 
-
         rtc_(&start_t);
         int start_pos = id;
         int end_pos = id + BATCH_SIZE;
@@ -718,15 +756,12 @@ void ngsfunc(qc_data *para){
             bool trim_res = 0;
             trim_res = TrimSeq(item, item2, cmd_info_->trim_front2_, cmd_info_->trim_tail1_, cmd_info_);
             if (trim_res && cmd_info_->trim_polyg_) {
-                printf("GGG\n");
                 trimPolyG(item, item2, cmd_info_->trim_poly_len_);
             }
             if (trim_res && cmd_info_->trim_polyx_) {
-                printf("XXX\n");
                 trimPolyX(item, item2, cmd_info_->trim_poly_len_);
             }
             if (trim_res && cmd_info_->trim_adapter_) {
-                printf("AAA\n");
                 int res = 0;
                 bool is_trimmed = false;
                 if (cmd_info_->detect_adapter1_) {
@@ -734,7 +769,7 @@ void ngsfunc(qc_data *para){
                         //res = TrimAdapter(item, cmd_info_->adapter_seq1_, thread_info->aft_state1_->adapter_map_, cmd_info_->adapter_len_lim_, false);
                         //TODO
                     } else {
-                        res = TrimAdapter(item, cmd_info_->adapter_seq1_, false);
+                        res = TrimAdapter(item, item2, cmd_info_->adapter_seq1_, false);
                     }
                     if (res) {
                         is_trimmed = true;
@@ -883,6 +918,87 @@ void ngsfunc(qc_data *para){
     }
 }
 
+OverlapRes AnalyzeOverlap(neoReference &r1, neoReference &r2, int overlap_diff_limit, int overlap_require) {
+
+
+    int len1 = r1.lseq;
+    int len2 = r2.lseq;
+    const char *str1 = reinterpret_cast<const char *>(r1.base + r1.pseq);
+    const char *str2 = reinterpret_cast<const char *>(r2.base + r2.pseq);
+
+
+    int complete_compare_require = 50;
+
+    int overlap_len = 0;
+    int offset = 0;
+    int diff_num = 0;
+
+    // forward
+    // a match of less than overlapRequire is considered as unconfident
+    while (offset < len1 - overlap_require) {
+        // the overlap length of r1 & r2 when r2 is move right for offset
+        overlap_len = min(len1 - offset, len2);
+        int leng = min(complete_compare_require, overlap_len);
+        diff_num = 0;
+        for (int i = 0; i < leng; i++) {
+            diff_num += str1[offset + i] != reMap[str2[len2 - 1 - i] & 0x07];
+            if (diff_num > overlap_diff_limit)
+                break;
+        }
+
+        if (diff_num <= overlap_diff_limit) {
+            return {true, offset, overlap_len, diff_num};
+        }
+
+        offset += 1;
+    }
+
+
+    // reverse
+    // in this case, the adapter is sequenced since TEMPLATE_LEN < SEQ_LEN
+    // check if distance can get smaller if offset goes negative
+    // this only happens when insert DNA is shorter than sequencing read length, and some adapter/primer is sequenced but not trimmed cleanly
+    // we go reversely
+    offset = 0;
+    while (offset > -(len2 - overlap_require)) {
+        // the overlap length of r1 & r2 when r2 is move right for offset
+        overlap_len = min(len1, len2 - abs(offset));
+        int leng = min(complete_compare_require, overlap_len);
+        diff_num = 0;
+        for (int i = 0; i < leng; i++) {
+            diff_num += str1[i] != reMap[str2[len2 - 1 + offset - i] & 0x07];
+            if (diff_num > overlap_diff_limit)
+                break;
+        }
+
+        if (diff_num <= overlap_diff_limit) {
+            return {true, offset, overlap_len, diff_num};
+        }
+
+        offset -= 1;
+    }
+
+    return {false, 0, 0, 0};
+}
+
+
+void PrintString(char *pos, int len) {
+    for(int i = 0; i < len; i++) {
+        printf("%c", pos[i]);
+    }
+    printf("\n");
+}
+
+void UpdateIterm(neoReference &up, neoReference now) {
+    up.pname = now.pname;
+    up.lname = now.lname;
+    up.pseq = now.pseq;
+    up.lseq = now.lseq;
+    up.pstrand = now.pstrand;
+    up.lstrand = now.lstrand;
+    up.pqual = now.pqual;
+    up.lqual = now.lqual;
+}
 
 void ngspefunc(qc_data *para){
     unsigned long c_trim = 0;
@@ -1071,8 +1187,6 @@ void ngspefunc(qc_data *para){
             c_dma3 += end_t - start_t;
 
 
-
-
             rtc_(&start_t);
             StateInfo(thread_info->pre_state1_, item1, cmd_info_, pre_pos_cnt1_, pre_pos_qul1_, pre_len_cnt1_, pre_gc_cnt1_, pre_qul_cnt1_, pre_q20bases1_, pre_q30bases1_, pre_tot_bases1_, pre_gc_bases1_, pre_real_seq_len1_, pre_lines1_); 
             StateInfo(thread_info->pre_state2_, item2, cmd_info_, pre_pos_cnt2_, pre_pos_qul2_, pre_len_cnt2_, pre_gc_cnt2_, pre_qul_cnt2_, pre_q20bases2_, pre_q30bases2_, pre_tot_bases2_, pre_gc_bases2_, pre_real_seq_len2_, pre_lines2_); 
@@ -1082,12 +1196,13 @@ void ngspefunc(qc_data *para){
 
 
 
+
+
             rtc_(&start_t);
             if (cmd_info_->state_duplicate_) {
-                StateDup(item1, ids, bit_len);
+                //TODO
             }
             if (cmd_info_->add_umi_) {
-                //umier_->ProcessSe(item);
                 //TODO
             }
             rtc_(&end_t);
@@ -1099,11 +1214,9 @@ void ngspefunc(qc_data *para){
             trim_res1 = TrimSeq(item1, item1p, cmd_info_->trim_front2_, cmd_info_->trim_tail1_, cmd_info_);
             trim_res2 = TrimSeq(item2, item2p, cmd_info_->trim_front2_, cmd_info_->trim_tail1_, cmd_info_);
             if (trim_res1 && trim_res2 && cmd_info_->trim_polyg_) {
-                printf("GGG\n");
                 trimPolyGPE(item1, item2, item1p, item2p, cmd_info_->trim_poly_len_);
             }
             if (trim_res1 && trim_res2 && cmd_info_->trim_polyx_) {
-                printf("XXX\n");
                 trimPolyXPE(item1, item2, item1p, item2p, cmd_info_->trim_poly_len_);
             }
             //TODO 
@@ -1111,15 +1224,101 @@ void ngspefunc(qc_data *para){
             c_trim += end_t - start_t;
 
 
+            OverlapRes overlap_res;
+            if (trim_res1 && trim_res2 && cmd_info_->analyze_overlap_) {
+                overlap_res = AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_, cmd_info_->overlap_require_);
+                int now_size = cmd_info_->max_insert_size_;
+                if (overlap_res.overlapped) {
+                    if (overlap_res.offset > 0)
+                        now_size = item1.lseq + item2.lseq - overlap_res.overlap_len;
+                    else
+                        now_size = overlap_res.overlap_len;
+                }
+                now_size = min(now_size, cmd_info_->max_insert_size_);
+                thread_info->insert_size_dist_[now_size]++;
+            }
+            if (trim_res1 && trim_res2 && cmd_info_->correct_data_) {
+                //Adapter::CorrectData(item1, item2, overlap_res, cmd_info_->isPhred64_);
+                //TODO
+            }
+            if (trim_res1 && trim_res2 && cmd_info_->trim_adapter_) {
+                int trimmed= false;
+                if (cmd_info_->print_what_trimmed_) {
+                    //TODO
+                } else {
+                    trimmed = TrimAdapterPE(item1, item2, item1p, item2p, overlap_res.offset, overlap_res.overlap_len);
+                }
+                if (trimmed) {
+                    thread_info->aft_state1_->trim_adapter_++;
+                    thread_info->aft_state1_->trim_adapter_++;
+                    thread_info->aft_state1_->trim_adapter_bases_ +=trimmed;
+                }
+                int res1 = 0, res2 = 0;
+                bool is_trimmed1 = trimmed;
+                bool is_trimmed2 = trimmed;
+
+                if (!trimmed) {
+                    if (cmd_info_->detect_adapter1_) {
+                        int res1;
+                        if (cmd_info_->print_what_trimmed_) {
+                            //TODO
+                        } else {
+                            res1 = TrimAdapter(item1, item1p, cmd_info_->adapter_seq1_, false);
+                        }
+                        if (res1) {
+                            is_trimmed1 = true;
+                            thread_info->aft_state1_->trim_adapter_++;
+                            thread_info->aft_state1_->trim_adapter_bases_ += res1;
+                        }
+                    }
+                    if (cmd_info_->detect_adapter2_) {
+                        int res2;
+                        if (cmd_info_->print_what_trimmed_) {
+                            //TODO
+                        } else {
+                            res2 = TrimAdapter(item2, item2p, cmd_info_->adapter_seq2_, true);
+                        }
+                        if (res2) {
+                            is_trimmed2 = true;
+                            thread_info->aft_state1_->trim_adapter_++;
+                            thread_info->aft_state1_->trim_adapter_bases_ += res2;
+                        }
+                    }
+                }
+
+                if(cmd_info_->adapter_from_fasta_.size() > 0) {
+                    if (cmd_info_->print_what_trimmed_) {
+                        //TODO
+                    } else {
+                        //TODO
+                    }
+                    if (res1) {
+                        if(!is_trimmed1) thread_info->aft_state1_->trim_adapter_++;
+                        thread_info->aft_state1_->trim_adapter_bases_ += res1;
+                    }
+
+                    if (cmd_info_->print_what_trimmed_) {
+                        //TODO
+                    } else {
+                        //TODO
+                    }
+                    if (res2) {
+                        if(!is_trimmed2) thread_info->aft_state1_->trim_adapter_++;
+                        thread_info->aft_state1_->trim_adapter_bases_ += res2;
+                    }
+                }
+
+            }
 
             rtc_(&start_t);
             int filter_res1 = 0;
             int filter_res2 = 0;
             filter_res1 = ReadFiltering(item1, trim_res1, cmd_info_->isPhred64_, cmd_info_);
-            filter_res2 = ReadFiltering(item1, trim_res2, cmd_info_->isPhred64_, cmd_info_);
+            filter_res2 = ReadFiltering(item2, trim_res2, cmd_info_->isPhred64_, cmd_info_);
             int filter_res = max(filter_res1, filter_res2);
             rtc_(&end_t);
             c_filter += end_t - start_t;
+
 
             if (filter_res == 0) {
                 rtc_(&start_t);
@@ -1130,12 +1329,14 @@ void ngspefunc(qc_data *para){
 
 
 
+
                 rtc_(&start_t);
                 thread_info->aft_state1_->pass_reads_++;
                 thread_info->aft_state1_->pass_reads_++;
                 if (cmd_info_->write_data_) {
-                    dma_putn(&((*pass_data1)[ids]), &item1p, 1);
-                    dma_putn(&((*pass_data2)[ids]), &item2p, 1);
+
+                    UpdateIterm((*pass_data1)[ids], item1p);
+                    UpdateIterm((*pass_data2)[ids], item2p);
                 }
                 rtc_(&end_t);
                 c_dma4 += end_t - start_t;
@@ -1150,13 +1351,13 @@ void ngspefunc(qc_data *para){
                     item1p.lseq = 0;
                     item1p.lstrand = 0;
                     item1p.lqual = 0;
-                    dma_putn(&((*pass_data1)[ids]), &item1p, 1);
+                    UpdateIterm((*pass_data1)[ids], item1p);
 
                     item2p.lname = 0;
                     item2p.lseq = 0;
                     item2p.lstrand = 0;
                     item2p.lqual = 0;
-                    dma_putn(&((*pass_data2)[ids]), &item2p, 1);
+                    UpdateIterm((*pass_data2)[ids], item2p);
                 }
                 rtc_(&end_t);
                 c_write1 += end_t - start_t;

@@ -129,6 +129,8 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
 
 
 PeQc::~PeQc() {
+    out_stream1_.close();
+    out_stream2_.close();
     delete filter_;
     if (cmd_info_->write_data_) {
         delete out_queue1_;
@@ -939,18 +941,19 @@ void PeQc::NGSTask(std::string file, std::string file2, rabbit::fq::FastqDataPoo
         if(data1.size() != data2.size()) printf("GG size pe\n");
         printf("num %d\n", data1.size());
         nums += data1.size();
-        vector <neoReference> pass_data1;
-        vector <neoReference> pass_data2;
+        vector <neoReference> pass_data1(data1);
+        vector <neoReference> pass_data2(data2);
         vector <dupInfo> dups;
-        if(cmd_info_->write_data_) {
-            pass_data1.resize(data1.size());
-            pass_data2.resize(data2.size());
-        }
+        //if(cmd_info_->write_data_) {
+        //    pass_data1.resize(data1.size());
+        //    pass_data2.resize(data2.size());
+        //}
         if(cmd_info_->state_duplicate_) {
             dups.resize(data1.size());
         }
         tsum2 += GetTime() - tt0;
         tt0 = GetTime();
+
         para.data1_ = &data1;
         para.data2_ = &data2;
         para.pass_data1_ = &pass_data1;
