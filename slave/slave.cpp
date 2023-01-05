@@ -1,9 +1,13 @@
+extern "C"
+{
+#include <slave.h>
+#include <crts.h>
+}
+#include "dma_funcs.hpp"
 #include <cstring>
 #include <vector>
 #include <unordered_map>
 
-#include "tuple_spawn.hpp"
-#include "slave.h"
 #include "Reference.h"
 #include "cmdinfo.h"
 #include "state.h"
@@ -56,7 +60,7 @@ void rtc_(unsigned long *counter){
 
 extern "C" void* ldm_malloc(size_t size);
 extern "C" void ldm_free(void *addr, size_t size);
-extern "C" size_t get_allocatable_size();
+//extern "C" size_t get_allocatable_size();
 
 struct qc_data {
     ThreadInfo **thread_info_;
@@ -95,7 +99,7 @@ void updateTop5(int rlen, double avgQual, TGSStats *tgs_state) {
     }
 }
 
-void tgsfunc(qc_data *para) {
+extern "C" void tgsfunc(qc_data *para) {
     std::vector <neoReference> *data = para->data1_;
     ThreadInfo *thread_info = para->thread_info_[_PEN];
     CmdInfo *cmd_info_ = para->cmd_info_;
@@ -623,7 +627,7 @@ void StateDup(neoReference &ref, int ids, int bit_len) {
     local_dup_info[ids & (BATCH_SIZE - 1)].gc = (uint8_t)gc;
 }
 
-void ngsfunc(qc_data *para){
+extern "C" void ngsfunc(qc_data *para){
     unsigned long c_trim = 0;
     unsigned long c_dup = 0;
     unsigned long c_loop = 0;
@@ -1000,7 +1004,7 @@ void UpdateIterm(neoReference &up, neoReference now) {
     up.lqual = now.lqual;
 }
 
-void ngspefunc(qc_data *para){
+extern "C" void ngspefunc(qc_data *para){
     unsigned long c_trim = 0;
     unsigned long c_dup = 0;
     unsigned long c_loop = 0;
@@ -1492,7 +1496,7 @@ void ngspefunc(qc_data *para){
 
 
 
-ATHREAD_VISIBLE(tgsfunc);
+//ATHREAD_VISIBLE(tgsfunc);
 //ATHREAD_VISIBLE(ngsfunc);
 
 

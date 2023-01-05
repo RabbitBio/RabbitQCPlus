@@ -3,7 +3,6 @@
 //
 
 #include "peqc.h"
-#include "tuple_spawn.hpp"
 using namespace std;
 
 struct dupInfo{
@@ -25,8 +24,14 @@ struct qc_data {
     int bit_len;
 };
 
+extern "C" {
+#include <athread.h>
+#include <pthread.h>
+void slave_ngspefunc();
+}
 
-extern void slave_ngspefunc(qc_data *para);
+
+//extern void slave_ngspefunc(qc_data *para);
 
 
 /**
@@ -959,7 +964,8 @@ void PeQc::NGSTask(std::string file, std::string file2, rabbit::fq::FastqDataPoo
         para.pass_data1_ = &pass_data1;
         para.pass_data2_ = &pass_data2;
         para.dups = &dups;
-        athread_spawn_tupled(slave_ngspefunc, &para);
+        //athread_spawn_tupled(slave_ngspefunc, &para);
+        __real_athread_spawn((void *)slave_ngspefunc, &para, 1);
         athread_join();
         tsum3 += GetTime() - tt0;
         tt0 = GetTime(); 

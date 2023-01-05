@@ -2,7 +2,6 @@
 // Created by ylf9811 on 2021/7/6.
 //
 #include "seqc.h"
-#include "tuple_spawn.hpp"
 using namespace std;
 
 struct dupInfo{
@@ -24,9 +23,15 @@ struct qc_data {
     int bit_len;
 };
 
+extern "C" {
+#include <athread.h>
+#include <pthread.h>
+void slave_tgsfunc();
+void slave_ngsfunc();
+}
 
-extern void slave_tgsfunc(qc_data *para);
-extern void slave_ngsfunc(qc_data *para);
+//extern void slave_tgsfunc(qc_data *para);
+//extern void slave_ngsfunc(qc_data *para);
 
 /**
  * @brief Construct function
@@ -195,7 +200,8 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
             //printf("format cost %lf\n", GetTime() - tt0);
             tt0 = GetTime();
             para.data1_ = &data;
-            athread_spawn_tupled(slave_tgsfunc, &para);
+            //athread_spawn_tupled(slave_tgsfunc, &para);
+            __real_athread_spawn((void *)slave_tgsfunc, &para, 1);
             athread_join();
             //printf("slave cost %lf\n", GetTime() - tt0);
             tsum += GetTime() - tt0;
@@ -498,7 +504,8 @@ void SeQc::NGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
         para.data1_ = &data;
         para.pass_data1_ = &pass_data;
         para.dups = &dups;
-        athread_spawn_tupled(slave_ngsfunc, &para);
+        //athread_spawn_tupled(slave_ngsfunc, &para);
+        __real_athread_spawn((void *)slave_ngsfunc, &para, 1);
         athread_join();
         tsum3 += GetTime() - tt0;
         tt0 = GetTime(); 
@@ -716,14 +723,16 @@ void SeQc::TGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
         vector <neoReference> data;
         rabbit::fq::chunkFormat(fqdatachunk, data, true);
         tsum2 += GetTime() - tt0;
-        //printf("format cost %lf\n", GetTime() - tt0);
+        printf("format cost %lf\n", GetTime() - tt0);
         tt0 = GetTime();
         para.data1_ = &data;
-        athread_spawn_tupled(slave_tgsfunc, &para);
+        //athread_spawn_tupled(slave_tgsfunc, &para);
+        __real_athread_spawn((void *)slave_tgsfunc, &para, 1);
         athread_join();
-        //printf("slave cost %lf\n", GetTime() - tt0);
+        printf("slave cost %lf\n", GetTime() - tt0);
         tsum3 += GetTime() - tt0;
         fastq_data_pool->Release(fqdatachunk);
+        printf("ppp\n");
     }
     athread_halt();
     printf("TGS tot cost %lf\n", GetTime() - t0);
@@ -736,6 +745,7 @@ void SeQc::TGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
 
 void SeQc::ProcessSeTGS() {
 
+    printf("111\n");
     auto *fastqPool = new rabbit::fq::FastqDataPool(1, 1 << 26);
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {

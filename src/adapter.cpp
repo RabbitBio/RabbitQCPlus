@@ -334,8 +334,9 @@ int Adapter::EvalMaxLen(string file_name) {
                 break;
         }
     }
-    for (auto item: chunks)
+    for (auto item: chunks) {
         fastq_data_pool->Release(item);
+    }
     delete fastq_data_pool;
     delete fqFileReader;
     return mx_len;
