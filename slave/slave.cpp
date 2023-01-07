@@ -628,6 +628,7 @@ void StateDup(neoReference &ref, int ids, int bit_len) {
 }
 
 extern "C" void ngsfunc(qc_data *para){
+    bool is_print = 0;
     unsigned long c_trim = 0;
     unsigned long c_dup = 0;
     unsigned long c_loop = 0;
@@ -903,7 +904,7 @@ extern "C" void ngsfunc(qc_data *para){
     thread_info->aft_state1_->lines_ += aft_lines_;
     rtc_(&end_tt);
     c_dma5 += end_tt - start_tt;
-    if(_PEN == 0) {
+    if(_PEN == 0 && is_print) {
         printf("== dma all %lf\n", c_dma_all * 1e-6);
         printf("== loop %lf\n", c_loop * 1e-6);
         printf("== dma5 %lf\n", c_dma5 * 1e-6);
@@ -1005,6 +1006,7 @@ void UpdateIterm(neoReference &up, neoReference now) {
 }
 
 extern "C" void ngspefunc(qc_data *para){
+    bool is_print = 0;
     unsigned long c_trim = 0;
     unsigned long c_dup = 0;
     unsigned long c_loop = 0;
@@ -1475,7 +1477,7 @@ extern "C" void ngspefunc(qc_data *para){
 
     rtc_(&end_tt);
     c_dma5 += end_tt - start_tt;
-    if(_PEN == 0) {
+    if(_PEN == 0 && is_print) {
         printf("== dma all %lf\n", c_dma_all * 1e-6);
         printf("== loop %lf\n", c_loop * 1e-6);
         printf("== dma5 %lf\n", c_dma5 * 1e-6);

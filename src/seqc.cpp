@@ -26,8 +26,8 @@ struct qc_data {
 extern "C" {
 #include <athread.h>
 #include <pthread.h>
-void slave_tgsfunc();
-void slave_ngsfunc();
+    void slave_tgsfunc();
+    void slave_ngsfunc();
 }
 
 //extern void slave_tgsfunc(qc_data *para);
@@ -100,7 +100,7 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
 }
 
 SeQc::~SeQc() {
-    out_stream_.close();
+    //out_stream_.close();
     delete filter_;
     if (cmd_info_->write_data_) {
         delete out_queue_;
@@ -125,6 +125,7 @@ SeQc::~SeQc() {
 void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_data_pool,
         rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
 
+    double t0 = GetTime();
     rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize = 1 << 20;
     if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
@@ -153,11 +154,10 @@ void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_dat
         }
     }
 
-    printf("pro4\n");
+    printf("producer cost %lf\n", GetTime() - t0);
     dq.SetCompleted();
     delete fqFileReader;
     producerDone = 1;
-    printf("pro5\n");
 }
 
 string SeQc::Read2String(neoReference &ref) {
@@ -189,113 +189,98 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
     qc_data para;
     para.cmd_info_ = cmd_info_;
     para.thread_info_ = thread_infos;
+    para.bit_len = 0;
+    if(cmd_info_->state_duplicate_) {
+        para.bit_len = duplicate_->key_len_base_;
+    }
+    athread_init();
     if (cmd_info_->is_TGS_) {
         athread_init();
         double t0 = GetTime();
-        double tsum = 0;
+        double tsum1 = 0;
+        double tsum2 = 0;
+        double tsum3 = 0;
+        while (dq.Pop(id, fqdatachunk)) {
+            double tt0 = GetTime();
+            tsum1 += GetTime() - tt0;
+            tt0 = GetTime();
+            vector <neoReference> data;
+            rabbit::fq::chunkFormat(fqdatachunk, data, true);
+            tsum2 += GetTime() - tt0;
+            tt0 = GetTime();
+            para.data1_ = &data;
+            __real_athread_spawn((void *)slave_tgsfunc, &para, 1);
+            athread_join();
+            tsum3 += GetTime() - tt0;
+            fastq_data_pool->Release(fqdatachunk);
+        }
+        printf("TGSnew tot cost %lf\n", GetTime() - t0);
+        printf("TGSnew producer cost %lf\n", tsum1);
+        printf("TGSnew format cost %lf\n", tsum2);
+        printf("TGSnew slave cost %lf\n", tsum3);
+    } else {
+        int sum_ = 0;
+        double t0 = GetTime();
+        double tsum1 = 0;
+        double tsum2 = 0;
+        double tsum3 = 0;
+        double tsum4 = 0;
+        double tsum4_1 = 0;
+        double tsum4_2 = 0;
         while (dq.Pop(id, fqdatachunk)) {
             double tt0 = GetTime();
             vector <neoReference> data;
             rabbit::fq::chunkFormat(fqdatachunk, data, true);
-            //printf("format cost %lf\n", GetTime() - tt0);
+            vector <neoReference> pass_data;
+            vector <dupInfo> dups;
+            if(cmd_info_->write_data_) {
+                pass_data.resize(data.size());
+            }
+            if(cmd_info_->state_duplicate_) {
+                dups.resize(data.size());
+            }
+            tsum2 += GetTime() - tt0;
             tt0 = GetTime();
             para.data1_ = &data;
-            //athread_spawn_tupled(slave_tgsfunc, &para);
-            __real_athread_spawn((void *)slave_tgsfunc, &para, 1);
+            para.pass_data1_ = &pass_data;
+            para.dups = &dups;
+            __real_athread_spawn((void *)slave_ngsfunc, &para, 1);
             athread_join();
-            //printf("slave cost %lf\n", GetTime() - tt0);
-            tsum += GetTime() - tt0;
-            fastq_data_pool->Release(fqdatachunk);
-        }
-        athread_halt();
-        printf("TGS tot cost %lf\n", GetTime() - t0);
-        printf("TGS slave cost %lf\n", tsum);
-    } else {
-        int sum_ = 0;
-        while (dq.Pop(id, fqdatachunk)) {
-            vector <neoReference> data;
-            vector <neoReference> pass_data;
-            rabbit::fq::chunkFormat(fqdatachunk, data, true);
-            int out_len = 0;
-            sum_ += data.size();
-            printf("=== %d\n", sum_);
-            for (auto item: data) {
-                //thread_info->pre_state1_->StateInfo(item);
-                //if (cmd_info_->state_duplicate_) {
-                //    duplicate_->statRead(item);
-                //}
-
-                //if (cmd_info_->add_umi_) {
-                //    umier_->ProcessSe(item);
-                //}
-                //bool trim_res = filter_->TrimSeq(item, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
-
-                //if (trim_res && cmd_info_->trim_polyg_) {
-                //    PolyX::trimPolyG(item, cmd_info_->trim_poly_len_);
-                //}
-
-                //if (trim_res && cmd_info_->trim_polyx_) {
-                //    PolyX::trimPolyX(item, cmd_info_->trim_poly_len_);
-                //}
-
-                //if (trim_res && cmd_info_->trim_adapter_) {
-                //    int res = 0;
-                //    bool is_trimmed = false;
-                //    if (cmd_info_->detect_adapter1_) {
-                //        if (cmd_info_->print_what_trimmed_) {
-                //            res = Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_,
-                //                                       thread_info->aft_state1_->adapter_map_,
-                //                                       cmd_info_->adapter_len_lim_, false);
-                //        } else {
-                //            res = Adapter::TrimAdapter(item, cmd_info_->adapter_seq1_, false);
-                //        }
-                //        if (res) {
-                //            is_trimmed = true;
-                //            thread_info->aft_state1_->AddTrimAdapter();
-                //            thread_info->aft_state1_->AddTrimAdapterBase(res);
-                //        }
-                //    }
-                //    if (cmd_info_->adapter_from_fasta_.size() > 0) {
-                //        if (cmd_info_->print_what_trimmed_) {
-                //            res = Adapter::TrimAdapters(item, cmd_info_->adapter_from_fasta_,
-                //                                        thread_info->aft_state1_->adapter_map_,
-                //                                        cmd_info_->adapter_len_lim_, false);
-                //        } else {
-                //            res = Adapter::TrimAdapters(item, cmd_info_->adapter_from_fasta_, false);
-                //        }
-                //        if (res) {
-                //            if (!is_trimmed) thread_info->aft_state1_->AddTrimAdapter();
-                //            thread_info->aft_state1_->AddTrimAdapterBase(res);
-                //        }
-
-                //    }
-                //}
-
-                //int filter_res = filter_->ReadFiltering(item, trim_res, cmd_info_->isPhred64_);
-                //if (filter_res == 0) {
-                //    thread_info->aft_state1_->StateInfo(item);
-                //    thread_info->aft_state1_->AddPassReads();
-                //    if (cmd_info_->write_data_) {
-                //        pass_data.push_back(item);
-                //        out_len += item.lname + item.lseq + item.lstrand + item.lqual + 4;
-                //    }
-                //} else if (filter_res == 1) {
-                //    thread_info->aft_state1_->AddFailN();
-                //} else if (filter_res == 2) {
-                //    thread_info->aft_state1_->AddFailShort();
-                //} else if (filter_res == 3) {
-                //    thread_info->aft_state1_->AddFailLong();
-                //} else if (filter_res == 4) {
-                //    thread_info->aft_state1_->AddFailLowq();
-                //}
+            tsum3 += GetTime() - tt0;
+            tt0 = GetTime(); 
+            if(cmd_info_->state_duplicate_) {
+                for(auto item : dups) {
+                    auto key = item.key;
+                    auto kmer32 = item.kmer32;
+                    auto gc = item.gc;
+                    if (duplicate_->counts_[key] == 0) {
+                        duplicate_->counts_[key] = 1;
+                        duplicate_->dups_[key] = kmer32;
+                        duplicate_->gcs_[key] = gc;
+                    } else {
+                        if (duplicate_->dups_[key] == kmer32) {
+                            duplicate_->counts_[key]++;
+                            if (duplicate_->gcs_[key] > gc) duplicate_->gcs_[key] = gc;
+                        } else if (duplicate_->dups_[key] > kmer32) {
+                            duplicate_->dups_[key] = kmer32;
+                            duplicate_->counts_[key] = 1;
+                            duplicate_->gcs_[key] = gc;
+                        }
+                    }
+                }
             }
-
             if (cmd_info_->write_data_) {
                 if (pass_data.size() > 0) {
                     //mylock.lock();
+                    int out_len = 0;
+                    for(auto item : pass_data){
+                        if(item.lname == 0) continue;
+                        out_len += item.lname + item.lseq + item.lstrand + item.lqual + 4;
+                    }
                     char *out_data = new char[out_len];
                     int pos = 0;
                     for (auto item: pass_data) {
+                        if(item.lname == 0) continue;
                         Read2Chars(item, out_data, pos);
                     }
                     ASSERT(pos == out_len);
@@ -311,11 +296,18 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
                     //mylock.unlock();
                 }
             }
-
             fastq_data_pool->Release(fqdatachunk);
         }
+        printf("NGSnew tot cost %lf\n", GetTime() - t0);
+        printf("NGSnew producer cost %lf\n", tsum1);
+        printf("NGSnew format cost %lf\n", tsum2);
+        printf("NGSnew slave cost %lf\n", tsum3);
+        printf("NGSnew write cost %lf\n", tsum4);
+        printf("NGSnew write1 cost %lf\n", tsum4_1);
+        printf("NGSnew write2 cost %lf\n", tsum4_2);
     }
     done_thread_number_++;
+    athread_halt();
     printf("consumer done\n");
 }
 
@@ -329,58 +321,58 @@ void SeQc::WriteSeFastqTask() {
     int cnt = 0;
     bool overWhile = 0;
     pair<char *, int> now;
-//    while (true) {
-//        while (out_queue_->try_dequeue(now) == 0) {
-//            if (done_thread_number_ == cmd_info_->thread_number_) {
-//                if (out_queue_->size_approx() == 0) {
-//                    overWhile = 1;
-//                    printf("write done\n");
-//                    break;
-//                }
-//            }
-//            usleep(100);
-//        }
-//        if (overWhile) break;
-//        queueNumNow--;
-//        if (out_is_zip_) {
-//            if (cmd_info_->use_pigz_) {
-//                while (pigzQueueNumNow > pigzQueueSizeLim) {
-//#ifdef Verbose
-//                    //printf("waiting to push a chunk to pigz queue\n");
-//#endif
-//                    usleep(100);
-//                }
-//                pigzQueue->enqueue(now);
-//                pigzQueueNumNow++;
-//            } else {
-//                int written = gzwrite(zip_out_stream, now.first, now.second);
-//                if (written != now.second) {
-//                    printf("gzwrite error\n");
-//                    exit(0);
-//                }
-//                delete[] now.first;
-//            }
-//        } else {
-//            printf("write %d\n", now.second);
-//            out_stream_.write(now.first, now.second);
-//            delete[] now.first;
-//        }
-//    }
-//
-//    if (out_is_zip_) {
-//        if (cmd_info_->use_pigz_) {
-//            //            out_stream_.close();
-//
-//        } else {
-//            if (zip_out_stream) {
-//                gzflush(zip_out_stream, Z_FINISH);
-//                gzclose(zip_out_stream);
-//                zip_out_stream = NULL;
-//            }
-//        }
-//    } else {
-//        out_stream_.close();
-//    }
+    while (true) {
+        while (out_queue_->try_dequeue(now) == 0) {
+            if (done_thread_number_ == cmd_info_->thread_number_) {
+                if (out_queue_->size_approx() == 0) {
+                    overWhile = 1;
+                    printf("write done\n");
+                    break;
+                }
+            }
+            usleep(100);
+        }
+        if (overWhile) break;
+        queueNumNow--;
+        if (out_is_zip_) {
+            if (cmd_info_->use_pigz_) {
+                while (pigzQueueNumNow > pigzQueueSizeLim) {
+#ifdef Verbose
+                    //printf("waiting to push a chunk to pigz queue\n");
+#endif
+                    usleep(100);
+                }
+                pigzQueue->enqueue(now);
+                pigzQueueNumNow++;
+            } else {
+                int written = gzwrite(zip_out_stream, now.first, now.second);
+                if (written != now.second) {
+                    printf("gzwrite error\n");
+                    exit(0);
+                }
+                delete[] now.first;
+            }
+        } else {
+            //printf("write %d\n", now.second);
+            out_stream_.write(now.first, now.second);
+            delete[] now.first;
+        }
+    }
+
+    if (out_is_zip_) {
+        if (cmd_info_->use_pigz_) {
+            //            out_stream_.close();
+
+        } else {
+            if (zip_out_stream) {
+                gzflush(zip_out_stream, Z_FINISH);
+                gzclose(zip_out_stream);
+                zip_out_stream = NULL;
+            }
+        }
+    } else {
+        out_stream_.close();
+    }
 #ifdef Verbose
     printf("write cost %.5f\n", GetTime() - t0);
 #endif
@@ -583,6 +575,133 @@ void SeQc::NGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
  */
 
 void SeQc::ProcessSeFastq() {
+    auto *fastqPool = new rabbit::fq::FastqDataPool(16, 1 << 22);
+    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(16, 1);
+    auto **p_thread_info = new ThreadInfo *[slave_num];
+    for (int t = 0; t < slave_num; t++) {
+        p_thread_info[t] = new ThreadInfo(cmd_info_, false);
+    }
+    thread *write_thread;
+    if (cmd_info_->write_data_) {
+        write_thread = new thread(bind(&SeQc::WriteSeFastqTask, this));
+    }
+    thread producer(bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, ref(queue1)));
+    thread consumer(bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info, fastqPool, ref(queue1)));
+    producer.join();
+    printf("producer done\n");
+    consumer.join();
+    printf("consumer done\n");
+    if (cmd_info_->write_data_) {
+        write_thread->join();
+        writerDone = 1;
+    }
+
+    printf("all thrad done\n");
+    printf("now merge thread info\n");
+    vector < State * > pre_vec_state;
+    vector < State * > aft_vec_state;
+
+    for (int t = 0; t < slave_num; t++) {
+        pre_vec_state.push_back(p_thread_info[t]->pre_state1_);
+        aft_vec_state.push_back(p_thread_info[t]->aft_state1_);
+    }
+    auto pre_state = State::MergeStates(pre_vec_state);
+    auto aft_state = State::MergeStates(aft_vec_state);
+#ifdef Verbose
+    if (cmd_info_->do_overrepresentation_) {
+        printf("orp cost %lf\n", pre_state->GetOrpCost() + aft_state->GetOrpCost());
+    }
+    printf("merge done\n");
+#endif
+    printf("\nprint read (before filter) info :\n");
+    State::PrintStates(pre_state);
+    printf("\nprint read (after filter) info :\n");
+    State::PrintStates(aft_state);
+    printf("\n");
+    if (cmd_info_->print_what_trimmed_)
+        State::PrintAdapterToFile(aft_state);
+    State::PrintFilterResults(aft_state);
+    printf("\n");
+
+    if (cmd_info_->do_overrepresentation_ && cmd_info_->print_ORP_seqs_) {
+        auto hash_graph1 = pre_state->GetHashGraph();
+        int hash_num1 = pre_state->GetHashNum();
+
+        auto hash_graph2 = aft_state->GetHashGraph();
+        int hash_num2 = aft_state->GetHashNum();
+
+        int spg = cmd_info_->overrepresentation_sampling_;
+
+        ofstream ofs;
+        string srr_name = cmd_info_->in_file_name1_;
+        srr_name = PaseFileName(srr_name);
+
+        string out_name = "se_" + srr_name + "_before_ORP_sequences.txt";
+        ofs.open(out_name, ifstream::out);
+        ofs << "sequence count"
+            << "\n";
+        int cnt1 = 0;
+        for (int i = 0; i < hash_num1; i++) {
+            if (!overRepPassed(hash_graph1[i].seq, hash_graph1[i].cnt, spg)) continue;
+            ofs << hash_graph1[i].seq << " " << hash_graph1[i].cnt << "\n";
+            cnt1++;
+        }
+        ofs.close();
+        printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n", srr_name.c_str(),
+                cnt1, out_name.c_str());
+
+
+        out_name = "se_" + srr_name + "_after_ORP_sequences.txt";
+        ofs.open(out_name, ifstream::out);
+        ofs << "sequence count"
+            << "\n";
+        int cnt2 = 0;
+        for (int i = 0; i < hash_num2; i++) {
+            if (!overRepPassed(hash_graph2[i].seq, hash_graph2[i].cnt, spg)) continue;
+            ofs << hash_graph2[i].seq << " " << hash_graph2[i].cnt << "\n";
+            cnt2++;
+        }
+        ofs.close();
+        printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name.c_str(),
+                cnt2, out_name.c_str());
+        printf("\n");
+    }
+
+
+    int *dupHist = NULL;
+    double *dupMeanGC = NULL;
+    double dupRate = 0.0;
+    int histSize = 32;
+    if (cmd_info_->state_duplicate_) {
+        dupHist = new int[histSize];
+        memset(dupHist, 0, sizeof(int) * histSize);
+        dupMeanGC = new double[histSize];
+        memset(dupMeanGC, 0, sizeof(double) * histSize);
+        dupRate = duplicate_->statAll(dupHist, dupMeanGC, histSize);
+        printf("Duplication rate (may be overestimated since this is SE data): %.5f %%\n", dupRate * 100.0);
+        delete[] dupHist;
+        delete[] dupMeanGC;
+    }
+    string srr_name = cmd_info_->in_file_name1_;
+    srr_name = PaseFileName(srr_name);
+    Repoter::ReportHtmlSe(srr_name + "_RabbitQCPlus.html", pre_state, aft_state, cmd_info_->in_file_name1_,
+            dupRate * 100.0);
+
+
+    delete pre_state;
+    delete aft_state;
+
+    delete fastqPool;
+
+
+    for (int t = 0; t < slave_num; t++) {
+        delete p_thread_info[t];
+    }
+
+    delete[] p_thread_info;
+}
+
+void SeQc::ProcessSeFastqOneThread() {
     auto *fastqPool = new rabbit::fq::FastqDataPool(1, 1 << 26);
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {
@@ -745,7 +864,51 @@ void SeQc::TGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
 
 void SeQc::ProcessSeTGS() {
 
-    printf("111\n");
+    auto *fastqPool = new rabbit::fq::FastqDataPool(8, 1 << 26);
+    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(16, 1);
+    auto **p_thread_info = new ThreadInfo *[slave_num];
+    for (int t = 0; t < slave_num; t++) {
+        p_thread_info[t] = new ThreadInfo(cmd_info_, false);
+    }
+    thread producer(bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, ref(queue1)));
+    thread consumer(bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info, fastqPool, ref(queue1)));
+    producer.join();
+    printf("producer done\n");
+    consumer.join();
+    printf("consumer done\n");
+
+#ifdef Verbose
+    printf("all thrad done\n");
+    printf("now merge thread info\n");
+#endif
+    vector <TGSStats*> vec_state;
+
+    for (int t = 0; t < slave_num; t++) {
+        vec_state.push_back(p_thread_info[t]->TGS_state_);
+    }
+    auto mer_state = TGSStats::merge(vec_state);
+#ifdef Verbose
+    printf("merge done\n");
+#endif
+    printf("\nprint TGS state info :\n");
+
+    //report3(mer_state);
+    mer_state->CalReadsLens();
+
+    mer_state->print();
+    string srr_name = cmd_info_->in_file_name1_;
+    srr_name = PaseFileName(srr_name);
+    string command = cmd_info_->command_;
+    Repoter::ReportHtmlTGS(srr_name + "_RabbitQCPlus.html", command, mer_state, cmd_info_->in_file_name1_);
+
+    delete fastqPool;
+    for (int t = 0; t < slave_num; t++) {
+        delete p_thread_info[t];
+    }
+    delete[] p_thread_info;
+}
+void SeQc::ProcessSeTGSOneThread() {
+
     auto *fastqPool = new rabbit::fq::FastqDataPool(1, 1 << 26);
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {

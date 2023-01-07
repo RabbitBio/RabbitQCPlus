@@ -35,7 +35,11 @@ public:
 
     void ProcessSeFastq();
 
+    void ProcessSeFastqOneThread();
+
     void ProcessSeTGS();
+
+    void ProcessSeTGSOneThread();
 
 
 private:

@@ -27,7 +27,7 @@ struct qc_data {
 extern "C" {
 #include <athread.h>
 #include <pthread.h>
-void slave_ngspefunc();
+    void slave_ngspefunc();
 }
 
 
@@ -232,7 +232,7 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
     } else {
         while (true) {
             rabbit::fq::FastqDataPairChunk *fqdatachunk;
-            fqdatachunk = fqFileReader->readNextPairChunkParallel();
+            fqdatachunk = fqFileReader->readNextPairChunk();
             if (fqdatachunk == NULL) break;
             n_chunks++;
             dq.Push(n_chunks, fqdatachunk);
@@ -254,173 +254,90 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
  * @param fastq_data_pool :a fastq data pool, it will be used to release data chunk
  * @param dq : data queue
  */
-void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
+void PeQc::ConsumerPeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataPool *fastqPool,
         rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataPairChunk *fqdatachunk;
+    qc_data para;
+    para.cmd_info_ = cmd_info_;
+    para.thread_info_ = thread_infos;
+    para.bit_len = 0;
+    if(cmd_info_->state_duplicate_) {
+        para.bit_len = duplicate_->key_len_base_;
+    }
+    athread_init();
+    double t0 = GetTime();
+    double tsum1 = 0;
+    double tsum2 = 0;
+    double tsum3 = 0;
+    double tsum4 = 0;
+    double tsum4_1 = 0;
+    double tsum4_2 = 0;
     while (dq.Pop(id, fqdatachunk)) {
-        vector<neoReference> data1, data2;
-        vector<neoReference> pass_data1, pass_data2;
+        double tt0 = GetTime();
+        tsum1 += GetTime() - tt0;
+        tt0 = GetTime();
+        vector <neoReference> data1;
+        vector <neoReference> data2;
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->left_part), data1, true);
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->right_part), data2, true);
-        ASSERT(data1.size() == data2.size());
-        int out_len1 = 0, out_len2 = 0;
-        int b_size = min(data1.size(), data2.size());
-        for (int i = 0; i < b_size; i++) {
-            auto item1 = data1[i];
-            auto item2 = data2[i];
-            thread_info->pre_state1_->StateInfo(item1);
-            thread_info->pre_state2_->StateInfo(item2);
-            if (cmd_info_->state_duplicate_) {
-                duplicate_->statPair(item1, item2);
-            }
-            if (cmd_info_->add_umi_) {
-                umier_->ProcessPe(item1, item2);
-            }
+        if(data1.size() != data2.size()) printf("GG size pe\n");
+        printf("num %d\n", data1.size());
+        vector <neoReference> pass_data1(data1);
+        vector <neoReference> pass_data2(data2);
+        vector <dupInfo> dups;
+        //if(cmd_info_->write_data_) {
+        //    pass_data1.resize(data1.size());
+        //    pass_data2.resize(data2.size());
+        //}
+        if(cmd_info_->state_duplicate_) {
+            dups.resize(data1.size());
+        }
+        tsum2 += GetTime() - tt0;
+        tt0 = GetTime();
 
-            //do pe sequence trim
-            bool trim_res1 = filter_->TrimSeq(item1, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
-            bool trim_res2 = filter_->TrimSeq(item2, cmd_info_->trim_front2_, cmd_info_->trim_tail2_);
-
-            if (trim_res1 && trim_res2 && cmd_info_->trim_polyg_) {
-                PolyX::trimPolyG(item1, item2, cmd_info_->trim_poly_len_);
-            }
-
-            if (trim_res1 && trim_res2 && cmd_info_->trim_polyx_) {
-                PolyX::trimPolyX(item1, item2, cmd_info_->trim_poly_len_);
-            }
-            //do pe overlap analyze
-            OverlapRes overlap_res;
-            if (trim_res1 && trim_res2 && cmd_info_->analyze_overlap_) {
-                overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
-                        cmd_info_->overlap_require_);
-                int now_size = cmd_info_->max_insert_size_;
-                if (overlap_res.overlapped) {
-                    if (overlap_res.offset > 0)
-                        now_size = item1.lseq + item2.lseq - overlap_res.overlap_len;
-                    else
-                        now_size = overlap_res.overlap_len;
-                }
-                now_size = min(now_size, cmd_info_->max_insert_size_);
-                thread_info->insert_size_dist_[now_size]++;
-            }
-            if (trim_res1 && trim_res2 && cmd_info_->correct_data_) {
-                Adapter::CorrectData(item1, item2, overlap_res, cmd_info_->isPhred64_);
-            }
-            if (trim_res1 && trim_res2 && cmd_info_->trim_adapter_) {
-                int trimmed= false;
-                if (cmd_info_->print_what_trimmed_) {
-                    trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len,
-                            thread_info->aft_state1_->adapter_map_,
-                            thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_);
+        para.data1_ = &data1;
+        para.data2_ = &data2;
+        para.pass_data1_ = &pass_data1;
+        para.pass_data2_ = &pass_data2;
+        para.dups = &dups;
+        //athread_spawn_tupled(slave_ngspefunc, &para);
+        __real_athread_spawn((void *)slave_ngspefunc, &para, 1);
+        athread_join();
+        tsum3 += GetTime() - tt0;
+        tt0 = GetTime(); 
+        if(cmd_info_->state_duplicate_) {
+            for(auto item : dups) {
+                auto key = item.key;
+                auto kmer32 = item.kmer32;
+                auto gc = item.gc;
+                if (duplicate_->counts_[key] == 0) {
+                    duplicate_->counts_[key] = 1;
+                    duplicate_->dups_[key] = kmer32;
+                    duplicate_->gcs_[key] = gc;
                 } else {
-                    trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
-                }
-                if (trimmed) {
-                    thread_info->aft_state1_->AddTrimAdapter();
-                    thread_info->aft_state1_->AddTrimAdapter();
-                    thread_info->aft_state1_->AddTrimAdapterBase(trimmed);
-                }
-                int res1 = 0, res2 = 0;
-                bool is_trimmed1 = trimmed;
-                bool is_trimmed2 = trimmed;
-
-                if (!trimmed) {
-                    if (cmd_info_->detect_adapter1_) {
-                        int res1;
-                        if (cmd_info_->print_what_trimmed_) {
-                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_,
-                                    thread_info->aft_state1_->adapter_map_,
-                                    cmd_info_->adapter_len_lim_, false);
-                        } else {
-                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, false);
-                        }
-                        if (res1) {
-                            is_trimmed1 = true;
-                            thread_info->aft_state1_->AddTrimAdapter();
-                            thread_info->aft_state1_->AddTrimAdapterBase(res1);
-                        }
-                    }
-                    if (cmd_info_->detect_adapter2_) {
-                        int res2;
-                        if (cmd_info_->print_what_trimmed_) {
-                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_,
-                                    thread_info->aft_state2_->adapter_map_,
-                                    cmd_info_->adapter_len_lim_, true);
-                        } else {
-                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, true);
-                        }
-                        if (res2) {
-                            is_trimmed2 = true;
-                            thread_info->aft_state1_->AddTrimAdapter();
-                            thread_info->aft_state1_->AddTrimAdapterBase(res2);
-                        }
-
-                    }
-
-
-                }
-
-                if(cmd_info_->adapter_from_fasta_.size() > 0) {
-                    if (cmd_info_->print_what_trimmed_) {
-                        res1 = Adapter::TrimAdapters(item1, cmd_info_->adapter_from_fasta_,
-                                thread_info->aft_state1_->adapter_map_, cmd_info_->adapter_len_lim_, false);
-                    } else {
-                        res1 = Adapter::TrimAdapters(item1, cmd_info_->adapter_from_fasta_, false);
-                    }
-                    if (res1) {
-                        if(!is_trimmed1) thread_info->aft_state1_->AddTrimAdapter();
-                        thread_info->aft_state1_->AddTrimAdapterBase(res1);
-                    }
-
-                    if (cmd_info_->print_what_trimmed_) {
-                        res2 = Adapter::TrimAdapters(item2, cmd_info_->adapter_from_fasta_,
-                                thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_, false);
-                    } else {
-                        res2 = Adapter::TrimAdapters(item2, cmd_info_->adapter_from_fasta_, false);
-                    }
-                    if (res2) {
-                        if(!is_trimmed2) thread_info->aft_state1_->AddTrimAdapter();
-                        thread_info->aft_state1_->AddTrimAdapterBase(res2);
+                    if (duplicate_->dups_[key] == kmer32) {
+                        duplicate_->counts_[key]++;
+                        if (duplicate_->gcs_[key] > gc) duplicate_->gcs_[key] = gc;
+                    } else if (duplicate_->dups_[key] > kmer32) {
+                        duplicate_->dups_[key] = kmer32;
+                        duplicate_->counts_[key] = 1;
+                        duplicate_->gcs_[key] = gc;
                     }
                 }
-
-            }
-
-
-            //do filer in refs
-            int filter_res1 = filter_->ReadFiltering(item1, trim_res1, cmd_info_->isPhred64_);
-            int filter_res2 = filter_->ReadFiltering(item2, trim_res2, cmd_info_->isPhred64_);
-
-            int filter_res = max(filter_res1, filter_res2);
-
-
-            if (filter_res == 0) {
-                thread_info->aft_state1_->StateInfo(item1);
-                thread_info->aft_state2_->StateInfo(item2);
-                thread_info->aft_state1_->AddPassReads();
-                thread_info->aft_state1_->AddPassReads();
-                if (cmd_info_->write_data_) {
-                    pass_data1.push_back(item1);
-                    pass_data2.push_back(item2);
-                    out_len1 += item1.lname + item1.lseq + item1.lstrand + item1.lqual + 4;
-                    out_len2 += item2.lname + item2.lseq + item2.lstrand + item2.lqual + 4;
-                }
-            } else if (filter_res == 2) {
-                thread_info->aft_state1_->AddFailShort();
-                thread_info->aft_state1_->AddFailShort();
-            } else if (filter_res == 3) {
-                thread_info->aft_state1_->AddFailLong();
-                thread_info->aft_state1_->AddFailLong();
-            } else if (filter_res == 4) {
-                thread_info->aft_state1_->AddFailLowq();
-                thread_info->aft_state1_->AddFailLowq();
-            } else if (filter_res == 1) {
-                thread_info->aft_state1_->AddFailN();
-                thread_info->aft_state1_->AddFailN();
             }
         }
         if (cmd_info_->write_data_) {
+            int out_len1 = 0;
+            for(auto item : pass_data1){
+                if(item.lname == 0) continue;
+                out_len1 += item.lname + item.lseq + item.lstrand + item.lqual + 4;
+            }
+            int out_len2 = 0;
+            for(auto item : pass_data2){
+                if(item.lname == 0) continue;
+                out_len2 += item.lname + item.lseq + item.lstrand + item.lqual + 4;
+            }
             if (cmd_info_->interleaved_out_) {
                 char *out_data = new char[out_len1 + out_len2];
                 int pos = 0;
@@ -428,6 +345,8 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                 for (int i = 0; i < len; i++) {
                     auto item1 = pass_data1[i];
                     auto item2 = pass_data2[i];
+                    if(item1.lname == 0) continue;
+                    if(item2.lname == 0) continue;
                     Read2Chars(item1, out_data, pos);
                     Read2Chars(item2, out_data, pos);
                 }
@@ -446,12 +365,14 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     char *out_data1 = new char[out_len1];
                     int pos = 0;
                     for (auto item: pass_data1) {
+                        if(item.lname == 0) continue;
                         Read2Chars(item, out_data1, pos);
                     }
                     ASSERT(pos == out_len1);
                     char *out_data2 = new char[out_len2];
                     pos = 0;
                     for (auto item: pass_data2) {
+                        if(item.lname == 0) continue;
                         Read2Chars(item, out_data2, pos);
                     }
                     ASSERT(pos == out_len2);
@@ -474,6 +395,14 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
         fastqPool->Release(fqdatachunk->left_part);
         fastqPool->Release(fqdatachunk->right_part);
     }
+    athread_halt();
+    printf("NGSnew tot cost %lf\n", GetTime() - t0);
+    printf("NGSnew producer cost %lf\n", tsum1);
+    printf("NGSnew format cost %lf\n", tsum2);
+    printf("NGSnew slave cost %lf\n", tsum3);
+    printf("NGSnew write cost %lf\n", tsum4);
+    printf("NGSnew write1 cost %lf\n", tsum4_1);
+    printf("NGSnew write2 cost %lf\n", tsum4_2);
     done_thread_number_++;
 }
 
@@ -1080,13 +1009,220 @@ void PeQc::NGSTask(std::string file, std::string file2, rabbit::fq::FastqDataPoo
 /**
  * @brief do QC for pair-end data
  */
-void PeQc::ProcessPeFastq() {
+void PeQc::ProcessPeFastqOneThread() {
     auto *fastqPool = new rabbit::fq::FastqDataPool(2, 1 << 26);
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, true);
     }
     NGSTask(cmd_info_->in_file_name1_, cmd_info_->in_file_name2_, fastqPool, p_thread_info);
+#ifdef Verbose
+    printf("all thrad done\n");
+    printf("now merge thread info\n");
+#endif
+    vector<State *> pre_vec_state1;
+    vector<State *> pre_vec_state2;
+    vector<State *> aft_vec_state1;
+    vector<State *> aft_vec_state2;
+
+    for (int t = 0; t < slave_num; t++) {
+        pre_vec_state1.push_back(p_thread_info[t]->pre_state1_);
+        pre_vec_state2.push_back(p_thread_info[t]->pre_state2_);
+        aft_vec_state1.push_back(p_thread_info[t]->aft_state1_);
+        aft_vec_state2.push_back(p_thread_info[t]->aft_state2_);
+    }
+    auto pre_state1 = State::MergeStates(pre_vec_state1);
+    auto pre_state2 = State::MergeStates(pre_vec_state2);
+    auto aft_state1 = State::MergeStates(aft_vec_state1);
+    auto aft_state2 = State::MergeStates(aft_vec_state2);
+#ifdef Verbose
+    if (cmd_info_->do_overrepresentation_) {
+        printf("orp cost %f\n", pre_state1->GetOrpCost() + pre_state2->GetOrpCost() + aft_state1->GetOrpCost() + aft_state2->GetOrpCost());
+    }
+    printf("merge done\n");
+#endif
+    printf("\nprint read1 (before filter) info :\n");
+    State::PrintStates(pre_state1);
+    printf("\nprint read1 (after filter) info :\n");
+    State::PrintStates(aft_state1);
+    printf("\n");
+
+    printf("\nprint read2 (before filter) info :\n");
+    State::PrintStates(pre_state2);
+    printf("\nprint read2 (after filter) info :\n");
+    State::PrintStates(aft_state2);
+    printf("\n");
+    if (cmd_info_->print_what_trimmed_) {
+        State::PrintAdapterToFile(aft_state1);
+        State::PrintAdapterToFile(aft_state2);
+    }
+    State::PrintFilterResults(aft_state1);
+    printf("\n");
+
+    if (cmd_info_->do_overrepresentation_ && cmd_info_->print_ORP_seqs_) {
+
+        auto pre_hash_graph1 = pre_state1->GetHashGraph();
+        int pre_hash_num1 = pre_state1->GetHashNum();
+        auto pre_hash_graph2 = pre_state2->GetHashGraph();
+        int pre_hash_num2 = pre_state2->GetHashNum();
+
+        auto aft_hash_graph1 = aft_state1->GetHashGraph();
+        int aft_hash_num1 = aft_state1->GetHashNum();
+        auto aft_hash_graph2 = aft_state2->GetHashGraph();
+        int aft_hash_num2 = aft_state2->GetHashNum();
+
+
+        int spg = cmd_info_->overrepresentation_sampling_;
+        ofstream ofs;
+
+        string srr_name1 = cmd_info_->in_file_name1_;
+        srr_name1 = PaseFileName(srr_name1);
+
+        string srr_name2 = cmd_info_->in_file_name2_;
+        srr_name2 = PaseFileName(srr_name2);
+
+        string out_name1 = "pe_" + srr_name1 + "_before_ORP_sequences.txt";
+        ofs.open(out_name1, ifstream::out);
+
+        int cnt1 = 0;
+        ofs << "sequence count"
+            << "\n";
+        for (int i = 0; i < pre_hash_num1; i++) {
+            if (!overRepPassed(pre_hash_graph1[i].seq, pre_hash_graph1[i].cnt, spg)) continue;
+            ofs << pre_hash_graph1[i].seq << " " << pre_hash_graph1[i].cnt << "\n";
+            cnt1++;
+        }
+        ofs.close();
+        printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
+                srr_name1.c_str(), cnt1, out_name1.c_str());
+
+        string out_name2 = "pe_" + srr_name2 + "_before_ORP_sequences.txt";
+        ofs.open(out_name2, ifstream::out);
+        int cnt2 = 0;
+        ofs << "sequence count"
+            << "\n";
+        for (int i = 0; i < pre_hash_num2; i++) {
+            if (!overRepPassed(pre_hash_graph2[i].seq, pre_hash_graph2[i].cnt, spg)) continue;
+            ofs << pre_hash_graph2[i].seq << " " << pre_hash_graph2[i].cnt << "\n";
+            cnt2++;
+        }
+        ofs.close();
+        printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
+                srr_name2.c_str(), cnt2, out_name2.c_str());
+
+
+        out_name1 = "pe_" + srr_name1 + "_after_ORP_sequences.txt";
+        ofs.open(out_name1, ifstream::out);
+        cnt1 = 0;
+        ofs << "sequence count"
+            << "\n";
+        for (int i = 0; i < aft_hash_num1; i++) {
+            if (!overRepPassed(aft_hash_graph1[i].seq, aft_hash_graph1[i].cnt, spg)) continue;
+            ofs << aft_hash_graph1[i].seq << " " << aft_hash_graph1[i].cnt << "\n";
+            cnt1++;
+        }
+        ofs.close();
+        printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(),
+                cnt1, out_name1.c_str());
+
+        out_name2 = "pe_" + srr_name2 + "_after_ORP_sequences.txt";
+        ofs.open(out_name2, ifstream::out);
+        cnt2 = 0;
+        ofs << "sequence count"
+            << "\n";
+        for (int i = 0; i < aft_hash_num2; i++) {
+            if (!overRepPassed(aft_hash_graph2[i].seq, aft_hash_graph2[i].cnt, spg)) continue;
+            ofs << aft_hash_graph2[i].seq << " " << aft_hash_graph2[i].cnt << "\n";
+            cnt2++;
+        }
+        ofs.close();
+        printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(),
+                cnt2, out_name2.c_str());
+
+        printf("\n");
+    }
+    int *dupHist = NULL;
+    double *dupMeanGC = NULL;
+    double dupRate = 0.0;
+    int histSize = 32;
+    if (cmd_info_->state_duplicate_) {
+        dupHist = new int[histSize];
+        memset(dupHist, 0, sizeof(int) * histSize);
+        dupMeanGC = new double[histSize];
+        memset(dupMeanGC, 0, sizeof(double) * histSize);
+        dupRate = duplicate_->statAll(dupHist, dupMeanGC, histSize);
+        printf("Duplication rate : %.5f %%\n", dupRate * 100.0);
+        delete[] dupHist;
+        delete[] dupMeanGC;
+    }
+
+    int *merge_insert_size;
+    if (!cmd_info_->no_insert_size_) {
+        merge_insert_size = new int[cmd_info_->max_insert_size_ + 1];
+        memset(merge_insert_size, 0, sizeof(int) * (cmd_info_->max_insert_size_ + 1));
+
+        for (int t = 0; t < cmd_info_->thread_number_; t++) {
+            for (int i = 0; i <= cmd_info_->max_insert_size_; i++) {
+                merge_insert_size[i] += p_thread_info[t]->insert_size_dist_[i];
+            }
+        }
+        int mx_id = 0;
+        for (int i = 0; i < cmd_info_->max_insert_size_; i++) {
+            if (merge_insert_size[i] > merge_insert_size[mx_id]) mx_id = i;
+        }
+        //printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
+        printf("Insert size peak (based on PE overlap analyze): %d\n", mx_id);
+    }
+    string srr_name1 = cmd_info_->in_file_name1_;
+    srr_name1 = PaseFileName(srr_name1);
+    string srr_name2 = cmd_info_->in_file_name2_;
+    srr_name2 = PaseFileName(srr_name2);
+    Repoter::ReportHtmlPe(srr_name1 + "_" + srr_name2 + "_RabbitQCPlus.html", pre_state1, pre_state2, aft_state1,
+            aft_state2, cmd_info_->in_file_name1_,
+            cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
+#ifdef Verbose
+    printf("report done\n");
+#endif
+    delete pre_state1;
+    delete pre_state2;
+    delete aft_state1;
+    delete aft_state2;
+    if (!cmd_info_->no_insert_size_)
+        delete[] merge_insert_size;
+
+    delete fastqPool;
+    for (int t = 0; t < slave_num; t++) {
+        delete p_thread_info[t];
+    }
+
+    delete[] p_thread_info;
+}
+void PeQc::ProcessPeFastq() {
+    auto *fastqPool = new rabbit::fq::FastqDataPool(32, 1 << 22);
+    rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(32, 1);
+    auto **p_thread_info = new ThreadInfo *[slave_num];
+    for (int t = 0; t < slave_num; t++) {
+        p_thread_info[t] = new ThreadInfo(cmd_info_, true);
+    }
+    thread *write_thread1;
+    thread *write_thread2;
+    if (cmd_info_->write_data_) {
+        write_thread1 = new thread(bind(&PeQc::WriteSeFastqTask1, this));
+        if (cmd_info_->interleaved_out_ == 0)
+            write_thread2 = new thread(bind(&PeQc::WriteSeFastqTask2, this));
+    }
+    thread producer(bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_, fastqPool, ref(queue1)));
+    thread consumer(bind(&PeQc::ConsumerPeFastqTask, this, p_thread_info, fastqPool, ref(queue1)));
+    producer.join();
+    consumer.join();
+    if (cmd_info_->write_data_) {
+        write_thread1->join();
+        writerDone1 = 1;
+        if (cmd_info_->interleaved_out_ == 0) {
+            write_thread2->join();
+            writerDone2 = 1;
+        }
+    }
 #ifdef Verbose
     printf("all thrad done\n");
     printf("now merge thread info\n");
