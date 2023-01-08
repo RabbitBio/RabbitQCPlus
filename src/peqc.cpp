@@ -134,8 +134,8 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
 
 
 PeQc::~PeQc() {
-    out_stream1_.close();
-    out_stream2_.close();
+    //out_stream1_.close();
+    //out_stream2_.close();
     delete filter_;
     if (cmd_info_->write_data_) {
         delete out_queue1_;
