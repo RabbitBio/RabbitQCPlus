@@ -402,7 +402,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     Read2Chars(item2, out_data, pos);
                 }
 
-                if(cmd_info_->keepOrder_) {
+                if(cmd_info_->notKeepOrder_ == 0) {
                     while(nowChunkId != id) {
                         usleep(100);
                     }
@@ -434,7 +434,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     }
                     ASSERT(pos == out_len2);
 
-                    if(cmd_info_->keepOrder_) {
+                    if(cmd_info_->notKeepOrder_ == 0) {
                         while(nowChunkId != id) {
                             usleep(100);
                         }

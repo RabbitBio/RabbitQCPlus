@@ -255,7 +255,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                         Read2Chars(item, out_data, pos);
                     }
                     ASSERT(pos == out_len);
-                    if(cmd_info_->keepOrder_) {
+                    if(cmd_info_->notKeepOrder_ == 0) {
                         while(nowChunkId != id) {
                             usleep(100);
                         }

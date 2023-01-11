@@ -25,7 +25,7 @@ public:
     bool isStdin_;
     bool isStdout_;
 
-    bool keepOrder_;
+    bool notKeepOrder_;
 
     bool overWrite_;
     bool write_data_;
