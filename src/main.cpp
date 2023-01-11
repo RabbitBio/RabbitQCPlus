@@ -33,6 +33,8 @@ int main(int argc, char **argv) {
             "output to stdout, or -o /dev/stdout, only for se data or interleaved pe data(which means use --interleavedOut)");
 
 
+    app.add_flag("--keepOrder", cmd_info.keepOrder_, "keep order as input when outputing reads (may slightly affect performance if opened), default is off");
+
     app.add_flag("-a,--noTrimAdapter", cmd_info.no_trim_adapter_, "don't trim adapter, default is off");
     app.add_flag("--decAdaForSe", cmd_info.se_auto_detect_adapter_, "detect adapter for se data, default is on");
     app.add_flag("--decAdaForPe", cmd_info.pe_auto_detect_adapter_,
@@ -122,6 +124,10 @@ int main(int argc, char **argv) {
     if (quVersion) {
         printf("0.0.2\n");
         return 0;
+    }
+
+    if(cmd_info.keepOrder_) {
+        printf("now print data keeping order.\n");
     }
 
     if(cmd_info.is_TGS_){

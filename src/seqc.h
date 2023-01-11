@@ -24,6 +24,7 @@
 #include "threadinfo.h"
 #include "umier.h"
 
+#define CIPair std::pair<char *, int>
 
 class SeQc {
 public:
@@ -61,9 +62,7 @@ private:
     CmdInfo *cmd_info_;
 
     Filter *filter_;
-    moodycamel::ConcurrentQueue<std::pair<char *, int>> *
-            out_queue_;
-    //TODO replace concurrentqueue with char*[]
+    CIPair *out_queue_;
     std::atomic_int done_thread_number_;
     std::ofstream out_stream_;
     Duplicate *duplicate_;
@@ -83,10 +82,13 @@ private:
 
     std::atomic_int producerDone;
     std::atomic_int writerDone;
+    std::atomic_int queueP1;
+    std::atomic_int queueP2;
     std::atomic_int queueNumNow;
     std::atomic_int pigzQueueNumNow;
     std::atomic_int queueSizeLim;
     std::atomic_int pigzQueueSizeLim;
+    std::atomic_int nowChunkId;
     std::mutex mylock;
 };
 

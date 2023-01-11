@@ -17,6 +17,7 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
     //printf("out_block_nums %d\n", out_block_nums);
     out_queue1_ = NULL;
     out_queue2_ = NULL;
+    nowChunkId = 1;
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != string::npos;
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != string::npos;
     if (cmd_info1->write_data_) {
@@ -400,6 +401,13 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     Read2Chars(item1, out_data, pos);
                     Read2Chars(item2, out_data, pos);
                 }
+
+                if(cmd_info_->keepOrder_) {
+                    while(nowChunkId != id) {
+                        usleep(100);
+                    }
+                }
+
                 mylock.lock();
                 while (queueNumNow1 >= queueSizeLim1) {
 #ifdef Verbose
@@ -409,6 +417,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                 }
                 out_queue1_[queue1P2++] = {out_data, pos};
                 queueNumNow1++;
+                nowChunkId++;
                 mylock.unlock();
             } else {
                 if (pass_data1.size() > 0 && pass_data2.size() > 0) {
@@ -425,6 +434,11 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     }
                     ASSERT(pos == out_len2);
 
+                    if(cmd_info_->keepOrder_) {
+                        while(nowChunkId != id) {
+                            usleep(100);
+                        }
+                    }
                     mylock.lock();
                     while (queueNumNow1 >= queueSizeLim1 || queueNumNow2 >= queueSizeLim2) {
 #ifdef Verbose
@@ -436,6 +450,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     queueNumNow1++;
                     out_queue2_[queue2P2++] = {out_data2, out_len2};
                     queueNumNow2++;
+                    nowChunkId++;
                     mylock.unlock();
                 }
             }

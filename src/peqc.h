@@ -116,6 +116,7 @@ private:
     std::atomic_int queueSizeLim2;
     std::atomic_int pigzQueueNumNow2;
     std::atomic_int pigzQueueSizeLim2;
+    std::atomic_int nowChunkId;
     std::mutex mylock;
 };
 

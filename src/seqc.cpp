@@ -15,10 +15,13 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     int out_block_nums = int(1.0 * cmd_info1->in_file_size1_ / cmd_info1->out_block_size_);
     out_queue_ = NULL;
 
+    nowChunkId = 1;
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != string::npos;
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != string::npos;
     if (cmd_info1->write_data_) {
-        out_queue_ = new moodycamel::ConcurrentQueue<pair<char *, int>>;
+        out_queue_ = new CIPair[1 << 20];
+        queueP1 = 0;
+        queueP2 = 0;
         queueNumNow = 0;
         queueSizeLim = 1 << 5;
         if (out_is_zip_) {
@@ -246,13 +249,19 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
 
             if (cmd_info_->write_data_) {
                 if (pass_data.size() > 0) {
-                    //mylock.lock();
                     char *out_data = new char[out_len];
                     int pos = 0;
                     for (auto item: pass_data) {
                         Read2Chars(item, out_data, pos);
                     }
                     ASSERT(pos == out_len);
+                    if(cmd_info_->keepOrder_) {
+                        while(nowChunkId != id) {
+                            usleep(100);
+                        }
+                    }
+
+                    mylock.lock();
                     while (queueNumNow >= queueSizeLim) {
 #ifdef Verbose
                         //printf("waiting to push a chunk to out queue %d\n",out_len);
@@ -260,9 +269,10 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                         usleep(100);
                     }
                     
-                    out_queue_->enqueue(make_pair(out_data, out_len));
+                    out_queue_[queueP2++] = {out_data, pos};
                     queueNumNow++;
-                    //mylock.unlock();
+                    nowChunkId++;
+                    mylock.unlock();
                 }
             }
 
@@ -283,16 +293,15 @@ void SeQc::WriteSeFastqTask() {
     bool overWhile = 0;
     pair<char *, int> now;
     while (true) {
-        while (out_queue_->try_dequeue(now) == 0) {
+        while (queueNumNow == 0) {
             if (done_thread_number_ == cmd_info_->thread_number_) {
-                if (out_queue_->size_approx() == 0) {
-                    overWhile = 1;
-                    break;
-                }
+                overWhile = 1;
+                break;
             }
             usleep(100);
         }
         if (overWhile) break;
+        now = out_queue_[queueP1++];
         queueNumNow--;
         if (out_is_zip_) {
             if (cmd_info_->use_pigz_) {

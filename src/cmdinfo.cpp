@@ -16,6 +16,8 @@ CmdInfo::CmdInfo() {
     isStdin_ = false;
     isStdout_ = false;
 
+    keepOrder_ = false;
+
     overWrite_ = false;
     thread_number_ = 8;
     n_number_limit_ = 5;
