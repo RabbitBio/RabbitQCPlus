@@ -97,6 +97,6 @@ When using default parameters, RabbitQCPlus performs the same or more comprehens
 We visualized the information before and after data filtering, and [here](https://yanlifeng.github.io/someTest/example.html) is an example.
 
 # Citation
-Lifeng Yan, Zekun Yin, Hao Zhang, Zhan Zhao, Mingkai Wang, André Müller, Robin Kobus, Yanjie Wei, Beifang Niu, Bertil Schmidt, Weiguo Liu. RabbitQCPlus: More Efficient Quality Control for Sequencing Data, 2022 IEEE International Conference on Bioinformatics and Biomedicine (BIBM), to appear
+Lifeng Yan, Zekun Yin, Hao Zhang, Zhan Zhao, Mingkai Wang, André Müller, Robin Kobus, Yanjie Wei, Beifang Niu, Bertil Schmidt, Weiguo Liu. RabbitQCPlus: More Efficient Quality Control for Sequencing Data, 2022 IEEE International Conference on Bioinformatics and Biomedicine (BIBM) (pp. 619-626), IEEE Computer Society.
 
 Zekun Yin, Hao Zhang, Meiyang Liu, Wen Zhang, Honglei Song, Haidong Lan, Yanjie Wei, Beifang Niu, Bertil Schmidt, Weiguo Liu, RabbitQC: High-speed scalable quality control for sequencing data, Bioinformatics, , btaa719, https://doi.org/10.1093/bioinformatics/btaa719
