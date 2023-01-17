@@ -25,14 +25,14 @@ int main(int argc, char **argv) {
 
 
     app.add_option("--compressLevel", cmd_info.compression_level_,
-                   "output file compression level (1 - 9), default is 4");
+            "output file compression level (1 - 9), default is 4");
 
     app.add_flag("--overWrite", cmd_info.overWrite_, "overwrite out file if already exists.");
     app.add_flag("--phred64", cmd_info.isPhred64_, "input is using phred64 scoring, default is phred33");
     app.add_flag("--stdin", cmd_info.isStdin_,
-                 "input from stdin, or -i /dev/stdin, only for se data or interleaved pe data(which means use --interleavedIn)");
+            "input from stdin, or -i /dev/stdin, only for se data or interleaved pe data(which means use --interleavedIn)");
     app.add_flag("--stdout", cmd_info.isStdout_,
-                 "output to stdout, or -o /dev/stdout, only for se data or interleaved pe data(which means use --interleavedOut)");
+            "output to stdout, or -o /dev/stdout, only for se data or interleaved pe data(which means use --interleavedOut)");
 
 
     int tmp_no_dup_ = 0;
@@ -40,25 +40,25 @@ int main(int argc, char **argv) {
     app.add_flag("-a,--noTrimAdapter", cmd_info.no_trim_adapter_, "don't trim adapter, default is off");
     app.add_flag("--decAdaForSe", cmd_info.se_auto_detect_adapter_, "detect adapter for se data, default is on");
     app.add_flag("--decAdaForPe", cmd_info.pe_auto_detect_adapter_,
-                 "detect adapter for pe data, default is off, tool prefers to use overlap to find adapter");
+            "detect adapter for pe data, default is off, tool prefers to use overlap to find adapter");
     app.add_flag("--printWhatTrimmed", cmd_info.print_what_trimmed_,
-                 "if print what trimmed to *_trimmed_adapters.txt or not, default is not");
+            "if print what trimmed to *_trimmed_adapters.txt or not, default is not");
     app.add_option("--adapterSeq1", cmd_info.adapter_seq1_, "specify adapter sequence for read1");
     app.add_option("--adapterSeq2", cmd_info.adapter_seq2_, "specify adapter sequence for read2");
     app.add_option("--adapterFastaFile", cmd_info.adapter_fasta_file_, "specify adapter sequences use fasta file");
     //app.add_option("--adapterLengthLimit", cmd_info.adapter_len_lim_, "minimum adapter length when trimming, default is 0");
 
     app.add_flag("-c,--correctData", cmd_info.correct_data_,
-                 "correcting low quality bases using information from overlap, default is off");
+            "correcting low quality bases using information from overlap, default is off");
 
     app.add_option("-w,--threadNum", cmd_info.thread_number_,
-                   "number of thread used to do QC, including (de)compression for compressed data, default is 8");
+            "number of thread used to do QC, including (de)compression for compressed data, default is 8");
 
     //filter
     app.add_flag("-5,--trim5End", cmd_info.trim_5end_,
-                 "do sliding window from 5end to 3end to trim low quality bases, default is off");
+            "do sliding window from 5end to 3end to trim low quality bases, default is off");
     app.add_flag("-3,--trim3End", cmd_info.trim_3end_,
-                 "do sliding window from 5end to 3end to trim low quality bases, default is off");
+            "do sliding window from 5end to 3end to trim low quality bases, default is off");
     app.add_option("--trimFront1", cmd_info.trim_front1_, "number of bases to trim from front in read1, default is 0");
     app.add_option("--trimFront2", cmd_info.trim_front2_, "number of bases to trim from front in read2, default is 0");
     app.add_option("--trimTail1", cmd_info.trim_tail1_, "number of bases to trim from tail in read1, default is 0");
@@ -73,9 +73,9 @@ int main(int argc, char **argv) {
     app.add_option("--umiLen", cmd_info.umi_len_, "umi length if it is in read1/read2, default is 0");
     string umiLoc = "";
     app.add_option("--umiLoc", umiLoc,
-                   "specify the location of umi, can be (index1/index2/read1/read2/per_index/per_read), default is 0");
+            "specify the location of umi, can be (index1/index2/read1/read2/per_index/per_read), default is 0");
     app.add_option("--umiPrefix", cmd_info.umi_prefix_,
-                   "identification to be added in front of umi, default is no prefix");
+            "identification to be added in front of umi, default is no prefix");
     app.add_option("--umiSkip", cmd_info.umi_skip_, "the number bases to skip if umi exists, default is 0");
 
     //app.add_option("--seqLen", cmd_info.seq_len_, "max sequence length, default is 200");
@@ -83,27 +83,27 @@ int main(int argc, char **argv) {
 
     //TGS
     app.add_flag("--TGS", cmd_info.is_TGS_,
-                 "process third generation sequencing (TGS) data (only for se data, does not support trimming and will not produce output files), default is off");
+            "process third generation sequencing (TGS) data (only for se data, does not support trimming and will not produce output files), default is off");
 
 
     //overrepresentation
     app.add_flag("-p,--doOverrepresentation", cmd_info.do_overrepresentation_,
-                 "do over-representation sequence analysis, default is off");
+            "do over-representation sequence analysis, default is off");
     app.add_option("-P,--overrepresentationSampling", cmd_info.overrepresentation_sampling_,
-                   "do overrepresentation every [] reads, default is 20");
+            "do overrepresentation every [] reads, default is 20");
 
     app.add_flag("--printORPSeqs", cmd_info.print_ORP_seqs_,
-                 "if print overrepresentation sequences to *ORP_sequences.txt or not, default is not");
+            "if print overrepresentation sequences to *ORP_sequences.txt or not, default is not");
     //insert size analyze
     app.add_flag("--noInsertSize", cmd_info.no_insert_size_,
-                 "no insert size analysis (only for pe data), default is to do insert size analysis");
+            "no insert size analysis (only for pe data), default is to do insert size analysis");
 
 
     //interleaved
     app.add_flag("--interleavedIn", cmd_info.interleaved_in_,
-                 "use interleaved input (only for pe data), default is off");
+            "use interleaved input (only for pe data), default is off");
     app.add_flag("--interleavedOut", cmd_info.interleaved_out_,
-                 "use interleaved output (only for pe data), default is off");
+            "use interleaved output (only for pe data), default is off");
 
 
     //parallel gz
@@ -123,7 +123,28 @@ int main(int argc, char **argv) {
     bool quVersion = false;
     app.add_flag("-V,--version", quVersion, "application version");
 
+    bool preCache = false;
+    app.add_flag("-C", preCache, "pre cache data");
+
     CLI11_PARSE(app, argc, argv);
+
+    if(preCache) {
+        printf("now pre read to cache data...\n");
+        double t_t0 = GetTime();
+        ifstream iff;
+        printf("now pre read %s\n", cmd_info.in_file_name1_.c_str());
+        iff.open(cmd_info.in_file_name1_);
+        string s1, s2, s3, s4;
+        int t_line = 0;
+        while(iff >> s1 >> s2 >> s3 >> s4) {
+            t_line++;
+        }
+        printf("lines is %d\n", t_line);
+        iff.close();
+        printf("cost %lf\n", GetTime() - t_t0);
+
+
+    }
 
 
     if (cmd_info.compression_level_ < 1 || cmd_info.compression_level_ > 9) {
@@ -151,13 +172,13 @@ int main(int argc, char **argv) {
     }
 
     if (cmd_info.in_file_name2_.length() > 0 && cmd_info.out_file_name1_.length() > 0 && cmd_info.out_file_name2_.length() == 0 &&
-        cmd_info.interleaved_out_ == 0) {
+            cmd_info.interleaved_out_ == 0) {
         error_exit("when interleaved_out module is off, two input files can not correspond to one output.\n");
     }
 
 
     if (cmd_info.out_file_name2_.length() > 0 && cmd_info.in_file_name2_.length() == 0 &&
-        cmd_info.interleaved_in_ == 0) {
+            cmd_info.interleaved_in_ == 0) {
         error_exit("when interleaved_in module is off, one input file can not correspond to two outputs.\n");
     }
 
@@ -366,7 +387,7 @@ int main(int argc, char **argv) {
             }
             prefix_name2 = cmd_info.out_file_name2_.substr(0, real_begin2);
             suffix_name2 = cmd_info.out_file_name2_.substr(real_begin2,
-                                                           cmd_info.out_file_name2_.length() - real_begin2);
+                    cmd_info.out_file_name2_.length() - real_begin2);
             //printf("prefix_name2 %s\n", prefix_name2.c_str());
             //printf("suffix_name2 %s\n", suffix_name2.c_str());
             cmd_info.out_file_name2_ = prefix_name2 + "tmp_" + to_string(rand()) + suffix_name2;
@@ -412,7 +433,7 @@ int main(int argc, char **argv) {
         if (umiLoc.empty())
             error_exit("You've enabled UMI by (--addUmi), you should specify the UMI location by (--umiLoc)");
         if (umiLoc != "index1" && umiLoc != "index2" && umiLoc != "read1" && umiLoc != "read2" &&
-            umiLoc != "per_index" && umiLoc != "per_read") {
+                umiLoc != "per_index" && umiLoc != "per_read") {
             error_exit("UMI location can only be index1/index2/read1/read2/per_index/per_read");
         }
         if (cmd_info.in_file_name2_.length() == 0 && (umiLoc == "index2" || umiLoc == "read2"))
@@ -472,7 +493,7 @@ int main(int argc, char **argv) {
     if (cmd_info.in_file_name2_.length() || cmd_info.interleaved_in_) {
         //PE
         if ((cmd_info.out_file_name1_.length() > 0 && cmd_info.out_file_name2_.length() > 0) ||
-            cmd_info.interleaved_out_) {
+                cmd_info.interleaved_out_) {
             cmd_info.write_data_ = true;
         }
 

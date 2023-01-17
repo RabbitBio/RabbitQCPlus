@@ -145,13 +145,23 @@ void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_dat
         }
         delete[] last_info.first;
     } else {
+        double t_sum1 = 0;
+        double t_sum2 = 0;
+        double t_sum3 = 0;
         while (true) {
+            double tt0 = GetTime();
             rabbit::fq::FastqDataChunk *fqdatachunk;
             fqdatachunk = fqFileReader->readNextChunk();
+            t_sum1 += GetTime() - tt0;
+            tt0 = GetTime();
             if (fqdatachunk == NULL) break;
             n_chunks++;
+
             dq.Push(n_chunks, fqdatachunk);
+            t_sum2 += GetTime() - tt0;
         }
+        printf("producer sum1 cost %lf\n", t_sum1);
+        printf("producer sum2 cost %lf\n", t_sum2);
     }
 
     printf("producer cost %lf\n", GetTime() - t0);
@@ -225,9 +235,10 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
         double tsum2 = 0;
         double tsum3 = 0;
         double tsum4 = 0;
-        double tsum4_1 = 0;
-        double tsum4_2 = 0;
+        double tsum5 = 0;
         while (dq.Pop(id, fqdatachunk)) {
+
+///*
             double tt0 = GetTime();
             vector <neoReference> data;
             rabbit::fq::chunkFormat(fqdatachunk, data, true);
@@ -239,14 +250,14 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
             if(cmd_info_->state_duplicate_) {
                 dups.resize(data.size());
             }
-            tsum2 += GetTime() - tt0;
+            tsum1 += GetTime() - tt0;
             tt0 = GetTime();
             para.data1_ = &data;
             para.pass_data1_ = &pass_data;
             para.dups = &dups;
             __real_athread_spawn((void *)slave_ngsfunc, &para, 1);
             athread_join();
-            tsum3 += GetTime() - tt0;
+            tsum2 += GetTime() - tt0;
             tt0 = GetTime(); 
             if(cmd_info_->state_duplicate_) {
                 for(auto item : dups) {
@@ -269,6 +280,8 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
                     }
                 }
             }
+            tsum3 += GetTime() - tt0;
+            tt0 = GetTime();
             if (cmd_info_->write_data_) {
                 if (pass_data.size() > 0) {
                     //mylock.lock();
@@ -296,15 +309,18 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
                     //mylock.unlock();
                 }
             }
+            tsum4 += GetTime() - tt0;
+            tt0 = GetTime();
+//*/
             fastq_data_pool->Release(fqdatachunk);
+            tsum5 += GetTime() - tt0;
         }
         printf("NGSnew tot cost %lf\n", GetTime() - t0);
-        printf("NGSnew producer cost %lf\n", tsum1);
-        printf("NGSnew format cost %lf\n", tsum2);
-        printf("NGSnew slave cost %lf\n", tsum3);
+        printf("NGSnew format cost %lf\n", tsum1);
+        printf("NGSnew slave cost %lf\n", tsum2);
+        printf("NGSnew dup cost %lf\n", tsum3);
         printf("NGSnew write cost %lf\n", tsum4);
-        printf("NGSnew write1 cost %lf\n", tsum4_1);
-        printf("NGSnew write2 cost %lf\n", tsum4_2);
+        printf("NGSnew release cost %lf\n", tsum5);
     }
     done_thread_number_++;
     athread_halt();
@@ -575,8 +591,8 @@ void SeQc::NGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
  */
 
 void SeQc::ProcessSeFastq() {
-    auto *fastqPool = new rabbit::fq::FastqDataPool(16, 1 << 22);
-    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(16, 1);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(512, 1 << 22);
+    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(512, 1);
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, false);

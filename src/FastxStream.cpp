@@ -1060,8 +1060,11 @@ namespace rabbit {
             }
 
             // read the next chunk
+            //static double fread_time = 0;
+            //double tt0 = GetTime();
             int64 r = mFqReader->Read(data + chunk_->size, toRead);
-
+            //fread_time += GetTime() - tt0;
+            //printf("fread cost %lf\n", fread_time);
             // if (r > 0) {
             if (!mFqReader->FinishRead()) {
                 cbufSize = r + chunk_->size;
