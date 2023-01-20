@@ -30,14 +30,17 @@ TARGET := RabbitQCPlus
 BIN_TARGET := ${TARGET}
 
 
-CXX = swg++
+CXX = mpicxx
+#CXX = swg++
 
 
 CXXFLAGS := $(InstructSet)
 CXXFLAGS +=  -DVerbose -std=c++11 -I./ -I./common -g -O3 -w
 
 
-CXX2 = swgcc
+CXX2 = mpicc
+#CXX2 = swgcc
+
 CXXFLAGS2 :=  -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
 
 LIBS := -lz -lpthread -lrt
@@ -55,20 +58,6 @@ ${DIR_OBJ}/%.o:${SLAVE_DIR_SRC}/%.cpp
 ${DIR_OBJ}/%.o:${DIR_SRC}/%.c
 		$(CXX2) -mhost -c $< -o $@ $(CXXFLAGS2) 
 
-
-
-#${BIN_TARGET}:${OBJ}
-#		python3 xlink.py $(CXX) -mhybrid $^ -o $@ $(LD_FLAGS)
-#
-#${DIR_OBJ}/%.o:${DIR_SRC}/%.cpp
-#		$(CXX) -mhost -msimd -c $< -o $@ $(CXXFLAGS)
-#
-#${DIR_OBJ}/%.o:${SLAVE_DIR_SRC}/%.cpp
-#		$(CXX) -mslave -msimd -c $< -o $@ $(CXXFLAGS)
-#
-#${DIR_OBJ}/%.o:${DIR_SRC}/%.c
-#		$(CXX2) -mhost -msimd -c $< -o $@ $(CXXFLAGS2)
-#
 
 
 .PHONY:clean

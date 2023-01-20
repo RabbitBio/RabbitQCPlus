@@ -14,7 +14,7 @@ extern "C"
 #include "tgsstate.h"
 #include "threadinfo.h"
 #define gcMax 100
-#define LOCALSIZE 1 * (1 << 10)
+#define LOCALSIZE 2 * (1 << 10)
 #define BATCH_SIZE 2
 __thread_local unsigned char local_data1[LOCALSIZE];
 __thread_local unsigned char local_data2[LOCALSIZE];
@@ -48,6 +48,7 @@ int min(int x,int y) {
 }
 
 void rtc_(unsigned long *counter){
+    return;
 
     unsigned long rpcc;
 
@@ -715,7 +716,14 @@ extern "C" void ngsfunc(qc_data *para){
         if(end_pos > data_num) end_pos = data_num;
         int cal_size = (*data)[end_pos - 1].pqual + (*data)[end_pos - 1].lqual + 1 - (*data)[start_pos].pname;
         auto item0 = (*data)[start_pos];
-        dma_getn((unsigned char*)(item0.base + item0.pname), local_data1, cal_size);
+        //TODO
+        //printf("111\n");
+        //dma_getn(((unsigned char*)(item0.base + item0.pname)), local_data1, cal_size);
+        //printf("222\n");
+        for(int i = 0; i < cal_size; i++) {
+            local_data1[i] = ((unsigned char*)(item0.base + item0.pname))[i];
+        }
+        //printf("333\n");
         rtc_(&end_t);
         c_dma2 += end_t - start_t;
 
@@ -1161,11 +1169,17 @@ extern "C" void ngspefunc(qc_data *para){
         if(end_pos > data_num1) end_pos = data_num1;
         int cal_size1 = (*data1)[end_pos - 1].pqual + (*data1)[end_pos - 1].lqual + 1 - (*data1)[start_pos].pname;
         auto item_s1 = (*data1)[start_pos];
-        dma_getn((unsigned char*)(item_s1.base + item_s1.pname), local_data1, cal_size1);
+        //dma_getn((unsigned char*)(item_s1.base + item_s1.pname), local_data1, cal_size1);
+        for(int i = 0; i < cal_size1; i++) {
+            local_data1[i] = ((unsigned char*)(item_s1.base + item_s1.pname))[i];
+        }
 
         int cal_size2 = (*data2)[end_pos - 1].pqual + (*data2)[end_pos - 1].lqual + 1 - (*data2)[start_pos].pname;
         auto item_s2 = (*data2)[start_pos];
-        dma_getn((unsigned char*)(item_s2.base + item_s2.pname), local_data2, cal_size2);
+        //dma_getn((unsigned char*)(item_s2.base + item_s2.pname), local_data2, cal_size2);
+        for(int i = 0; i < cal_size2; i++) {
+            local_data2[i] = ((unsigned char*)(item_s2.base + item_s2.pname))[i];
+        }
         rtc_(&end_t);
         c_dma2 += end_t - start_t;
 

@@ -282,7 +282,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->left_part), data1, true);
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->right_part), data2, true);
         if(data1.size() != data2.size()) printf("GG size pe\n");
-        printf("num %d\n", data1.size());
+        //printf("num %d\n", data1.size());
         vector <neoReference> pass_data1(data1);
         vector <neoReference> pass_data2(data2);
         vector <dupInfo> dups;
@@ -873,7 +873,7 @@ void PeQc::NGSTask(std::string file, std::string file2, rabbit::fq::FastqDataPoo
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->left_part), data1, true);
         rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->right_part), data2, true);
         if(data1.size() != data2.size()) printf("GG size pe\n");
-        printf("num %d\n", data1.size());
+        //printf("num %d\n", data1.size());
         nums += data1.size();
         vector <neoReference> pass_data1(data1);
         vector <neoReference> pass_data2(data2);
@@ -1198,8 +1198,8 @@ void PeQc::ProcessPeFastqOneThread() {
     delete[] p_thread_info;
 }
 void PeQc::ProcessPeFastq() {
-    auto *fastqPool = new rabbit::fq::FastqDataPool(32, 1 << 22);
-    rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(32, 1);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
+    rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(64, 1);
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, true);

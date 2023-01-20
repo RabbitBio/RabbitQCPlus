@@ -6,6 +6,7 @@
 #include "th_ass.h"
 #include <iostream>
 #include <fstream>
+#include "mpi.h"
 
 using namespace std;
 
@@ -15,6 +16,14 @@ inline bool exists_file(const std::string &name) {
 }
 
 int main(int argc, char **argv) {
+    int my_rank = 0;
+    int comm_size = 1;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+    
+    printf(" %d / %d\n", my_rank, comm_size);
+    if(my_rank != 0) freopen("dev/null", "w", stdout);
     srand(time(0));
     CmdInfo cmd_info;
     CLI::App app("RabbitQCPlus");
@@ -481,6 +490,7 @@ int main(int argc, char **argv) {
     //else
     //    printf("now use %d threads to do QC operations\n", cmd_info.thread_number_);
     int mx_len = Adapter::EvalMaxLen(cmd_info.in_file_name1_);
+    printf("mx_len %d\n", mx_len);
     cmd_info.seq_len_ = mx_len;
     if (cmd_info.adapter_fasta_file_.length() > 0) {
         printf("loading adatper from %s\n", cmd_info.adapter_fasta_file_.c_str());
@@ -623,11 +633,12 @@ int main(int argc, char **argv) {
         }
         if (cmd_info.adapter_seq1_.length() > 0)
             cmd_info.adapter_len_lim_ = min(cmd_info.adapter_len_lim_, int(cmd_info.adapter_seq1_.length()));
-        SeQc *se_qc = new SeQc(&cmd_info);
+        SeQc *se_qc = new SeQc(&cmd_info, my_rank, comm_size);
         if (cmd_info.is_TGS_) {
             se_qc->ProcessSeTGS();
         } else {
             se_qc->ProcessSeFastq();
+            //se_qc->ProcessSeFastqOneThread();
         }
         delete se_qc;
     }
@@ -649,5 +660,7 @@ int main(int argc, char **argv) {
     }
     printf("cmd is %s\n", command.c_str());
     printf("total cost %.5fs\n", GetTime() - t_start);
+
+    MPI_Finalize();
     return 0;
 }

@@ -27,7 +27,7 @@
 
 class SeQc {
 public:
-    SeQc(CmdInfo *cmd_info);
+    SeQc(CmdInfo *cmd_info, int my_rank = 0, int comm_size = 1);
 
     SeQc();
 
@@ -66,6 +66,7 @@ private:
     void PigzTask();
 
 private:
+    int my_rank, comm_size;
     CmdInfo *cmd_info_;
 
     Filter *filter_;
@@ -73,9 +74,11 @@ private:
             out_queue_;
     //TODO replace concurrentqueue with char*[]
     std::atomic_int done_thread_number_;
-    std::ofstream out_stream_;
+    //std::ofstream out_stream_;
+    FILE *out_stream_;
     Duplicate *duplicate_;
     Umier *umier_;
+    long long now_pos_;
 
     gzFile zip_out_stream;
     bool in_is_zip_;

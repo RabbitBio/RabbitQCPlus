@@ -37,7 +37,10 @@ extern "C" {
  * @brief Construct function
  * @param cmd_info1 : cmd information
  */
-SeQc::SeQc(CmdInfo *cmd_info1) {
+SeQc::SeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
+    my_rank = my_rank_;
+    comm_size = comm_size_;
+    now_pos_ = 0;
     cmd_info_ = cmd_info1;
     filter_ = new Filter(cmd_info1);
     done_thread_number_ = 0;
@@ -46,6 +49,7 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
 
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != string::npos;
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != string::npos;
+    //cmd_info1->out_file_name1_ = "p" + to_string(my_rank) + cmd_info1->out_file_name1_;
     if (cmd_info1->write_data_) {
         out_queue_ = new moodycamel::ConcurrentQueue<pair < char * , int>>;
         queueNumNow = 0;
@@ -56,8 +60,12 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
                 pigzQueueSizeLim = 1 << 5;
                 string out_name1 = cmd_info1->out_file_name1_;
                 out_name1 = out_name1.substr(0, out_name1.find(".gz"));
-                out_stream_.open(out_name1);
-                out_stream_.close();
+                if((out_stream_ = fopen(out_name1.c_str(),"w")) == NULL) {
+                    printf("File cannot be opened\n");
+                }
+                fclose(out_stream_);
+                //out_stream_.open(out_name1);
+                //out_stream_.close();
 #ifdef Verbose
                 printf("now use pigz to compress output data\n");
 #endif
@@ -73,7 +81,39 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
 #ifdef Verbose
             printf("open stream %s\n", cmd_info1->out_file_name1_.c_str());
 #endif
-            out_stream_.open(cmd_info1->out_file_name1_);
+            ifstream gFile;
+            gFile.open(cmd_info1->in_file_name1_.c_str());
+            gFile.seekg(0, ios_base::end);
+            long long file_size = gFile.tellg();
+            gFile.close();
+            printf("pre file size %lld\n", file_size);
+            if(my_rank == 0) {
+                int fd = open(cmd_info1->out_file_name1_.c_str(), O_CREAT | O_TRUNC | O_RDWR | O_EXCL, 0644);
+                ftruncate(fd, sizeof(char) * file_size);
+                out_stream_ = fdopen(fd, "w");
+            } else {
+                int found = 0;
+                do {
+
+                    if(-1 == access(cmd_info1->out_file_name1_.c_str(), F_OK)) {
+                        if(ENOENT == errno) {
+                            cerr << "waiting file be created..." << endl;
+                            usleep(100);
+                        } else {
+                            cerr << "file open GG" << endl;
+                            usleep(100);
+                            //exit(0);
+                        }
+                    } else {
+                        out_stream_ = fopen(cmd_info1->out_file_name1_.c_str(), "r+b");   
+                        found = 1;
+                    }
+                } while(found == 0);
+            }
+            //if((out_stream_ = fopen(cmd_info1->out_file_name1_.c_str(),"w")) == NULL) {
+            //    printf("File cannot be opened\n");
+            //}
+            //out_stream_.open(cmd_info1->out_file_name1_);
         }
     }
 
@@ -100,7 +140,6 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
 }
 
 SeQc::~SeQc() {
-    //out_stream_.close();
     delete filter_;
     if (cmd_info_->write_data_) {
         delete out_queue_;
@@ -140,8 +179,8 @@ void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_dat
             rabbit::fq::FastqDataChunk *fqdatachunk;
             fqdatachunk = fqFileReader->readNextChunk(pugzQueue, &pugzDone, last_info);
             if (fqdatachunk == NULL) break;
-            n_chunks++;
             dq.Push(n_chunks, fqdatachunk);
+            n_chunks++;
         }
         delete[] last_info.first;
     } else {
@@ -154,10 +193,19 @@ void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_dat
             fqdatachunk = fqFileReader->readNextChunk();
             t_sum1 += GetTime() - tt0;
             tt0 = GetTime();
-            if (fqdatachunk == NULL) break;
-            n_chunks++;
-
+            if (fqdatachunk == NULL) {
+                int res_chunks = n_chunks % comm_size;
+                if(res_chunks) {
+                    for(int i = 0; i < res_chunks; i++) {
+                        dq.Push(n_chunks, fqdatachunk);
+                        n_chunks++;
+                    }
+                    printf("producer still push %d chunks\n", res_chunks);
+                }
+                break;
+            }
             dq.Push(n_chunks, fqdatachunk);
+            n_chunks++;
             t_sum2 += GetTime() - tt0;
         }
         printf("producer sum1 cost %lf\n", t_sum1);
@@ -237,8 +285,31 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
         double tsum4 = 0;
         double tsum5 = 0;
         while (dq.Pop(id, fqdatachunk)) {
+            
+            if(id % comm_size != my_rank) {
+                if(fqdatachunk != NULL) fastq_data_pool->Release(fqdatachunk);
+                continue;
+            } 
+            if(fqdatachunk == NULL) {
+                if (cmd_info_->write_data_) {
+                    while (queueNumNow >= queueSizeLim) {
+#ifdef Verbose
+                        //printf("waiting to push a chunk to out queue %d\n",out_len);
+#endif
+                        usleep(100);
+                    }
 
-///*
+                    out_queue_->enqueue(make_pair((char *)(NULL), 0));
+                    queueNumNow++;
+                    //mylock.unlock();
+
+                }
+                continue;
+            }
+
+            //printf("id %lld\n", id);
+
+            ///*
             double tt0 = GetTime();
             vector <neoReference> data;
             rabbit::fq::chunkFormat(fqdatachunk, data, true);
@@ -259,6 +330,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
             athread_join();
             tsum2 += GetTime() - tt0;
             tt0 = GetTime(); 
+            //printf("pass size %d\n", pass_data.size());
             if(cmd_info_->state_duplicate_) {
                 for(auto item : dups) {
                     auto key = item.key;
@@ -307,11 +379,12 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
                     out_queue_->enqueue(make_pair(out_data, out_len));
                     queueNumNow++;
                     //mylock.unlock();
+
                 }
             }
             tsum4 += GetTime() - tt0;
             tt0 = GetTime();
-//*/
+            //*/
             fastq_data_pool->Release(fqdatachunk);
             tsum5 += GetTime() - tt0;
         }
@@ -369,15 +442,48 @@ void SeQc::WriteSeFastqTask() {
                 delete[] now.first;
             }
         } else {
-            //printf("write %d\n", now.second);
-            out_stream_.write(now.first, now.second);
+            //out_stream_.write(now.first, now.second);
+            int now_size = now.second;
+            char *now_pos = now.first;
+            int now_sizes[comm_size];
+            now_sizes[0] = now_size;
+            MPI_Barrier(MPI_COMM_WORLD);
+            if(my_rank) {
+                MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+            } else {
+                for(int ii = 1; ii < comm_size; ii++) {
+                    MPI_Recv(&(now_sizes[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                } 
+            }
+            MPI_Barrier(MPI_COMM_WORLD);
+            if(my_rank == 0) {
+                for(int ii = 1; ii < comm_size; ii++) {
+                    MPI_Send(now_sizes, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
+                }
+            } else {
+                MPI_Recv(now_sizes, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            }
+            MPI_Barrier(MPI_COMM_WORLD);
+            int pre_sizes[comm_size];
+            pre_sizes[0] = 0;
+            for(int ii = 1; ii < comm_size; ii++) {
+                pre_sizes[ii] = pre_sizes[ii - 1] + now_sizes[ii - 1];
+            }
+            if(now.second) {
+                fseek(out_stream_, now_pos_ + pre_sizes[my_rank], SEEK_SET);
+                fwrite(now.first, sizeof(char), now.second, out_stream_);
+            }
+            MPI_Barrier(MPI_COMM_WORLD);
+            for(int ii = 0; ii < comm_size; ii++) {
+                now_pos_ += now_sizes[ii];
+                //printf("this round size %d\n", now_sizes[ii]);
+            }
             delete[] now.first;
         }
     }
 
     if (out_is_zip_) {
         if (cmd_info_->use_pigz_) {
-            //            out_stream_.close();
 
         } else {
             if (zip_out_stream) {
@@ -387,7 +493,12 @@ void SeQc::WriteSeFastqTask() {
             }
         }
     } else {
-        out_stream_.close();
+        //out_stream_.close();
+        fclose(out_stream_);
+        if(my_rank == 0) {
+            truncate(cmd_info_->out_file_name1_.c_str(), sizeof(char) * now_pos_);
+        }
+
     }
 #ifdef Verbose
     printf("write cost %.5f\n", GetTime() - t0);
@@ -467,6 +578,7 @@ void SeQc::PigzTask() {
 
 
 void SeQc::NGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool, ThreadInfo **thread_infos){
+    printf("single thread\n");
     rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize = 1 << 20;
     if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
@@ -568,7 +680,8 @@ void SeQc::NGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
             }
             tsum4_1 += GetTime() - tt00;
             tt00 = GetTime();
-            out_stream_.write(tmp_out, tot_len);
+            //out_stream_.write(tmp_out, tot_len);
+            fwrite(tmp_out, sizeof(char), tot_len, out_stream_);
             delete[] tmp_out;
             tsum4_2 += GetTime() - tt00;
         }
@@ -591,8 +704,8 @@ void SeQc::NGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
  */
 
 void SeQc::ProcessSeFastq() {
-    auto *fastqPool = new rabbit::fq::FastqDataPool(512, 1 << 22);
-    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(512, 1);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
+    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(64, 1);
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, false);
@@ -611,6 +724,9 @@ void SeQc::ProcessSeFastq() {
         write_thread->join();
         writerDone = 1;
     }
+    
+    MPI_Barrier(MPI_COMM_WORLD);
+    printf("all pro write done\n");
 
     printf("all thrad done\n");
     printf("now merge thread info\n");
