@@ -409,7 +409,8 @@ State *State::MergeStates(const vector<State *> &states) {
         }
     }
 
-    res_state->avg_len = 1.0 * res_state->tot_bases_ / res_state->lines_;
+    if(res_state->lines_ == 0) res_state->avg_len = 0;
+    else res_state->avg_len = 1.0 * res_state->tot_bases_ / res_state->lines_;
     res_state->Summarize();
     return res_state;
 }

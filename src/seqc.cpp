@@ -194,7 +194,8 @@ void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_dat
             t_sum1 += GetTime() - tt0;
             tt0 = GetTime();
             if (fqdatachunk == NULL) {
-                int res_chunks = n_chunks % comm_size;
+                int res_chunks = comm_size - n_chunks % comm_size;
+                printf("bu %d chunks, (%d, %d)\n", res_chunks, n_chunks, comm_size);
                 if(res_chunks) {
                     for(int i = 0; i < res_chunks; i++) {
                         dq.Push(n_chunks, fqdatachunk);
@@ -816,9 +817,12 @@ void SeQc::ProcessSeFastq() {
     }
     string srr_name = cmd_info_->in_file_name1_;
     srr_name = PaseFileName(srr_name);
-    Repoter::ReportHtmlSe(srr_name + "_RabbitQCPlus.html", pre_state, aft_state, cmd_info_->in_file_name1_,
-            dupRate * 100.0);
-
+    if(pre_state->GetLines() == 0) {
+        printf("read number is 0, don't print html reporter, please check input file\n");
+    } else {
+        Repoter::ReportHtmlSe(srr_name + "_RabbitQCPlus.html", pre_state, aft_state, cmd_info_->in_file_name1_,
+                dupRate * 100.0);
+    }
 
     delete pre_state;
     delete aft_state;
