@@ -28,6 +28,10 @@ class State {
 public:
     State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_reed2);
 
+    State(const char *info, int info_len, CmdInfo *cmd_info, int seq_len, int qul_range, bool is_reed2);
+
+    std::string ParseString();
+
     ~State();
 
     void StateInfo(neoReference &ref);

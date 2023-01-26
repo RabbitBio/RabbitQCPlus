@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     
     printf(" %d / %d\n", my_rank, comm_size);
-    //if(my_rank != 0) freopen("dev/null", "w", stdout);
+    if(my_rank != 0) freopen("dev/null", "w", stdout);
     srand(time(0));
     CmdInfo cmd_info;
     CLI::App app("RabbitQCPlus");
@@ -638,6 +638,8 @@ int main(int argc, char **argv) {
             se_qc->ProcessSeTGS();
         } else {
             se_qc->ProcessSeFastq();
+
+            MPI_Barrier(MPI_COMM_WORLD);
             //se_qc->ProcessSeFastqOneThread();
         }
         delete se_qc;

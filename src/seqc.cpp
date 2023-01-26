@@ -110,6 +110,7 @@ SeQc::SeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
                     }
                 } while(found == 0);
             }
+            MPI_Barrier(MPI_COMM_WORLD);
             //if((out_stream_ = fopen(cmd_info1->out_file_name1_.c_str(),"w")) == NULL) {
             //    printf("File cannot be opened\n");
             //}
@@ -700,6 +701,92 @@ void SeQc::NGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
     delete fqFileReader;
 }
 
+bool checkStates(State* s1, State* s2) {
+    int ok = 1;
+    if(s1->q20bases_ != s2->q20bases_) {
+        ok = 0;
+        cerr << "GG1" << endl;
+    }
+    
+    if(s1->q30bases_ != s2->q30bases_) {cerr << "GG2" << endl;ok=0;}
+    if(s1->lines_ != s2->lines_) {cerr << "GG3" << endl;ok=0;}
+
+    if(s1->malloc_seq_len_ != s2->malloc_seq_len_) {cerr << "GG4" << endl;ok=0;}
+
+    if(s1->qul_range_ != s2->qul_range_) {cerr << "GG5" << endl;ok=0;}
+
+    if(s1->real_seq_len_ != s2->real_seq_len_) {cerr << "GG6" << endl;ok=0;}
+
+    if(s1->kmer_buf_len_ != s2->kmer_buf_len_) {cerr << "GG7" << endl;ok=0;}
+
+    if(s1->tot_bases_ != s2->tot_bases_) {cerr << "GG8" << endl; ok=0;}
+
+    if(s1->gc_bases_ != s2->gc_bases_) {cerr << "GG9" << endl;ok=0;}
+
+    if(s1->avg_len != s2->avg_len) {cerr << "GG10" << endl;ok=0;}
+
+    if(s1->pass_reads_ != s2->pass_reads_) {cerr << "GG11" << endl;ok=0;}
+
+    if(s1->fail_short_ != s2->fail_short_) {cerr << "GG12" << endl;ok=0;}
+
+    if(s1->fail_long_ != s2->fail_long_) {cerr << "GG13" << endl;ok=0;}
+
+    if(s1->fail_N_ != s2->fail_N_) {cerr << "GG14" << endl;ok=0;}
+
+    if(s1->fail_lowq_!= s2->fail_lowq_) {cerr << "GG15" << endl;ok=0;}
+
+    if(s1->trim_adapter_ != s2->trim_adapter_) {cerr << "GG16" <<endl;ok=0;}
+
+    if(s1->trim_adapter_bases_ != s2->trim_adapter_bases_) {cerr << "GG17" << endl;ok=0;}
+
+    //pos_qul
+    for(int i = 0; i < s1->real_seq_len_; i++) {
+        if(s1->pos_qul_[i] != s2->pos_qul_[i]) {
+            cerr << "GG18" << endl;
+            ok = 0;
+        }
+    }
+
+    //len_cnt
+    for(int i = 0; i < s1->real_seq_len_; i++) {
+        if(s1->len_cnt_[i] != s2->len_cnt_[i]) {
+            cerr << "GG19" << endl;
+            ok = 0;
+        }
+    }
+
+    //pos_cnt
+    for(int i = 0; i < s1->real_seq_len_; i++) { 
+        for(int j = 0; j < 4; j++) {
+            if(s1->pos_cnt_[i * 4 + j] != s2->pos_cnt_[i * 4 + j]) {
+                cerr << "GG20" << endl;
+                ok = 0;
+            }
+        }
+    }
+
+//qul_cnt
+    for(int i = 0; i < s1->qul_range_; i++) {
+        if(s1->qul_cnt_[i] != s2->qul_cnt_[i]) {
+            cerr << "GG21" << endl;
+            ok = 0;
+        }
+    }
+//gc_cnt
+    for(int i = 0; i < 100; i++) {
+        if(s1->gc_cnt_[i] != s2->gc_cnt_[i]) {
+            cerr << "GG22" << endl;
+            ok = 0;
+        }
+    }
+
+
+
+    if(ok) return 1;
+    else return 0;
+}
+
+
 /**
  * @brief do QC for single-end data
  */
@@ -738,8 +825,89 @@ void SeQc::ProcessSeFastq() {
         pre_vec_state.push_back(p_thread_info[t]->pre_state1_);
         aft_vec_state.push_back(p_thread_info[t]->aft_state1_);
     }
-    auto pre_state = State::MergeStates(pre_vec_state);
-    auto aft_state = State::MergeStates(aft_vec_state);
+    auto pre_state_tmp = State::MergeStates(pre_vec_state);
+    auto aft_state_tmp = State::MergeStates(aft_vec_state);
+    vector<State *> pre_state_mpis;
+    pre_state_mpis.push_back(pre_state_tmp);
+    vector<State *> aft_state_mpis;
+    aft_state_mpis.push_back(aft_state_tmp);
+    if(my_rank == 0) {
+        for(int i = 1; i < comm_size; i++) {
+            int now_size = 0;
+            MPI_Recv(&now_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            char* info = new char[now_size];
+            MPI_Recv(info, now_size, MPI_CHAR, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            //printf("%d ", now_size);
+            //for(int j = 0; j < now_size; j++) printf("%c", info[j]);
+            //printf("\n");
+            State* tmp_state = new State(info, now_size, cmd_info_, cmd_info_->seq_len_, cmd_info_->qul_range_, false);
+            string s_tmp = tmp_state->ParseString();
+            string ss_tmp = string(info, now_size);
+            if(now_size != s_tmp.length()) printf("WWWWWWWWW2\n");
+            if(ss_tmp != ss_tmp) printf("WWWWWWWWWWWW3\n");
+            delete[] info;
+
+            pre_state_mpis.push_back(tmp_state);
+            //pre_state_mpis.push_back(pre_state_tmp);
+        }
+    } else {
+        string pre_state_is = pre_state_tmp->ParseString();
+        State* tmp_state = new State(pre_state_is.c_str(), pre_state_is.length(), cmd_info_, cmd_info_->seq_len_, cmd_info_->qul_range_, false);
+        bool res = checkStates(pre_state_tmp, tmp_state);
+        if(!res) cerr << "GGGGGGGG" << endl;
+        int now_size = pre_state_is.length();
+        //printf("%d %s\n", now_size, pre_state_is.c_str());
+        MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        MPI_Send(pre_state_is.c_str(), now_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    printf("pre merge done\n");
+
+    if(my_rank == 0) {
+        for(int i = 1; i < comm_size; i++) {
+            int now_size = 0;
+            MPI_Recv(&now_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            //printf("recv %d -- %d\n", i, now_size);
+            char* info = new char[now_size];
+            MPI_Recv(info, now_size, MPI_CHAR, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            //printf("recv2 %d\n", i);
+            //for(int j = 0; j < now_size; j++) printf("%c", info[j]);
+            //printf("\n");
+            State* tmp_state = new State(info, now_size, cmd_info_, cmd_info_->seq_len_, cmd_info_->qul_range_, false);
+            //printf("state done\n");
+            delete[] info;
+            aft_state_mpis.push_back(tmp_state);
+            //aft_state_mpis.push_back(aft_state_tmp);
+            //printf("done %d\n", i);
+        }
+    } else {
+        string aft_state_is = aft_state_tmp->ParseString();
+        int now_size = aft_state_is.length();
+        //cerr << now_size << " == " << aft_state_is << endl; 
+        MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        //cerr << my_rank << " send1 ok" << endl;
+        MPI_Send(aft_state_is.c_str(), now_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+        //cerr << my_rank << " send2 ok" << endl;
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    printf("aft merge done\n");
+    if(my_rank) {
+        delete pre_state_tmp;
+        delete aft_state_tmp;
+        delete fastqPool;
+        for (int t = 0; t < slave_num; t++) {
+            delete p_thread_info[t];
+        }
+        delete[] p_thread_info;
+        return;
+    }
+
+    
+    auto pre_state = State::MergeStates(pre_state_mpis);
+    auto aft_state = State::MergeStates(aft_state_mpis);
+       
+
 #ifdef Verbose
     if (cmd_info_->do_overrepresentation_) {
         printf("orp cost %lf\n", pre_state->GetOrpCost() + aft_state->GetOrpCost());
@@ -823,7 +991,9 @@ void SeQc::ProcessSeFastq() {
         Repoter::ReportHtmlSe(srr_name + "_RabbitQCPlus.html", pre_state, aft_state, cmd_info_->in_file_name1_,
                 dupRate * 100.0);
     }
-
+    delete pre_state_tmp;
+    delete aft_state_tmp;
+     
     delete pre_state;
     delete aft_state;
 
