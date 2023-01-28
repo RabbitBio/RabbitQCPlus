@@ -98,6 +98,10 @@ private:
     std::atomic_int pigzQueueNumNow;
     std::atomic_int queueSizeLim;
     std::atomic_int pigzQueueSizeLim;
+    int64_t now_chunks;
+    int64_t mx_chunks;
+    std::atomic_int writeCommDone;
+    std::atomic_int producerStop;
     std::mutex mylock;
 };
 

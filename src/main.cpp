@@ -19,11 +19,21 @@ int main(int argc, char **argv) {
     int my_rank = 0;
     int comm_size = 1;
     MPI_Init(&argc, &argv);
+
+    //int provided;
+
+    //MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+    //if (provided < MPI_THREAD_MULTIPLE)
+    //{
+    //    printf("ERROR: The MPI library does not have full thread support\n");
+    //    MPI_Abort(MPI_COMM_WORLD, 1);
+    //}
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     
     printf(" %d / %d\n", my_rank, comm_size);
     if(my_rank != 0) freopen("dev/null", "w", stdout);
+    //if(my_rank == 0) freopen("dev/null", "w", stdout);
     srand(time(0));
     CmdInfo cmd_info;
     CLI::App app("RabbitQCPlus");
@@ -165,6 +175,11 @@ int main(int argc, char **argv) {
         printf("0.0.2\n");
         return 0;
     }
+
+    cmd_info.in_file_name1_ = cmd_info.in_file_name1_ + "." + to_string(my_rank);
+    printf("now input file %s\n", cmd_info.in_file_name1_.c_str());
+
+
 
     if (tmp_no_dup_)cmd_info.state_duplicate_ = false;
 
