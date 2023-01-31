@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     
-    printf(" %d / %d\n", my_rank, comm_size);
+    //printf(" %d / %d\n", my_rank, comm_size);
     if(my_rank != 0) freopen("dev/null", "w", stdout);
     //if(my_rank == 0) freopen("dev/null", "w", stdout);
     srand(time(0));
