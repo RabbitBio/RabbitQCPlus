@@ -177,7 +177,13 @@ int main(int argc, char **argv) {
     }
 
     cmd_info.in_file_name1_ = cmd_info.in_file_name1_ + "." + to_string(my_rank);
-    printf("now input file %s\n", cmd_info.in_file_name1_.c_str());
+    printf("now input1 file %s\n", cmd_info.in_file_name1_.c_str());
+
+    if(cmd_info.in_file_name2_.length()) {
+        cmd_info.in_file_name2_ = cmd_info.in_file_name2_ + "." + to_string(my_rank);
+        printf("now input2 file %s\n", cmd_info.in_file_name2_.c_str());
+    }
+   
 
 
 
@@ -599,7 +605,7 @@ int main(int argc, char **argv) {
         if (cmd_info.adapter_seq2_.length() > 0)
             cmd_info.adapter_len_lim_ = min(cmd_info.adapter_len_lim_, int(cmd_info.adapter_seq2_.length()));
 
-        PeQc *pe_qc = new PeQc(&cmd_info);
+        PeQc *pe_qc = new PeQc(&cmd_info, my_rank, comm_size);
         pe_qc->ProcessPeFastq();
         delete pe_qc;
 

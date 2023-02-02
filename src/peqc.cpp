@@ -1,3 +1,4 @@
+// O
 // Created by ylf9811 on 2021/7/6.
 //
 //
@@ -11,6 +12,7 @@ struct dupInfo{
     uint8_t gc;
 };
 
+int block_size;
 
 struct qc_data {
     ThreadInfo **thread_info_;
@@ -38,7 +40,12 @@ extern "C" {
  * @brief Construct function
  * @param cmd_info1 : cmd information
  */
-PeQc::PeQc(CmdInfo *cmd_info1) {
+PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
+    printf(" %d /// %d\n", my_rank_, comm_size_);
+    my_rank = my_rank_;
+    comm_size = comm_size_;
+    now_pos1_ = 0;
+    now_pos2_ = 0;
     cmd_info_ = cmd_info1;
     filter_ = new Filter(cmd_info1);
     done_thread_number_ = 0;
@@ -53,13 +60,13 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
         queue1P1 = 0;
         queue1P2 = 0;
         queueNumNow1 = 0;
-        queueSizeLim1 = 1 << 5;
+        queueSizeLim1 = 64;
         if (cmd_info_->interleaved_out_ == 0) {
             out_queue2_ = new CIPair[1 << 20];
             queue2P1 = 0;
             queue2P2 = 0;
             queueNumNow2 = 0;
-            queueSizeLim2 = 1 << 5;
+            queueSizeLim2 = 64;
         }
         if (out_is_zip_) {
             if (cmd_info1->use_pigz_) {
@@ -67,15 +74,25 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
                 pigzQueueSizeLim1 = 1 << 5;
                 string out_name1 = cmd_info1->out_file_name1_;
                 out_name1 = out_name1.substr(0, out_name1.find(".gz"));
-                out_stream1_.open(out_name1);
-                out_stream1_.close();
+                if((out_stream1_ = fopen(out_name1.c_str(),"w")) == NULL) {
+                    printf("File cannot be opened\n");
+                }
+                fclose(out_stream1_);
+
+                //out_stream1_.open(out_name1);
+                //out_stream1_.close();
 
                 pigzQueueNumNow2 = 0;
                 pigzQueueSizeLim2 = 1 << 5;
                 string out_name2 = cmd_info1->out_file_name2_;
                 out_name2 = out_name2.substr(0, out_name2.find(".gz"));
-                out_stream2_.open(out_name2);
-                out_stream2_.close();
+                if((out_stream2_ = fopen(out_name2.c_str(),"w")) == NULL) {
+                    printf("File cannot be opened\n");
+                }
+                fclose(out_stream2_);
+
+                //out_stream2_.open(out_name2);
+                //out_stream2_.close();
 #ifdef Verbose
                 printf("now use pigz to compress output data\n");
 #endif
@@ -98,9 +115,109 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
             if (cmd_info_->interleaved_out_ == 0)
                 printf("open stream2 %s\n", cmd_info1->out_file_name2_.c_str());
 #endif
-            out_stream1_.open(cmd_info1->out_file_name1_);
+            ifstream gFile;
+            gFile.open(cmd_info1->in_file_name1_.c_str());
+            gFile.seekg(0, ios_base::end);
+            long long file_size = gFile.tellg();
+            gFile.close();
+            printf("pre file1 size %lld\n", file_size);
+            //MPI_Barrier(MPI_COMM_WORLD);
+            //long long now_size = file_size;
+            //long long now_sizes[comm_size];
+            //now_sizes[0] = now_size;
+            //MPI_Barrier(MPI_COMM_WORLD);
+            //if(my_rank) {
+            //    MPI_Send(&now_size, 1, MPI_LONG, 0, 0, MPI_COMM_WORLD);
+            //} else {
+            //    for(int ii = 1; ii < comm_size; ii++) {
+            //        MPI_Recv(&(now_sizes[ii]), 1, MPI_LONG, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            //    } 
+            //}
+            //MPI_Barrier(MPI_COMM_WORLD);
+
+            if(my_rank == 0) {
+                long long real_file_size = 0;
+                real_file_size = file_size * (comm_size + 1);
+                //for(int ii = 0; ii < comm_size; ii++) {
+                //    real_file_size += now_sizes[ii];
+                //}
+                printf("pre real file1 size %lld\n", real_file_size);
+                int fd = open(cmd_info1->out_file_name1_.c_str(), O_CREAT | O_TRUNC | O_RDWR | O_EXCL, 0644);
+                ftruncate(fd, sizeof(char) * real_file_size);
+                out_stream1_ = fdopen(fd, "w");
+            } else {
+                int found = 0;
+                do {
+
+                    if(-1 == access(cmd_info1->out_file_name1_.c_str(), F_OK)) {
+                        if(ENOENT == errno) {
+                            //cerr << "waiting file be created..." << endl;
+                            usleep(10000);
+                        } else {
+                            //cerr << "file open GG" << endl;
+                            usleep(10000);
+                            //exit(0);
+                        }
+                    } else {
+                        out_stream1_ = fopen(cmd_info1->out_file_name1_.c_str(), "r+b");   
+                        found = 1;
+                    }
+                } while(found == 0);
+            }
+            //MPI_Barrier(MPI_COMM_WORLD);
+            printf("eval done1\n");
+
             if (cmd_info_->interleaved_out_ == 0){
-                out_stream2_.open(cmd_info1->out_file_name2_);
+                ifstream gFile;
+                gFile.open(cmd_info1->in_file_name2_.c_str());
+                gFile.seekg(0, ios_base::end);
+                long long file_size = gFile.tellg();
+                gFile.close();
+                printf("pre file2 size %lld\n", file_size);
+                //MPI_Barrier(MPI_COMM_WORLD);
+                //long long now_size = file_size;
+                //long long now_sizes[comm_size];
+                //now_sizes[0] = now_size;
+                //MPI_Barrier(MPI_COMM_WORLD);
+                //if(my_rank) {
+                //    MPI_Send(&now_size, 1, MPI_LONG, 0, 0, MPI_COMM_WORLD);
+                //} else {
+                //    for(int ii = 1; ii < comm_size; ii++) {
+                //        MPI_Recv(&(now_sizes[ii]), 1, MPI_LONG, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                //    } 
+                //}
+                //MPI_Barrier(MPI_COMM_WORLD);
+
+                if(my_rank == 0) {
+                    long long real_file_size = 0;
+                    real_file_size = file_size * (comm_size + 1);
+                    //for(int ii = 0; ii < comm_size; ii++) {
+                    //    real_file_size += now_sizes[ii];
+                    //}
+                    printf("pre real file2 size %lld\n", real_file_size);
+                    int fd = open(cmd_info1->out_file_name2_.c_str(), O_CREAT | O_TRUNC | O_RDWR | O_EXCL, 0644);
+                    ftruncate(fd, sizeof(char) * real_file_size);
+                    out_stream2_ = fdopen(fd, "w");
+                } else {
+                    int found = 0;
+                    do {
+
+                        if(-1 == access(cmd_info1->out_file_name2_.c_str(), F_OK)) {
+                            if(ENOENT == errno) {
+                                //cerr << "waiting file be created..." << endl;
+                                usleep(10000);
+                            } else {
+                                //cerr << "file open GG" << endl;
+                                usleep(10000);
+                                //exit(0);
+                            }
+                        } else {
+                            out_stream2_ = fopen(cmd_info1->out_file_name2_.c_str(), "r+b");   
+                            found = 1;
+                        }
+                    } while(found == 0);
+                }
+                //MPI_Barrier(MPI_COMM_WORLD);
             }
         }
     }
@@ -130,12 +247,14 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
     producerDone = 0;
     writerDone1 = 0;
     writerDone2 = 0;
+    consumerCommDone = 0;
+    producerStop = 0;
+    now_chunks = 0;
+    mx_chunks = 0;
 }
 
 
 PeQc::~PeQc() {
-    //out_stream1_.close();
-    //out_stream2_.close();
     delete filter_;
     if (cmd_info_->write_data_) {
         delete out_queue1_;
@@ -209,7 +328,7 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
     rabbit::uint32 tmpSize = 1 << 20;
     if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
     fqFileReader = new rabbit::fq::FastqFileReader(file, *fastqPool, file2, in_is_zip_, tmpSize);
-    int n_chunks = 0;
+    int64_t n_chunks = 0;
 
 
     if (cmd_info_->use_pugz_) {
@@ -233,19 +352,38 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
         while (true) {
             rabbit::fq::FastqDataPairChunk *fqdatachunk;
             fqdatachunk = fqFileReader->readNextPairChunk();
-            if (fqdatachunk == NULL) break;
+            if (fqdatachunk == NULL) {
+                if(cmd_info_->write_data_) {
+                    //printf("producer%d stop\n", my_rank);
+                    cerr << "producer" << my_rank << "stop" << endl;
+                    now_chunks = n_chunks;
+                    producerStop = 1;
+                    while(consumerCommDone == 0) {
+                        usleep(10000);
+                    }
+                    //printf("producer%d get val done %lld %lld\n", my_rank, now_chunks, mx_chunks);
+                    int bu_chunks = mx_chunks - now_chunks;
+                    cerr << "bu rank" << my_rank << " : " << bu_chunks << " of (" << now_chunks << ", " << mx_chunks << ")" << endl;
+                    if(bu_chunks) {
+                        for(int i = 0; i < bu_chunks; i++) {
+                            dq.Push(n_chunks, fqdatachunk);
+                            n_chunks++;
+                        }
+                    }
+                }
+                printf("producer done === %lld\n", n_chunks);
+                break;
+            }
             n_chunks++;
             dq.Push(n_chunks, fqdatachunk);
+            //printf("producer push chunk %lld\n", n_chunks);
+            //cerr << "producer" << my_rank << " push chunk " << n_chunks << endl;
         }
     }
-
-
     dq.SetCompleted();
     delete fqFileReader;
-#ifdef Verbose
-    cout << "file " << file << " has " << n_chunks << " chunks" << endl;
-    printf("producer cost %.3f\n", GetTime() - t0);
-#endif
+    producerDone = 1;
+    printf("producer cost %lf\n", GetTime() - t0);
 }
 
 /**
@@ -262,6 +400,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
     para.cmd_info_ = cmd_info_;
     para.thread_info_ = thread_infos;
     para.bit_len = 0;
+    bool proDone = 0;
     if(cmd_info_->state_duplicate_) {
         para.bit_len = duplicate_->key_len_base_;
     }
@@ -279,31 +418,28 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
         tt0 = GetTime();
         vector <neoReference> data1;
         vector <neoReference> data2;
-        rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->left_part), data1, true);
-        rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->right_part), data2, true);
+        if(fqdatachunk != NULL) rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->left_part), data1, true);
+        if(fqdatachunk != NULL) rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->right_part), data2, true);
         if(data1.size() != data2.size()) printf("GG size pe\n");
-        //printf("num %d\n", data1.size());
         vector <neoReference> pass_data1(data1);
         vector <neoReference> pass_data2(data2);
         vector <dupInfo> dups;
-        //if(cmd_info_->write_data_) {
-        //    pass_data1.resize(data1.size());
-        //    pass_data2.resize(data2.size());
-        //}
         if(cmd_info_->state_duplicate_) {
             dups.resize(data1.size());
         }
         tsum2 += GetTime() - tt0;
         tt0 = GetTime();
-
-        para.data1_ = &data1;
-        para.data2_ = &data2;
-        para.pass_data1_ = &pass_data1;
-        para.pass_data2_ = &pass_data2;
-        para.dups = &dups;
-        //athread_spawn_tupled(slave_ngspefunc, &para);
-        __real_athread_spawn((void *)slave_ngspefunc, &para, 1);
-        athread_join();
+        if(fqdatachunk != NULL) {
+            para.data1_ = &data1;
+            para.data2_ = &data2;
+            para.pass_data1_ = &pass_data1;
+            para.pass_data2_ = &pass_data2;
+            para.dups = &dups;
+            __real_athread_spawn((void *)slave_ngspefunc, &para, 1);
+            athread_join();
+        }
+        //printf("pass size1 %d\n", pass_data1.size());
+        //printf("pass size2 %d\n", pass_data2.size());
         tsum3 += GetTime() - tt0;
         tt0 = GetTime(); 
         if(cmd_info_->state_duplicate_) {
@@ -339,61 +475,252 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
                 out_len2 += item.lname + item.lseq + item.lstrand + item.lqual + 4;
             }
             if (cmd_info_->interleaved_out_) {
-                char *out_data = new char[out_len1 + out_len2];
+                printf("interleaved out TODO...\n");
+                //char *out_data = new char[out_len1 + out_len2];
+                //int pos = 0;
+                //int len = min(pass_data1.size(), pass_data2.size());
+                //for (int i = 0; i < len; i++) {
+                //    auto item1 = pass_data1[i];
+                //    auto item2 = pass_data2[i];
+                //    if(item1.lname == 0) continue;
+                //    if(item2.lname == 0) continue;
+                //    Read2Chars(item1, out_data, pos);
+                //    Read2Chars(item2, out_data, pos);
+                //}
+                //mylock.lock();
+                //while (queueNumNow1 >= queueSizeLim1) {
+#ifdef Verbose
+                //    //printf("waiting to push a chunk to out queue1\n");
+#endif
+                //    usleep(100);
+                //}
+                //out_queue1_[queue1P2++] = {out_data, pos};
+                //queueNumNow1++;
+                //mylock.unlock();
+            } else {
+                char *out_data1;
+                if(out_len1) out_data1 = new char[out_len1];
+                else out_data1 = (char *)(NULL);
                 int pos = 0;
-                int len = min(pass_data1.size(), pass_data2.size());
-                for (int i = 0; i < len; i++) {
-                    auto item1 = pass_data1[i];
-                    auto item2 = pass_data2[i];
-                    if(item1.lname == 0) continue;
-                    if(item2.lname == 0) continue;
-                    Read2Chars(item1, out_data, pos);
-                    Read2Chars(item2, out_data, pos);
+                for (auto item: pass_data1) {
+                    if(item.lname == 0) continue;
+                    Read2Chars(item, out_data1, pos);
                 }
+                ASSERT(pos == out_len1);
+
+                char *out_data2;
+                if(out_len2) out_data2 = new char[out_len2];
+                else out_data2 = (char *)(NULL);
+                pos = 0;
+                for (auto item: pass_data2) {
+                    if(item.lname == 0) continue;
+                    Read2Chars(item, out_data2, pos);
+                }
+                ASSERT(pos == out_len2);
+
+                int now_size1 = out_len1;
+                char *now_pos1 = out_data1;
+                int now_sizes1[comm_size];
+                now_sizes1[0] = now_size1;
+                MPI_Barrier(MPI_COMM_WORLD);
+                if(my_rank) {
+                    MPI_Send(&now_size1, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+                } else {
+                    for(int ii = 1; ii < comm_size; ii++) {
+                        MPI_Recv(&(now_sizes1[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    } 
+                }
+                //MPI_Barrier(MPI_COMM_WORLD);
+                if(my_rank == 0) {
+                    for(int ii = 1; ii < comm_size; ii++) {
+                        MPI_Send(now_sizes1, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
+                    }
+                } else {
+                    MPI_Recv(now_sizes1, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+                //MPI_Barrier(MPI_COMM_WORLD);
+                int pre_sizes1[comm_size];
+                pre_sizes1[0] = 0;
+                for(int ii = 1; ii < comm_size; ii++) {
+                    pre_sizes1[ii] = pre_sizes1[ii - 1] + now_sizes1[ii - 1];
+                }
+
+                long long now_pos_base1 = now_pos1_ + pre_sizes1[my_rank];
+
+                for(int ii = 0; ii < comm_size; ii++) {
+                    now_pos1_ += now_sizes1[ii];
+                }
+
+
+
+                int now_size2 = out_len2;
+                char *now_pos2 = out_data2;
+                int now_sizes2[comm_size];
+                now_sizes2[0] = now_size2;
+                MPI_Barrier(MPI_COMM_WORLD);
+                if(my_rank) {
+                    MPI_Send(&now_size2, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+                } else {
+                    for(int ii = 1; ii < comm_size; ii++) {
+                        MPI_Recv(&(now_sizes2[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    } 
+                }
+                //MPI_Barrier(MPI_COMM_WORLD);
+                if(my_rank == 0) {
+                    for(int ii = 1; ii < comm_size; ii++) {
+                        MPI_Send(now_sizes2, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
+                    }
+                } else {
+                    MPI_Recv(now_sizes2, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+                //MPI_Barrier(MPI_COMM_WORLD);
+                int pre_sizes2[comm_size];
+                pre_sizes2[0] = 0;
+                for(int ii = 1; ii < comm_size; ii++) {
+                    pre_sizes2[ii] = pre_sizes2[ii - 1] + now_sizes2[ii - 1];
+                }
+
+                long long now_pos_base2 = now_pos2_ + pre_sizes2[my_rank];
+
+                for(int ii = 0; ii < comm_size; ii++) {
+                    now_pos2_ += now_sizes2[ii];
+                }
+
+
+                if(proDone == 0) {
+                    int proStop = producerStop.load();
+                    int stops[comm_size];
+                    stops[0] = proStop;
+                    MPI_Barrier(MPI_COMM_WORLD);
+                    if(my_rank) {
+                        MPI_Send(&proStop, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+                    } else {
+                        for(int ii = 1; ii < comm_size; ii++) {
+                            MPI_Recv(&(stops[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                        } 
+                    }
+                    MPI_Barrier(MPI_COMM_WORLD);
+                    if(my_rank == 0) {
+                        for(int ii = 1; ii < comm_size; ii++) {
+                            MPI_Send(stops, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
+                        }
+                    } else {
+                        MPI_Recv(stops, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    }
+                    int all_stop = 1;
+                    int some_stop = 0;
+                    for(int ii = 0; ii < comm_size; ii++) {
+                        if(stops[ii] == 0) all_stop = 0;
+                        if(stops[ii] == 1) some_stop = 1;
+                    }
+                    //printf("stop%d %d %d\n", my_rank, all_stop, some_stop);
+                    if(all_stop) {
+                        int64_t chunk_sizes[comm_size];
+                        chunk_sizes[0] = now_chunks;
+                        MPI_Barrier(MPI_COMM_WORLD);
+                        if(my_rank) {
+                            MPI_Send(&now_chunks, 1, MPI_LONG, 0, 0, MPI_COMM_WORLD);
+                        } else {
+                            for(int ii = 1; ii < comm_size; ii++) {
+                                MPI_Recv(&(chunk_sizes[ii]), 1, MPI_LONG, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                            } 
+                        }
+                        MPI_Barrier(MPI_COMM_WORLD);
+                        if(my_rank == 0) {
+                            for(int ii = 1; ii < comm_size; ii++) {
+                                MPI_Send(chunk_sizes, comm_size, MPI_LONG, ii, 0, MPI_COMM_WORLD);
+                            }
+                        } else {
+                            MPI_Recv(chunk_sizes, comm_size, MPI_LONG, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                        }
+                        for(int ii = 0; ii < comm_size; ii++) {
+                            mx_chunks = max(mx_chunks, chunk_sizes[ii]);
+                        }
+                        consumerCommDone = 1;
+                        proDone = 1;
+                    } else if(some_stop){
+                        int goonn = 1;
+                        while(goonn) {
+                            usleep(100000);
+                            int proStop = producerStop.load();
+                            int stops[comm_size];
+                            stops[0] = proStop;
+                            MPI_Barrier(MPI_COMM_WORLD);
+                            if(my_rank) {
+                                MPI_Send(&proStop, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+                            } else {
+                                for(int ii = 1; ii < comm_size; ii++) {
+                                    MPI_Recv(&(stops[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                } 
+                            }
+                            MPI_Barrier(MPI_COMM_WORLD);
+                            if(my_rank == 0) {
+                                for(int ii = 1; ii < comm_size; ii++) {
+                                    MPI_Send(stops, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
+                                }
+                            } else {
+                                MPI_Recv(stops, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                            }
+                            int all_stop = 1;
+                            int some_stop = 0;
+                            for(int ii = 0; ii < comm_size; ii++) {
+                                if(stops[ii] == 0) all_stop = 0;
+                                if(stops[ii] == 1) some_stop = 1;
+                            }
+                            //cerr << "===waiting stop" << my_rank << " " << proStop << endl;
+                            //printf("waiting stop%d %d\n", my_rank, all_stop);
+                            if(all_stop) {
+                                int64_t chunk_sizes[comm_size];
+                                chunk_sizes[0] = now_chunks;
+                                MPI_Barrier(MPI_COMM_WORLD);
+                                if(my_rank) {
+                                    MPI_Send(&now_chunks, 1, MPI_LONG, 0, 0, MPI_COMM_WORLD);
+                                } else {
+                                    for(int ii = 1; ii < comm_size; ii++) {
+                                        MPI_Recv(&(chunk_sizes[ii]), 1, MPI_LONG, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                    } 
+                                }
+                                MPI_Barrier(MPI_COMM_WORLD);
+                                if(my_rank == 0) {
+                                    for(int ii = 1; ii < comm_size; ii++) {
+                                        MPI_Send(chunk_sizes, comm_size, MPI_LONG, ii, 0, MPI_COMM_WORLD);
+                                    }
+                                } else {
+                                    MPI_Recv(chunk_sizes, comm_size, MPI_LONG, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                                }
+                                for(int ii = 0; ii < comm_size; ii++) {
+                                    mx_chunks = max(mx_chunks, chunk_sizes[ii]);
+                                }
+                                consumerCommDone = 1;
+                                proDone = 1;
+                                goonn = 0;
+                            }
+
+                        }
+                    }
+                }
+
+
+
                 mylock.lock();
-                while (queueNumNow1 >= queueSizeLim1) {
+                while (queueNumNow1 >= queueSizeLim1 || queueNumNow2 >= queueSizeLim2) {
 #ifdef Verbose
                     //printf("waiting to push a chunk to out queue1\n");
 #endif
-                    usleep(100);
+                    usleep(10000);
                 }
-                out_queue1_[queue1P2++] = {out_data, pos};
+                out_queue1_[queue1P2++] = make_pair(out_data1, make_pair(out_len1, now_pos_base1));
                 queueNumNow1++;
+                out_queue2_[queue2P2++] = make_pair(out_data2, make_pair(out_len2, now_pos_base2));
+                queueNumNow2++;
+                //printf("push chunk %lld === %d %lld, %d %lld\n", id, out_len1, now_pos_base1, out_len2, now_pos_base2);
                 mylock.unlock();
-            } else {
-                if (pass_data1.size() > 0 && pass_data2.size() > 0) {
-                    char *out_data1 = new char[out_len1];
-                    int pos = 0;
-                    for (auto item: pass_data1) {
-                        if(item.lname == 0) continue;
-                        Read2Chars(item, out_data1, pos);
-                    }
-                    ASSERT(pos == out_len1);
-                    char *out_data2 = new char[out_len2];
-                    pos = 0;
-                    for (auto item: pass_data2) {
-                        if(item.lname == 0) continue;
-                        Read2Chars(item, out_data2, pos);
-                    }
-                    ASSERT(pos == out_len2);
-
-                    mylock.lock();
-                    while (queueNumNow1 >= queueSizeLim1 || queueNumNow2 >= queueSizeLim2) {
-#ifdef Verbose
-                        //printf("waiting to push a chunk to out queue1\n");
-#endif
-                        usleep(100);
-                    }
-                    out_queue1_[queue1P2++] = {out_data1, out_len1};
-                    queueNumNow1++;
-                    out_queue2_[queue2P2++] = {out_data2, out_len2};
-                    queueNumNow2++;
-                    mylock.unlock();
-                }
             }
         }
-        fastqPool->Release(fqdatachunk->left_part);
-        fastqPool->Release(fqdatachunk->right_part);
+        if(fqdatachunk != NULL) {
+            fastqPool->Release(fqdatachunk->left_part);
+            fastqPool->Release(fqdatachunk->right_part);
+        }
     }
     athread_halt();
     printf("NGSnew tot cost %lf\n", GetTime() - t0);
@@ -409,192 +736,195 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
 
 void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
         rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
-    rabbit::int64 id = 0;
-    rabbit::fq::FastqDataChunk *fqdatachunk;
-    while (dq.Pop(id, fqdatachunk)) {
-        vector<neoReference> data;
-        vector<neoReference> pass_data1, pass_data2;
-        rabbit::fq::chunkFormat(fqdatachunk, data, true);
-        ASSERT(data.size() % 2 == 0);
-        int out_len1 = 0, out_len2 = 0;
-        for (int i = 0; i + 2 <= data.size(); i += 2) {
-            auto item1 = data[i];
-            auto item2 = data[i + 1];
-            thread_info->pre_state1_->StateInfo(item1);
-            thread_info->pre_state2_->StateInfo(item2);
-            if (cmd_info_->state_duplicate_) {
-                duplicate_->statPair(item1, item2);
-            }
-            if (cmd_info_->add_umi_) {
-                umier_->ProcessPe(item1, item2);
-            }
+    printf("interleaved mode TODO...\n");
+    /*
+       rabbit::int64 id = 0;
+       rabbit::fq::FastqDataChunk *fqdatachunk;
+       while (dq.Pop(id, fqdatachunk)) {
+       vector<neoReference> data;
+       vector<neoReference> pass_data1, pass_data2;
+       rabbit::fq::chunkFormat(fqdatachunk, data, true);
+       ASSERT(data.size() % 2 == 0);
+       int out_len1 = 0, out_len2 = 0;
+       for (int i = 0; i + 2 <= data.size(); i += 2) {
+       auto item1 = data[i];
+       auto item2 = data[i + 1];
+       thread_info->pre_state1_->StateInfo(item1);
+       thread_info->pre_state2_->StateInfo(item2);
+       if (cmd_info_->state_duplicate_) {
+       duplicate_->statPair(item1, item2);
+       }
+       if (cmd_info_->add_umi_) {
+       umier_->ProcessPe(item1, item2);
+       }
 
-            //do pe sequence trim
-            bool trim_res1 = filter_->TrimSeq(item1, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
-            bool trim_res2 = filter_->TrimSeq(item2, cmd_info_->trim_front2_, cmd_info_->trim_tail2_);
+    //do pe sequence trim
+    bool trim_res1 = filter_->TrimSeq(item1, cmd_info_->trim_front1_, cmd_info_->trim_tail1_);
+    bool trim_res2 = filter_->TrimSeq(item2, cmd_info_->trim_front2_, cmd_info_->trim_tail2_);
 
-            if (trim_res1 && trim_res2 && cmd_info_->trim_polyg_) {
-                PolyX::trimPolyG(item1, item2, cmd_info_->trim_poly_len_);
-            }
-
-            if (trim_res1 && trim_res2 && cmd_info_->trim_polyx_) {
-                PolyX::trimPolyX(item1, item2, cmd_info_->trim_poly_len_);
-            }
-
-            //do pe overlap analyze
-            OverlapRes overlap_res;
-            if (trim_res1 && trim_res2 && cmd_info_->analyze_overlap_) {
-                overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
-                        cmd_info_->overlap_require_);
-                int now_size = cmd_info_->max_insert_size_;
-                if (overlap_res.overlapped) {
-                    if (overlap_res.offset > 0)
-                        now_size = item1.lseq + item2.lseq - overlap_res.overlap_len;
-                    else
-                        now_size = overlap_res.overlap_len;
-                }
-                now_size = min(now_size, cmd_info_->max_insert_size_);
-                thread_info->insert_size_dist_[now_size]++;
-            }
-            if (trim_res1 && trim_res2 && cmd_info_->correct_data_) {
-                Adapter::CorrectData(item1, item2, overlap_res, cmd_info_->isPhred64_);
-            }
-            if (trim_res1 && trim_res2 && cmd_info_->trim_adapter_) {
-                int trimmed;
-                if (cmd_info_->print_what_trimmed_) {
-                    trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len,
-                            thread_info->aft_state1_->adapter_map_,
-                            thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_);
-                } else {
-                    trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
-                }
-                if (trimmed) {
-                    thread_info->aft_state1_->AddTrimAdapter();
-                    thread_info->aft_state1_->AddTrimAdapter();
-                    thread_info->aft_state1_->AddTrimAdapterBase(trimmed);
-                }
-                if (!trimmed) {
-                    int res1, res2;
-                    if (cmd_info_->detect_adapter1_) {
-                        int res1;
-                        if (cmd_info_->print_what_trimmed_) {
-                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_,
-                                    thread_info->aft_state1_->adapter_map_,
-                                    cmd_info_->adapter_len_lim_, false);
-                        } else {
-                            res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, false);
-                        }
-                    }
-                    if (cmd_info_->detect_adapter2_) {
-                        int res2;
-                        if (cmd_info_->print_what_trimmed_) {
-                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_,
-                                    thread_info->aft_state2_->adapter_map_,
-                                    cmd_info_->adapter_len_lim_, true);
-                        } else {
-                            res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, true);
-                        }
-                    }
-                    if (res1) {
-                        thread_info->aft_state1_->AddTrimAdapter();
-                        thread_info->aft_state1_->AddTrimAdapterBase(res1);
-                    }
-                    if (res2) {
-                        thread_info->aft_state1_->AddTrimAdapter();
-                        thread_info->aft_state1_->AddTrimAdapterBase(res2);
-                    }
-                }
-            }
-
-
-            //do filer in refs
-            int filter_res1 = filter_->ReadFiltering(item1, trim_res1, cmd_info_->isPhred64_);
-            int filter_res2 = filter_->ReadFiltering(item2, trim_res2, cmd_info_->isPhred64_);
-
-
-            int filter_res = max(filter_res1, filter_res2);
-
-
-            if (filter_res == 0) {
-                thread_info->aft_state1_->StateInfo(item1);
-                thread_info->aft_state2_->StateInfo(item2);
-                thread_info->aft_state1_->AddPassReads();
-                thread_info->aft_state1_->AddPassReads();
-                if (cmd_info_->write_data_) {
-                    pass_data1.push_back(item1);
-                    pass_data2.push_back(item2);
-                    out_len1 += item1.lname + item1.lseq + item1.lstrand + item1.lqual + 4;
-                    out_len2 += item2.lname + item2.lseq + item2.lstrand + item2.lqual + 4;
-                }
-            } else if (filter_res == 2) {
-                thread_info->aft_state1_->AddFailShort();
-                thread_info->aft_state1_->AddFailShort();
-            } else if (filter_res == 3) {
-                thread_info->aft_state1_->AddFailLong();
-                thread_info->aft_state1_->AddFailLong();
-            } else if (filter_res == 4) {
-                thread_info->aft_state1_->AddFailLowq();
-                thread_info->aft_state1_->AddFailLowq();
-            } else if (filter_res == 1) {
-                thread_info->aft_state1_->AddFailN();
-                thread_info->aft_state1_->AddFailN();
-            }
-        }
-        if (cmd_info_->write_data_) {
-            if (cmd_info_->interleaved_out_) {
-                char *out_data = new char[out_len1 + out_len2];
-                int pos = 0;
-                int len = min(pass_data1.size(), pass_data2.size());
-                for (int i = 0; i < len; i++) {
-                    auto item1 = pass_data1[i];
-                    auto item2 = pass_data2[i];
-                    Read2Chars(item1, out_data, pos);
-                    Read2Chars(item2, out_data, pos);
-                }
-                mylock.lock();
-                while (queueNumNow1 >= queueSizeLim1) {
-#ifdef Verbose
-                    //printf("waiting to push a chunk to out queue1\n");
-#endif
-                    usleep(100);
-                }
-                out_queue1_[queue1P2++] = {out_data, pos};
-                queueNumNow1++;
-                mylock.unlock();
-            } else {
-                if (pass_data1.size() > 0 && pass_data2.size() > 0) {
-                    char *out_data1 = new char[out_len1];
-                    int pos = 0;
-                    for (auto item: pass_data1) {
-                        Read2Chars(item, out_data1, pos);
-                    }
-                    ASSERT(pos == out_len1);
-                    char *out_data2 = new char[out_len2];
-                    pos = 0;
-                    for (auto item: pass_data2) {
-                        Read2Chars(item, out_data2, pos);
-                    }
-                    ASSERT(pos == out_len2);
-
-                    mylock.lock();
-                    while (queueNumNow1 >= queueSizeLim1 || queueNumNow2 >= queueSizeLim2) {
-#ifdef Verbose
-                        //printf("waiting to push a chunk to out queue1\n");
-#endif
-                        usleep(100);
-                    }
-                    out_queue1_[queue1P2++] = {out_data1, out_len1};
-                    queueNumNow1++;
-                    out_queue2_[queue2P2++] = {out_data2, out_len2};
-                    queueNumNow2++;
-                    mylock.unlock();
-                }
-            }
-        }
-
-        fastqPool->Release(fqdatachunk);
+    if (trim_res1 && trim_res2 && cmd_info_->trim_polyg_) {
+    PolyX::trimPolyG(item1, item2, cmd_info_->trim_poly_len_);
     }
-    done_thread_number_++;
+
+    if (trim_res1 && trim_res2 && cmd_info_->trim_polyx_) {
+    PolyX::trimPolyX(item1, item2, cmd_info_->trim_poly_len_);
+    }
+
+    //do pe overlap analyze
+    OverlapRes overlap_res;
+    if (trim_res1 && trim_res2 && cmd_info_->analyze_overlap_) {
+    overlap_res = Adapter::AnalyzeOverlap(item1, item2, cmd_info_->overlap_diff_limit_,
+    cmd_info_->overlap_require_);
+    int now_size = cmd_info_->max_insert_size_;
+    if (overlap_res.overlapped) {
+    if (overlap_res.offset > 0)
+    now_size = item1.lseq + item2.lseq - overlap_res.overlap_len;
+    else
+    now_size = overlap_res.overlap_len;
+    }
+    now_size = min(now_size, cmd_info_->max_insert_size_);
+    thread_info->insert_size_dist_[now_size]++;
+    }
+    if (trim_res1 && trim_res2 && cmd_info_->correct_data_) {
+    Adapter::CorrectData(item1, item2, overlap_res, cmd_info_->isPhred64_);
+    }
+    if (trim_res1 && trim_res2 && cmd_info_->trim_adapter_) {
+    int trimmed;
+    if (cmd_info_->print_what_trimmed_) {
+    trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len,
+    thread_info->aft_state1_->adapter_map_,
+    thread_info->aft_state2_->adapter_map_, cmd_info_->adapter_len_lim_);
+    } else {
+    trimmed = Adapter::TrimAdapter(item1, item2, overlap_res.offset, overlap_res.overlap_len);
+    }
+    if (trimmed) {
+    thread_info->aft_state1_->AddTrimAdapter();
+    thread_info->aft_state1_->AddTrimAdapter();
+    thread_info->aft_state1_->AddTrimAdapterBase(trimmed);
+    }
+    if (!trimmed) {
+    int res1, res2;
+    if (cmd_info_->detect_adapter1_) {
+    int res1;
+    if (cmd_info_->print_what_trimmed_) {
+    res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_,
+    thread_info->aft_state1_->adapter_map_,
+        cmd_info_->adapter_len_lim_, false);
+} else {
+    res1 = Adapter::TrimAdapter(item1, cmd_info_->adapter_seq1_, false);
+}
+}
+if (cmd_info_->detect_adapter2_) {
+    int res2;
+    if (cmd_info_->print_what_trimmed_) {
+        res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_,
+                thread_info->aft_state2_->adapter_map_,
+                cmd_info_->adapter_len_lim_, true);
+    } else {
+        res2 = Adapter::TrimAdapter(item2, cmd_info_->adapter_seq2_, true);
+    }
+}
+if (res1) {
+    thread_info->aft_state1_->AddTrimAdapter();
+    thread_info->aft_state1_->AddTrimAdapterBase(res1);
+}
+if (res2) {
+    thread_info->aft_state1_->AddTrimAdapter();
+    thread_info->aft_state1_->AddTrimAdapterBase(res2);
+}
+}
+}
+
+
+//do filer in refs
+int filter_res1 = filter_->ReadFiltering(item1, trim_res1, cmd_info_->isPhred64_);
+int filter_res2 = filter_->ReadFiltering(item2, trim_res2, cmd_info_->isPhred64_);
+
+
+int filter_res = max(filter_res1, filter_res2);
+
+
+if (filter_res == 0) {
+    thread_info->aft_state1_->StateInfo(item1);
+    thread_info->aft_state2_->StateInfo(item2);
+    thread_info->aft_state1_->AddPassReads();
+    thread_info->aft_state1_->AddPassReads();
+    if (cmd_info_->write_data_) {
+        pass_data1.push_back(item1);
+        pass_data2.push_back(item2);
+        out_len1 += item1.lname + item1.lseq + item1.lstrand + item1.lqual + 4;
+        out_len2 += item2.lname + item2.lseq + item2.lstrand + item2.lqual + 4;
+    }
+} else if (filter_res == 2) {
+    thread_info->aft_state1_->AddFailShort();
+    thread_info->aft_state1_->AddFailShort();
+} else if (filter_res == 3) {
+    thread_info->aft_state1_->AddFailLong();
+    thread_info->aft_state1_->AddFailLong();
+} else if (filter_res == 4) {
+    thread_info->aft_state1_->AddFailLowq();
+    thread_info->aft_state1_->AddFailLowq();
+} else if (filter_res == 1) {
+    thread_info->aft_state1_->AddFailN();
+    thread_info->aft_state1_->AddFailN();
+}
+}
+if (cmd_info_->write_data_) {
+    if (cmd_info_->interleaved_out_) {
+        char *out_data = new char[out_len1 + out_len2];
+        int pos = 0;
+        int len = min(pass_data1.size(), pass_data2.size());
+        for (int i = 0; i < len; i++) {
+            auto item1 = pass_data1[i];
+            auto item2 = pass_data2[i];
+            Read2Chars(item1, out_data, pos);
+            Read2Chars(item2, out_data, pos);
+        }
+        mylock.lock();
+        while (queueNumNow1 >= queueSizeLim1) {
+#ifdef Verbose
+            //printf("waiting to push a chunk to out queue1\n");
+#endif
+            usleep(100);
+        }
+        out_queue1_[queue1P2++] = {out_data, pos};
+        queueNumNow1++;
+        mylock.unlock();
+    } else {
+        if (pass_data1.size() > 0 && pass_data2.size() > 0) {
+            char *out_data1 = new char[out_len1];
+            int pos = 0;
+            for (auto item: pass_data1) {
+                Read2Chars(item, out_data1, pos);
+            }
+            ASSERT(pos == out_len1);
+            char *out_data2 = new char[out_len2];
+            pos = 0;
+            for (auto item: pass_data2) {
+                Read2Chars(item, out_data2, pos);
+            }
+            ASSERT(pos == out_len2);
+
+            mylock.lock();
+            while (queueNumNow1 >= queueSizeLim1 || queueNumNow2 >= queueSizeLim2) {
+#ifdef Verbose
+                //printf("waiting to push a chunk to out queue1\n");
+#endif
+                usleep(100);
+            }
+            out_queue1_[queue1P2++] = {out_data1, out_len1};
+            queueNumNow1++;
+            out_queue2_[queue2P2++] = {out_data2, out_len2};
+            queueNumNow2++;
+            mylock.unlock();
+        }
+    }
+}
+
+fastqPool->Release(fqdatachunk);
+}
+done_thread_number_++;
+*/
 }
 
 
@@ -606,41 +936,59 @@ void PeQc::WriteSeFastqTask1() {
     double t0 = GetTime();
 #endif
     int cnt = 0;
+    long long tot_size = 0;
     bool overWhile = 0;
-    pair<char *, int> now;
+    CIPair now;
+    //CIPair now2;
     while (true) {
         while (queueNumNow1 == 0) {
             if (done_thread_number_ == cmd_info_->thread_number_) {
                 overWhile = 1;
                 break;
             }
-            usleep(100);
+            usleep(10000);
         }
         if (overWhile) break;
         now = out_queue1_[queue1P1++];
+        //now2 = out_queue2_[queue2P1++];
         queueNumNow1--;
+        //queueNumNow2--;
         if (out_is_zip_) {
             if (cmd_info_->use_pigz_) {
-                while (pigzQueueNumNow1 > pigzQueueSizeLim1) {
-
-#ifdef Verbose
-                    //printf("waiting to push a chunk to pigz queue1\n");
-#endif
-                    usleep(100);
-                }
-                pigzQueue1->enqueue(now);
-                pigzQueueNumNow1++;
+                printf("use pigz TODO...\n");
+                //                while (pigzQueueNumNow1 > pigzQueueSizeLim1) {
+                //
+                //#ifdef Verbose
+                //                    //printf("waiting to push a chunk to pigz queue1\n");
+                //#endif
+                //                    usleep(100);
+                //                }
+                //                pigzQueue1->enqueue(now);
+                //                pigzQueueNumNow1++;
             } else {
-                int written = gzwrite(zip_out_stream1, now.first, now.second);
-                if (written != now.second) {
+                int written = gzwrite(zip_out_stream1, now.first, now.second.first);
+                if (written != now.second.first) {
                     printf("gzwrite error\n");
                     exit(0);
                 }
                 delete[] now.first;
             }
         } else {
-            out_stream1_.write(now.first, now.second);
-            delete[] now.first;
+            tot_size += now.second.first;
+            if(now.second.first) {
+                fseek(out_stream1_, now.second.second, SEEK_SET);
+                fwrite(now.first, sizeof(char), now.second.first, out_stream1_);
+                delete[] now.first;
+            }
+
+            //tot_size += now2.second.first;
+            //if(now2.second.first) {
+            //    fseek(out_stream2_, now2.second.second, SEEK_SET);
+            //    fwrite(now2.first, sizeof(char), now2.second.first, out_stream2_);
+            //    delete[] now2.first;
+            //}
+            //printf("write%d %d %d %lld done0\n", my_rank, cnt++, now.second.first, now.second.second);
+
         }
     }
     if (out_is_zip_) {
@@ -655,10 +1003,17 @@ void PeQc::WriteSeFastqTask1() {
         }
 
     } else {
-        out_stream1_.close();
+        fclose(out_stream1_);
+        //fclose(out_stream2_);
+        if(my_rank == 0) {
+            truncate(cmd_info_->out_file_name1_.c_str(), sizeof(char) * now_pos1_);
+            //truncate(cmd_info_->out_file_name2_.c_str(), sizeof(char) * now_pos2_);
+        }
     }
 #ifdef Verbose
-    printf("write1 cost %.5f\n", GetTime() - t0);
+    //printf("write1 cost %.5f\n", GetTime() - t0);
+
+    cerr << "write" << my_rank << " cost " << GetTime() - t0 << ", tot size " << tot_size << endl;
 #endif
 }
 
@@ -670,33 +1025,35 @@ void PeQc::WriteSeFastqTask2() {
     double t0 = GetTime();
 #endif
     int cnt = 0;
+    long long tot_size = 0;
     bool overWhile = 0;
-    pair<char *, int> now;
+    CIPair now;
     while (true) {
         while (queueNumNow2 == 0) {
             if (done_thread_number_ == cmd_info_->thread_number_) {
                 overWhile = 1;
                 break;
             }
-            usleep(100);
+            usleep(10000);
         }
         if (overWhile) break;
         now = out_queue2_[queue2P1++];
         queueNumNow2--;
         if (out_is_zip_) {
             if (cmd_info_->use_pigz_) {
-                while (pigzQueueNumNow2 > pigzQueueSizeLim2) {
-
-#ifdef Verbose
-                    //printf("waiting to push a chunk to pigz queue2\n");
-#endif
-                    usleep(100);
-                }
-                pigzQueue2->enqueue(now);
-                pigzQueueNumNow2++;
+                printf("use pigz TODO...\n");
+                //                while (pigzQueueNumNow2 > pigzQueueSizeLim2) {
+                //
+                //#ifdef Verbose
+                //                    //printf("waiting to push a chunk to pigz queue2\n");
+                //#endif
+                //                    usleep(100);
+                //                }
+                //                pigzQueue2->enqueue(now);
+                //                pigzQueueNumNow2++;
             } else {
-                int written = gzwrite(zip_out_stream2, now.first, now.second);
-                if (written != now.second) {
+                int written = gzwrite(zip_out_stream2, now.first, now.second.first);
+                if (written != now.second.first) {
                     printf("GG");
                     exit(0);
                 }
@@ -704,9 +1061,13 @@ void PeQc::WriteSeFastqTask2() {
                 delete[] now.first;
             }
         } else {
-
-            out_stream2_.write(now.first, now.second);
-            delete[] now.first;
+            tot_size += now.second.first;
+            if(now.second.first) {
+                fseek(out_stream2_, now.second.second, SEEK_SET);
+                fwrite(now.first, sizeof(char), now.second.first, out_stream2_);
+                delete[] now.first;
+            }
+            //printf("write%d %d %d %lld done1\n", my_rank, cnt++, now.second.first, now.second.second);
         }
     }
 
@@ -722,10 +1083,14 @@ void PeQc::WriteSeFastqTask2() {
         }
 
     } else {
-        out_stream2_.close();
+        fclose(out_stream2_);
+        if(my_rank == 0) {
+            truncate(cmd_info_->out_file_name2_.c_str(), sizeof(char) * now_pos2_);
+        }
     }
 #ifdef Verbose
-    printf("write2 cost %.5f\n", GetTime() - t0);
+    //printf("write1 cost %.5f\n", GetTime() - t0);
+    cerr << "write" << my_rank << " cost " << GetTime() - t0 << ", tot size " << tot_size << endl;
 #endif
 }
 
@@ -950,7 +1315,8 @@ void PeQc::NGSTask(std::string file, std::string file2, rabbit::fq::FastqDataPoo
             }
             tsum4_1 += GetTime() - tt00;
             tt00 = GetTime();
-            out_stream1_.write(tmp_out1, tot_len1);
+            //out_stream1_.write(tmp_out1, tot_len1);
+            fwrite(tmp_out1, sizeof(char), tot_len1, out_stream1_);
             delete[] tmp_out1;
 
 
@@ -984,7 +1350,8 @@ void PeQc::NGSTask(std::string file, std::string file2, rabbit::fq::FastqDataPoo
             }
             tsum4_1 += GetTime() - tt00;
             tt00 = GetTime();
-            out_stream2_.write(tmp_out2, tot_len2);
+            //out_stream2_.write(tmp_out2, tot_len2);
+            fwrite(tmp_out2, sizeof(char), tot_len2, out_stream2_);
             delete[] tmp_out2;
 
             tsum4_2 += GetTime() - tt00;
@@ -1198,8 +1565,11 @@ void PeQc::ProcessPeFastqOneThread() {
     delete[] p_thread_info;
 }
 void PeQc::ProcessPeFastq() {
-    auto *fastqPool = new rabbit::fq::FastqDataPool(64, 1 << 22);
-    rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(64, 1);
+    if(my_rank == 0) block_size = 6 * (1 << 20);
+    else block_size = 4 * (1 << 20);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(256, block_size);
+    //auto *fastqPool = new rabbit::fq::FastqDataPool(256, 1 << 22);
+    rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(256, 1);
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, true);
@@ -1211,10 +1581,16 @@ void PeQc::ProcessPeFastq() {
         if (cmd_info_->interleaved_out_ == 0)
             write_thread2 = new thread(bind(&PeQc::WriteSeFastqTask2, this));
     }
+    //tagg
     thread producer(bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_, fastqPool, ref(queue1)));
     thread consumer(bind(&PeQc::ConsumerPeFastqTask, this, p_thread_info, fastqPool, ref(queue1)));
+    printf("===%d\n", my_rank);
     producer.join();
+    printf("producer%d done\n", my_rank);
     consumer.join();
+    printf("consumer%d done\n", my_rank);
+
+
     if (cmd_info_->write_data_) {
         write_thread1->join();
         writerDone1 = 1;
@@ -1223,6 +1599,10 @@ void PeQc::ProcessPeFastq() {
             writerDone2 = 1;
         }
     }
+    MPI_Barrier(MPI_COMM_WORLD);
+    printf("==%d all pro write done\n", my_rank);
+
+
 #ifdef Verbose
     printf("all thrad done\n");
     printf("now merge thread info\n");
@@ -1238,10 +1618,126 @@ void PeQc::ProcessPeFastq() {
         aft_vec_state1.push_back(p_thread_info[t]->aft_state1_);
         aft_vec_state2.push_back(p_thread_info[t]->aft_state2_);
     }
-    auto pre_state1 = State::MergeStates(pre_vec_state1);
-    auto pre_state2 = State::MergeStates(pre_vec_state2);
-    auto aft_state1 = State::MergeStates(aft_vec_state1);
-    auto aft_state2 = State::MergeStates(aft_vec_state2);
+    auto pre_state_tmp1 = State::MergeStates(pre_vec_state1);
+    auto pre_state_tmp2 = State::MergeStates(pre_vec_state2);
+    auto aft_state_tmp1 = State::MergeStates(aft_vec_state1);
+    auto aft_state_tmp2 = State::MergeStates(aft_vec_state2);
+    printf("merge1 done\n");
+
+    vector<State *> pre_state_mpis1;
+    pre_state_mpis1.push_back(pre_state_tmp1);
+    vector<State *> aft_state_mpis1;
+    aft_state_mpis1.push_back(aft_state_tmp1);
+    vector<State *> pre_state_mpis2;
+    pre_state_mpis2.push_back(pre_state_tmp2);
+    vector<State *> aft_state_mpis2;
+    aft_state_mpis2.push_back(aft_state_tmp2);
+    printf("merge2 done\n");
+
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    if(my_rank == 0) {
+        for(int i = 1; i < comm_size; i++) {
+            int now_size = 0;
+            MPI_Recv(&now_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            char* info = new char[now_size];
+            MPI_Recv(info, now_size, MPI_CHAR, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            State* tmp_state = new State(info, now_size, cmd_info_, cmd_info_->seq_len_, cmd_info_->qul_range_, false);
+            delete[] info;
+            pre_state_mpis1.push_back(tmp_state);
+        }
+    } else {
+        string pre_state_is = pre_state_tmp1->ParseString();
+        //State* tmp_state = new State(pre_state_is.c_str(), pre_state_is.length(), cmd_info_, cmd_info_->seq_len_, cmd_info_->qul_range_, false);
+        //bool res = checkStates(pre_state_tmp1, tmp_state);
+        //if(!res) cerr << "GGGGGGGG" << endl;
+        int now_size = pre_state_is.length();
+        MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        MPI_Send(pre_state_is.c_str(), now_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    if(my_rank == 0) {
+        for(int i = 1; i < comm_size; i++) {
+            int now_size = 0;
+            MPI_Recv(&now_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            char* info = new char[now_size];
+            MPI_Recv(info, now_size, MPI_CHAR, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            State* tmp_state = new State(info, now_size, cmd_info_, cmd_info_->seq_len_, cmd_info_->qul_range_, false);
+            delete[] info;
+            pre_state_mpis2.push_back(tmp_state);
+        }
+    } else {
+        string pre_state_is = pre_state_tmp2->ParseString();
+        //State* tmp_state = new State(pre_state_is.c_str(), pre_state_is.length(), cmd_info_, cmd_info_->seq_len_, cmd_info_->qul_range_, false);
+        //bool res = checkStates(pre_state_tmp2, tmp_state);
+        //if(!res) cerr << "GGGGGGGG" << endl;
+        int now_size = pre_state_is.length();
+        MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        MPI_Send(pre_state_is.c_str(), now_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    printf("pre merge done\n");
+
+    if(my_rank == 0) {
+        for(int i = 1; i < comm_size; i++) {
+            int now_size = 0;
+            MPI_Recv(&now_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            char* info = new char[now_size];
+            MPI_Recv(info, now_size, MPI_CHAR, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            State* tmp_state = new State(info, now_size, cmd_info_, cmd_info_->seq_len_, cmd_info_->qul_range_, false);
+            delete[] info;
+            aft_state_mpis1.push_back(tmp_state);
+        }
+    } else {
+        string aft_state_is = aft_state_tmp1->ParseString();
+        int now_size = aft_state_is.length();
+        MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        MPI_Send(aft_state_is.c_str(), now_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    if(my_rank == 0) {
+        for(int i = 1; i < comm_size; i++) {
+            int now_size = 0;
+            MPI_Recv(&now_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            char* info = new char[now_size];
+            MPI_Recv(info, now_size, MPI_CHAR, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            State* tmp_state = new State(info, now_size, cmd_info_, cmd_info_->seq_len_, cmd_info_->qul_range_, false);
+            delete[] info;
+            aft_state_mpis2.push_back(tmp_state);
+        }
+    } else {
+        string aft_state_is = aft_state_tmp2->ParseString();
+        int now_size = aft_state_is.length();
+        MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        MPI_Send(aft_state_is.c_str(), now_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    printf("aft merge done\n");
+
+    if(my_rank) {
+        delete pre_state_tmp1;
+        delete pre_state_tmp2;
+        delete aft_state_tmp1;
+        delete aft_state_tmp2;
+        delete fastqPool;
+        for (int t = 0; t < slave_num; t++) {
+            delete p_thread_info[t];
+        }
+        delete[] p_thread_info;
+        return;
+    }
+
+
+
+    auto pre_state1 = State::MergeStates(pre_state_mpis1);
+    auto pre_state2 = State::MergeStates(pre_state_mpis2);
+    auto aft_state1 = State::MergeStates(aft_state_mpis1);
+    auto aft_state2 = State::MergeStates(aft_state_mpis2);
+
+
 #ifdef Verbose
     if (cmd_info_->do_overrepresentation_) {
         printf("orp cost %f\n", pre_state1->GetOrpCost() + pre_state2->GetOrpCost() + aft_state1->GetOrpCost() + aft_state2->GetOrpCost());

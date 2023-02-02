@@ -50,9 +50,7 @@ SeQc::SeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
     out_queue_ = NULL;
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != string::npos;
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != string::npos;
-    //cmd_info1->out_file_name1_ = "p" + to_string(my_rank) + cmd_info1->out_file_name1_;
     if (cmd_info1->write_data_) {
-        //out_queue_ = new moodycamel::ConcurrentQueue<pair<char*, pair<int, long long>>>;
         out_queue_ = new CIPair[1 << 20];
         queueP1 = 0;
         queueP2 = 0;
@@ -165,7 +163,7 @@ SeQc::SeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
     pugzDone = 0;
     producerDone = 0;
     writerDone = 0;
-    writeCommDone = 0;
+    consumerCommDone = 0;
     producerStop = 0;
     now_chunks = 0;
     mx_chunks = 0;
@@ -226,68 +224,10 @@ void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_dat
             t_sum1 += GetTime() - tt0;
             tt0 = GetTime();
             if (fqdatachunk == NULL) {
-                //printf("producer wait rank%d %d\n", my_rank, n_chunks);
-                //================== MPI version ==================
-                //TODO may work in higher mpi version (motify mpi_init())
-                //TODO now bug because multi-threading call between producer and writer.
-                //int now_size = n_chunks;
-                //int now_sizes[comm_size];
-                //now_sizes[0] = now_size;
-                //printf("... %d ...", my_rank);
-                ////for(int ii = 0; ii < comm_size; ii++) printf("%d ", now_sizes[ii]);
-                //printf("\n");
-
-
-                //if(my_rank) {
-                //    MPI_Send(&now_size, 1, MPI_INT, 0, 1, MPI_COMM_WORLD);
-                //} else {
-
-                //    for(int ii = 1; ii < comm_size; ii++) {
-                //        int tmp_size = 0;
-                //        MPI_Recv(&tmp_size, 1, MPI_INT, ii, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                //        now_sizes[ii] = tmp_size;
-                //    } 
-                //}
-                //printf("--- %d ---", my_rank);
-                ////for(int ii = 0; ii < comm_size; ii++) printf("%d ", now_sizes[ii]);
-                //printf("\n");
-                ////
-                //if(my_rank == 0) {
-                //    for(int ii = 1; ii < comm_size; ii++) {
-                //        MPI_Send(now_sizes, comm_size, MPI_INT, ii, 1, MPI_COMM_WORLD);
-                //    }
-                //} else {
-                //    MPI_Recv(now_sizes, comm_size, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                //}
-                //printf("=== %d ==", my_rank);
-                ////for(int ii = 0; ii < comm_size; ii++) printf("%d ", now_sizes[ii]);
-                //printf("\n");
-
-                //if(now_size != now_sizes[my_rank]) {
-                //    cerr << "GGGGGGGGGGGGGGGGGGGGGGGGG now size\n\n\n\n\n\n" << endl;
-                //    //exit(0);
-                //}
-                //int mx_nchunks = 0;
-                //for(int ii = 0; ii < comm_size; ii++) {
-                //    mx_nchunks = max(mx_nchunks, now_sizes[ii]);
-                //}
-                //int bu_chunks = mx_nchunks - now_size;
-                //cerr << "bu rank" << my_rank << " : " << bu_chunks << " of (" << now_size << ", " << mx_nchunks << ")" << endl;
-                //if(bu_chunks) {
-                //    for(int i = 0; i < bu_chunks; i++) {
-                //        dq.Push(n_chunks, fqdatachunk);
-                //        n_chunks++;
-                //    }
-                //}
-                //========================== end ========================
-                //
-                //
-                //
-                //now use another version, producer pass n_chunk to writer, writer use mpi comm sync all n_chunks.
                 if(cmd_info_->write_data_) {
                     now_chunks = n_chunks;
                     producerStop = 1;
-                    while(writeCommDone == 0) {
+                    while(consumerCommDone == 0) {
                         usleep(100);
                     }
                     //printf("producer%d get val done %lld %lld\n", my_rank, now_chunks, mx_chunks);
@@ -536,7 +476,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
                         for(int ii = 0; ii < comm_size; ii++) {
                             mx_chunks = max(mx_chunks, chunk_sizes[ii]);
                         }
-                        writeCommDone = 1;
+                        consumerCommDone = 1;
                         proDone = 1;
                     }
                 }
@@ -582,7 +522,7 @@ void SeQc::WriteSeFastqTask() {
     int cnt = 0;
     long long tot_size = 0;
     bool overWhile = 0;
-    pair<char *, pair<int, long long>> now;
+    CIPair now;
     int round = 0;
     while (true) {
         while (queueNumNow == 0) {

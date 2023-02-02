@@ -70,12 +70,8 @@ private:
     CmdInfo *cmd_info_;
 
     Filter *filter_;
-    //moodycamel::ConcurrentQueue<std::pair<std::pair<char*, int>, long long> *out_queue_;
-    //moodycamel::ConcurrentQueue<std::pair<char*, std::pair<int, long long>>> *out_queue_;
     CIPair *out_queue_;
-    //TODO replace concurrentqueue with char*[]
     std::atomic_int done_thread_number_;
-    //std::ofstream out_stream_;
     FILE *out_stream_;
     Duplicate *duplicate_;
     Umier *umier_;
@@ -103,7 +99,7 @@ private:
     std::atomic_int pigzQueueSizeLim;
     int64_t now_chunks;
     int64_t mx_chunks;
-    std::atomic_int writeCommDone;
+    std::atomic_int consumerCommDone;
     std::atomic_int producerStop;
     std::mutex mylock;
 };

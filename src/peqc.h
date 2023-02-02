@@ -25,11 +25,11 @@
 #include "threadinfo.h"
 #include "umier.h"
 
-#define CIPair std::pair<char *, int>
+#define CIPair std::pair<char *, std::pair<int, long long>>
 
 class PeQc {
 public:
-    PeQc(CmdInfo *cmd_info);
+    PeQc(CmdInfo *cmd_info, int my_rank = 0, int comm_size = 1);
 
     PeQc();
 
@@ -73,16 +73,20 @@ private:
     void NGSTask(std::string file1, std::string file2, rabbit::fq::FastqDataPool *fastq_data_pool, ThreadInfo **thread_infos);
 
 private:
+
+    int my_rank, comm_size;
     CmdInfo *cmd_info_;
     Filter *filter_;
 
     CIPair *out_queue1_;
     CIPair *out_queue2_;
     std::atomic_int done_thread_number_;
-    std::ofstream out_stream1_;
-    std::ofstream out_stream2_;
+    FILE *out_stream1_;
+    FILE *out_stream2_;
     Duplicate *duplicate_;
     Umier *umier_;
+    long long now_pos1_;
+    long long now_pos2_;
 
     gzFile zip_out_stream1;
     gzFile zip_out_stream2;
@@ -120,6 +124,11 @@ private:
     std::atomic_int queueSizeLim2;
     std::atomic_int pigzQueueNumNow2;
     std::atomic_int pigzQueueSizeLim2;
+    int64_t now_chunks;
+    int64_t mx_chunks;
+    std::atomic_int consumerCommDone;
+    std::atomic_int producerStop;
+    
     std::mutex mylock;
 };
 
