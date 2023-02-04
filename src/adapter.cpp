@@ -151,7 +151,7 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
 
     while (bases < BASE_LIMIT) {
         rabbit::fq::FastqDataChunk *fqdatachunk;
-        fqdatachunk = fqFileReader->readNextChunk();
+        fqdatachunk = fqFileReader->readNextChunk(-2, 1e9);
         if (fqdatachunk == NULL) break;
         n_chunks++;
         vector<neoReference> data;
@@ -320,7 +320,7 @@ int Adapter::EvalMaxLen(string file_name) {
 
     while (records < READ_LIMIT && bases < BASE_LIMIT) {
         rabbit::fq::FastqDataChunk *fqdatachunk;
-        fqdatachunk = fqFileReader->readNextChunk();
+        fqdatachunk = fqFileReader->readNextChunk(-2, 1e9);
         if (fqdatachunk == NULL) break;
         n_chunks++;
         vector<neoReference> data;
@@ -358,7 +358,7 @@ string Adapter::AutoDetect(string file_name, int trim_tail) {
 
     while (records < READ_LIMIT && bases < BASE_LIMIT) {
         rabbit::fq::FastqDataChunk *fqdatachunk;
-        fqdatachunk = fqFileReader->readNextChunk();
+        fqdatachunk = fqFileReader->readNextChunk(-2, 1e9);
         if (fqdatachunk == NULL) break;
         n_chunks++;
         vector<neoReference> data;

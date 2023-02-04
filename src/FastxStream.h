@@ -365,7 +365,7 @@ namespace rabbit {
             }
 
             // added from fastxIO.h
-            FastqDataChunk *readNextChunk();
+            FastqDataChunk *readNextChunk(int64 offset = -1, int64 lim_size = 1e9);
 
             FastqDataChunk *readNextInterChunk();
 
@@ -373,13 +373,13 @@ namespace rabbit {
 
             void readChunk();
 
-            bool ReadNextChunk_(FastqDataChunk *chunk_);
+            bool ReadNextChunk_(FastqDataChunk *chunk_, int64 offset = -1, int64 lim_size = 1e9);
             
             bool ReadNextInterChunk_(FastqDataChunk *chunk_);
 
             bool ReadNextChunk_(FastqDataChunk *chunk_, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, std::atomic_int *d, std::pair<char *, int> &l);
 
-            FastqDataPairChunk *readNextPairChunk();
+            FastqDataPairChunk *readNextPairChunk(int64 offset = -1, int64 lim_size = 1e9);
 
             FastqDataPairChunk *readNextPairChunkParallel();
 

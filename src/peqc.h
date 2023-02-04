@@ -128,8 +128,9 @@ private:
     int64_t mx_chunks;
     std::atomic_int consumerCommDone;
     std::atomic_int producerStop;
-    
     std::mutex mylock;
+
+    int64_t *part_sizes;
 };
 
 

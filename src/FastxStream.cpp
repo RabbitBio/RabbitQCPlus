@@ -380,10 +380,10 @@ namespace rabbit {
           @brief Read the next chunk
           @return FastqChunk pointer if next chunk data has data, else return NULL
           */
-        FastqDataChunk *FastqFileReader::readNextChunk() {
+        FastqDataChunk *FastqFileReader::readNextChunk(int64 offset, int64 lim_size) {
             FastqDataChunk *part = NULL;
             recordsPool.Acquire(part);
-            if (ReadNextChunk_(part)) {
+            if (ReadNextChunk_(part, offset, lim_size)) {
                 return part;
             } else {
                 recordsPool.Release(part);
@@ -769,7 +769,13 @@ namespace rabbit {
   @return FastqDataPairChunk pointer if next chunk data has data, else return NULL
   */
 
-        FastqDataPairChunk *FastqFileReader::readNextPairChunk() {
+        FastqDataPairChunk *FastqFileReader::readNextPairChunk(int64 offset, int64 lim_size) {
+            //qwer
+
+            //printf("offset limsize : %lld %lld\n", offset, lim_size);
+            
+            static int64 now_size = 0;
+            static int64 now_size2 = 0;
             bool eof1 = false;
             bool eof2 = false;
             FastqDataPairChunk *pair = new FastqDataPairChunk;
@@ -806,10 +812,23 @@ namespace rabbit {
                 leftPart->size = bufferSize;
                 bufferSize = 0;
             }
+            if(now_size + toRead > lim_size) {
+                toRead = lim_size - now_size;
+            }
             int64 r;
-            r = mFqReader->Read(data + leftPart->size, toRead);
+            if(offset == -1 || offset == -2) r = mFqReader->Read(data + leftPart->size, toRead);
+            else {
+                //std::cerr << "seek_read " << offset << std::endl;
+                r = mFqReader->ReadSeek(data + leftPart->size, toRead, offset);
+                //uchar *pos_tmp = data + leftPart->size;
+                //for(int i = 0; i < 40; i++) std::cerr << pos_tmp[i];
+                //std::cerr << std::endl;
+            
+            }
+            if(offset != -2) now_size += r;
+            //printf("=== res %lld, %lld\n", r, now_size);
             if (r > 0) {
-                if (r == toRead) {
+                if (r == toRead && now_size < lim_size) {
                     chunkEnd = cbufSize - GetNxtBuffSize;
                     chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
                 } else {
@@ -840,9 +859,23 @@ namespace rabbit {
                 rightPart->size = bufferSize2;
                 bufferSize2 = 0;
             }
-            r = mFqReader2->Read(data_right + rightPart->size, toRead);
+            if(now_size2 + toRead > lim_size) {
+                toRead = lim_size - now_size2;
+            }
+            if(offset == -1 || offset == -2) r = mFqReader2->Read(data_right + rightPart->size, toRead);
+            else {
+                //std::cerr << "seek_read " << offset << std::endl;
+                r = mFqReader2->ReadSeek(data_right + rightPart->size, toRead, offset);
+                //uchar *pos_tmp = data_right + rightPart->size;
+                //for(int i = 0; i < 40; i++) std::cerr << pos_tmp[i];
+                //std::cerr << std::endl;
+            
+            }
+            if(offset != -2) now_size2 += r;
+
+            //printf("=== res %lld, %lld\n", r, now_size2);
             if (r > 0) {
-                if (r == toRead) {
+                if (r == toRead && now_size2 < lim_size) {
                     chunkEnd_right = cbufSize_right - GetNxtBuffSize;
                     chunkEnd_right = GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
                 } else {
@@ -867,6 +900,7 @@ namespace rabbit {
                 left_line_count = count_line(data, chunkEnd);
                 right_line_count = count_line(data_right, chunkEnd_right);
                 int64 difference = left_line_count - right_line_count;
+                if(difference) printf("difference.......\n");
                 if (difference > 0) {
                     while (chunkEnd >= 0) {
                         if (data[chunkEnd] == '\n') {
@@ -1041,8 +1075,13 @@ namespace rabbit {
             return pair;
         }
 
-        bool FastqFileReader::ReadNextChunk_(FastqDataChunk *chunk_) {
-            if (mFqReader->FinishRead() && bufferSize == 0) {
+            
+
+        //tagg
+        bool FastqFileReader::ReadNextChunk_(FastqDataChunk *chunk_, int64 offset, int64 lim_size) {
+            
+            static int64 now_size = 0;
+            if ((mFqReader->FinishRead() || now_size == lim_size) && bufferSize == 0) {
                 chunk_->size = 0;
                 return false;
             }
@@ -1060,13 +1099,22 @@ namespace rabbit {
             }
 
             // read the next chunk
-            //static double fread_time = 0;
-            //double tt0 = GetTime();
-            int64 r = mFqReader->Read(data + chunk_->size, toRead);
-            //fread_time += GetTime() - tt0;
-            //printf("fread cost %lf\n", fread_time);
-            // if (r > 0) {
-            if (!mFqReader->FinishRead()) {
+            if(now_size + toRead > lim_size) {
+                toRead = lim_size - now_size;
+            }
+            //printf("read %lld %lld %lld\n", toRead, offset, lim_size);
+            int64 r = 0;
+            if(offset == -1 || offset == -2) r = mFqReader->Read(data + chunk_->size, toRead);
+            else {
+                //std::cerr << "seek_read " << offset << " " << chunk_->size << std::endl;
+                r = mFqReader->ReadSeek(data + chunk_->size, toRead, offset);
+                //uchar *pos_tmp = data + chunk_->size;
+                //for(int i = 0; i < 40; i++) std::cerr << pos_tmp[i];
+                //std::cerr << std::endl;
+            }
+            if(offset != -2) now_size += r;
+            //printf("=== res %lld, %lld\n", r, now_size);
+            if (!mFqReader->FinishRead() && now_size < lim_size) {
                 cbufSize = r + chunk_->size;
                 uint64 chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize : GetNxtBuffSize);
                 chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
@@ -1080,9 +1128,6 @@ namespace rabbit {
                 if (usesCrlf) chunk_->size -= 1;
                 mFqReader->setEof();
             }
-            //}else {
-            //	mFqReader->setEof();
-            //}
             return true;
         }
 

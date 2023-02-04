@@ -208,6 +208,29 @@ namespace rabbit {
             }
         }
 
+
+        int64 ReadSeek(byte *memory_, uint64 size_, uint64 pos_) {
+            if (isZipped) {
+                //pritnf("TODO seek read of compressed file...\n");
+                exit(0);
+                //TODO
+//                //int64 n = gzread(mZipFile, memory_, size_);
+//                //cerr << "reading " << size_ << " byes" << endl;
+//                //int64 n = igzip_read(mFile, memory_, size_);
+//#if defined(USE_IGZIP)
+//                int64 n = igzip_read(mFile, memory_, size_);
+//#else
+//                int64 n = gzread(mZipFile, memory_, size_);
+//#endif
+//                if (n == -1) std::cerr << "Error to read gzip file" << std::endl;
+//                return n;
+            } else {
+                fseek(mFile, pos_, SEEK_SET);
+                int64 n = fread(memory_, 1, size_, mFile);
+                return n;
+            }
+        }
+
         /**
          *
          * @param buf

@@ -36,14 +36,54 @@ extern "C" {
 //extern void slave_ngspefunc(qc_data *para);
 
 
+void SkipToLineEnd(char *data_, int64_t &pos_, const int64_t size_) {
+    // cerr << "pos: " << pos_ << " size: " << size_ << endl;
+    ASSERT(pos_ < size_);
+
+    while (data_[pos_] != '\n' && data_[pos_] != '\r' && pos_ < size_) ++pos_;
+
+    if (data_[pos_] == '\r' && pos_ < size_) {
+        if (data_[pos_ + 1] == '\n') {
+            //usesCrlf = true;
+            ++pos_;
+        }
+    }
+}
+
+
+int64_t GetNextFastq(char *data_, int64_t pos_, const int64_t size_) {
+    SkipToLineEnd(data_, pos_, size_);
+    ++pos_;
+
+    // find beginning of the next record
+    while (data_[pos_] != '@') {
+        SkipToLineEnd(data_, pos_, size_);
+        ++pos_;
+    }
+    int64_t pos0 = pos_;
+
+    SkipToLineEnd(data_, pos_, size_);
+    ++pos_;
+
+    if (data_[pos_] == '@')// previous one was a quality field
+        return pos_;
+    //-----[haoz:] is the following code necessary??-------------//
+    SkipToLineEnd(data_, pos_, size_);
+    ++pos_;
+    if (data_[pos_] != '+') std::cout << "core dump is pos: " << pos_ << " char: " << data_[pos_] << std::endl;
+    ASSERT(data_[pos_] == '+');// pos0 was the start of tag
+    return pos0;
+}
+
 /**
  * @brief Construct function
  * @param cmd_info1 : cmd information
  */
 PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
-    printf(" %d /// %d\n", my_rank_, comm_size_);
+    //printf(" %d /// %d\n", my_rank_, comm_size_);
     my_rank = my_rank_;
     comm_size = comm_size_;
+    part_sizes = new int64_t[comm_size];
     now_pos1_ = 0;
     now_pos2_ = 0;
     cmd_info_ = cmd_info1;
@@ -55,6 +95,69 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
     out_queue2_ = NULL;
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != string::npos;
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != string::npos;
+
+    ifstream gFile;
+    gFile.open(cmd_info1->in_file_name1_.c_str());
+    gFile.seekg(0, ios_base::end);
+    long long real_file_size = gFile.tellg();
+    gFile.close();
+
+    gFile.open(cmd_info1->in_file_name2_.c_str());
+    gFile.seekg(0, ios_base::end);
+    long long real_file_size2 = gFile.tellg();
+    gFile.close();
+
+    int64_t pre_size = ceil(1.0 * real_file_size / (2 * comm_size + 1));
+    int64_t start_pos, end_pos;
+    if(my_rank == 0) {
+        start_pos = 0;
+        end_pos = start_pos + pre_size * 3;
+    } else {
+        start_pos = pre_size * (my_rank * 2 + 1);
+        end_pos = start_pos + pre_size * 2;
+    }
+    if(end_pos > real_file_size) end_pos = real_file_size;
+
+    //cerr << "startpos" << my_rank << " " << start_pos << "-" << end_pos << endl;
+    FILE *pre_fp;
+    pre_fp = fopen(cmd_info1->in_file_name1_.c_str(), "rb");
+    fseek(pre_fp, start_pos, SEEK_SET);
+    char *tmp_chunk = new char[1 << 10];
+    int res_size = fread(tmp_chunk, sizeof(char), 1 << 10, pre_fp);
+    MPI_Barrier(MPI_COMM_WORLD);
+    //cerr << "res_size" << my_rank << " " << res_size << endl;
+    int64_t right_pos = GetNextFastq(tmp_chunk, 0, res_size);
+    if(my_rank == 0) right_pos = 0;
+    //cerr << "right_pos" << my_rank << " " << right_pos << endl;
+    fclose(pre_fp);
+    MPI_Barrier(MPI_COMM_WORLD);
+    long long now_pos = right_pos + start_pos;
+    long long now_poss[comm_size];
+    now_poss[0] = now_pos;
+    //MPI_Barrier(MPI_COMM_WORLD);
+    if(my_rank) {
+        MPI_Send(&now_pos, 1, MPI_LONG, 0, 0, MPI_COMM_WORLD);
+    } else {
+        for(int ii = 1; ii < comm_size; ii++) {
+            MPI_Recv(&(now_poss[ii]), 1, MPI_LONG, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        } 
+    }
+    
+    //MPI_Barrier(MPI_COMM_WORLD);
+    if(my_rank == 0) {
+        for(int ii = 1; ii < comm_size; ii++) {
+            MPI_Send(now_poss, comm_size, MPI_LONG, ii, 0, MPI_COMM_WORLD);
+        }
+    } else {
+        MPI_Recv(now_poss, comm_size, MPI_LONG, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    for(int i = 0; i < comm_size; i++) {
+        if(i == comm_size - 1) part_sizes[i] = real_file_size - now_poss[i];
+        else part_sizes[i] = now_poss[i + 1] - now_poss[i];
+    }
+
+
     if (cmd_info1->write_data_) {
         out_queue1_ = new CIPair[1 << 20];
         queue1P1 = 0;
@@ -115,32 +218,8 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
             if (cmd_info_->interleaved_out_ == 0)
                 printf("open stream2 %s\n", cmd_info1->out_file_name2_.c_str());
 #endif
-            ifstream gFile;
-            gFile.open(cmd_info1->in_file_name1_.c_str());
-            gFile.seekg(0, ios_base::end);
-            long long file_size = gFile.tellg();
-            gFile.close();
-            printf("pre file1 size %lld\n", file_size);
-            //MPI_Barrier(MPI_COMM_WORLD);
-            //long long now_size = file_size;
-            //long long now_sizes[comm_size];
-            //now_sizes[0] = now_size;
-            //MPI_Barrier(MPI_COMM_WORLD);
-            //if(my_rank) {
-            //    MPI_Send(&now_size, 1, MPI_LONG, 0, 0, MPI_COMM_WORLD);
-            //} else {
-            //    for(int ii = 1; ii < comm_size; ii++) {
-            //        MPI_Recv(&(now_sizes[ii]), 1, MPI_LONG, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            //    } 
-            //}
-            //MPI_Barrier(MPI_COMM_WORLD);
 
             if(my_rank == 0) {
-                long long real_file_size = 0;
-                real_file_size = file_size * (comm_size + 1);
-                //for(int ii = 0; ii < comm_size; ii++) {
-                //    real_file_size += now_sizes[ii];
-                //}
                 printf("pre real file1 size %lld\n", real_file_size);
                 int fd = open(cmd_info1->out_file_name1_.c_str(), O_CREAT | O_TRUNC | O_RDWR | O_EXCL, 0644);
                 ftruncate(fd, sizeof(char) * real_file_size);
@@ -148,7 +227,6 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
             } else {
                 int found = 0;
                 do {
-
                     if(-1 == access(cmd_info1->out_file_name1_.c_str(), F_OK)) {
                         if(ENOENT == errno) {
                             //cerr << "waiting file be created..." << endl;
@@ -164,39 +242,13 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
                     }
                 } while(found == 0);
             }
-            //MPI_Barrier(MPI_COMM_WORLD);
-            printf("eval done1\n");
 
             if (cmd_info_->interleaved_out_ == 0){
-                ifstream gFile;
-                gFile.open(cmd_info1->in_file_name2_.c_str());
-                gFile.seekg(0, ios_base::end);
-                long long file_size = gFile.tellg();
-                gFile.close();
-                printf("pre file2 size %lld\n", file_size);
-                //MPI_Barrier(MPI_COMM_WORLD);
-                //long long now_size = file_size;
-                //long long now_sizes[comm_size];
-                //now_sizes[0] = now_size;
-                //MPI_Barrier(MPI_COMM_WORLD);
-                //if(my_rank) {
-                //    MPI_Send(&now_size, 1, MPI_LONG, 0, 0, MPI_COMM_WORLD);
-                //} else {
-                //    for(int ii = 1; ii < comm_size; ii++) {
-                //        MPI_Recv(&(now_sizes[ii]), 1, MPI_LONG, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                //    } 
-                //}
-                //MPI_Barrier(MPI_COMM_WORLD);
 
                 if(my_rank == 0) {
-                    long long real_file_size = 0;
-                    real_file_size = file_size * (comm_size + 1);
-                    //for(int ii = 0; ii < comm_size; ii++) {
-                    //    real_file_size += now_sizes[ii];
-                    //}
-                    printf("pre real file2 size %lld\n", real_file_size);
+                    printf("pre real file2 size %lld\n", real_file_size2);
                     int fd = open(cmd_info1->out_file_name2_.c_str(), O_CREAT | O_TRUNC | O_RDWR | O_EXCL, 0644);
-                    ftruncate(fd, sizeof(char) * real_file_size);
+                    ftruncate(fd, sizeof(char) * real_file_size2);
                     out_stream2_ = fdopen(fd, "w");
                 } else {
                     int found = 0;
@@ -255,6 +307,7 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
 
 
 PeQc::~PeQc() {
+    delete[] part_sizes;
     delete filter_;
     if (cmd_info_->write_data_) {
         delete out_queue1_;
@@ -324,6 +377,10 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
 #ifdef Verbose
     double t0 = GetTime();
 #endif
+    //cerr << "part_sizes ";
+    //for(int i = 0; i < comm_size; i++) cerr << part_sizes[i] << " ";
+    //cerr << endl;
+    
     rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize = 1 << 20;
     if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
@@ -349,13 +406,27 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
         delete[] last1.first;
         delete[] last2.first;
     } else {
+        bool is_first = 1;
+        int64_t tot_size = 0;
         while (true) {
             rabbit::fq::FastqDataPairChunk *fqdatachunk;
-            fqdatachunk = fqFileReader->readNextPairChunk();
+            int64_t offset;
+            if(is_first) {
+                offset = 0;
+                for(int i = 0; i < my_rank; i++)
+                    offset += part_sizes[i];
+            } else {
+                offset = -1;
+            }
+            is_first = 0;
+     
+            fqdatachunk = fqFileReader->readNextPairChunk(offset, part_sizes[my_rank]);
             if (fqdatachunk == NULL) {
+
+                printf("null\n");
                 if(cmd_info_->write_data_) {
                     //printf("producer%d stop\n", my_rank);
-                    cerr << "producer" << my_rank << "stop" << endl;
+                    //cerr << "producer" << my_rank << "stop" << endl;
                     now_chunks = n_chunks;
                     producerStop = 1;
                     while(consumerCommDone == 0) {
@@ -363,7 +434,7 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
                     }
                     //printf("producer%d get val done %lld %lld\n", my_rank, now_chunks, mx_chunks);
                     int bu_chunks = mx_chunks - now_chunks;
-                    cerr << "bu rank" << my_rank << " : " << bu_chunks << " of (" << now_chunks << ", " << mx_chunks << ")" << endl;
+                    //cerr << "bu rank" << my_rank << " : " << bu_chunks << " of (" << now_chunks << ", " << mx_chunks << ")" << endl;
                     if(bu_chunks) {
                         for(int i = 0; i < bu_chunks; i++) {
                             dq.Push(n_chunks, fqdatachunk);
@@ -374,6 +445,8 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
                 printf("producer done === %lld\n", n_chunks);
                 break;
             }
+            tot_size += fqdatachunk->left_part->size;
+            if(fqdatachunk->left_part->size <= 0 || tot_size <= 0) break;
             n_chunks++;
             dq.Push(n_chunks, fqdatachunk);
             //printf("producer push chunk %lld\n", n_chunks);
@@ -1011,9 +1084,9 @@ void PeQc::WriteSeFastqTask1() {
         }
     }
 #ifdef Verbose
-    //printf("write1 cost %.5f\n", GetTime() - t0);
+    printf("write1 cost %.5f\n", GetTime() - t0);
 
-    cerr << "write" << my_rank << " cost " << GetTime() - t0 << ", tot size " << tot_size << endl;
+    //cerr << "write" << my_rank << " cost " << GetTime() - t0 << ", tot size " << tot_size << endl;
 #endif
 }
 
@@ -1089,8 +1162,8 @@ void PeQc::WriteSeFastqTask2() {
         }
     }
 #ifdef Verbose
-    //printf("write1 cost %.5f\n", GetTime() - t0);
-    cerr << "write" << my_rank << " cost " << GetTime() - t0 << ", tot size " << tot_size << endl;
+    printf("write1 cost %.5f\n", GetTime() - t0);
+    //cerr << "write" << my_rank << " cost " << GetTime() - t0 << ", tot size " << tot_size << endl;
 #endif
 }
 

@@ -176,16 +176,14 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    cmd_info.in_file_name1_ = cmd_info.in_file_name1_ + "." + to_string(my_rank);
-    printf("now input1 file %s\n", cmd_info.in_file_name1_.c_str());
+    //for read split version
+    //cmd_info.in_file_name1_ = cmd_info.in_file_name1_ + "." + to_string(my_rank);
+    //printf("now input1 file %s\n", cmd_info.in_file_name1_.c_str());
 
-    if(cmd_info.in_file_name2_.length()) {
-        cmd_info.in_file_name2_ = cmd_info.in_file_name2_ + "." + to_string(my_rank);
-        printf("now input2 file %s\n", cmd_info.in_file_name2_.c_str());
-    }
-   
-
-
+    //if(cmd_info.in_file_name2_.length()) {
+    //    cmd_info.in_file_name2_ = cmd_info.in_file_name2_ + "." + to_string(my_rank);
+    //    printf("now input2 file %s\n", cmd_info.in_file_name2_.c_str());
+    //}
 
     if (tmp_no_dup_)cmd_info.state_duplicate_ = false;
 

@@ -102,6 +102,8 @@ private:
     std::atomic_int consumerCommDone;
     std::atomic_int producerStop;
     std::mutex mylock;
+
+    int64_t *part_sizes;
 };
 
 
