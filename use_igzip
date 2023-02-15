@@ -1,0 +1,7 @@
+1. download and build libisal, see https://github.com/intel/isa-l
+
+2. add -DUSE_IGZIP to CXXFLAGS and -lisal to LIBS in Makefile, then make
+
+3. run RabbitQCPlus with --useIgzip
+
+note : for decompression engines, igzip is more stable than pugz, but there is a performance loss of about 20%
