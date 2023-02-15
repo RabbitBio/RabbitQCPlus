@@ -88,7 +88,7 @@ namespace rabbit {
                 int ret = 0;
                 ret = isal_read_gzip_header(&mStream, &mIgzipHeader);
                 if (ret != ISAL_DECOMP_OK) {
-                    cerr << "error invalid gzip header found: " << fileName_ << endl;
+                    std::cerr << "error invalid gzip header found: " << fileName_ << std::endl;
                     if (mFile != NULL) {
                         fclose(mFile);
                     }
@@ -142,7 +142,7 @@ namespace rabbit {
                 mStream.avail_out = size_ - offset;
                 //printf("before inflate, avin: %d, avout: %d\n", mStream.avail_in, mStream.avail_out);
                 if (isal_inflate(&mStream) != ISAL_DECOMP_OK) {
-                    cerr << "decompress error" << endl;
+                    std::cerr << "decompress error" << std::endl;
                     return -1;
                 }
                 //printf("after inflate, avin: %d, avout: %d\n", mStream.avail_in, mStream.avail_out);
@@ -180,7 +180,7 @@ namespace rabbit {
                     }
                     ret = isal_read_gzip_header(&mStream, &mIgzipHeader);
                     if (ret != ISAL_DECOMP_OK) {
-                        cerr << "igzip: invalid gzip header found: " << mStream.avail_in << " : " << mStream.avail_out << endl;
+                        std::cerr << "igzip: invalid gzip header found: " << mStream.avail_in << " : " << mStream.avail_out << std::endl;
                         exit(-1);
                     }
                 }

@@ -33,6 +33,8 @@ CmdInfo::CmdInfo() {
     trim_front2_ = 0;
     trim_tail2_ = 0;
 
+    use_igzip_ = 0;
+
     write_data_ = false;
     in_file_size1_ = 0;
     in_file_size2_ = 0;

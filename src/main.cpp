@@ -59,6 +59,8 @@ int main(int argc, char **argv) {
     app.add_option("--trimTail2", cmd_info.trim_tail2_, "number of bases to trim from tail in read2, default is 0");
 
 
+    app.add_flag("--useIgzip", cmd_info.use_igzip_, "use igzip instead of pugz/zlib, default is off");
+
     app.add_flag("-g,--trimPolyg", cmd_info.trim_polyg_, "do polyg tail trim, default is off");
     app.add_flag("-x,--trimPolyx", cmd_info.trim_polyx_, "do polyx tail trim, default is off");
 
@@ -176,7 +178,7 @@ int main(int argc, char **argv) {
 
 
     int in_module = 0;
-    if (in_gz) in_module |= 1;
+    if (in_gz && cmd_info.use_igzip_ == 0) in_module |= 1;
     if (out_gz) in_module |= 2;
 
     if(cmd_info.in_file_name2_.length() == 0)cmd_info.thread_number_ = min(32, cmd_info.thread_number_);

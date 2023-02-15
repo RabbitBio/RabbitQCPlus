@@ -49,6 +49,7 @@ public:
     int trim_front2_;
     int trim_tail2_;
 
+    bool use_igzip_;
 
     //param for adapter
     bool trim_adapter_;
