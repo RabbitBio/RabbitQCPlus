@@ -113,6 +113,7 @@ TARGET := RabbitQCPlus
 
 BIN_TARGET := ${TARGET}
 
+THRUST_INCDIR = ./dependencies/thrust-1.17.0
 
 CXX = g++
 
@@ -125,13 +126,13 @@ CXX = g++
 # you can add -DVerbose to print more log information
 
 CXXFLAGS := $(InstructSet)
-CXXFLAGS += -DNDUBUG -std=c++11 -I./ -I./common -march=native  -g -O3  -w -fopenmp
+CXXFLAGS += -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -march=native -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
 
 
 CXX2 = gcc
 CXXFLAGS2 := -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
 
-LIBS := -lz -lpthread  -fopenmp  -lrt 
+LIBS := -lpthread -fopenmp -lrt -lgomp -lstdc++fs -lz -ldl
 
 
 LD_FLAGS := $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir)) $(LIBS)

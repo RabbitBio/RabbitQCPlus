@@ -101,4 +101,11 @@ CmdInfo::CmdInfo() {
     use_pigz_ = false;
     pugz_threads_ = 2;
     pigz_threads_ = 2;
+
+    //pairmode
+    pairmode_ = "SE";
+
+    //correction
+    coverage_ = 30;
+
 }

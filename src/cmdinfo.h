@@ -114,6 +114,13 @@ public:
     bool use_pigz_;
     int pugz_threads_;
     int pigz_threads_;
+
+    //pairmode
+    std::string pairmode_;
+
+    //correction
+    int coverage_;
+
 };
 
 

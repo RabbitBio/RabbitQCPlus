@@ -6,6 +6,9 @@
 #include "th_ass.h"
 #include <iostream>
 #include <fstream>
+#include <vector>
+#include "main_correct_cpu.h"
+
 using namespace std;
 
 inline bool exists_file (const std::string& name) {
@@ -46,7 +49,7 @@ int main(int argc, char **argv) {
     app.add_option("--adapterFastaFile", cmd_info.adapter_fasta_file_, "specify adapter sequences use fasta file");
     //app.add_option("--adapterLengthLimit", cmd_info.adapter_len_lim_, "minimum adapter length when trimming, default is 0");
 
-    app.add_flag("-c,--correctData", cmd_info.correct_data_, "correcting low quality bases using information from overlap, default is off");
+    app.add_flag("--correctData", cmd_info.correct_data_, "correcting low quality bases using information from overlap, default is off");
 
     app.add_option("-w,--threadNum", cmd_info.thread_number_, "number of thread used to do QC, including (de)compression for compressed data, default is 8");
 
@@ -97,6 +100,11 @@ int main(int argc, char **argv) {
     app.add_flag("--interleavedOut", cmd_info.interleaved_out_,
             "use interleaved output (only for pe data), default is off");
 
+    //pairmode
+    app.add_option("--pairmode", cmd_info.pairmode_, "SE or PE, default is SE");
+    //correction
+    app.add_option("-c,--coverage", cmd_info.coverage_, "Estimated coverage of input file");
+
 
     //parallel gz
     //app.add_flag("--usePugz", cmd_info.use_pugz_, "use pugz to decompress data, default is off");
@@ -116,6 +124,41 @@ int main(int argc, char **argv) {
     app.add_flag("-V,--version", quVersion, "application version");
 
     CLI11_PARSE(app, argc, argv);
+
+    printf("pairmode %s\n", cmd_info.pairmode_.c_str());
+    printf("coverage %d\n", cmd_info.coverage_);
+    vector<char*>paras;
+    paras.push_back("./RabbitQCPlus");
+    paras.push_back("-i");
+    paras.push_back((char*)(cmd_info.in_file_name1_.data()));
+    paras.push_back("-d");
+    paras.push_back("./");
+    paras.push_back("-o");
+    paras.push_back("tmp.fq");
+    paras.push_back("-c");
+    string str_coverage = to_string(cmd_info.coverage_);
+    printf("str_coverage %s\n", str_coverage.c_str());
+    paras.push_back((char*)(str_coverage.data()));
+    paras.push_back("-t");
+    string str_thread = to_string(cmd_info.thread_number_);
+    printf("str_thread %s\n", str_thread.c_str());
+    paras.push_back((char*)(str_thread.data()));
+    paras.push_back("--pairmode");
+    if(cmd_info.pairmode_ == "SE") paras.push_back("SE");
+    else paras.push_back("PE");
+    for(int i = 0; i < paras.size(); i++) {
+        printf("%s ", paras[i]);
+    }
+    printf("\n");
+
+    printf("start care part...\n");
+
+    main_correction(paras.size(), &(paras[0]));
+    
+
+    printf("care end\n");
+
+    cmd_info.in_file_name1_ = "./tmp.fq";
 
 
     if(cmd_info.compression_level_ < 1 || cmd_info.compression_level_ > 9){
