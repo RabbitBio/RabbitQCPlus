@@ -93,6 +93,10 @@ private:
     std::atomic_int pigzQueueSizeLim;
     std::atomic_int nowChunkId;
     std::mutex mylock;
+
+    //care
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *careQueue;
+    std::atomic_int careDone;
 };
 
 

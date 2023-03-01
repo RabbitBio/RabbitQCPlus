@@ -66,6 +66,10 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
         pigzLast.first = new char[1 << 24];
         pigzLast.second = 0;
     }
+    if(cmd_info1->do_correction_with_care_) {
+        careQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
+    }
+    careDone = 0;
     pugzDone = 0;
     producerDone = 0;
     writerDone = 0;
@@ -102,7 +106,7 @@ void SeQc::careProcess() {
     printf("str_coverage %s\n", str_coverage.c_str());
     paras.push_back((char*)(str_coverage.data()));
     paras.push_back("-t");
-    string str_thread = to_string(cmd_info_->thread_number_);
+    string str_thread = to_string(cmd_info_->correct_threadnum_);
     printf("str_thread %s\n", str_thread.c_str());
     paras.push_back((char*)(str_thread.data()));
     paras.push_back("--pairmode");
@@ -115,9 +119,13 @@ void SeQc::careProcess() {
 
     printf("start care part...\n");
 
-    main_correction(paras.size(), &(paras[0]));
+    printf("now output to queue, %p %p\n", careQueue, &producerDone);
+    main_correction(paras.size(), &(paras[0]), careQueue, &producerDone);
 
     printf("care end\n");
+    printf("care queue size %d\n", careQueue->size_approx());
+
+    careDone = 1;
 
 }
 
@@ -144,6 +152,19 @@ void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_dat
         while (true) {
             rabbit::fq::FastqDataChunk *fqdatachunk;
             fqdatachunk = fqFileReader->readNextChunk(pugzQueue, &pugzDone, last_info);
+            if (fqdatachunk == NULL) break;
+            n_chunks++;
+            dq.Push(n_chunks, fqdatachunk);
+        }
+        delete[] last_info.first;
+    } else if(cmd_info_->do_correction_with_care_) {
+        printf("producer read data from care...\n");
+		pair<char *, int> last_info;
+        last_info.first = new char[1 << 22];
+        last_info.second = 0;
+        while (true) {
+            rabbit::fq::FastqDataChunk *fqdatachunk;
+            fqdatachunk = fqFileReader->readNextChunk(careQueue, &careDone, last_info);
             if (fqdatachunk == NULL) break;
             n_chunks++;
             dq.Push(n_chunks, fqdatachunk);
@@ -465,9 +486,7 @@ void SeQc::ProcessSeFastq() {
     thread *carer;
     if(cmd_info_->do_correction_with_care_) {
         carer = new thread(bind(&SeQc::careProcess, this));
-        carer->join();
-        delete carer;
-        cmd_info_->in_file_name1_ = "./tmp.fq";
+        //cmd_info_->in_file_name1_ = "./tmp.fq";
     }
 
 
@@ -504,8 +523,13 @@ void SeQc::ProcessSeFastq() {
     if (cmd_info_->use_pugz_) {
         pugzer->join();
     }
+    if(cmd_info_->do_correction_with_care_) {
+        carer->join();
+        delete carer;
+    }
 
     producer.join();
+
 #ifdef Verbose
     printf("producer cost %.4f\n", GetTime() - t0);
 #endif

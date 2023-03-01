@@ -127,6 +127,7 @@ int main(int argc, char **argv) {
     CLI11_PARSE(app, argc, argv);
 
 
+    cmd_info.correct_threadnum_ = cmd_info.thread_number_;
 
     if(cmd_info.compression_level_ < 1 || cmd_info.compression_level_ > 9){
         printf("error : compression level should in [1, 9]!\n");

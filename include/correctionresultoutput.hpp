@@ -6,6 +6,7 @@
 #include <readlibraryio.hpp>
 #include <serializedobjectstorage.hpp>
 #include <options.hpp>
+#include <concurrencyhelpers.hpp>
 
 #include <string>
 #include <vector>
@@ -19,6 +20,19 @@ namespace care{
         const std::vector<std::string>& outputfiles,
         bool showProgress,
         const ProgramOptions& programOptions
+    );
+
+
+
+    void constructOutputFileFromCorrectionResultsOutToQueue(
+        const std::vector<std::string>& originalReadFiles,
+        SerializedObjectStorage& partialResults, 
+        FileFormat outputFormat,
+        const std::vector<std::string>& outputfiles,
+        bool showProgress,
+        const ProgramOptions& programOptions,
+        moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q,
+        std::atomic_int *producerDone
     );
 
 

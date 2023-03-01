@@ -110,5 +110,6 @@ CmdInfo::CmdInfo() {
 
     //correction
     coverage_ = 30;
+    correct_threadnum_ = 1;
 
 }

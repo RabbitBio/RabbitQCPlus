@@ -444,6 +444,480 @@ void mergeSerializedResultsWithOriginalReads_multithreaded(
 
 
 
+template<class ResultType, class Combiner, class ProgressFunction>
+void mergeSerializedResultsWithOriginalReads_multithreadedOutToQueue(
+    const std::vector<std::string>& originalReadFiles,
+    SerializedObjectStorage& partialResults, 
+    FileFormat outputFormat,
+    const std::vector<std::string>& outputfiles,
+    Combiner combineResultsWithRead, /* combineResultsWithRead(std::vector<ResultType>& in, ReadWithId& in_out) */
+    ProgressFunction addProgress,
+    bool outputCorrectionQualityLabels,
+    SequencePairType pairType,
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q,
+    std::atomic_int *producerDone
+){
+    printf("now output to queue, %p %p\n", Q, producerDone);
+    assert(outputfiles.size() == 1 || originalReadFiles.size() == outputfiles.size());
+
+    if(partialResults.getNumElements() == 0){
+        printf("GGGG TODO partialResults.getNumElements == 0\n");
+        exit(0);
+        if(outputfiles.size() == 1){
+            if(pairType == SequencePairType::SingleEnd 
+                || (pairType == SequencePairType::PairedEnd && originalReadFiles.size() == 1)){
+                auto filewriter = makeSequenceWriter(outputfiles[0], outputFormat);
+
+                MultiInputReader reader(originalReadFiles);
+                while(reader.next() >= 0){
+                    ReadWithId& readWithId = reader.getCurrent();
+                    filewriter->writeRead(readWithId.read);
+                }
+            }else{
+                assert(pairType == SequencePairType::PairedEnd);
+                assert(originalReadFiles.size() == 2);
+                auto filewriter = makeSequenceWriter(outputfiles[0], outputFormat);
+
+                //merged output
+                forEachReadInPairedFiles(originalReadFiles[0], originalReadFiles[1], 
+                    [&](auto /*readnumber*/, const auto& read){
+                        filewriter->writeRead(read);
+                    }
+                );
+            }
+        }else{
+            const int numFiles = outputfiles.size();
+            for(int i = 0; i < numFiles; i++){
+                auto filewriter = makeSequenceWriter(outputfiles[i], outputFormat);
+
+                forEachReadInFile(originalReadFiles[i], 
+                    [&](auto /*readnumber*/, const auto& read){
+                        filewriter->writeRead(read);
+                    }
+                );
+            }
+        }
+
+        return;
+    }
+
+    helpers::CpuTimer mergetimer("merging");
+
+    struct ResultTypeBatch{
+        int validItems = 0;
+        int processedItems = 0;
+        std::vector<ResultType> items;
+    };
+
+    std::array<ResultTypeBatch, 4> tcsBatches;
+
+    SimpleSingleProducerSingleConsumerQueue<ResultTypeBatch*> freeTcsBatches;
+    SimpleSingleProducerSingleConsumerQueue<ResultTypeBatch*> unprocessedTcsBatches;
+
+    for(auto& batch : tcsBatches){
+        freeTcsBatches.push(&batch);
+    }
+
+    constexpr int decoder_maxbatchsize = 100000;
+
+    auto decoderFuture = std::async(std::launch::async,
+        [&](){
+            
+            // std::chrono::time_point<std::chrono::system_clock> abegin, aend;
+            // std::chrono::duration<double> adelta{0};
+
+            // TIMERSTARTCPU(tcsparsing);
+
+            read_number previousId = 0;
+            std::size_t itemnumber = 0;
+
+            while(itemnumber < partialResults.size()){
+                ResultTypeBatch* batch = freeTcsBatches.pop();
+
+                //abegin = std::chrono::system_clock::now();
+
+                batch->items.resize(decoder_maxbatchsize);
+
+                int batchsize = 0;
+                while(batchsize < decoder_maxbatchsize && itemnumber < partialResults.size()){
+                    const std::uint8_t* serializedPtr = partialResults.getPointer(itemnumber);
+                    EncodedTempCorrectedSequence etcs;
+                    etcs.copyFromContiguousMemory(serializedPtr);
+
+                    batch->items[batchsize].decode(etcs);
+
+                    if(batch->items[batchsize].readId < previousId){
+                        std::cerr << "Error, results not sorted. itemnumber = " << itemnumber << ", previousId = " << previousId << ", currentId = " << batch->items[batchsize].readId << "\n";
+                        assert(false);
+                    }
+                    previousId = batch->items[batchsize].readId;
+                    batchsize++;
+                    itemnumber++;
+                }
+
+                // aend = std::chrono::system_clock::now();
+                // adelta += aend - abegin;
+
+                batch->processedItems = 0;
+                batch->validItems = batchsize;
+
+                unprocessedTcsBatches.push(batch);
+            }
+
+            unprocessedTcsBatches.push(nullptr);
+
+            //std::cout << "# elapsed time ("<< "tcsparsing without queues" <<"): " << adelta.count()  << " s" << std::endl;
+
+            // TIMERSTOPCPU(tcsparsing);
+        }
+    );
+
+
+    struct ReadBatch{
+        int validItems = 0;
+        int processedItems = 0;
+        std::vector<ReadWithId> items;
+    };
+
+    std::array<ReadBatch, 4> readBatches;
+
+    // free -> unprocessed input -> unprocessed output -> free -> ...
+    SimpleSingleProducerSingleConsumerQueue<ReadBatch*> freeReadBatches;
+    SimpleSingleProducerSingleConsumerQueue<ReadBatch*> unprocessedInputreadBatches;
+    SimpleSingleProducerSingleConsumerQueue<ReadBatch*> unprocessedOutputreadBatches;
+
+    std::atomic<bool> noMoreInputreadBatches{false};
+
+    constexpr int inputreader_maxbatchsize = 200000;
+    static_assert(inputreader_maxbatchsize % 2 == 0);
+
+    for(auto& batch : readBatches){
+        freeReadBatches.push(&batch);
+    }
+
+    auto pairedEndReaderFunc = [&](){
+        PairedInputReader pairedInputReader(originalReadFiles);
+
+        // TIMERSTARTCPU(inputparsing);
+
+        // std::chrono::time_point<std::chrono::system_clock> abegin, aend;
+        // std::chrono::duration<double> adelta{0};
+
+        while(pairedInputReader.next() >= 0){
+
+            ReadBatch* batch = freeReadBatches.pop();
+
+            // abegin = std::chrono::system_clock::now();
+
+            batch->items.resize(inputreader_maxbatchsize);
+
+            std::swap(batch->items[0], pairedInputReader.getCurrent1()); //process element from outer loop next() call
+            std::swap(batch->items[1], pairedInputReader.getCurrent2()); //process element from outer loop next() call
+            int batchsize = 2;
+
+            while(batchsize < inputreader_maxbatchsize && pairedInputReader.next() >= 0){
+                std::swap(batch->items[batchsize], pairedInputReader.getCurrent1());                
+                batchsize++;
+                std::swap(batch->items[batchsize], pairedInputReader.getCurrent2());        
+                batchsize++;
+            }
+
+            // aend = std::chrono::system_clock::now();
+            // adelta += aend - abegin;
+
+            batch->processedItems = 0;
+            batch->validItems = batchsize;
+
+            unprocessedInputreadBatches.push(batch);                
+        }
+
+        unprocessedInputreadBatches.push(nullptr);
+
+        // std::cout << "# elapsed time ("<< "inputparsing without queues" <<"): " << adelta.count()  << " s" << std::endl;
+
+        // TIMERSTOPCPU(inputparsing);
+    };
+
+    auto singleEndReaderFunc = [&](){
+        MultiInputReader multiInputReader(originalReadFiles);
+
+        // TIMERSTARTCPU(inputparsing);
+
+        // std::chrono::time_point<std::chrono::system_clock> abegin, aend;
+        // std::chrono::duration<double> adelta{0};
+
+        while(multiInputReader.next() >= 0){
+            ReadBatch* batch = freeReadBatches.pop();
+
+            // abegin = std::chrono::system_clock::now();
+
+            batch->items.resize(inputreader_maxbatchsize);
+
+            std::swap(batch->items[0], multiInputReader.getCurrent()); //process element from outer loop next() call
+            int batchsize = 1;
+
+            while(batchsize < inputreader_maxbatchsize && multiInputReader.next() >= 0){
+                std::swap(batch->items[batchsize], multiInputReader.getCurrent());
+                
+                batchsize++;
+            }
+
+            // aend = std::chrono::system_clock::now();
+            // adelta += aend - abegin;
+
+            batch->processedItems = 0;
+            batch->validItems = batchsize;
+
+            unprocessedInputreadBatches.push(batch);                
+        }
+
+        unprocessedInputreadBatches.push(nullptr);
+        // std::cout << "# elapsed time ("<< "inputparsing without queues" <<"): " << adelta.count()  << " s" << std::endl;
+
+        // TIMERSTOPCPU(inputparsing);
+    };
+
+    auto inputReaderFuture = std::async(std::launch::async,
+        [&](){
+            if(pairType == SequencePairType::SingleEnd){
+                singleEndReaderFunc();
+            }else{
+                assert(pairType == SequencePairType::PairedEnd);
+                pairedEndReaderFunc();
+            }
+        }
+    );
+
+    auto outputWriterFuture = std::async(std::launch::async,
+        [&](){
+            char* now_out_info = new char[1 << 20];
+            int now_out_size = 0;
+            std::string delimHeader = "@";
+            std::string endlStr = "\n";
+            std::string strandStr = "+";
+
+            std::vector<std::unique_ptr<SequenceFileWriter>> writerVector;
+
+            assert(originalReadFiles.size() == outputfiles.size() || outputfiles.size() == 1);
+
+            for(const auto& outputfile : outputfiles){
+                writerVector.emplace_back(makeSequenceWriter(outputfile, outputFormat));
+            }
+
+            const int numOutputfiles = outputfiles.size();
+
+            // TIMERSTARTCPU(outputwriting);
+
+            // std::chrono::time_point<std::chrono::system_clock> abegin, aend;
+            // std::chrono::duration<double> adelta{0};
+
+            ReadBatch* outputBatch = unprocessedOutputreadBatches.pop();
+
+            while(outputBatch != nullptr){                
+
+                // abegin = std::chrono::system_clock::now();
+                
+                int processed = outputBatch->processedItems;
+                const int valid = outputBatch->validItems;
+                while(processed < valid){
+                    const auto& readWithId = outputBatch->items[processed];
+                    const int writerIndex = numOutputfiles == 1 ? 0 : readWithId.fileId;
+                    assert(writerIndex < numOutputfiles);
+
+                    //writerVector[writerIndex]->writeRead(readWithId.read);
+                   	auto read = readWithId.read;
+
+					int now_size = read.header.length() + read.sequence.length() + read.quality.length() + 6;
+
+					if(now_out_size + now_size >= (1 << 20)) {
+						while (Q->try_enqueue({now_out_info, now_out_size}) == 0) {
+							if (*producerDone == 1) {
+								return;
+							}
+							usleep(100);
+						}
+						now_out_size = 0;
+						now_out_info = new char[std::max(1 << 20, now_out_size)];
+					}
+
+					memcpy(now_out_info + now_out_size, delimHeader.c_str(), sizeof(char) * delimHeader.length());
+					now_out_size += delimHeader.length();
+					memcpy(now_out_info + now_out_size, read.header.c_str(), sizeof(char) * read.header.length());
+					now_out_size += read.header.length();
+					memcpy(now_out_info + now_out_size, endlStr.c_str(), sizeof(char) * endlStr.length());
+					now_out_size += endlStr.length();
+
+					memcpy(now_out_info + now_out_size, read.sequence.c_str(), sizeof(char) * read.sequence.length());
+					now_out_size += read.sequence.length();
+					memcpy(now_out_info + now_out_size, endlStr.c_str(), sizeof(char) * endlStr.length());
+					now_out_size += endlStr.length();
+
+					memcpy(now_out_info + now_out_size, strandStr.c_str(), sizeof(char) * strandStr.length());
+					now_out_size += strandStr.length();
+					memcpy(now_out_info + now_out_size, endlStr.c_str(), sizeof(char) * endlStr.length());
+					now_out_size += endlStr.length();
+
+					memcpy(now_out_info + now_out_size, read.quality.c_str(), sizeof(char) * read.quality.length());
+					now_out_size += read.quality.length();
+					memcpy(now_out_info + now_out_size, endlStr.c_str(), sizeof(char) * endlStr.length());
+					now_out_size += endlStr.length();
+                              
+
+                    processed++;
+                }
+
+                if(processed == valid){
+                    addProgress(valid);
+                }
+
+                // aend = std::chrono::system_clock::now();
+                // adelta += aend - abegin;
+
+                freeReadBatches.push(outputBatch);     
+
+                outputBatch = unprocessedOutputreadBatches.pop();            
+            }
+
+			if(now_out_size) {
+				while (Q->try_enqueue({now_out_info, now_out_size}) == 0) {
+					if (*producerDone == 1) {
+						return;
+					}
+					usleep(100);
+				}
+			}
+
+            freeReadBatches.push(nullptr);
+
+            // std::cout << "# elapsed time ("<< "outputwriting without queues" <<"): " << adelta.count()  << " s" << std::endl;
+
+            // TIMERSTOPCPU(outputwriting);
+        }
+    );
+
+    ResultTypeBatch* tcsBatch = unprocessedTcsBatches.pop();
+    ReadBatch* inputBatch = unprocessedInputreadBatches.pop();
+
+    assert(!(inputBatch == nullptr && tcsBatch != nullptr)); //there must be at least one batch of input reads
+
+    std::vector<ResultType> buffer;
+
+    while(!(inputBatch == nullptr && tcsBatch == nullptr)){
+
+        //modify reads in inputbatch, applying corrections.
+        //then place inputbatch in outputqueue
+
+        if(tcsBatch == nullptr){
+            //all correction results are processed
+            //copy remaining input reads to output file
+            
+            ; //nothing to do
+        }else{
+
+            auto last1 = inputBatch->items.begin() + inputBatch->validItems;
+            auto last2 = tcsBatch->items.begin() + tcsBatch->validItems;
+
+            auto first1 = inputBatch->items.begin()+ inputBatch->processedItems;
+            auto first2 = tcsBatch->items.begin()+ tcsBatch->processedItems;    
+
+            // assert(std::is_sorted(
+            //     first1,
+            //     last1,
+            //     [](const auto& l, const auto& r){
+            //         if(l.fileId < r.fileId) return true;
+            //         if(l.fileId > r.fileId) return false;
+            //         if(l.readIdInFile < r.readIdInFile) return true;
+            //         if(l.readIdInFile > r.readIdInFile) return false;
+                    
+            //         return l.globalReadId < r.globalReadId;
+            //     }
+            // ));
+
+            // assert(std::is_sorted(
+            //     first2,
+            //     last2,
+            //     [](const auto& l, const auto& r){
+            //         return l.readId < r.readId;
+            //     }
+            // ));
+
+            while(first1 != last1) {
+                if(first2 == last2){
+                    //all results are processed
+                    //copy remaining input reads to output file
+
+                    ; //nothing to do
+                    break;
+                }
+                //assert(first2->readId >= first1->globalReadId);
+                {
+
+                    ReadWithId& readWithId = *first1;
+                    
+                    buffer.clear();
+                    while(first2 != last2 && (first1->globalReadId == first2->readId)){
+                        buffer.push_back(*first2);
+                        ++first2;
+                        tcsBatch->processedItems++;
+
+                        if(first2 == last2){                                
+                            freeTcsBatches.push(tcsBatch);
+
+                            tcsBatch = unprocessedTcsBatches.pop();
+
+                            if(tcsBatch != nullptr){
+                                //new batch could be fetched. update begin and end accordingly
+                                last2 = tcsBatch->items.begin() + tcsBatch->validItems;
+                                first2 = tcsBatch->items.begin()+ tcsBatch->processedItems;
+                            }
+                        }
+                    }
+
+                    const auto combineStatus = combineResultsWithRead(buffer, readWithId); 
+                    if(outputCorrectionQualityLabels){
+                        if(combineStatus.corrected){
+                            if(combineStatus.lqCorrectionOnlyAnchor){
+                                readWithId.read.header += " care:q=1"; 
+                            }else if(combineStatus.lqCorrectionWithCandidates){
+                                readWithId.read.header += " care:q=2";  
+                            }else if(combineStatus.hqCorrection){
+                                readWithId.read.header += " care:q=3";  
+                            }
+                        }else{
+                            readWithId.read.header += " care:q=0";
+                        }
+                    }
+
+                    ++first1;
+                }
+            }
+        }
+
+        assert(inputBatch != nullptr);
+
+        unprocessedOutputreadBatches.push(inputBatch);
+
+        inputBatch = unprocessedInputreadBatches.pop();  
+        
+        assert(!(inputBatch == nullptr && tcsBatch != nullptr)); //unprocessed correction results must have a corresponding original read
+
+    }
+
+    unprocessedOutputreadBatches.push(nullptr);
+    freeTcsBatches.push(nullptr);
+
+    decoderFuture.wait();
+    inputReaderFuture.wait();
+    outputWriterFuture.wait();
+
+    // std::cout << "\n";
+
+    mergetimer.print();
+}
+
+
+
+
 
 struct CombinedCorrectionResult{
     bool corrected = false;
@@ -1052,6 +1526,46 @@ void constructOutputFileFromCorrectionResults(
         addProgress,
         programOptions.outputCorrectionQualityLabels,
         programOptions.pairType
+    );
+
+    if(showProgress){
+        std::cout << "\n";
+    }
+}
+
+
+void constructOutputFileFromCorrectionResultsOutToQueue(
+    const std::vector<std::string>& originalReadFiles,
+    SerializedObjectStorage& partialResults, 
+    FileFormat outputFormat,
+    const std::vector<std::string>& outputfiles,
+    bool showProgress,
+    const ProgramOptions& programOptions,
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q,
+    std::atomic_int *producerDone
+){
+
+    auto addProgress = [total = 0ull, showProgress](auto i) mutable {
+        if(showProgress){
+            total += i;
+
+            printf("Written %10llu reads\r", total);
+
+            std::cout.flush();
+        }
+    };
+
+    mergeSerializedResultsWithOriginalReads_multithreadedOutToQueue<TempCorrectedSequence>(
+        originalReadFiles,
+        partialResults, 
+        outputFormat,
+        outputfiles,
+        combineMultipleCorrectionResults1_rawtcs2,
+        addProgress,
+        programOptions.outputCorrectionQualityLabels,
+        programOptions.pairType,
+        Q,
+        producerDone
     );
 
     if(showProgress){

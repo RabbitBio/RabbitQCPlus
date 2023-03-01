@@ -123,6 +123,7 @@ public:
 
     //correction
     int coverage_;
+    int correct_threadnum_;
 
 };
 

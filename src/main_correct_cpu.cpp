@@ -8,6 +8,7 @@
 #include <threadpool.hpp>
 
 #include <readlibraryio.hpp>
+#include <concurrencyhelpers.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -59,8 +60,7 @@ std::string tostring(const bool& b){
 	return b ? "true" : "false";
 }
 
-int main_correction(int argc, char** argv){
-//int main(int argc, char** argv){
+int main_correction(int argc, char** argv, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q, std::atomic_int *producerDone) {
     for(int i = 0; i < argc; i++) 
         printf("%s ", argv[i]);
     printf("\n");
@@ -152,7 +152,7 @@ int main_correction(int argc, char** argv){
 
 	omp_set_num_threads(numThreads);
 
-    care::performCorrection(programOptions);
+    care::performCorrectionOutToQueue(programOptions, Q, producerDone);
 
 	return 0;
 }
