@@ -85,6 +85,41 @@ SeQc::~SeQc() {
     }
 }
 
+void SeQc::careProcess() {
+    
+    printf("pairmode %s\n", cmd_info_->pairmode_.c_str());
+    printf("coverage %d\n", cmd_info_->coverage_);
+    vector<char*>paras;
+    paras.push_back("./RabbitQCPlus");
+    paras.push_back("-i");
+    paras.push_back((char*)(cmd_info_->in_file_name1_.data()));
+    paras.push_back("-d");
+    paras.push_back("./");
+    paras.push_back("-o");
+    paras.push_back("tmp.fq");
+    paras.push_back("-c");
+    string str_coverage = to_string(cmd_info_->coverage_);
+    printf("str_coverage %s\n", str_coverage.c_str());
+    paras.push_back((char*)(str_coverage.data()));
+    paras.push_back("-t");
+    string str_thread = to_string(cmd_info_->thread_number_);
+    printf("str_thread %s\n", str_thread.c_str());
+    paras.push_back((char*)(str_thread.data()));
+    paras.push_back("--pairmode");
+    if(cmd_info_->pairmode_ == "SE") paras.push_back("SE");
+    else paras.push_back("PE");
+    for(int i = 0; i < paras.size(); i++) {
+        printf("%s ", paras[i]);
+    }
+    printf("\n");
+
+    printf("start care part...\n");
+
+    main_correction(paras.size(), &(paras[0]));
+
+    printf("care end\n");
+
+}
 
 /**
  * @brief get fastq data chunk from fastq_data_pool and put it into data queue
@@ -427,6 +462,15 @@ void SeQc::ProcessSeFastq() {
 #ifdef Verbose
     double t0 = GetTime();
 #endif
+    thread *carer;
+    if(cmd_info_->do_correction_with_care_) {
+        carer = new thread(bind(&SeQc::careProcess, this));
+        carer->join();
+        delete carer;
+        cmd_info_->in_file_name1_ = "./tmp.fq";
+    }
+
+
     thread *pugzer;
 
     if (cmd_info_->use_pugz_) {

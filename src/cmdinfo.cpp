@@ -102,6 +102,9 @@ CmdInfo::CmdInfo() {
     pugz_threads_ = 2;
     pigz_threads_ = 2;
 
+    //use care
+    do_correction_with_care_ = 0;
+
     //pairmode
     pairmode_ = "SE";
 

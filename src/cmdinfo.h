@@ -114,6 +114,9 @@ public:
     bool use_pigz_;
     int pugz_threads_;
     int pigz_threads_;
+    
+    //use care
+    bool do_correction_with_care_;
 
     //pairmode
     std::string pairmode_;

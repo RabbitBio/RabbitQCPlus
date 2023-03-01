@@ -23,6 +23,7 @@
 #include "state.h"
 #include "threadinfo.h"
 #include "umier.h"
+#include "main_correct_cpu.h"
 
 #define CIPair std::pair<char *, int>
 
@@ -37,6 +38,8 @@ public:
     void ProcessSeFastq();
 
     void ProcessSeTGS();
+
+    void careProcess();
 
 
 private:
