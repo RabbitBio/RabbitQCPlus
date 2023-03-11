@@ -1193,7 +1193,7 @@ void PeQc::ProcessPeFastq() {
             carer = new thread(bind(&PeQc::careProcess, this));
             //cmd_info_->in_file_name1_ = "./tmp.fq";
             while(careStartWrite == 0) {
-                usleep(100);
+                usleep(10000);
             }
             printf("QC start...\n");
             if(changeNum == 0) {
@@ -1204,12 +1204,12 @@ void PeQc::ProcessPeFastq() {
                 cmd_info_->use_pugz_ = 0;
             }
         }
-        if(cmd_info_->do_correction_with_care_) {
-            carer->join();
-            delete carer;
+        if(cmd_info_->use_pigz_) {
+            if(cmd_info_->do_correction_with_care_) {
+                carer->join();
+                delete carer;
+            }
         }
-
-
 
 
         thread *pugzer1;
@@ -1254,12 +1254,13 @@ void PeQc::ProcessPeFastq() {
             pugzer1->join();
             pugzer2->join();
         }
-        //if(cmd_info_->do_correction_with_care_) {
-        //    carer->join();
-        //    delete carer;
-        //}
-
-
+        if(cmd_info_->use_pigz_ == 0) {
+            if(cmd_info_->do_correction_with_care_) {
+                carer->join();
+                delete carer;
+            }
+        }
+        
 
         producer.join();
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
