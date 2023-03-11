@@ -454,49 +454,52 @@ void mergeSerializedResultsWithOriginalReads_multithreadedOutToQueue(
     ProgressFunction addProgress,
     bool outputCorrectionQualityLabels,
     SequencePairType pairType,
-    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q,
-    std::atomic_int *producerDone
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q1,
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q2,
+    std::atomic_int *producerDone, 
+    std::atomic_int *careStartWrite, 
+    int* changNum
 ){
-    printf("now output to queue, %p %p\n", Q, producerDone);
+    printf("now output to queue, %p %p %p\n", Q1, Q2, producerDone);
     assert(outputfiles.size() == 1 || originalReadFiles.size() == outputfiles.size());
-
+    *changNum = partialResults.getNumElements();
+    *careStartWrite = 1;
     if(partialResults.getNumElements() == 0){
-        printf("GGGG TODO partialResults.getNumElements == 0\n");
-        exit(0);
-        if(outputfiles.size() == 1){
-            if(pairType == SequencePairType::SingleEnd 
-                || (pairType == SequencePairType::PairedEnd && originalReadFiles.size() == 1)){
-                auto filewriter = makeSequenceWriter(outputfiles[0], outputFormat);
+    //if(1){
+        //if(outputfiles.size() == 1){
+        //    if(pairType == SequencePairType::SingleEnd 
+        //        || (pairType == SequencePairType::PairedEnd && originalReadFiles.size() == 1)){
+        //        auto filewriter = makeSequenceWriter(outputfiles[0], outputFormat);
 
-                MultiInputReader reader(originalReadFiles);
-                while(reader.next() >= 0){
-                    ReadWithId& readWithId = reader.getCurrent();
-                    filewriter->writeRead(readWithId.read);
-                }
-            }else{
-                assert(pairType == SequencePairType::PairedEnd);
-                assert(originalReadFiles.size() == 2);
-                auto filewriter = makeSequenceWriter(outputfiles[0], outputFormat);
+        //        MultiInputReader reader(originalReadFiles);
+        //        while(reader.next() >= 0){
+        //            ReadWithId& readWithId = reader.getCurrent();
+        //            filewriter->writeRead(readWithId.read);
+        //        }
+        //    }else{
+        //        assert(pairType == SequencePairType::PairedEnd);
+        //        assert(originalReadFiles.size() == 2);
+        //        auto filewriter = makeSequenceWriter(outputfiles[0], outputFormat);
 
-                //merged output
-                forEachReadInPairedFiles(originalReadFiles[0], originalReadFiles[1], 
-                    [&](auto /*readnumber*/, const auto& read){
-                        filewriter->writeRead(read);
-                    }
-                );
-            }
-        }else{
-            const int numFiles = outputfiles.size();
-            for(int i = 0; i < numFiles; i++){
-                auto filewriter = makeSequenceWriter(outputfiles[i], outputFormat);
+        //        //merged output
+        //        forEachReadInPairedFiles(originalReadFiles[0], originalReadFiles[1], 
+        //            [&](auto /*readnumber*/, const auto& read){
+        //                filewriter->writeRead(read);
+        //            }
+        //        );
+        //    }
+        //}else{
+        //    const int numFiles = outputfiles.size();
+        //    for(int i = 0; i < numFiles; i++){
+        //        auto filewriter = makeSequenceWriter(outputfiles[i], outputFormat);
 
-                forEachReadInFile(originalReadFiles[i], 
-                    [&](auto /*readnumber*/, const auto& read){
-                        filewriter->writeRead(read);
-                    }
-                );
-            }
-        }
+        //        forEachReadInFile(originalReadFiles[i], 
+        //            [&](auto /*readnumber*/, const auto& read){
+        //                filewriter->writeRead(read);
+        //            }
+        //        );
+        //    }
+        //}
 
         return;
     }
@@ -690,8 +693,10 @@ void mergeSerializedResultsWithOriginalReads_multithreadedOutToQueue(
 
     auto outputWriterFuture = std::async(std::launch::async,
         [&](){
-            char* now_out_info = new char[1 << 20];
-            int now_out_size = 0;
+            char* now_out_info1 = new char[1 << 20];
+            char* now_out_info2 = new char[1 << 20];
+            int now_out_size1 = 0;
+            int now_out_size2 = 0;
             std::string delimHeader = "@";
             std::string endlStr = "\n";
             std::string strandStr = "+";
@@ -729,39 +734,77 @@ void mergeSerializedResultsWithOriginalReads_multithreadedOutToQueue(
 
 					int now_size = read.header.length() + read.sequence.length() + read.quality.length() + 6;
 
-					if(now_out_size + now_size >= (1 << 20)) {
-						while (Q->try_enqueue({now_out_info, now_out_size}) == 0) {
-							if (*producerDone == 1) {
-								return;
-							}
-							usleep(100);
-						}
-						now_out_size = 0;
-						now_out_info = new char[std::max(1 << 20, now_out_size)];
-					}
+                    if(writerIndex == 0) {
+                        if(now_out_size1 + now_size >= (1 << 20)) {
+                            while (Q1->try_enqueue({now_out_info1, now_out_size1}) == 0) {
+                                if (*producerDone == 1) {
+                                    return;
+                                }
+                                usleep(100);
+                            }
+                            now_out_size1 = 0;
+                            now_out_info1 = new char[std::max(1 << 20, now_out_size1)];
+                        }
 
-					memcpy(now_out_info + now_out_size, delimHeader.c_str(), sizeof(char) * delimHeader.length());
-					now_out_size += delimHeader.length();
-					memcpy(now_out_info + now_out_size, read.header.c_str(), sizeof(char) * read.header.length());
-					now_out_size += read.header.length();
-					memcpy(now_out_info + now_out_size, endlStr.c_str(), sizeof(char) * endlStr.length());
-					now_out_size += endlStr.length();
+                        memcpy(now_out_info1 + now_out_size1, delimHeader.c_str(), sizeof(char) * delimHeader.length());
+                        now_out_size1 += delimHeader.length();
+                        memcpy(now_out_info1 + now_out_size1, read.header.c_str(), sizeof(char) * read.header.length());
+                        now_out_size1 += read.header.length();
+                        memcpy(now_out_info1 + now_out_size1, endlStr.c_str(), sizeof(char) * endlStr.length());
+                        now_out_size1 += endlStr.length();
 
-					memcpy(now_out_info + now_out_size, read.sequence.c_str(), sizeof(char) * read.sequence.length());
-					now_out_size += read.sequence.length();
-					memcpy(now_out_info + now_out_size, endlStr.c_str(), sizeof(char) * endlStr.length());
-					now_out_size += endlStr.length();
+                        memcpy(now_out_info1 + now_out_size1, read.sequence.c_str(), sizeof(char) * read.sequence.length());
+                        now_out_size1 += read.sequence.length();
+                        memcpy(now_out_info1 + now_out_size1, endlStr.c_str(), sizeof(char) * endlStr.length());
+                        now_out_size1 += endlStr.length();
 
-					memcpy(now_out_info + now_out_size, strandStr.c_str(), sizeof(char) * strandStr.length());
-					now_out_size += strandStr.length();
-					memcpy(now_out_info + now_out_size, endlStr.c_str(), sizeof(char) * endlStr.length());
-					now_out_size += endlStr.length();
+                        memcpy(now_out_info1 + now_out_size1, strandStr.c_str(), sizeof(char) * strandStr.length());
+                        now_out_size1 += strandStr.length();
+                        memcpy(now_out_info1 + now_out_size1, endlStr.c_str(), sizeof(char) * endlStr.length());
+                        now_out_size1 += endlStr.length();
 
-					memcpy(now_out_info + now_out_size, read.quality.c_str(), sizeof(char) * read.quality.length());
-					now_out_size += read.quality.length();
-					memcpy(now_out_info + now_out_size, endlStr.c_str(), sizeof(char) * endlStr.length());
-					now_out_size += endlStr.length();
-                              
+                        memcpy(now_out_info1 + now_out_size1, read.quality.c_str(), sizeof(char) * read.quality.length());
+                        now_out_size1 += read.quality.length();
+                        memcpy(now_out_info1 + now_out_size1, endlStr.c_str(), sizeof(char) * endlStr.length());
+                        now_out_size1 += endlStr.length();
+
+                    } else {
+
+                        if(now_out_size2 + now_size >= (1 << 20)) {
+                            while (Q2->try_enqueue({now_out_info2, now_out_size2}) == 0) {
+                                if (*producerDone == 1) {
+                                    return;
+                                }
+                                usleep(100);
+                            }
+                            now_out_size2 = 0;
+                            now_out_info2 = new char[std::max(1 << 20, now_out_size2)];
+                        }
+
+                        memcpy(now_out_info2 + now_out_size2, delimHeader.c_str(), sizeof(char) * delimHeader.length());
+                        now_out_size2 += delimHeader.length();
+                        memcpy(now_out_info2 + now_out_size2, read.header.c_str(), sizeof(char) * read.header.length());
+                        now_out_size2 += read.header.length();
+                        memcpy(now_out_info2 + now_out_size2, endlStr.c_str(), sizeof(char) * endlStr.length());
+                        now_out_size2 += endlStr.length();
+
+                        memcpy(now_out_info2 + now_out_size2, read.sequence.c_str(), sizeof(char) * read.sequence.length());
+                        now_out_size2 += read.sequence.length();
+                        memcpy(now_out_info2 + now_out_size2, endlStr.c_str(), sizeof(char) * endlStr.length());
+                        now_out_size2 += endlStr.length();
+
+                        memcpy(now_out_info2 + now_out_size2, strandStr.c_str(), sizeof(char) * strandStr.length());
+                        now_out_size2 += strandStr.length();
+                        memcpy(now_out_info2 + now_out_size2, endlStr.c_str(), sizeof(char) * endlStr.length());
+                        now_out_size2 += endlStr.length();
+
+                        memcpy(now_out_info2 + now_out_size2, read.quality.c_str(), sizeof(char) * read.quality.length());
+                        now_out_size2 += read.quality.length();
+                        memcpy(now_out_info2 + now_out_size2, endlStr.c_str(), sizeof(char) * endlStr.length());
+                        now_out_size2 += endlStr.length();
+
+                    }
+         
 
                     processed++;
                 }
@@ -778,8 +821,17 @@ void mergeSerializedResultsWithOriginalReads_multithreadedOutToQueue(
                 outputBatch = unprocessedOutputreadBatches.pop();            
             }
 
-			if(now_out_size) {
-				while (Q->try_enqueue({now_out_info, now_out_size}) == 0) {
+			if(now_out_size1) {
+				while (Q1->try_enqueue({now_out_info1, now_out_size1}) == 0) {
+					if (*producerDone == 1) {
+						return;
+					}
+					usleep(100);
+				}
+			}
+
+			if(now_out_size2) {
+				while (Q2->try_enqueue({now_out_info2, now_out_size2}) == 0) {
 					if (*producerDone == 1) {
 						return;
 					}
@@ -1541,8 +1593,11 @@ void constructOutputFileFromCorrectionResultsOutToQueue(
     const std::vector<std::string>& outputfiles,
     bool showProgress,
     const ProgramOptions& programOptions,
-    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q,
-    std::atomic_int *producerDone
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q1,
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q2,
+    std::atomic_int *producerDone, 
+    std::atomic_int *careStartWrite, 
+    int* changNum
 ){
 
     auto addProgress = [total = 0ull, showProgress](auto i) mutable {
@@ -1564,8 +1619,11 @@ void constructOutputFileFromCorrectionResultsOutToQueue(
         addProgress,
         programOptions.outputCorrectionQualityLabels,
         programOptions.pairType,
-        Q,
-        producerDone
+        Q1,
+        Q2,
+        producerDone,
+        careStartWrite,
+        changNum
     );
 
     if(showProgress){

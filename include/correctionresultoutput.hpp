@@ -31,8 +31,11 @@ namespace care{
         const std::vector<std::string>& outputfiles,
         bool showProgress,
         const ProgramOptions& programOptions,
-        moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q,
-        std::atomic_int *producerDone
+        moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q1,
+        moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q2,
+        std::atomic_int *producerDone,
+        std::atomic_int *careStartWrite,
+        int *changNum
     );
 
 

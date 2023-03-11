@@ -96,7 +96,14 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
         pigzLast2.first = new char[1 << 24];
         pigzLast2.second = 0;
     }
-
+    if(cmd_info1->do_correction_with_care_) {
+        careQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
+        careQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
+    }
+    changeNum = 0;
+    careStartWrite = 0;
+    careDone1 = 0;
+    careDone2 = 0;
     pugzDone1 = 0;
     pugzDone2 = 0;
     producerDone = 0;
@@ -119,6 +126,56 @@ PeQc::~PeQc() {
         delete umier_;
     }
 }
+
+void PeQc::careProcess() {
+    
+    printf("pairmode %s\n", cmd_info_->pairmode_.c_str());
+    printf("coverage %d\n", cmd_info_->coverage_);
+    vector<char*>paras;
+    paras.push_back("./RabbitQCPlus");
+    paras.push_back("-i");
+    paras.push_back((char*)(cmd_info_->in_file_name1_.data()));
+    paras.push_back("-i");
+    paras.push_back((char*)(cmd_info_->in_file_name2_.data()));
+    paras.push_back("-d");
+    paras.push_back("./");
+    paras.push_back("-o");
+    paras.push_back("tmp1.fq");
+    paras.push_back("-o");
+    paras.push_back("tmp2.fq");
+    //paras.push_back("-h");
+    //paras.push_back("1");
+    paras.push_back("-c");
+    string str_coverage = to_string(cmd_info_->coverage_);
+    printf("str_coverage %s\n", str_coverage.c_str());
+    paras.push_back((char*)(str_coverage.data()));
+    paras.push_back("-t");
+    string str_thread = to_string(cmd_info_->correct_threadnum_);
+    printf("str_thread %s\n", str_thread.c_str());
+    paras.push_back((char*)(str_thread.data()));
+    paras.push_back("--pairmode");
+    if(cmd_info_->pairmode_ == "SE") paras.push_back("SE");
+    else paras.push_back("PE");
+    for(int i = 0; i < paras.size(); i++) {
+        printf("%s ", paras[i]);
+    }
+    printf("\n");
+
+    printf("start care part...\n");
+
+    printf("now output to queue, %p %p %p\n", careQueue1, careQueue2, &producerDone);
+    main_correction(paras.size(), &(paras[0]), careQueue1, careQueue2, &producerDone, &careStartWrite, &changeNum);
+
+    printf("care end\n");
+    printf("care1 queue size %d\n", careQueue1->size_approx());
+    printf("care2 queue size %d\n", careQueue2->size_approx());
+    printf("care change size %d\n", changeNum);
+
+    careDone1 = 1;
+    careDone2 = 1;
+
+}
+
 
 
 string PeQc::Read2String(neoReference &ref) {
@@ -192,6 +249,23 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
         while (true) {
             rabbit::fq::FastqDataPairChunk *fqdatachunk;
             fqdatachunk = fqFileReader->readNextPairChunkParallel(pugzQueue1, pugzQueue2, &pugzDone1, &pugzDone2, last1,
+                    last2);
+            if (fqdatachunk == NULL) break;
+            n_chunks++;
+            dq.Push(n_chunks, fqdatachunk);
+        }
+        delete[] last1.first;
+        delete[] last2.first;
+    } else if(cmd_info_->do_correction_with_care_){
+        pair<char *, int> last1;
+        pair<char *, int> last2;
+        last1.first = new char[1 << 20];
+        last1.second = 0;
+        last2.first = new char[1 << 20];
+        last2.second = 0;
+        while (true) {
+            rabbit::fq::FastqDataPairChunk *fqdatachunk;
+            fqdatachunk = fqFileReader->readNextPairChunkParallel(careQueue1, careQueue2, &careDone1, &careDone2, last1,
                     last2);
             if (fqdatachunk == NULL) break;
             n_chunks++;
@@ -1114,6 +1188,29 @@ void PeQc::ProcessPeFastq() {
                 delete write_thread2;
         }
     } else {
+        thread *carer;
+        if(cmd_info_->do_correction_with_care_) {
+            carer = new thread(bind(&PeQc::careProcess, this));
+            //cmd_info_->in_file_name1_ = "./tmp.fq";
+            while(careStartWrite == 0) {
+                usleep(100);
+            }
+            printf("QC start...\n");
+            if(changeNum == 0) {
+                carer->join();
+                delete carer;
+                cmd_info_->do_correction_with_care_ = 0;
+            } else {
+                cmd_info_->use_pugz_ = 0;
+            }
+        }
+        if(cmd_info_->do_correction_with_care_) {
+            carer->join();
+            delete carer;
+        }
+
+
+
 
         thread *pugzer1;
         thread *pugzer2;
@@ -1157,11 +1254,18 @@ void PeQc::ProcessPeFastq() {
             pugzer1->join();
             pugzer2->join();
         }
+        //if(cmd_info_->do_correction_with_care_) {
+        //    carer->join();
+        //    delete carer;
+        //}
+
+
 
         producer.join();
         for (int t = 0; t < cmd_info_->thread_number_; t++) {
             threads[t]->join();
         }
+
         if (cmd_info_->write_data_) {
             write_thread1->join();
             writerDone1 = 1;
@@ -1219,7 +1323,6 @@ void PeQc::ProcessPeFastq() {
         }
         State::PrintFilterResults(aft_state1);
         printf("\n");
-
         if (cmd_info_->do_overrepresentation_ && cmd_info_->print_ORP_seqs_) {
 
             auto pre_hash_graph1 = pre_state1->GetHashGraph();

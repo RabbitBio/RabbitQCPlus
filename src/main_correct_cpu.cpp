@@ -60,7 +60,7 @@ std::string tostring(const bool& b){
 	return b ? "true" : "false";
 }
 
-int main_correction(int argc, char** argv, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q, std::atomic_int *producerDone) {
+int main_correction(int argc, char** argv, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q1, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q2, std::atomic_int *producerDone, std::atomic_int *careStartWrite, int* changNum) {
     for(int i = 0; i < argc; i++) 
         printf("%s ", argv[i]);
     printf("\n");
@@ -152,7 +152,7 @@ int main_correction(int argc, char** argv, moodycamel::ReaderWriterQueue<std::pa
 
 	omp_set_num_threads(numThreads);
 
-    care::performCorrectionOutToQueue(programOptions, Q, producerDone);
+    care::performCorrectionOutToQueue(programOptions, Q1, Q2, producerDone, careStartWrite, changNum);
 
 	return 0;
 }

@@ -69,6 +69,8 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
     if(cmd_info1->do_correction_with_care_) {
         careQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 20);
     }
+    changeNum = 0;
+    careStartWrite = 0;
     careDone = 0;
     pugzDone = 0;
     producerDone = 0;
@@ -120,10 +122,11 @@ void SeQc::careProcess() {
     printf("start care part...\n");
 
     printf("now output to queue, %p %p\n", careQueue, &producerDone);
-    main_correction(paras.size(), &(paras[0]), careQueue, &producerDone);
+    main_correction(paras.size(), &(paras[0]), careQueue, careQueue, &producerDone, &careStartWrite, &changeNum);
 
     printf("care end\n");
     printf("care queue size %d\n", careQueue->size_approx());
+    printf("care change size %d\n", changeNum);
 
     careDone = 1;
 
@@ -487,9 +490,19 @@ void SeQc::ProcessSeFastq() {
     if(cmd_info_->do_correction_with_care_) {
         carer = new thread(bind(&SeQc::careProcess, this));
         //cmd_info_->in_file_name1_ = "./tmp.fq";
+        while(careStartWrite == 0) {
+            usleep(100);
+        }
+        printf("QC start...\n");
+        if(changeNum == 0) {
+            carer->join();
+            delete carer;
+            cmd_info_->do_correction_with_care_ = 0;
+        } else {
+            cmd_info_->use_pugz_ = 0;
+        }
+
     }
-
-
     thread *pugzer;
 
     if (cmd_info_->use_pugz_) {

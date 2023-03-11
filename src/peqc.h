@@ -24,6 +24,7 @@
 #include "state.h"
 #include "threadinfo.h"
 #include "umier.h"
+#include "main_correct_cpu.h"
 
 #define CIPair std::pair<char *, int>
 
@@ -36,6 +37,8 @@ public:
     ~PeQc();
 
     void ProcessPeFastq();
+
+    void careProcess();
 
 
 private:
@@ -118,6 +121,15 @@ private:
     std::atomic_int pigzQueueSizeLim2;
     std::atomic_int nowChunkId;
     std::mutex mylock;
+
+//care
+    int changeNum;
+    std::atomic_int careStartWrite;
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *careQueue1;
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *careQueue2;
+    std::atomic_int careDone1;
+    std::atomic_int careDone2;
+
 };
 
 

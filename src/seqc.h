@@ -95,6 +95,8 @@ private:
     std::mutex mylock;
 
     //care
+    int changeNum;
+    std::atomic_int careStartWrite;
     moodycamel::ReaderWriterQueue<std::pair<char *, int>> *careQueue;
     std::atomic_int careDone;
 };

@@ -251,7 +251,7 @@ namespace care{
 
     }
 
-    void performCorrectionOutToQueue(ProgramOptions programOptions, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q, std::atomic_int *producerDone){
+    void performCorrectionOutToQueue(ProgramOptions programOptions, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q1, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q2, std::atomic_int *producerDone, std::atomic_int *careStartWrite, int* changNum){
 
         std::cout << "Running CARE CPU" << std::endl;
 
@@ -442,8 +442,11 @@ namespace care{
                 outputfiles,
                 programOptions.showProgress,
                 programOptions,
-                Q,
-                producerDone
+                Q1,
+                Q2,
+                producerDone,
+                careStartWrite,
+                changNum
             );
 
             step3Timer.print();
