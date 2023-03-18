@@ -103,13 +103,39 @@ CmdInfo::CmdInfo() {
     pigz_threads_ = 2;
 
     //use care
-    do_correction_with_care_ = 0;
-
-    //pairmode
+    do_correction_with_care_ = false;
     pairmode_ = "SE";
-
-    //correction
+    //TODO must input
     coverage_ = 30;
     correct_threadnum_ = 1;
+    hashmaps_ = 48;
+    kmerlength_ = 0;
+    enforceHashmapCount_ = false;
+    useQualityScores_ = false;
+    qualityScoreBits_ = 8;
+    excludeAmbiguous_ = false;
+    maxmismatchratio_ = 0.200000;
+    minalignmentoverlap_ = 30;
+    minalignmentoverlapratio_ = 0.300000;
+    errorfactortuning_ = 0.060000;
+    coveragefactortuning_ = 0.600000;
+    showProgress_ = false;
+    tempdir_ = "";
+    save_preprocessedreads_to_ = "";
+    load_preprocessedreads_from_ = "";
+    save_hashtables_to_ = "";
+    load_hashtables_from_ = "";
+    memHashtables_ = "";
+    memTotal_ = "";
+    hashloadfactor_ = 0.800000;
+    fixedNumberOfReads_ = 0;
+    singlehash_ = false;
+    //gzoutput_ = false;
+    correctionQualityLabels_ = false;
+    candidateCorrection_ = false;
+    candidateCorrectionNewColumns_ = 15;
+    correctionType_ = 0;
+    correctionTypeCands_ = 0;
+
 
 }

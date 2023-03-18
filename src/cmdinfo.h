@@ -117,13 +117,38 @@ public:
     
     //use care
     bool do_correction_with_care_;
-
-    //pairmode
     std::string pairmode_;
-
-    //correction
     int coverage_;
     int correct_threadnum_;
+    int hashmaps_;
+    int kmerlength_;
+    bool enforceHashmapCount_;
+    bool useQualityScores_;
+    int qualityScoreBits_;
+    bool excludeAmbiguous_;
+    double maxmismatchratio_;
+    int minalignmentoverlap_;
+    double minalignmentoverlapratio_;
+    double errorfactortuning_;
+    double coveragefactortuning_;
+    bool showProgress_;
+    std::string tempdir_;
+    std::string save_preprocessedreads_to_;
+    std::string load_preprocessedreads_from_;
+    std::string save_hashtables_to_;
+    std::string load_hashtables_from_;
+    std::string memHashtables_;
+    std::string memTotal_;
+    double hashloadfactor_;
+    int fixedNumberOfReads_;
+    bool singlehash_;
+    //bool gzoutput_;
+    bool correctionQualityLabels_;
+    bool candidateCorrection_;
+    int candidateCorrectionNewColumns_;
+    int correctionType_;
+    int correctionTypeCands_;
+
 
 };
 

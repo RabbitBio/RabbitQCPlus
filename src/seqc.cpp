@@ -103,17 +103,148 @@ void SeQc::careProcess() {
     paras.push_back("./");
     paras.push_back("-o");
     paras.push_back("tmp.fq");
+    
     paras.push_back("-c");
     string str_coverage = to_string(cmd_info_->coverage_);
     printf("str_coverage %s\n", str_coverage.c_str());
     paras.push_back((char*)(str_coverage.data()));
+
     paras.push_back("-t");
     string str_thread = to_string(cmd_info_->correct_threadnum_);
     printf("str_thread %s\n", str_thread.c_str());
     paras.push_back((char*)(str_thread.data()));
+
     paras.push_back("--pairmode");
     if(cmd_info_->pairmode_ == "SE") paras.push_back("SE");
     else paras.push_back("PE");
+
+    string str_hashmaps = to_string(cmd_info_->hashmaps_);
+    if(cmd_info_->hashmaps_ != 48) {
+        paras.push_back("--hashmaps");
+        paras.push_back((char*)(str_hashmaps.data()));
+    }
+    string str_kmerlength = to_string(cmd_info_->kmerlength_);
+    if(cmd_info_->kmerlength_ != 0) {
+        paras.push_back("--kmerlength");
+        paras.push_back((char*)(str_kmerlength.data()));
+    }
+    if(cmd_info_->enforceHashmapCount_ != false) {
+        paras.push_back("--enforceHashmapCount");
+    }
+    if(cmd_info_->useQualityScores_ != false) {
+        paras.push_back("--useQualityScores");
+    }
+    string str_qualityScoreBits = to_string(cmd_info_->qualityScoreBits_);
+    if(cmd_info_->qualityScoreBits_ != 8) {
+        paras.push_back("--qualityScoreBits");
+        paras.push_back((char*)(str_qualityScoreBits.data()));
+    }
+    if(cmd_info_->excludeAmbiguous_ != false) {
+        paras.push_back("--excludeAmbiguous");
+    }
+    string str_maxmismatchratio = to_string(cmd_info_->maxmismatchratio_);
+    if(cmd_info_->maxmismatchratio_ != 0.200000) {
+        paras.push_back("--maxmismatchratio");
+        paras.push_back((char*)(str_maxmismatchratio.data()));
+    }
+    string str_minalignmentoverlap = to_string(cmd_info_->minalignmentoverlap_);
+    if(cmd_info_->minalignmentoverlap_ != 30) {
+        paras.push_back("--minalignmentoverlap");
+        paras.push_back((char*)(str_minalignmentoverlap.data()));
+    }
+    string str_minalignmentoverlapratio = to_string(cmd_info_->minalignmentoverlapratio_);
+    if(cmd_info_->minalignmentoverlapratio_ != 0.300000) {
+        paras.push_back("--minalignmentoverlapratio");
+        paras.push_back((char*)(str_minalignmentoverlapratio.data()));
+    }
+    string str_errorfactortuning = to_string(cmd_info_->errorfactortuning_);
+    if(cmd_info_->errorfactortuning_ != 0.060000) {
+        paras.push_back("--errorfactortuning");
+        paras.push_back((char*)(str_errorfactortuning.data()));
+    }
+    string str_coveragefactortuning = to_string(cmd_info_->coveragefactortuning_);
+    if(cmd_info_->coveragefactortuning_ != 0.600000) {
+        paras.push_back("--coveragefactortuning");
+        paras.push_back((char*)(str_coveragefactortuning.data()));
+    }
+    if(cmd_info_->showProgress_ != false) {
+        paras.push_back("--showProgress");
+    }
+    string str_tempdir = cmd_info_->tempdir_;
+    if(cmd_info_->tempdir_ != "") {
+        paras.push_back("--tempdir");
+        paras.push_back((char*)(str_tempdir.data()));
+    }
+    string str_save_preprocessedreads_to = cmd_info_->save_preprocessedreads_to_;
+    if(cmd_info_->save_preprocessedreads_to_ != "") {
+        paras.push_back("--save_preprocessedreads_to");
+        paras.push_back((char*)(str_save_preprocessedreads_to.data()));
+    }
+    string str_load_preprocessedreads_from = cmd_info_->load_preprocessedreads_from_;
+    if(cmd_info_->load_preprocessedreads_from_ != "") {
+        paras.push_back("--load_preprocessedreads_from");
+        paras.push_back((char*)(str_load_preprocessedreads_from.data()));
+    }
+    string str_save_hashtables_to = cmd_info_->save_hashtables_to_;
+    if(cmd_info_->save_hashtables_to_ != "") {
+        paras.push_back("--save_hashtables_to");
+        paras.push_back((char*)(str_save_hashtables_to.data()));
+    }
+    string str_load_hashtables_from = cmd_info_->load_hashtables_from_;
+    if(cmd_info_->load_hashtables_from_ != "") {
+        paras.push_back("--load_hashtables_from");
+        paras.push_back((char*)(str_load_hashtables_from.data()));
+    }
+    string str_memHashtables = cmd_info_->memHashtables_;
+    if(cmd_info_->memHashtables_ != "") {
+        paras.push_back("--memHashtables");
+        paras.push_back((char*)(str_memHashtables.data()));
+    }
+    string str_memTotal = cmd_info_->memTotal_;
+    if(cmd_info_->memTotal_ != "") {
+        paras.push_back("--memTotal");
+        paras.push_back((char*)(str_memTotal.data()));
+    }
+    string str_hashloadfactor = to_string(cmd_info_->hashloadfactor_);
+    if(cmd_info_->hashloadfactor_ != 0.800000) {
+        paras.push_back("--hashloadfactor");
+        paras.push_back((char*)(str_hashloadfactor.data()));
+    }
+    string str_fixedNumberOfReads = to_string(cmd_info_->fixedNumberOfReads_);
+    if(cmd_info_->fixedNumberOfReads_ != 0) {
+        paras.push_back("--fixedNumberOfReads");
+        paras.push_back((char*)(str_fixedNumberOfReads.data()));
+    }
+    if(cmd_info_-> singlehash_!= false) {
+        paras.push_back("--singlehash");
+    }
+    if(cmd_info_->correctionQualityLabels_ != false) {
+        paras.push_back("--correctionQualityLabels");
+    }
+    if(cmd_info_->candidateCorrection_ != false) {
+        paras.push_back("--candidateCorrection");
+    }
+    string str_candidateCorrectionNewColumns = to_string(cmd_info_->candidateCorrectionNewColumns_);
+    if(cmd_info_->candidateCorrectionNewColumns_ != 15) {
+        paras.push_back("--candidateCorrectionNewColumns");
+        paras.push_back((char*)(str_candidateCorrectionNewColumns.data()));
+    }
+    string str_correctionType = to_string(cmd_info_->correctionType_);
+    if(cmd_info_->correctionType_ != 0) {
+        paras.push_back("--correctionType");
+        paras.push_back((char*)(str_correctionType.data()));
+    }
+    string str_correctionTypeCands = to_string(cmd_info_->correctionTypeCands_);
+    if(cmd_info_->correctionTypeCands_ != 0) {
+        paras.push_back("--correctionTypeCands");
+        paras.push_back((char*)(str_correctionTypeCands.data()));
+    }
+
+
+
+
+
+
     for(int i = 0; i < paras.size(); i++) {
         printf("%s ", paras[i]);
     }
@@ -487,6 +618,7 @@ void SeQc::ProcessSeFastq() {
     double t0 = GetTime();
 #endif
     thread *carer;
+    printf("========== %d\n",  cmd_info_->do_correction_with_care_);
     if(cmd_info_->do_correction_with_care_) {
         carer = new thread(bind(&SeQc::careProcess, this));
         //cmd_info_->in_file_name1_ = "./tmp.fq";

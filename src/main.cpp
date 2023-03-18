@@ -24,8 +24,10 @@ int main(int argc, char **argv) {
     app.add_option("-o,--outFile1", cmd_info.out_file_name1_, "output fastq name 1");
     app.add_option("-O,--outFile2", cmd_info.out_file_name2_, "output fastq name 2");
 
+    app.add_flag("--notKeepOrder", cmd_info.notKeepOrder_, "do not keep order as input when outputing reads (may slightly improve performance if opened), default is off");
 
     app.add_option("--compressLevel", cmd_info.compression_level_, "output file compression level (1 - 9), default is 4");
+    app.add_flag("--useIgzip", cmd_info.use_igzip_, "use igzip instead of pugz/zlib, default is off");
 
     app.add_flag("--overWrite", cmd_info.overWrite_, "overwrite out file if already exists.");
     app.add_flag("--phred64", cmd_info.isPhred64_, "input is using phred64 scoring, default is phred33");
@@ -34,63 +36,10 @@ int main(int argc, char **argv) {
     app.add_flag("--stdout", cmd_info.isStdout_,
             "output to stdout, or -o /dev/stdout, only for se data or interleaved pe data(which means use --interleavedOut)");
 
-
-    app.add_flag("--notKeepOrder", cmd_info.notKeepOrder_, "do not keep order as input when outputing reads (may slightly improve performance if opened), default is off");
-
-    app.add_flag("-a,--noTrimAdapter", cmd_info.no_trim_adapter_, "don't trim adapter, default is off");
-    app.add_flag("--decAdaForSe", cmd_info.se_auto_detect_adapter_, "detect adapter for se data, default is on");
-    app.add_flag("--decAdaForPe", cmd_info.pe_auto_detect_adapter_,
-            "detect adapter for pe data, default is off, tool prefers to use overlap to find adapter");
-    app.add_flag("--printWhatTrimmed", cmd_info.print_what_trimmed_,
-            "if print what trimmed to *_trimmed_adapters.txt or not, default is not");
-    app.add_option("--adapterSeq1", cmd_info.adapter_seq1_, "specify adapter sequence for read1");
-    app.add_option("--adapterSeq2", cmd_info.adapter_seq2_, "specify adapter sequence for read2");
-    app.add_option("--adapterFastaFile", cmd_info.adapter_fasta_file_, "specify adapter sequences use fasta file");
-    //app.add_option("--adapterLengthLimit", cmd_info.adapter_len_lim_, "minimum adapter length when trimming, default is 0");
-
-    app.add_flag("--correctData", cmd_info.correct_data_, "correcting low quality bases using information from overlap, default is off");
-
-    app.add_flag("--correctWithCare", cmd_info.do_correction_with_care_, "correcte data use care engin, default is off");
-
     app.add_option("-w,--threadNum", cmd_info.thread_number_, "number of thread used to do QC, including (de)compression for compressed data, default is 8");
-
-    //filter
-    app.add_flag("-5,--trim5End", cmd_info.trim_5end_, "do sliding window from 5end to 3end to trim low quality bases, default is off");
-    app.add_flag("-3,--trim3End", cmd_info.trim_3end_, "do sliding window from 5end to 3end to trim low quality bases, default is off");
-    app.add_option("--trimFront1", cmd_info.trim_front1_, "number of bases to trim from front in read1, default is 0");
-    app.add_option("--trimFront2", cmd_info.trim_front2_, "number of bases to trim from front in read2, default is 0");
-    app.add_option("--trimTail1", cmd_info.trim_tail1_, "number of bases to trim from tail in read1, default is 0");
-    app.add_option("--trimTail2", cmd_info.trim_tail2_, "number of bases to trim from tail in read2, default is 0");
-
-
-    app.add_flag("--useIgzip", cmd_info.use_igzip_, "use igzip instead of pugz/zlib, default is off");
-
-    app.add_flag("-g,--trimPolyg", cmd_info.trim_polyg_, "do polyg tail trim, default is off");
-    app.add_flag("-x,--trimPolyx", cmd_info.trim_polyx_, "do polyx tail trim, default is off");
-
-
-    app.add_flag("-u,--addUmi", cmd_info.add_umi_, "do unique molecular identifier (umi) processing, default is off");
-    app.add_option("--umiLen", cmd_info.umi_len_, "umi length if it is in read1/read2, default is 0");
-    string umiLoc = "";
-    app.add_option("--umiLoc", umiLoc, "specify the location of umi, can be (index1/index2/read1/read2/per_index/per_read), default is 0");
-    app.add_option("--umiPrefix", cmd_info.umi_prefix_, "identification to be added in front of umi, default is no prefix");
-    app.add_option("--umiSkip", cmd_info.umi_skip_, "the number bases to skip if umi exists, default is 0");
-
-    //app.add_option("--seqLen", cmd_info.seq_len_, "max sequence length, default is 200");
-
 
     //TGS
     app.add_flag("--TGS", cmd_info.is_TGS_, "process third generation sequencing (TGS) data (only for se data, does not support trimming and will not produce output files), default is off");
-
-
-    //overrepresentation
-    app.add_flag("-p,--doOverrepresentation", cmd_info.do_overrepresentation_,
-            "do over-representation sequence analysis, default is off");
-    app.add_option("-P,--overrepresentationSampling", cmd_info.overrepresentation_sampling_,
-            "do overrepresentation every [] reads, default is 20");
-
-    app.add_flag("--printORPSeqs", cmd_info.print_ORP_seqs_,
-            "if print overrepresentation sequences to *ORP_sequences.txt or not, default is not");
     //insert size analyze
     app.add_flag("--noInsertSize", cmd_info.no_insert_size_, "no insert size analysis (only for pe data), default is to do insert size analysis");
 
@@ -101,10 +50,92 @@ int main(int argc, char **argv) {
     app.add_flag("--interleavedOut", cmd_info.interleaved_out_,
             "use interleaved output (only for pe data), default is off");
 
-    //pairmode
-    app.add_option("--pairmode", cmd_info.pairmode_, "SE or PE, default is SE");
-    //correction
-    app.add_option("-c,--coverage", cmd_info.coverage_, "Estimated coverage of input file");
+
+
+
+    //trim adapter
+    app.add_flag("-a,--noTrimAdapter", cmd_info.no_trim_adapter_, "don't trim adapter, default is off")->group("Trim Adapter");
+    app.add_flag("--decAdaForSe", cmd_info.se_auto_detect_adapter_, "detect adapter for se data, default is on")->group("Trim Adapter");
+    app.add_flag("--decAdaForPe", cmd_info.pe_auto_detect_adapter_,
+            "detect adapter for pe data, default is off, tool prefers to use overlap to find adapter")->group("Trim Adapter");
+    app.add_flag("--printWhatTrimmed", cmd_info.print_what_trimmed_,
+            "if print what trimmed to *_trimmed_adapters.txt or not, default is not")->group("Trim Adapter");
+    app.add_option("--adapterSeq1", cmd_info.adapter_seq1_, "specify adapter sequence for read1")->group("Trim Adapter");
+    app.add_option("--adapterSeq2", cmd_info.adapter_seq2_, "specify adapter sequence for read2")->group("Trim Adapter");
+    app.add_option("--adapterFastaFile", cmd_info.adapter_fasta_file_, "specify adapter sequences use fasta file")->group("Trim Adapter");
+    //app.add_option("--adapterLengthLimit", cmd_info.adapter_len_lim_, "minimum adapter length when trimming, default is 0");
+
+
+
+
+    //filter
+    app.add_flag("-5,--trim5End", cmd_info.trim_5end_, "do sliding window from 5end to 3end to trim low quality bases, default is off")->group("Filter");
+    app.add_flag("-3,--trim3End", cmd_info.trim_3end_, "do sliding window from 5end to 3end to trim low quality bases, default is off")->group("Filter");
+    app.add_option("--trimFront1", cmd_info.trim_front1_, "number of bases to trim from front in read1, default is 0")->group("Filter");
+    app.add_option("--trimFront2", cmd_info.trim_front2_, "number of bases to trim from front in read2, default is 0")->group("Filter");
+    app.add_option("--trimTail1", cmd_info.trim_tail1_, "number of bases to trim from tail in read1, default is 0")->group("Filter");
+    app.add_option("--trimTail2", cmd_info.trim_tail2_, "number of bases to trim from tail in read2, default is 0")->group("Filter");
+    app.add_flag("-g,--trimPolyg", cmd_info.trim_polyg_, "do polyg tail trim, default is off")->group("Filter");
+    app.add_flag("-x,--trimPolyx", cmd_info.trim_polyx_, "do polyx tail trim, default is off")->group("Filter");
+
+
+    //umi
+    app.add_flag("-u,--addUmi", cmd_info.add_umi_, "do unique molecular identifier (umi) processing, default is off")->group("UMI Operation");
+    app.add_option("--umiLen", cmd_info.umi_len_, "umi length if it is in read1/read2, default is 0")->group("UMI Operation");
+    string umiLoc = "";
+    app.add_option("--umiLoc", umiLoc, "specify the location of umi, can be (index1/index2/read1/read2/per_index/per_read), default is 0")->group("UMI Operation");
+    app.add_option("--umiPrefix", cmd_info.umi_prefix_, "identification to be added in front of umi, default is no prefix")->group("UMI Operation");
+    app.add_option("--umiSkip", cmd_info.umi_skip_, "the number bases to skip if umi exists, default is 0")->group("UMI Operation");
+
+    //app.add_option("--seqLen", cmd_info.seq_len_, "max sequence length, default is 200");
+
+
+    //overrepresentation
+    app.add_flag("-p,--doOverrepresentation", cmd_info.do_overrepresentation_,
+            "do over-representation sequence analysis, default is off")->group("Over-representation Operation");
+    app.add_option("-P,--overrepresentationSampling", cmd_info.overrepresentation_sampling_,
+            "do overrepresentation every [] reads, default is 20")->group("Over-representation Operation");
+    app.add_flag("--printORPSeqs", cmd_info.print_ORP_seqs_,
+            "if print overrepresentation sequences to *ORP_sequences.txt or not, default is not")->group("Over-representation Operation");
+
+
+
+    app.add_flag("--correctData", cmd_info.correct_data_, "sample correcting low quality bases using information from overlap (faster but less accurate), default is off")->group("Error Correction Operation");
+
+    //care correction engin para
+    //
+    app.add_flag("--correctWithCare", cmd_info.do_correction_with_care_, "correcte data use care engin (slower but much more accurate), default is off")->group("Error Correction Operation");
+    app.add_option("--pairmode", cmd_info.pairmode_, "SE (single-end) or PE (paired-end), default is SE")->group("Error Correction Operation");
+    app.add_option("--coverage", cmd_info.coverage_, "Estimated coverage of input file (i.e. number_of_reads * read_length / genome_size)")->group("Error Correction Operation");
+    app.add_option("--hashmaps", cmd_info.hashmaps_, "The requested number of hash maps. Must be greater than 0. The actual number of used hash maps may be lower to respect the set memory limit, default is 48")->group("Error Correction Operation");
+    app.add_option("--kmerlength", cmd_info.kmerlength_, "The kmer length for minhashing. If 0 or missing, it is automatically determined, default is 0")->group("Error Correction Operation");
+    app.add_flag("--enforceHashmapCount", cmd_info.enforceHashmapCount_, "If the requested number of hash maps cannot be fullfilled, the program terminates withou error correction, default is off")->group("Error Correction Operation");
+    app.add_flag("--useQualityScores", cmd_info.useQualityScores_, "If set, quality scores (if any) are considered during read correction, default is off")->group("Error Correction Operation");
+    app.add_option("--qualityScoreBits", cmd_info.qualityScoreBits_, "How many bits should be used to store a single quality score. Allowed values: 1,2,8. If not 8, a lossy compression via binning is used, default is 8")->group("Error Correction Operation");
+    app.add_flag("--excludeAmbiguous", cmd_info.excludeAmbiguous_, "If set, reads which contain at least one ambiguous nucleotide will not be corrected, default is off")->group("Error Correction Operation");
+    app.add_option("--maxmismatchratio", cmd_info.maxmismatchratio_, "Overlap between anchor and candidate must contain at most (maxmismatchratio * overlapsize) mismatches, default is 0.2")->group("Error Correction Operation");
+    app.add_option("--minalignmentoverlap", cmd_info.minalignmentoverlap_, "Overlap between anchor and candidate must be at least this long, default is 30")->group("Error Correction Operation");
+    app.add_option("--minalignmentoverlapratio", cmd_info.minalignmentoverlapratio_, "Overlap between anchor and candidate must be at least as long as (minalignmentoverlapratio * candidatelength), default is 0.3")->group("Error Correction Operation");
+    app.add_option("--errorfactortuning", cmd_info.errorfactortuning_, "errorfactortuning, default is 0.06")->group("Error Correction Operation");
+    app.add_option("--coveragefactortuning", cmd_info.coveragefactortuning_, "coveragefactortuning, default is 0.6")->group("Error Correction Operation");
+    app.add_flag("--showProgress", cmd_info.showProgress_, "If set, progress bar is shown during correction, default is off")->group("Error Correction Operation");
+    app.add_option("--tempdir", cmd_info.tempdir_, "Directory to store temporary files, default is the output directory")->group("Error Correction Operation");
+    app.add_option("--save-preprocessedreads-to", cmd_info.save_preprocessedreads_to_, "Save binary dump of data structure which stores input reads to disk")->group("Error Correction Operation");
+    app.add_option("--load-preprocessedreads-from", cmd_info.load_preprocessedreads_from_, "Load binary dump of read data structure from disk")->group("Error Correction Operation");
+    app.add_option("--save-hashtables-to", cmd_info.save_hashtables_to_, "Save binary dump of hash tables to disk")->group("Error Correction Operation");
+    app.add_option("--load-hashtables-from", cmd_info.load_hashtables_from_, "Load binary dump of hash tables from disk")->group("Error Correction Operation");
+    app.add_option("--memHashtables", cmd_info.memHashtables_, "Memory limit in bytes for hash tables and hash table construction. Can use suffix K,M,G, e.g. 20G means 20 gigabyte. This option is not a hard limit, default is a bit less than memory")->group("Error Correction Operation");
+    app.add_option("--memTotal", cmd_info.memTotal_, "Total memory limit in bytes. Can use suffix K,M,G, e.g. 20G means 20 gigabyte. This option is not a hard limit, default is all free memory")->group("Error Correction Operation");
+    app.add_option("--hashloadfactor", cmd_info.hashloadfactor_, "Load factor of hashtables. 0.0 < hashloadfactor < 1.0. Smaller values can improve the runtime at the expense of greater memory usage, default is 0.8")->group("Error Correction Operation");
+    app.add_option("--fixedNumberOfReads", cmd_info.fixedNumberOfReads_, "Process only the first n reads, default is 0")->group("Error Correction Operation");
+    app.add_flag("--singlehash", cmd_info.singlehash_, "Use 1 hashtables with h smallest unique hashes, default is off")->group("Error Correction Operation");
+    //app.add_flag("--gzoutput", cmd_info.gzoutput_, "gz compressed output (very slow), default is off");
+    app.add_flag("--correctionQualityLabels", cmd_info.correctionQualityLabels_, "If set, correction quality label will be appended to output read headers, default is off")->group("Error Correction Operation");
+    app.add_flag("--candidateCorrection", cmd_info.candidateCorrection_, "If set, candidate reads will be corrected,too, default is off")->group("Error Correction Operation");
+    app.add_option("--candidateCorrectionNewColumns", cmd_info.candidateCorrectionNewColumns_, "If candidateCorrection is set, a candidates with an absolute shift of candidateCorrectionNewColumns compared to anchor are corrected, default is 15")->group("Error Correction Operation");
+    app.add_option("--correctionType", cmd_info.correctionType_, "0: Classic, 2: Print . Print is only supported in the cpu version, default is 0")->group("Error Correction Operation");
+    app.add_option("--correctionTypeCands", cmd_info.correctionTypeCands_, "0: Classic, 2: Print. Print is only supported in the cpu version, default is 0")->group("Error Correction Operation");
+
 
 
     //parallel gz
