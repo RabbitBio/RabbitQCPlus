@@ -9,13 +9,15 @@ A modern quality control tool for sequencing data.
 
 - Improving the efficiency of the time-consuming over-representation module by a factor of 5.
 
+- Integrated and optimized the CARE error correction engine, achieving a speedup of 1.3-1.9 times.
+
 # Build
 
 RabbitQCPlus can only support 64-bit Linux Systems.
 
 ### Dependancy
 
-- gcc 4.8.5 or newer
+- gcc 7.5.0 or newer
 - [zlib](https://zlib.net/)
 
 ### Compilation
@@ -56,6 +58,20 @@ You can also specify the instruction set you want to use by manually modifying t
 ```bash
 ./RabbitQCPlus -w 16 -i in1.fastq.gz  -I in2.fastq.gz -o p1.fastq.gz -O p2.fastq.gz
 ```
+
+- For SE (use CARE engine to correct errors)
+
+```bash
+./RabbitQCPlus -w 32 -i in1.fastq -o p1.fastq --correctWithCare --coverage 30 --pairmode SE
+```
+
+- For PE (use CARE engine to correct errors)
+
+```bash
+./RabbitQCPlus -w 32 -i in1.fastq -I in2.fastq -o p1.fastq -O p2.fastq --correctWithCare --coverage 30 --pairmode PE
+```
+
+
 
 ## For third generation sequencing data
 
