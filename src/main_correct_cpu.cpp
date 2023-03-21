@@ -61,9 +61,9 @@ std::string tostring(const bool& b){
 }
 
 int main_correction(int argc, char** argv, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q1, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q2, std::atomic_int *producerDone, std::atomic_int *careStartWrite, int* changNum) {
-    for(int i = 0; i < argc; i++) 
-        printf("%s ", argv[i]);
-    printf("\n");
+    //for(int i = 0; i < argc; i++) 
+    //    printf("%s ", argv[i]);
+    //printf("\n");
 
 	bool help = false;
 	bool showVersion = false;

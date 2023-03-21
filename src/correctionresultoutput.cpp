@@ -460,7 +460,7 @@ void mergeSerializedResultsWithOriginalReads_multithreadedOutToQueue(
     std::atomic_int *careStartWrite, 
     int* changNum
 ){
-    printf("now output to queue, %p %p %p\n", Q1, Q2, producerDone);
+    //printf("now output to queue, %p %p %p\n", Q1, Q2, producerDone);
     assert(outputfiles.size() == 1 || originalReadFiles.size() == outputfiles.size());
     *changNum = partialResults.getNumElements();
     *careStartWrite = 1;

@@ -93,8 +93,8 @@ SeQc::~SeQc() {
 
 void SeQc::careProcess() {
     
-    printf("pairmode %s\n", cmd_info_->pairmode_.c_str());
-    printf("coverage %d\n", cmd_info_->coverage_);
+    //printf("pairmode %s\n", cmd_info_->pairmode_.c_str());
+    //printf("coverage %d\n", cmd_info_->coverage_);
     vector<char*>paras;
     paras.push_back("./RabbitQCPlus");
     paras.push_back("-i");
@@ -106,12 +106,12 @@ void SeQc::careProcess() {
     
     paras.push_back("-c");
     string str_coverage = to_string(cmd_info_->coverage_);
-    printf("str_coverage %s\n", str_coverage.c_str());
+    //printf("str_coverage %s\n", str_coverage.c_str());
     paras.push_back((char*)(str_coverage.data()));
 
     paras.push_back("-t");
     string str_thread = to_string(cmd_info_->correct_threadnum_);
-    printf("str_thread %s\n", str_thread.c_str());
+    //printf("str_thread %s\n", str_thread.c_str());
     paras.push_back((char*)(str_thread.data()));
 
     paras.push_back("--pairmode");
@@ -245,19 +245,19 @@ void SeQc::careProcess() {
 
 
 
-    for(int i = 0; i < paras.size(); i++) {
-        printf("%s ", paras[i]);
-    }
-    printf("\n");
+    //for(int i = 0; i < paras.size(); i++) {
+    //    printf("%s ", paras[i]);
+    //}
+    //printf("\n");
 
     printf("start care part...\n");
 
-    printf("now output to queue, %p %p\n", careQueue, &producerDone);
+    //printf("now output to queue, %p %p\n", careQueue, &producerDone);
     main_correction(paras.size(), &(paras[0]), careQueue, careQueue, &producerDone, &careStartWrite, &changeNum);
 
     printf("care end\n");
-    printf("care queue size %d\n", careQueue->size_approx());
-    printf("care change size %d\n", changeNum);
+    //printf("care queue size %d\n", careQueue->size_approx());
+    //printf("care change size %d\n", changeNum);
 
     careDone = 1;
 
@@ -618,7 +618,6 @@ void SeQc::ProcessSeFastq() {
     double t0 = GetTime();
 #endif
     thread *carer;
-    printf("========== %d\n",  cmd_info_->do_correction_with_care_);
     if(cmd_info_->do_correction_with_care_) {
         carer = new thread(bind(&SeQc::careProcess, this));
         //cmd_info_->in_file_name1_ = "./tmp.fq";
@@ -635,6 +634,11 @@ void SeQc::ProcessSeFastq() {
         }
 
     }
+    //if(cmd_info_->do_correction_with_care_) {
+    //    carer->join();
+    //    delete carer;
+    //}
+
     thread *pugzer;
 
     if (cmd_info_->use_pugz_) {

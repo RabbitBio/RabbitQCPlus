@@ -129,8 +129,8 @@ PeQc::~PeQc() {
 
 void PeQc::careProcess() {
     
-    printf("pairmode %s\n", cmd_info_->pairmode_.c_str());
-    printf("coverage %d\n", cmd_info_->coverage_);
+    //printf("pairmode %s\n", cmd_info_->pairmode_.c_str());
+    //printf("coverage %d\n", cmd_info_->coverage_);
     vector<char*>paras;
     paras.push_back("./RabbitQCPlus");
     paras.push_back("-i");
@@ -149,12 +149,12 @@ void PeQc::careProcess() {
 
     paras.push_back("-c");
     string str_coverage = to_string(cmd_info_->coverage_);
-    printf("str_coverage %s\n", str_coverage.c_str());
+    //printf("str_coverage %s\n", str_coverage.c_str());
     paras.push_back((char*)(str_coverage.data()));
 
     paras.push_back("-t");
     string str_thread = to_string(cmd_info_->correct_threadnum_);
-    printf("str_thread %s\n", str_thread.c_str());
+    //printf("str_thread %s\n", str_thread.c_str());
     paras.push_back((char*)(str_thread.data()));
 
     paras.push_back("--pairmode");
@@ -289,20 +289,20 @@ void PeQc::careProcess() {
 
 
 
-    for(int i = 0; i < paras.size(); i++) {
-        printf("%s ", paras[i]);
-    }
-    printf("\n");
+    //for(int i = 0; i < paras.size(); i++) {
+    //    printf("%s ", paras[i]);
+    //}
+    //printf("\n");
 
     printf("start care part...\n");
 
-    printf("now output to queue, %p %p %p\n", careQueue1, careQueue2, &producerDone);
+    //printf("now output to queue, %p %p %p\n", careQueue1, careQueue2, &producerDone);
     main_correction(paras.size(), &(paras[0]), careQueue1, careQueue2, &producerDone, &careStartWrite, &changeNum);
 
     printf("care end\n");
-    printf("care1 queue size %d\n", careQueue1->size_approx());
-    printf("care2 queue size %d\n", careQueue2->size_approx());
-    printf("care change size %d\n", changeNum);
+    //printf("care1 queue size %d\n", careQueue1->size_approx());
+    //printf("care2 queue size %d\n", careQueue2->size_approx());
+    //printf("care change size %d\n", changeNum);
 
     careDone1 = 1;
     careDone2 = 1;
