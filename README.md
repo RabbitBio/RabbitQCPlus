@@ -1,6 +1,6 @@
 ## ![logo](./pics/RabbitQCPlus.png)
 
-# RabbitQCPlus Features
+# RabbitQCPlus 2.0 Features
 
 A modern quality control tool for sequencing data.
 - Single-threaded performance is improved by a factor of 2 at least.
@@ -9,7 +9,7 @@ A modern quality control tool for sequencing data.
 
 - Improving the efficiency of the time-consuming over-representation module by a factor of 5.
 
-- Integrated and optimized the CARE error correction engine, achieving a speedup of 1.3-1.9 times.
+- Integrated and optimized the CARE error correction engine, achieving a speedup of 1.3 times.
 
 # Build
 
@@ -108,11 +108,15 @@ When using default parameters, RabbitQCPlus performs the same or more comprehens
 
 <img src="pics/gzip.png" alt="gzip" style="zoom:50%;" />
 
+## With error correction module on
+
+<img src="pics/error_correction.png" alt="gzip" style="zoom:50%;" />
+
 # Visual output
 
 We visualized the information before and after data filtering, and [here](https://yanlifeng.github.io/someTest/example.html) is an example.
 
 # Citation
-Lifeng Yan, Zekun Yin, Hao Zhang, Zhan Zhao, Mingkai Wang, André Müller, Robin Kobus, Yanjie Wei, Beifang Niu, Bertil Schmidt, Weiguo Liu. RabbitQCPlus: More Efficient Quality Control for Sequencing Data, 2022 IEEE International Conference on Bioinformatics and Biomedicine (BIBM) (pp. 619-626), IEEE Computer Society.
+Lifeng Yan, Zekun Yin, Hao Zhang, Zhan Zhao, Mingkai Wang, André Müller, Robin Kobus, Yanjie Wei, Beifang Niu, Bertil Schmidt, Weiguo Liu. "RabbitQCPlus: More Efficient Quality Control for Sequencing Data," *2022 IEEE International Conference on Bioinformatics and Biomedicine (BIBM)*, Las Vegas, NV, USA, 2022, pp. 619-626, doi: 10.1109/BIBM55620.2022.9995332.
 
 Zekun Yin, Hao Zhang, Meiyang Liu, Wen Zhang, Honglei Song, Haidong Lan, Yanjie Wei, Beifang Niu, Bertil Schmidt, Weiguo Liu, RabbitQC: High-speed scalable quality control for sequencing data, Bioinformatics, , btaa719, https://doi.org/10.1093/bioinformatics/btaa719
