@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
     }
 
     if (quVersion) {
-        printf("0.0.2\n");
+        printf("2.0.0\n");
         return 0;
     }
 

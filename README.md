@@ -95,7 +95,7 @@ For more help information, please refer to `./RabbitQCPlus -h`.
 
 # Performance results
 
-Experiments have been conducted on a Linux server with 2 Intel Xeon Platinum 8260 CPUs, 1.5T RAM, 2T SSD, running Ubuntu 20.04 and GCC9. We have compared the performance of RabbitQCPlus with RabbitQC (v0.0.1), fastp (v0.23.2), SOAPnuke (v2.1.7), Trimmomatic (v0.40), and FASTQC (v0.11.9) using 370 million Illumina sequencing reads ([SRR7963242](https://www.ncbi.nlm.nih.gov/sra/?term=SRR7963242)).
+Experiments have been conducted on a Linux server with 2 Intel Xeon Platinum 8260 CPUs, 1.5T RAM, 2T SSD, running Ubuntu 20.04 and GCC9. We have compared the performance of RabbitQCPlus with RabbitQC (v0.0.1), fastp (v0.23.2), SOAPnuke (v2.1.7), Trimmomatic (v0.40), CARE (v2.0.0, CPU version) and FASTQC (v0.11.9) using 370 million Illumina sequencing reads ([SRR7963242](https://www.ncbi.nlm.nih.gov/sra/?term=SRR7963242)).
 
 We use default parameters of each application except for the number of threads on both plain and gzip-compressed FASTQ files.
 When using default parameters, RabbitQCPlus performs the same or more comprehensive quality control operations compared to other applications.
