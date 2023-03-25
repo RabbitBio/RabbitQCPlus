@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
     app.add_option("-o,--outFile1", cmd_info.out_file_name1_, "output fastq name 1");
     app.add_option("-O,--outFile2", cmd_info.out_file_name2_, "output fastq name 2");
 
-    app.add_flag("--notKeepOrder", cmd_info.notKeepOrder_, "do not keep order as input when outputing reads (may slightly improve performance if opened), default is off");
+    app.add_flag("--notKeepOrder", cmd_info.notKeepOrder_, "do not keep order as input when outputting reads (may slightly improve performance if opened), default is off");
 
     app.add_option("--compressLevel", cmd_info.compression_level_, "output file compression level (1 - 9), default is 4");
     app.add_flag("--useIgzip", cmd_info.use_igzip_, "use igzip instead of pugz/zlib, default is off");
@@ -102,14 +102,14 @@ int main(int argc, char **argv) {
 
     app.add_flag("--correctData", cmd_info.correct_data_, "sample correcting low quality bases using information from overlap (faster but less accurate), default is off")->group("Error Correction Operation");
 
-    //care correction engin para
+    //care correction engine para
     //
-    app.add_flag("--correctWithCare", cmd_info.do_correction_with_care_, "correcte data use care engin (slower but much more accurate), default is off")->group("Error Correction Operation");
+    app.add_flag("--correctWithCare", cmd_info.do_correction_with_care_, "correct data use care engine (slower but much more accurate), default is off")->group("Error Correction Operation");
     app.add_option("--pairmode", cmd_info.pairmode_, "SE (single-end) or PE (paired-end), default is SE")->group("Error Correction Operation");
     app.add_option("--coverage", cmd_info.coverage_, "Estimated coverage of input file (i.e. number_of_reads * read_length / genome_size)")->group("Error Correction Operation");
     app.add_option("--hashmaps", cmd_info.hashmaps_, "The requested number of hash maps. Must be greater than 0. The actual number of used hash maps may be lower to respect the set memory limit, default is 48")->group("Error Correction Operation");
     app.add_option("--kmerlength", cmd_info.kmerlength_, "The kmer length for minhashing. If 0 or missing, it is automatically determined, default is 0")->group("Error Correction Operation");
-    app.add_flag("--enforceHashmapCount", cmd_info.enforceHashmapCount_, "If the requested number of hash maps cannot be fullfilled, the program terminates withou error correction, default is off")->group("Error Correction Operation");
+    app.add_flag("--enforceHashmapCount", cmd_info.enforceHashmapCount_, "If the requested number of hash maps cannot be fulfilled, the program terminates without error correction, default is off")->group("Error Correction Operation");
     app.add_flag("--useQualityScores", cmd_info.useQualityScores_, "If set, quality scores (if any) are considered during read correction, default is off")->group("Error Correction Operation");
     app.add_option("--qualityScoreBits", cmd_info.qualityScoreBits_, "How many bits should be used to store a single quality score. Allowed values: 1,2,8. If not 8, a lossy compression via binning is used, default is 8")->group("Error Correction Operation");
     app.add_flag("--excludeAmbiguous", cmd_info.excludeAmbiguous_, "If set, reads which contain at least one ambiguous nucleotide will not be corrected, default is off")->group("Error Correction Operation");
