@@ -218,14 +218,13 @@ namespace rabbit {
          * @param num
          * @return
          */
-        int64 Read(byte *buf, uint64 len, moodycamel::ReaderWriterQueue<std::pair<char *, int>>
-
-                                                  *Q,
+        int64 Read(byte *buf, uint64 len, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q,
                    std::atomic_int *done, std::pair<char *, int> &L) {
+            static int now_L_size = 1 << 20;
             std::pair<char *, int> now;
             int64 ret;
             int64 got = 0;
-            //                printf("now producer get data from pugz queue\n");
+            //printf("now producer get data from pugz queue\n");
             if (L.second > 0) {
                 if (L.second >= len) {
                     memcpy(buf, L.first, len);
@@ -256,14 +255,20 @@ namespace rabbit {
                         overWhile = true;
                         break;
                     }
-                    usleep(100);
+                    usleep(1000);
                     //printf("producer waiting pugz...\n");
                 }
                 if (overWhile) {
                     ret = 0;
                     break;
                 }
-                //printf("get some data %d\n", now.second);
+                if(now.second > now_L_size) {
+                    char* tmp_L = new char[now.second];
+                    memcpy(tmp_L, L.first, L.second);
+                    delete[] L.first;
+                    now_L_size = now.second;
+                    L.first = tmp_L;
+                }
                 if (now.second <= len) {
                     memcpy(buf, now.first, now.second);
                     delete[] now.first;

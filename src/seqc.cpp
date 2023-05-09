@@ -541,14 +541,51 @@ void SeQc::WriteSeFastqTask() {
  * @brief do pugz
  */
 
+/*
 void SeQc::PugzTask() {
 #ifdef Verbose
     printf("pugz start\n");
     auto t0 = GetTime();
 #endif
     main_pugz(cmd_info_->in_file_name1_, cmd_info_->pugz_threads_, pugzQueue, &producerDone);
+    //main_pragzip(cmd_info_->in_file_name1_, cmd_info_->pugz_threads_, pugzQueue, &producerDone);
 #ifdef Verbose
     printf("pugz cost %.5f\n", GetTime() - t0);
+#endif
+    pugzDone = 1;
+}
+*/
+
+/**
+ * @brief do pragzip
+ */
+
+void SeQc::PugzTask() {
+#ifdef Verbose
+    printf("pragzip start\n");
+    auto t0 = GetTime();
+#endif
+    
+    int cnt = 5;
+
+    char **infos = new char *[4];
+    infos[0] = "./pragzip";
+    infos[1] = "-c";
+    infos[2] = "-P";
+    int th_num = cmd_info_->pugz_threads_;
+    string th_num_s = to_string(th_num);
+    infos[3] = new char[th_num_s.length() + 1];
+    memcpy(infos[3], th_num_s.c_str(), th_num_s.length());
+    infos[3][th_num_s.length()] = '\0';
+    string in_file = cmd_info_->in_file_name1_;
+    infos[4] = new char[in_file.length() + 1];
+    memcpy(infos[4], in_file.c_str(), in_file.length());
+    infos[4][in_file.length()] = '\0';
+
+    main_pragzip(cnt, infos, pugzQueue, &producerDone);
+
+#ifdef Verbose
+    printf("pragzip cost %.5f\n", GetTime() - t0);
 #endif
     pugzDone = 1;
 }

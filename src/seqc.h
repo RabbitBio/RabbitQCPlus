@@ -20,6 +20,7 @@
 #include "pigz.h"
 #include "polyx.h"
 #include "pugz.h"
+#include "pragzip.h"
 #include "state.h"
 #include "threadinfo.h"
 #include "umier.h"
@@ -75,12 +76,10 @@ private:
     bool in_is_zip_;
     bool out_is_zip_;
 
-    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *
-            pugzQueue;
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pugzQueue;
     std::atomic_int pugzDone;
 
-    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *
-            pigzQueue;
+    moodycamel::ReaderWriterQueue<std::pair<char *, int>> *pigzQueue;
     std::pair<char *, int> pigzLast;
 
     std::atomic_int producerDone;

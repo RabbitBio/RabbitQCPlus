@@ -263,8 +263,6 @@ namespace rabbit {
 
             // read the next chunk
             int64 r = this->Read(data + chunk_->size, toRead);
-            // std::cout << "r is :" << r << std::endl;
-            // std::cout << "toRead: " << toRead << std::endl;
 
             if (r > 0) {
                 if (r == toRead)// somewhere before end
@@ -1103,12 +1101,10 @@ namespace rabbit {
 
             // read the next chunk
             int64 r = mFqReader->Read(data + chunk_->size, toRead, q, d, l);
-            // std::cout << "r is :" << r << std::endl;
-            // std::cout << "r is :" << r << std::endl;
-
-            // if (r > 0) {
             if (!mFqReader->FinishRead() && !mFqReader->Eof()) {
+
                 cbufSize = r + chunk_->size;
+
                 uint64 chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize : GetNxtBuffSize);
                 chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
                 chunk_->size = chunkEnd - 1;
@@ -1124,9 +1120,6 @@ namespace rabbit {
             if (r != toRead) {
                 mFqReader->setEof();
             }
-            //}else {
-            //	mFqReader->setEof();
-            //}
             return true;
         }
 
@@ -1251,7 +1244,6 @@ namespace rabbit {
  * @param size_ data_ size
  */
         void FastqFileReader::SkipToEol(uchar *data_, uint64 &pos_, const uint64 size_) {
-            // cerr << "pos: " << pos_ << " size: " << size_ << endl;
             ASSERT(pos_ < size_);
 
             while (data_[pos_] != '\n' && data_[pos_] != '\r' && pos_ < size_) ++pos_;

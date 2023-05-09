@@ -13,6 +13,9 @@
 #include <string>
 #include <vector>
 
+#include <utility>
+
+
 namespace care{
 
     enum class TempCorrectedSequenceType : int {Anchor, Candidate};
