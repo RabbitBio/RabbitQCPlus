@@ -99,8 +99,8 @@ CmdInfo::CmdInfo() {
     //parallel gz
     use_pugz_ = false;
     use_pigz_ = false;
-    pugz_threads_ = 2;
-    pigz_threads_ = 2;
+    pugz_threads_ = -1;
+    pigz_threads_ = -1;
 
     //use care
     do_correction_with_care_ = false;

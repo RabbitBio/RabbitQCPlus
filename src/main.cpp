@@ -141,8 +141,9 @@ int main(int argc, char **argv) {
     //parallel gz
     //app.add_flag("--usePugz", cmd_info.use_pugz_, "use pugz to decompress data, default is off");
     //app.add_flag("--usePigz", cmd_info.use_pigz_, "use pigz to compress data, default is off");
-    //app.add_option("--pugzThread", cmd_info.pugz_threads_, "pugz thread number(<=8), default is 2");
-    //app.add_option("--pigzThread", cmd_info.pigz_threads_, "pigz thread number, default is 2");
+    app.add_option("--pugzThread", cmd_info.pugz_threads_, "pugz thread number for each input file, automatic assignment according to the number of total threads (-w) by default. Note: >=2 threads when specified manually\n");
+    app.add_option("--pigzThread", cmd_info.pigz_threads_, "pigz thread number for each output file, automatic assignment according to the number of total threads (-w) by default. Note: >=2 threads when specified manually.\n");
+
     stringstream ss;
     for (int i = 0; i < argc; i++) {
         ss << argv[i] << " ";
@@ -211,21 +212,63 @@ int main(int argc, char **argv) {
         }
     }
     if(files_ok == 0){
-        printf("error : for PE data, both files must be of the same type, i.e. cannot be one compressed and one uncompressed!");
+        printf("error : for PE data, both files must be of the same type, i.e. cannot be one compressed and one uncompressed!\n");
         return 0;
     }
+
+    int manual_pugz = 0;
+    int manual_pigz = 0;
+    if(cmd_info.pugz_threads_ != -1) {
+        cmd_info.use_pugz_ = 1;
+        manual_pugz = 1;
+    }
+    if(cmd_info.pigz_threads_ != -1) {
+        cmd_info.use_pigz_ = 1;
+        manual_pigz = 1;
+    }
+    int base_mul = 1;
+    if(cmd_info.in_file_name2_.length() != 0) base_mul = 2;
+
+    int except_threas = 0;
+    if(manual_pugz) except_threas += cmd_info.pugz_threads_ * base_mul;
+    if(manual_pigz) except_threas += cmd_info.pigz_threads_ * base_mul;
+
+    if(except_threas >= cmd_info.thread_number_) {
+        printf("error : number of threads used for parallel (de)compression >= total number of threads (-w)!  note: processing PE files may require twice the number of threads to (de)compress the file\n");
+        return 0;
+    }
+    if(manual_pugz > 0 && !ends_with(cmd_info.in_file_name1_, ".gz")) {
+        printf("error : cannot specify pugzThread for uncompressed input file!\n");
+        return 0;
+    }
+    if(manual_pigz > 0 && !ends_with(cmd_info.out_file_name1_, ".gz")) {
+        printf("error : cannot specify pigzThread for uncompressed output file!\n");
+        return 0;
+    }
+    if(manual_pugz == 1 && cmd_info.pugz_threads_ == 1) {
+        printf("error : must be >=2 when using the usePugz parameter.\n");
+        return 0;
+    }
+    if(manual_pigz == 1 && cmd_info.pigz_threads_ == 1) {
+        printf("error : must be >=2 when using the usePigz parameter.\n");
+        return 0;
+    }
+    cmd_info.thread_number_ -= except_threas;
+
+
+    int ori_threads = cmd_info.thread_number_;
 
     //TODO not good when use care
     int in_gz = ends_with(cmd_info.in_file_name1_, ".gz");
     int out_gz = ends_with(cmd_info.out_file_name1_, ".gz");
-
-
     int in_module = 0;
-    if (in_gz && cmd_info.use_igzip_ == 0) in_module |= 1;
-    if (out_gz) in_module |= 2;
+    if (in_gz && cmd_info.use_igzip_ == 0 && manual_pugz == 0) in_module |= 1;
+    if (out_gz && manual_pigz == 0) in_module |= 2;
 
     if(cmd_info.in_file_name2_.length() == 0)cmd_info.thread_number_ = min(32, cmd_info.thread_number_);
     else cmd_info.thread_number_ = min(cmd_info.thread_number_, 64);
+
+    int now_threads = cmd_info.thread_number_;
 
     int t1, t2, t3;
     if (is_pe) {
@@ -270,15 +313,16 @@ int main(int argc, char **argv) {
         }
     }
 
+
     cmd_info.thread_number_ = t2;
-    if (t1 == 0){
-        cmd_info.use_pugz_ = 0;
+    if (t1 <= 1){
+        if(manual_pugz == 0) cmd_info.use_pugz_ = 0;
     } else {
         cmd_info.use_pugz_ = 1;
         cmd_info.pugz_threads_ = t1;
     }
     if (t3 <= 1){
-        cmd_info.use_pigz_ = 0;
+        if(manual_pigz == 0) cmd_info.use_pigz_ = 0;
     } else {
         cmd_info.use_pigz_ = 1;
         cmd_info.pigz_threads_ = t3;
@@ -290,13 +334,23 @@ int main(int argc, char **argv) {
     }
 
 
-    //printf("t1, t2, t3 is %d %d %d\n", t1, t2, t3);
+    if(ori_threads > now_threads) {
+         double threads_rate = 1.0 * ori_threads / now_threads;
+         cmd_info.pugz_threads_ = ceil(threads_rate * cmd_info.pugz_threads_);
+         cmd_info.pigz_threads_ = ceil(threads_rate * cmd_info.pigz_threads_);
+         cmd_info.thread_number_ = ceil(threads_rate * cmd_info.thread_number_);
+    }
 
-    //printf(" pugz is %d\n", cmd_info.use_pugz_);
-    //printf(" pigz is %d\n", cmd_info.use_pigz_);
-    //printf(" pugz threads are %d\n", cmd_info.pugz_threads_);
-    //printf(" pigz threads are %d\n", cmd_info.pigz_threads_);
-    //printf(" qc threads are %d\n", cmd_info.thread_number_);
+#ifdef Verbose
+    printf("t1, t2, t3 is %d %d %d\n", t1, t2, t3);
+
+    printf(" pugz is %d\n", cmd_info.use_pugz_);
+    printf(" pigz is %d\n", cmd_info.use_pigz_);
+    printf(" pugz threads are %d\n", cmd_info.pugz_threads_);
+    printf(" pigz threads are %d\n", cmd_info.pigz_threads_);
+    printf(" qc threads are %d\n", cmd_info.thread_number_);
+#endif
+
     if (cmd_info.isStdin_) {
         cmd_info.in_file_name1_ = "/dev/stdin";
     }
