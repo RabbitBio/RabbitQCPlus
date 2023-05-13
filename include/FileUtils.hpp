@@ -591,14 +591,25 @@ writeAllToFd( const int         outputFileDescriptor,
         if (*producerDone == 1) {
             return;
         }
-        char *utmp = new char[nBytesWritten];
-        memcpy(utmp, currentBufferPosition, nBytesWritten);
-        while (Q->try_enqueue({utmp, nBytesWritten}) == 0) {
-            if (*producerDone == 1) {
-                return;
-            }
-            usleep(1000);
-        }
+		const unsigned int CHUNK_SIZE = 4 * 1024 * 1024; // 4MB chunk size
+        const char *currentChunkPosition = static_cast<const char*>(currentBufferPosition);
+		auto tmpSize = nBytesWritten;
+		
+		while (tmpSize > 0) {
+            size_t bytesToCopy = std::min(static_cast<size_t>(tmpSize), static_cast<size_t>(CHUNK_SIZE));
+		    char *utmp = new char[bytesToCopy];
+		    memcpy(utmp, currentChunkPosition, bytesToCopy);
+		    currentChunkPosition += bytesToCopy;
+		    tmpSize -= bytesToCopy;
+		
+		    while (Q->try_enqueue({utmp, bytesToCopy}) == 0) {
+		        if (*producerDone == 1) {
+		            return;
+		        }
+		        usleep(1000);
+		    }
+		}
+
         //std::cerr << "write to RQCP " << dataToWriteSize - nTotalWritten << std::endl;
         if ( nBytesWritten <= 0 ) {
             std::stringstream message;

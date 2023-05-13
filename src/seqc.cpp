@@ -59,7 +59,7 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
         umier_ = new Umier(cmd_info1);
     }
     if (cmd_info1->use_pugz_) {
-        pugzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 10);
+        pugzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 5);
     }
     if (cmd_info1->use_pigz_) {
         pigzQueue = new moodycamel::ReaderWriterQueue<pair<char *, int>>;
