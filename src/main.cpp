@@ -141,8 +141,8 @@ int main(int argc, char **argv) {
     //parallel gz
     //app.add_flag("--usePugz", cmd_info.use_pugz_, "use pugz to decompress data, default is off");
     //app.add_flag("--usePigz", cmd_info.use_pigz_, "use pigz to compress data, default is off");
-    app.add_option("--pugzThread", cmd_info.pugz_threads_, "pugz thread number for each input file, automatic assignment according to the number of total threads (-w) by default. Note: >=2 threads when specified manually\n");
-    app.add_option("--pigzThread", cmd_info.pigz_threads_, "pigz thread number for each output file, automatic assignment according to the number of total threads (-w) by default. Note: >=2 threads when specified manually.\n");
+    app.add_option("--pugzThread", cmd_info.pugz_threads_, "pugz thread number for each input file, automatic assignment according to the number of total threads (-w) by default. Note: must >=2 threads when specified manually\n");
+    app.add_option("--pigzThread", cmd_info.pigz_threads_, "pigz thread number for each output file, automatic assignment according to the number of total threads (-w) by default. Note: must >=2 threads when specified manually\n");
 
     stringstream ss;
     for (int i = 0; i < argc; i++) {
@@ -536,7 +536,7 @@ int main(int argc, char **argv) {
     if (cmd_info.use_pugz_) {
         if(cmd_info.pugz_threads_ > 8){
             //printf("pugz thread number must <= 8, now set pugz thread number == 8.\n");
-            cmd_info.pugz_threads_ = 8;
+            //cmd_info.pugz_threads_ = 8;
         }
         //printf("now use pugz, pugz thread number is %d\n", cmd_info.pugz_threads_);
     }

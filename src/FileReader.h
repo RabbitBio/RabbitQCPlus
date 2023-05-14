@@ -219,8 +219,10 @@ namespace rabbit {
          * @return
          */
         int64 Read(byte *buf, uint64 len, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q,
-                   std::atomic_int *done, std::pair<char *, int> &L) {
-            static int now_L_size = 1 << 20;
+                   std::atomic_int *done, std::pair<char *, int> &L,int tag) {
+            static int now_L_size[2];
+            now_L_size[0] = 1 << 20;
+            now_L_size[1] = 1 << 20;
             std::pair<char *, int> now;
             int64 ret;
             int64 got = 0;
@@ -262,11 +264,11 @@ namespace rabbit {
                     ret = 0;
                     break;
                 }
-                if(now.second > now_L_size) {
+                if(now.second > now_L_size[tag]) {
                     char* tmp_L = new char[now.second];
                     memcpy(tmp_L, L.first, L.second);
                     delete[] L.first;
-                    now_L_size = now.second;
+                    now_L_size[tag] = now.second;
                     L.first = tmp_L;
                 }
                 if (now.second <= len) {

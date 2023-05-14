@@ -21,6 +21,7 @@
 #include "pigz.h"
 #include "polyx.h"
 #include "pugz.h"
+#include "pragzip.h"
 #include "state.h"
 #include "threadinfo.h"
 #include "umier.h"

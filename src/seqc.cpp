@@ -568,7 +568,7 @@ void SeQc::PugzTask() {
     
     int cnt = 5;
 
-    char **infos = new char *[4];
+    char **infos = new char *[5];
     infos[0] = "./pragzip";
     infos[1] = "-c";
     infos[2] = "-P";

@@ -510,7 +510,7 @@ namespace rabbit {
                     leftPart->size = bufferSize;
                     bufferSize = 0;
                 }
-                r = mFqReader->Read(data + leftPart->size, toRead, q1, d1, last1);
+                r = mFqReader->Read(data + leftPart->size, toRead, q1, d1, last1, 0);
                 if (r > 0) {
                     if (r == toRead) {
                         chunkEnd = cbufSize - GetNxtBuffSize;
@@ -547,7 +547,7 @@ namespace rabbit {
                     rightPart->size = bufferSize2;
                     bufferSize2 = 0;
                 }
-                r_right = mFqReader2->Read(data_right + rightPart->size, toRead_right, q2, d2, last2);
+                r_right = mFqReader2->Read(data_right + rightPart->size, toRead_right, q2, d2, last2, 1);
                 if (r_right > 0) {
                     if (r_right == toRead_right) {
                         chunkEnd_right = cbufSize_right - GetNxtBuffSize;
@@ -944,7 +944,7 @@ namespace rabbit {
                 bufferSize = 0;
             }
             int64 r;
-            r = mFqReader->Read(data + leftPart->size, toRead, q1, d1, last1);
+            r = mFqReader->Read(data + leftPart->size, toRead, q1, d1, last1, 0);
             if (r > 0) {
                 if (r == toRead) {
                     chunkEnd = cbufSize - GetNxtBuffSize;
@@ -974,7 +974,7 @@ namespace rabbit {
                 rightPart->size = bufferSize2;
                 bufferSize2 = 0;
             }
-            r = mFqReader2->Read(data_right + rightPart->size, toRead, q2, d2, last2);
+            r = mFqReader2->Read(data_right + rightPart->size, toRead, q2, d2, last2, 1);
             if (r > 0) {
                 if (r == toRead) {
                     chunkEnd_right = cbufSize_right - GetNxtBuffSize;
@@ -1100,7 +1100,7 @@ namespace rabbit {
             }
 
             // read the next chunk
-            int64 r = mFqReader->Read(data + chunk_->size, toRead, q, d, l);
+            int64 r = mFqReader->Read(data + chunk_->size, toRead, q, d, l, 0);
             if (!mFqReader->FinishRead() && !mFqReader->Eof()) {
 
                 cbufSize = r + chunk_->size;

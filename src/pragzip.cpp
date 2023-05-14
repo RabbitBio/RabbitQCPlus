@@ -744,8 +744,10 @@ pragzipCLI( int argc, char** argv, moodycamel::ReaderWriterQueue<std::pair<char 
     #endif
 
         const auto t1 = now();
+#ifdef Verbose
         std::cerr << "Decompressed in total " << totalBytesRead << " B in " << duration( t0, t1 ) << " s -> "
                   << static_cast<double>( totalBytesRead ) / 1e6 / duration( t0, t1 ) << " MB/s\n";
+#endif
 
         auto& out = writingToStdout ? std::cerr : std::cout;
         if ( countBytes != countLines ) {
@@ -767,11 +769,11 @@ pragzipCLI( int argc, char** argv, moodycamel::ReaderWriterQueue<std::pair<char 
 
 
 int main_pragzip(int argc, char *argv[], moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q, std::atomic_int *producerDone) {
-    printf("============\n");
-    for(int i = 0; i < argc; i++) {
-        printf("%s\n", argv[i]);
-    }
-    printf("============\n");
+    //printf("============\n");
+    //for(int i = 0; i < argc; i++) {
+    //    printf("%s\n", argv[i]);
+    //}
+    //printf("============\n");
     try
     {
         return pragzipCLI( argc, argv, Q, producerDone );
