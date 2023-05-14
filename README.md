@@ -17,7 +17,7 @@ RabbitQCPlus can only support 64-bit Linux Systems.
 
 ### Dependancy
 
-- gcc 7.5.0 or newer
+- gcc 9.4.0 or newer
 - [zlib](https://zlib.net/)
 
 ### Compilation

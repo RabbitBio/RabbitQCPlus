@@ -126,8 +126,8 @@ CXX = g++
 # you can add -DVerbose to print more log information
 
 CXXFLAGS := $(InstructSet)
-#CXXFLAGS += -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -fconstexpr-ops-limit=99000100 -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -march=native -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
-CXXFLAGS += -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -march=native -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
+CXXFLAGS += -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -fconstexpr-ops-limit=99000100 -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -march=native -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
+#CXXFLAGS += -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -march=native -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
 
 
 CXX2 = gcc
