@@ -118,7 +118,7 @@ Allow ".tgz" suffix [Chernookiy]
     Fix threadPigz synchronization problem when tracing
     Change macro name MAX to MAX2 to avoid library conflicts
     Determine number of processors on HP-UX [Lloyd]
-2.2    31 Dec 2011  Check for expansion bound busting (e.g[small_map[*((int*)(pthread_getspecific(gtid)))]]. modified zlib)
+2.2    31 Dec 2011  Check for expansion bound busting (e.g. modified zlib)
     Make the "threads" list head global variable volatile
     Fix construction and printing of 32-bit check values
     Add --rsyncable functionality
@@ -172,7 +172,7 @@ Remove use of PATH_MAX (PATH_MAX is not reliable)
     2.3.4   1 Oct 2016  Fix an out of bounds access due to invalid LZW input
     Add an extra sync marker between independent blocks
     Add zlib version for verbose version option (-vV)
-Permit named pipes as input (e.g[small_map[*((int*)(pthread_getspecific(gtid)))]]. made by mkfifo())
+Permit named pipes as input (e.g. made by mkfifo())
     Fix a bug in -r directory traversal
     Add warning for a zip file entry 4 GiB or larger
     2.4    26 Dec 2017  Portability improvements
@@ -183,7 +183,7 @@ Produce Zip64 format when needed for --zip (>= 4 GiB)
     Fix a concurrent read bug in --list operation
     Process options first, for gzip compatibility
     Add --synchronous (-Y) option to force device write
-    Disallow an empty suffix (e.g[small_map[*((int*)(pthread_getspecific(gtid)))]]. --suffix '')
+    Disallow an empty suffix (e.g. --suffix '')
     Return an exit code of 1 if any issues are encountered
     Fix sign error in compression reduction percentage
     2.5    23 Jan 2021  Add --alias/-A option to set .zip name for stdin input
@@ -275,7 +275,7 @@ Produce Zip64 format when needed for --zip (>= 4 GiB)
 
        When doing parallel compression, pigz uses the main threadPigz to read the input
        in 'size' sized chunks (see -b), and puts those in a compression job list,
-       each with a sequence number to keep track of the ordering[small_map[*((int*)(pthread_getspecific(gtid)))]]. If it is not the
+       each with a sequence number to keep track of the ordering. If it is not the
        first chunk, then that job also points to the previous input buffer, from
        which the last 32K will be used as a dictionary (unless -i is specified).
        This sets a lower limit of 32K on 'size'.
@@ -322,18 +322,18 @@ Produce Zip64 format when needed for --zip (>= 4 GiB)
        The input and output buffers are reused through their collection in pools.
        Each buffer has a use count, which when decremented to zero returns the
        buffer to the respective pool. Each input buffer has up to three parallel
-uses: as the input for compression, as the data for the check value
-calculation, and as a dictionary for compression. Each output buffer has
-only one use, which is as the output of compression followed serially as
-data to be written. The input pool is limited in the number of buffers, so
-that reading does not get way ahead of compression and eat up memory with
-more input than can be used. The limit is approximately two times the number
-of compression threads. In the case that reading is fast as compared to
-compression, that number allows a second set of buffers to be read while the
-first set of compressions are being performed. The number of output buffers
-is not directly limited, but is indirectly limited by the release_pigz of input
-buffers to about the same number.
-*/
+       uses: as the input for compression, as the data for the check value
+       calculation, and as a dictionary for compression. Each output buffer has
+       only one use, which is as the output of compression followed serially as
+       data to be written. The input pool is limited in the number of buffers, so
+       that reading does not get way ahead of compression and eat up memory with
+       more input than can be used. The limit is approximately two times the number
+       of compression threads. In the case that reading is fast as compared to
+       compression, that number allows a second set of buffers to be read while the
+       first set of compressions are being performed. The number of output buffers
+       is not directly limited, but is indirectly limited by the release_pigz of input
+       buffers to about the same number.
+       */
 
     // Portability defines.
 #define _FILE_OFFSET_BITS 64            // Use large file functions
@@ -366,8 +366,7 @@ buffers to about the same number.
 #include <dirent.h>     // opendir(), readdir(), closedir(), DIR,
     // struct dirent
 #include <limits.h>     // UINT_MAX, INT_MAX
-
-#if __STDC_VERSION__ - 0 >= 199901L || __GNUC__ - 0 >= 3
+#if __STDC_VERSION__-0 >= 199901L || __GNUC__-0 >= 3
 #  include <inttypes.h> // intmax_t, uintmax_t
     typedef uintmax_t length_t;
     typedef uint32_t crc_t;
@@ -425,7 +424,6 @@ buffers to about the same number.
 #endif
 
 #ifndef NOZOPFLI
-
 #  include "deflate.h"    // ZopfliDeflatePart(),
     // ZopfliInitOptions(),
     // ZopfliOptions
@@ -519,8 +517,8 @@ buffers to about the same number.
 #define BUF 32768
 #define CEN 42
 #define EXT (BUF + CEN)     // provide enough room to unget a header
-#define MAX_PIGZTHREAD_T_NUMBER 16      //can new 16 processes at most
-    pthread_key_t gtid;
+//#define MAX_PIGZTHREAD_T_NUMBER 16      //can new 16 processes at most
+//    pthread_key_t gtid;
 
     int small_hash(unsigned int pid) {
         return pid % 91;
@@ -529,8 +527,8 @@ buffers to about the same number.
 
 using namespace std;
 
-int small_map[100];
-static int threadCnt=0;
+//int small_map[100];
+//static int threadCnt=0;
 // Globals (modified by main threadPigz only when it's the only threadPigz).
 local struct {
     int volatile ret;       // pigz return code
@@ -617,7 +615,7 @@ local int complain(char *fmt, ...) {
 
 #ifdef PIGZ_DEBUG
 
-// Memory tracking[small_map[*((int*)(pthread_getspecific(gtid)))]].
+// Memory tracking.
 
 #define MAXMEM 131072   // maximum number of tracked pointers
 
@@ -763,19 +761,20 @@ local void *alloc(void *ptr, size_t size) {
 
 #ifdef PIGZ_DEBUG
 
-// Logging[small_map[*((int*)(pthread_getspecific(gtid)))]].
+// Logging.
 
-// Starting time of day for tracing[small_map[*((int*)(pthread_getspecific(gtid)))]].
+// Starting time of day for tracing.
 local struct timeval start[MAX_PIGZTHREAD_T_NUMBER];
 
-// Trace log[small_map[*((int*)(pthread_getspecific(gtid)))]].
+// Trace log.
+// TODO
 local struct log {
     struct timeval when;    // time of entry
     char *msg;              // message
     struct log *next;       // next entry
 } *log_head[MAX_PIGZTHREAD_T_NUMBER], **log_tail[MAX_PIGZTHREAD_T_NUMBER];
 #ifndef NOTHREAD
-local lock_pigz *log_lock[MAX_PIGZTHREAD_T_NUMBER];
+local lock_pigz *log_lock[MAX_PIGZTHREAD_T_NUMBER] = {NULL};
 #endif
 
 // Maximum log entry length.
@@ -791,8 +790,9 @@ local void log_init(void) {
         mem_track[small_map[*((int*)(pthread_getspecific(gtid)))]].have = 0;
 #ifndef NOTHREAD
         mem_track[small_map[*((int*)(pthread_getspecific(gtid)))]].lock_pigz_in_mem = new_lock_pigz(0);
-        //yarn_mem(yarn_malloc, yarn_free);
-        yarn_mem(malloc, free);
+        yarn_mem(yarn_malloc, yarn_free);
+        //TODO
+        //yarn_mem(malloc, free);
         log_lock[small_map[*((int*)(pthread_getspecific(gtid)))]] = new_lock_pigz(0);
 #endif
         log_head[small_map[*((int*)(pthread_getspecific(gtid)))]] = NULL;
@@ -827,6 +827,7 @@ local void log_add(char *fmt, ...) {
 #endif
 }
 
+// ylf go on
 // Pull entry from trace log and print it, return false if empty.
 local int log_show(void) {
     struct log *me;
@@ -1698,7 +1699,8 @@ struct job {
 };
 
 // List of compress jobs (with tail for appending to list).
-local lock_pigz *compress_have[MAX_PIGZTHREAD_T_NUMBER];   // number of compress jobs waiting
+// TODO = NULL
+local lock_pigz *compress_have[MAX_PIGZTHREAD_T_NUMBER] = {NULL};   // number of compress jobs waiting
 local struct job *compress_head[MAX_PIGZTHREAD_T_NUMBER], **compress_tail[MAX_PIGZTHREAD_T_NUMBER];
 
 // List of write jobs.
@@ -1706,10 +1708,11 @@ local lock_pigz *write_first[MAX_PIGZTHREAD_T_NUMBER];            // lowest sequ
 local struct job *write_head[MAX_PIGZTHREAD_T_NUMBER];
 
 // Number of compression threads running[small_map[*((int*)(pthread_getspecific(gtid)))]].
-local int cthreads[MAX_PIGZTHREAD_T_NUMBER];
+local int cthreads[MAX_PIGZTHREAD_T_NUMBER] = {0};
 
-// Write threadPigz if running[small_map[*((int*)(pthread_getspecific(gtid)))]].
-local threadPigz *writeth[MAX_PIGZTHREAD_T_NUMBER];
+// Write threadPigz if running.
+// TODO = NULL
+local threadPigz *writeth[MAX_PIGZTHREAD_T_NUMBER] = {NULL};
 
 // Setup job lists (call from main threadPigz).
 local void setup_jobs(void) {
@@ -1740,6 +1743,7 @@ local void setup_jobs(void) {
 
 // Command the compress threads to all return, then join_pigz them all (call from
 // main threadPigz), free all the threadPigz-related resources.
+// TODO bug?
 local void finish_jobs(void) {
     struct job job;
     int caught;
@@ -1758,10 +1762,14 @@ local void finish_jobs(void) {
 
     // join_pigz all of the compress threads, verify they all came back
     //printf("threadCnt is %d\n",threadCnt);
-    if(threadCnt==1)
+    static int nowFinishCnt = 0;
+    nowFinishCnt++;
+    //if(threadCnt==1)
+    //if(nowFinishCnt == 2)
         caught = join_all_pigz();
     Trace(("-- joined %d compress threads", caught));
-    if(threadCnt==1)
+    //if(threadCnt==1)
+    //if(nowFinishCnt == 2)
         assert(caught == cthreads[small_map[*((int*)(pthread_getspecific(gtid)))]]);
     cthreads[small_map[*((int *) (pthread_getspecific(gtid)))]] = 0;
 
@@ -2204,7 +2212,6 @@ local void append_len(struct job *job, size_t len) {
 // subsequent calls of parallel_compress().
 local void parallel_compress(moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, atomic_int *wDone,
         pair<char *, int> &L, atomic_int *qNum) {
-    //printf("111\n");
     long seq;                       // sequence number
     struct space *curr;             // input data to compress
     struct space *next;             // input data that follows curr
@@ -2987,7 +2994,7 @@ local int read_extra(unsigned len, int save) {
 // not a recognized compressed format (considering only the first two bytes of
 // input), -3 is premature EOF within the header, -4 is unexpected header flag
 // values, -5 is the zip central directory, and -6 is a failed gzip header crc
-// check. If -2 is returned, the input pointer has been reset to the beginning[small_map[*((int*)(pthread_getspecific(gtid)))]].
+// check. If -2 is returned, the input pointer has been reset to the beginning.
 // If the return value is not negative, then get_header() sets g[small_map[*((int*)(pthread_getspecific(gtid)))]].form to
 // indicate gzip (0), zlib (1), or zip (2, or 3 if the entry is followed by a
 // data descriptor), and the input points to the first byte of compressed data.
@@ -3347,7 +3354,7 @@ local void show_info(int method, unsigned long check, length_t len, int cont) {
                     !g[small_map[*((int *) (pthread_getspecific(gtid)))]].decode) ||
                 (method == 8 && g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot > (len + (len >> 10) + 12)) ||
                 (method == 257 && g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_tot > len + (len >> 1) + 3))
-#if __STDC_VERSION__ - 0 >= 199901L || __GNUC__ - 0 >= 3
+#if __STDC_VERSION__-0 >= 199901L || __GNUC__-0 >= 3
             printf("%10jd %10jd?  unk    %s\n",
                     (intmax_t)g[small_map[*((int*)(pthread_getspecific(gtid)))]].in_tot, (intmax_t)len, tag);
         else
@@ -3548,7 +3555,7 @@ local unsigned char out_copy[MAX_PIGZTHREAD_T_NUMBER][OUTSIZE];
 local size_t out_len[MAX_PIGZTHREAD_T_NUMBER];
 
 // outb threads states.
-local lock_pigz *outb_write_more[MAX_PIGZTHREAD_T_NUMBER];
+local lock_pigz *outb_write_more[MAX_PIGZTHREAD_T_NUMBER] = {NULL};
 local lock_pigz *outb_check_more[MAX_PIGZTHREAD_T_NUMBER];
 
 // Output write threadPigz.
@@ -3866,7 +3873,7 @@ local void infchk(void) {
                 g[small_map[*((int *) (pthread_getspecific(gtid)))]].form == 0 && ret != -1) ||
             (g[small_map[*((int *) (pthread_getspecific(gtid)))]].form == 1 &&
              (GET(), !g[small_map[*((int *) (pthread_getspecific(gtid)))]].in_eof))){}
-        //        complain("warning: %s: trailing junk was ignored", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
+    //        complain("warning: %s: trailing junk was ignored", g[small_map[*((int *) (pthread_getspecific(gtid)))]].inf);
 }
 
 // --- decompress Unix compress (LZW) input ---
@@ -4153,8 +4160,8 @@ local void out_push(void) {
 }
 
 // Process provided input file, or stdin if path is NULL. process() can call
-// itself for recursive directory processing[small_map[*((int*)(pthread_getspecific(gtid)))]].
-void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, atomic_int *wDone,
+// itself for recursive directory processing.
+local void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, atomic_int *wDone,
         pair<char *, int> &L, atomic_int *qNum) {
 
     //printf("0000\n");
@@ -4163,7 +4170,7 @@ void process(char *path, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q, at
     struct stat st;                 // to get file type and mod time
     ball_t err;                     // error information from throw()
     // all compressed suffixes for decoding search, in length order
-    char *sufs[] = {".z", "-z", "_z", ".Z", ".gz", "-gz", ".zz", "-zz",
+    static char *sufs[] = {".z", "-z", "_z", ".Z", ".gz", "-gz", ".zz", "-zz",
         ".zip", ".ZIP", ".tgz", NULL};
     // open input file with name in, descriptor ind -- set name and mtime
     if (path == NULL) {
@@ -4963,7 +4970,7 @@ pthread_mutex_t mutexPigz;
 
 // Process command line arguments.
 int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, int>> *Q,
-              atomic_int *wDone,  pair<char *, int> &L, atomic_int *qNum) {
+        atomic_int *wDone,  pair<char *, int> &L, atomic_int *qNum) {
     //printf("pigz* gettid = %u\n", syscall(SYS_gettid));
     int tid = small_hash(syscall(SYS_gettid));
     //printf("pigz* tid = %d\n", tid);
@@ -4971,10 +4978,12 @@ int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, 
 
 
     pthread_mutex_lock(&mutexPigz);
-    small_map[tid] = threadCnt;
+    //small_map[tid] = threadCnt;
     threadCnt++;
+    int ttid = threadCnt;
+    small_map[ttid] = threadCnt;
     if(threadCnt==1){
-       // printf("init...\n");
+        // printf("init...\n");
         for (int i = 0; i < MAX_PIGZTHREAD_T_NUMBER; i++) {
             compress_have[i] = NULL;
             getPigz[i] = 0;
@@ -4991,12 +5000,13 @@ int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, 
     }
     pthread_mutex_unlock(&mutexPigz);
     if (small_map[tid] == 1) {
-//        usleep(10000000);
+        //        usleep(10000000);
     }
 
 
-    pthread_setspecific(gtid, &tid);
-    //printf("gtid is %d\n", *((int *) (pthread_getspecific(gtid))));
+    //pthread_setspecific(gtid, &tid);
+    pthread_setspecific(gtid, &ttid);
+    //printf("gtid is %d, tid is %d\n", *((int *) (pthread_getspecific(gtid))), ttid);
 
 
     //printf("%d argc %d\n", tid, argc);
@@ -5117,7 +5127,7 @@ int main_pigz(int argc, char **argv, moodycamel::ReaderWriterQueue<pair<char *, 
             } else if (option(argv[n]))   // process argument
                 argv[n] = NULL;         // remove if option
         option(NULL);                   // check for missing parameter
-            
+
 
         //printf("verbose is %d\n", g[small_map[*((int *) (pthread_getspecific(gtid)))]].verbosity);
 

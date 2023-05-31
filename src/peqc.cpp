@@ -381,7 +381,8 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
         last2.second = 0;
         while (true) {
             rabbit::fq::FastqDataPairChunk *fqdatachunk;
-            fqdatachunk = fqFileReader->readNextPairChunkParallel(pugzQueue1, pugzQueue2, &pugzDone1, &pugzDone2, last1,
+            //fqdatachunk = fqFileReader->readNextPairChunkParallel(pugzQueue1, pugzQueue2, &pugzDone1, &pugzDone2, last1,
+            fqdatachunk = fqFileReader->readNextPairChunk(pugzQueue1, pugzQueue2, &pugzDone1, &pugzDone2, last1,
                     last2);
             if (fqdatachunk == NULL) break;
             n_chunks++;
@@ -398,7 +399,8 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
         last2.second = 0;
         while (true) {
             rabbit::fq::FastqDataPairChunk *fqdatachunk;
-            fqdatachunk = fqFileReader->readNextPairChunkParallel(careQueue1, careQueue2, &careDone1, &careDone2, last1,
+            //fqdatachunk = fqFileReader->readNextPairChunkParallel(careQueue1, careQueue2, &careDone1, &careDone2, last1,
+            fqdatachunk = fqFileReader->readNextPairChunk(careQueue1, careQueue2, &careDone1, &careDone2, last1,
                     last2);
             if (fqdatachunk == NULL) break;
             n_chunks++;
@@ -409,7 +411,8 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
     } else {
         while (true) {
             rabbit::fq::FastqDataPairChunk *fqdatachunk;
-            fqdatachunk = fqFileReader->readNextPairChunkParallel();
+            //fqdatachunk = fqFileReader->readNextPairChunkParallel();
+            fqdatachunk = fqFileReader->readNextPairChunk();
             if (fqdatachunk == NULL) break;
             n_chunks++;
             dq.Push(n_chunks, fqdatachunk);

@@ -50,7 +50,8 @@
 #include "yarn.h"
 
 // Constants.
-#define local static            // for non-exported functions and globals
+//#define local static            // for non-exported functions and globals
+#define local            // for non-exported functions and globals
 
 // Error handling external globals, resettable by application.
 char *yarn_prefix = "yarn";
@@ -220,12 +221,16 @@ struct thread_s {
 
 // List of threads launched but not joined, count of threads exited but not
 // joined (incremented by ignition() just before exiting).
-local lock_pigz threads_lock = {
+local lock_pigz threads_lock[MAX_PIGZTHREAD_T_NUMBER] = {
+    {
     PTHREAD_MUTEX_INITIALIZER,
     PTHREAD_COND_INITIALIZER,
-    0                           // number of threads exited but not joined
+    0
+    }
+        // number of threads exited but not joined
 };
-local threadPigz *threads = NULL;       // list of extant threads
+//local threadPigz *threads = NULL;       // list of extant threads
+local threadPigz *threads[MAX_PIGZTHREAD_T_NUMBER] = {NULL};       // list of extant threads
 
 // Structure in which to pass the probe and its payload to ignition().
 struct capsule {
@@ -241,8 +246,8 @@ local void reenter(void *arg) {
 
     // find this threadPigz in the threads list by matching the threadPigz id
     pthread_t me = pthread_self();
-    possess_(&(threads_lock), capsule->file, capsule->line);
-    threadPigz **prior = &(threads);
+    possess_(&(threads_lock[small_map[*((int*)(pthread_getspecific(gtid)))]]), capsule->file, capsule->line);
+    threadPigz **prior = &(threads[small_map[*((int*)(pthread_getspecific(gtid)))]]);
     threadPigz *match;
     while ((match = *prior) != NULL) {
         if (pthread_equal(match->id, me))
@@ -254,14 +259,14 @@ local void reenter(void *arg) {
 
     // mark this threadPigz as done and move it to the head of the list
     match->done = 1;
-    if (threads != match) {
+    if (threads[small_map[*((int*)(pthread_getspecific(gtid)))]] != match) {
         *prior = match->next;
-        match->next = threads;
-        threads = match;
+        match->next = threads[small_map[*((int*)(pthread_getspecific(gtid)))]];
+        threads[small_map[*((int*)(pthread_getspecific(gtid)))]] = match;
     }
 
     // update the count of threads to be joined and alert join_all()
-    twist_(&(threads_lock), BY, +1, capsule->file, capsule->line);
+    twist_(&(threads_lock[small_map[*((int*)(pthread_getspecific(gtid)))]]), BY, +1, capsule->file, capsule->line);
 
     // free the capsule resource, even if the threadPigz is cancelled (though yarn
     // doesn't use pthread_cancel() -- you never know)
@@ -304,7 +309,7 @@ threadPigz *launch_(void (*probe)(void *), void *payload,
 
     // assure this threadPigz is in the list before join_all() or ignition() looks
     // for it
-    possess_(&(threads_lock), file, line);
+    possess_(&(threads_lock[small_map[*((int*)(pthread_getspecific(gtid)))]]), file, line);
 
     // create the threadPigz and call ignition() from that threadPigz
     threadPigz *th = my_malloc(sizeof(struct thread_s), file, line);
@@ -324,9 +329,9 @@ threadPigz *launch_(void (*probe)(void *), void *payload,
 
     // put the threadPigz in the threads list for join_all()
     th->done = 0;
-    th->next = threads;
-    threads = th;
-    release_(&(threads_lock), file, line);
+    th->next = threads[small_map[*((int*)(pthread_getspecific(gtid)))]];
+    threads[small_map[*((int*)(pthread_getspecific(gtid)))]] = th;
+    release_(&(threads_lock[small_map[*((int*)(pthread_getspecific(gtid)))]]), file, line);
     return th;
 }
 
@@ -337,8 +342,8 @@ void join_(threadPigz *ally, char const *file, long line) {
         fail(ret, file, line, "joinPigz");
 
     // find the threadPigz in the threads list
-    possess_(&(threads_lock), file, line);
-    threadPigz **prior = &(threads);
+    possess_(&(threads_lock[small_map[*((int*)(pthread_getspecific(gtid)))]]), file, line);
+    threadPigz **prior = &(threads[small_map[*((int*)(pthread_getspecific(gtid)))]]);
     threadPigz *match;
     while ((match = *prior) != NULL) {
         if (match == ally)
@@ -350,9 +355,9 @@ void join_(threadPigz *ally, char const *file, long line) {
 
     // remove threadPigz from list and update exited count, free threadPigz
     if (match->done)
-        threads_lock.value--;
+        threads_lock[small_map[*((int*)(pthread_getspecific(gtid)))]].value--;
     *prior = match->next;
-    release_(&(threads_lock), file, line);
+    release_(&(threads_lock[small_map[*((int*)(pthread_getspecific(gtid)))]]), file, line);
     my_free(ally);
 }
 
@@ -363,15 +368,15 @@ void join_(threadPigz *ally, char const *file, long line) {
 int join_all_(char const *file, long line) {
     // grab the threads list and initialize the joined count
     int count = 0;
-    possess_(&(threads_lock), file, line);
+    possess_(&(threads_lock[small_map[*((int*)(pthread_getspecific(gtid)))]]), file, line);
 
     // do until threads list is empty
-    while (threads != NULL) {
+    while (threads[small_map[*((int*)(pthread_getspecific(gtid)))]] != NULL) {
         // wait until at least one threadPigz has reentered
-        wait_for_(&(threads_lock), NOT_TO_BE, 0, file, line);
+        wait_for_(&(threads_lock[small_map[*((int*)(pthread_getspecific(gtid)))]]), NOT_TO_BE, 0, file, line);
 
         // find the first threadPigz marked done (should be at or near the top)
-        threadPigz **prior = &(threads);
+        threadPigz **prior = &(threads[small_map[*((int*)(pthread_getspecific(gtid)))]]);
         threadPigz *match;
         while ((match = *prior) != NULL) {
             if (match->done)
@@ -386,13 +391,13 @@ int join_all_(char const *file, long line) {
         int ret = pthread_join(match->id, NULL);
         if (ret)
             fail(ret, file, line, "joinPigz");
-        threads_lock.value--;
+        threads_lock[small_map[*((int*)(pthread_getspecific(gtid)))]].value--;
         *prior = match->next;
         my_free(match);
         count++;
     }
 
     // let go of the threads list and return the number of threads joined
-    release_(&(threads_lock), file, line);
+    release_(&(threads_lock[small_map[*((int*)(pthread_getspecific(gtid)))]]), file, line);
     return count;
 }
