@@ -58,7 +58,7 @@
         return ( fileMode & S_IFMT ) == fileType;
     }
 
-    #define S_ISFIFO(m) testFileType( m, S_IFIFO )
+    #define S_ISFIFO( m ) testFileType( m, S_IFIFO )
 
     #define CONSTEXPR_EXCEPT_MSVC
 #else
@@ -72,7 +72,7 @@
     #define forceinline __forceinline
 #elif defined( __clang__ ) || defined( __GNUC__ )
 /* https://stackoverflow.com/questions/38499462/how-to-tell-clang-to-stop-pretending-to-be-other-compilers */
-    #define forceinline __attribute__(( always_inline ))
+    #define forceinline __attribute__(( always_inline )) inline
 #endif
 
 template<typename I1,
@@ -98,6 +98,17 @@ absDiff( const T& a,
          const V& b )
 {
     return a < b ? b - a : a - b;
+}
+
+
+template<typename U>
+[[nodiscard]] constexpr U
+saturatingAddition( const U a,
+                    const U b )
+{
+    static_assert( std::is_unsigned_v<U>, "Only intended for unsigned addition!" );
+    auto result = a + b;
+    return result < a ? std::numeric_limits<U>::max() : result;
 }
 
 
@@ -131,7 +142,7 @@ operator<<( std::ostream&  out,
 }
 
 
-template <typename S, typename T>
+template<typename S, typename T>
 [[nodiscard]] constexpr bool
 startsWith( const S& fullString,
             const T& prefix,
@@ -150,7 +161,7 @@ startsWith( const S& fullString,
 }
 
 
-template <typename S, typename T>
+template<typename S, typename T>
 [[nodiscard]] constexpr bool
 endsWith( const S& fullString,
           const T& suffix,
@@ -169,14 +180,14 @@ endsWith( const S& fullString,
 }
 
 
-[[nodiscard]] std::string
+[[nodiscard]] inline std::string
 formatBits( const uint64_t value )
 {
     return std::to_string( value / 8 ) + " B " + std::to_string( value % 8 ) + " b";
 }
 
 
-[[nodiscard]] std::string
+[[nodiscard]] inline std::string
 formatBytes( const uint64_t value )
 {
     const std::array<std::pair<std::string_view, uint64_t>, 4> UNITS{ {
@@ -205,7 +216,7 @@ formatBytes( const uint64_t value )
 }
 
 
-[[nodiscard]] std::chrono::time_point<std::chrono::high_resolution_clock>
+[[nodiscard]] inline std::chrono::time_point<std::chrono::high_resolution_clock>
 now() noexcept
 {
     return std::chrono::high_resolution_clock::now();
@@ -224,7 +235,7 @@ duration( const T& t0,
 }
 
 
-[[nodiscard]] uint64_t
+[[nodiscard]] inline uint64_t
 unixTime() noexcept
 {
     const auto currentTime = std::chrono::system_clock::now().time_since_epoch();
@@ -275,7 +286,7 @@ private:
 };
 
 
-std::ostream&
+inline std::ostream&
 operator<<( std::ostream&           out,
             const ThreadSafeOutput& output )
 {
@@ -284,7 +295,7 @@ operator<<( std::ostream&           out,
 }
 
 
-[[nodiscard]] std::string
+[[nodiscard]] inline std::string
 toString( std::future_status status ) noexcept
 {
     switch ( status )
@@ -444,7 +455,7 @@ testFlags( const uint64_t value,
  * Fortunately, this is only needed for the tests, so the incomplete std::filesystem support
  * is not a problem for building the manylinux wheels on the pre 10.15 macOS kernel. */
 #ifndef __APPLE_CC__
-void
+inline void
 createRandomTextFile( std::filesystem::path path,
                       uint64_t              size )
 {
@@ -456,7 +467,7 @@ createRandomTextFile( std::filesystem::path path,
 }
 
 
-void
+inline void
 createRandomFile( std::filesystem::path path,
                   uint64_t              size )
 {
@@ -484,9 +495,14 @@ public:
     {}
 
     TemporaryDirectory( TemporaryDirectory&& ) = default;
+
     TemporaryDirectory( const TemporaryDirectory& ) = delete;
-    TemporaryDirectory& operator=( TemporaryDirectory&& ) = default;
-    TemporaryDirectory& operator=( const TemporaryDirectory& ) = delete;
+
+    TemporaryDirectory&
+    operator=( TemporaryDirectory&& ) = default;
+
+    TemporaryDirectory&
+    operator=( const TemporaryDirectory& ) = delete;
 
     ~TemporaryDirectory()
     {
@@ -511,7 +527,7 @@ private:
 };
 
 
-[[nodiscard]] TemporaryDirectory
+[[nodiscard]] inline TemporaryDirectory
 createTemporaryDirectory( const std::string& title = "tmpTest" )
 {
     const std::filesystem::path tmpFolderName = title + "." + std::to_string( unixTime() );
@@ -592,11 +608,13 @@ operator "" _Ki( unsigned long long int value ) noexcept
     return value * 1024ULL;
 }
 
+
 [[nodiscard]] constexpr uint64_t
 operator "" _Mi( unsigned long long int value ) noexcept
 {
     return value * 1024ULL * 1024ULL;
 }
+
 
 [[nodiscard]] constexpr uint64_t
 operator "" _Gi( unsigned long long int value ) noexcept
@@ -655,13 +673,15 @@ template<typename CharT>
 [[nodiscard]] bool
 isBase64( std::basic_string_view<CharT> data )
 {
-    static const auto base64Symbols = [] () {
-        std::basic_string<CharT> result;
-        result.resize( BASE64_SYMBOLS.size() );
-        std::transform( BASE64_SYMBOLS.begin(), BASE64_SYMBOLS.end(), result.begin(),
-                        [] ( const auto x ) { return static_cast<CharT>( x ); } );
-        return result;
-    }();
+    static const auto base64Symbols =
+        [] ()
+        {
+            std::basic_string<CharT> result;
+            result.resize( BASE64_SYMBOLS.size() );
+            std::transform( BASE64_SYMBOLS.begin(), BASE64_SYMBOLS.end(), result.begin(),
+                            [] ( const auto x ) { return static_cast<CharT>( x ); } );
+            return result;
+        }();
 
     return data.find_first_not_of( base64Symbols ) == std::string_view::npos;
 }

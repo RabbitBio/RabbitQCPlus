@@ -8,9 +8,11 @@
 #include <utility>
 #include <vector>
 
-#include "AlignedAllocator.hpp"
+#include <AlignedAllocator.hpp>
+#include <common.hpp>
+#include <VectorView.hpp>
+
 #include "FileReader.hpp"
-#include "VectorView.hpp"
 
 
 class BufferedFileReader :
@@ -21,8 +23,8 @@ public:
 
 public:
     explicit
-    BufferedFileReader( std::unique_ptr<FileReader> fileReader,
-                        size_t                      bufferSize = 128_Ki ) :
+    BufferedFileReader( UniqueFileReader fileReader,
+                        size_t           bufferSize = 128_Ki ) :
         m_maxBufferSize( bufferSize ),
         m_file( std::move( fileReader ) )
     {}
@@ -48,7 +50,7 @@ public:
         m_buffer( std::move( inMemoryFileContents ) )
     {}
 
-    [[nodiscard]] FileReader*
+    [[nodiscard]] UniqueFileReader
     clone() const override
     {
         throw std::invalid_argument( "Cloning this file reader is not allowed because the internal file position "
@@ -142,28 +144,19 @@ public:
             throw std::invalid_argument( "Cannot seek closed file!" );
         }
 
-        /* Translate into SEEK_CUR. */
-        long long int relativeOffset = 0;
-
-        switch ( origin )
-        {
-        case SEEK_SET:
-            relativeOffset = offset - static_cast<long long int>( tell() );
-            break;
-        case SEEK_CUR:
-            relativeOffset = offset;
-            break;
-        case SEEK_END:
-            relativeOffset = size() + offset - static_cast<long long int>( tell() );
-            break;
-        }
-
-        if ( relativeOffset == 0 ) {
-            return tell();
-        }
+        /* Translate offset. */
+        const auto newBufferPosition =
+            [this, offset, origin] () {
+                switch ( origin )
+                {
+                case SEEK_SET: return offset;
+                case SEEK_CUR: return static_cast<long long int>( m_bufferPosition ) + offset;
+                case SEEK_END: return static_cast<long long int>( size() ) + offset;
+                }
+                throw std::invalid_argument( "Invalid origin value!" );
+            }();
 
         /* Check if we can simply seek inside the buffer. */
-        const auto newBufferPosition = static_cast<long long int>( m_bufferPosition ) + relativeOffset;
         if ( ( newBufferPosition >= 0 ) && ( static_cast<size_t>( newBufferPosition ) <= m_buffer.size() ) ) {
             m_bufferPosition = newBufferPosition;
             return tell();
@@ -234,7 +227,7 @@ private:
 
 protected:
     const size_t m_maxBufferSize;
-    std::unique_ptr<FileReader> m_file;
+    UniqueFileReader m_file;
 
     size_t m_originalBufferOffset{ 0 };
     AlignedBuffer m_buffer;

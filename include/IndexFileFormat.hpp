@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <common.hpp>                   // _Ki literals
 #include <filereader/FileReader.hpp>
 #include <FileUtils.hpp>
 
@@ -104,7 +105,7 @@ readValue( FileReader* file )
 
 
 [[nodiscard]] inline GzipIndex
-readGzipIndex( std::unique_ptr<FileReader> file )
+readGzipIndex( UniqueFileReader file )
 {
     GzipIndex index;
 
@@ -118,7 +119,8 @@ readGzipIndex( std::unique_ptr<FileReader> file )
             }
         };
 
-    const auto loadValue = [&checkedRead] ( auto& destination ) { checkedRead( &destination, sizeof( destination ) ); };
+    const auto loadValue =
+        [&checkedRead] ( auto& destination ) { checkedRead( &destination, sizeof( destination ) ); };
 
     std::vector<char> formatId( 5, 0 );
     checkedRead( formatId.data(), formatId.size() );
@@ -197,7 +199,7 @@ readGzipIndex( std::unique_ptr<FileReader> file )
 }
 
 
-void
+inline void
 writeGzipIndex( const GzipIndex&                                              index,
                 const std::function<void( const void* buffer, size_t size )>& checkedWrite )
 {
@@ -207,7 +209,8 @@ writeGzipIndex( const GzipIndex&                                              in
     const uint32_t windowSizeInBytes = static_cast<uint32_t>( 32_Ki );
 
     if ( !std::all_of( checkpoints.begin(), checkpoints.end(), [windowSizeInBytes] ( const auto& checkpoint ) {
-        return checkpoint.window.empty() || ( checkpoint.window.size() >= windowSizeInBytes ); } ) )
+                           return checkpoint.window.empty() || ( checkpoint.window.size() >= windowSizeInBytes );
+                       } ) )
     {
         throw std::invalid_argument( "All window sizes must be at least 32 KiB!" );
     }

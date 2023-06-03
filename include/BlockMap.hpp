@@ -11,6 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include <common.hpp>
+
 
 /**
  * Should get block offsets and decoded sizes and will do conversions between decoded and encoded offsets!
@@ -245,6 +247,12 @@ public:
         return m_blockToDataOffsets.back();
     }
 
+    [[nodiscard]] bool
+    empty() const
+    {
+        return m_blockToDataOffsets.empty();
+    }
+
 private:
     [[nodiscard]] BlockInfo
     get( typename BlockOffsets::const_reverse_iterator blockOffset ) const
@@ -281,6 +289,6 @@ private:
     std::vector<size_t> m_eosBlocks;
     bool m_finalized{ false };
 
-    size_t m_lastBlockEncodedSize{ 0 }; /**< Encoded block size of m_blockToDataOffsets.rbegin() */
-    size_t m_lastBlockDecodedSize{ 0 }; /**< Decoded block size of m_blockToDataOffsets.rbegin() */
+    size_t m_lastBlockEncodedSize{ 0 };  /**< Encoded block size of m_blockToDataOffsets.rbegin() */
+    size_t m_lastBlockDecodedSize{ 0 };  /**< Decoded block size of m_blockToDataOffsets.rbegin() */
 };

@@ -6,17 +6,24 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <iostream>
+#include <mutex>
+#include <numeric>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
-#include <thread>
 
 #include <sys/stat.h>
+#include "../src/Globals.h"
 
 #ifdef _MSC_VER
     #define NOMINMAX
     #include <Windows.h>
+
+    #include <fcntl.h>  // _O_BINARY
+    #include <stdio.h>  // stdout
+    #include <io.h>     // _setmode
 #else
     #ifndef _GNU_SOURCE
         #define _GNU_SOURCE
@@ -48,11 +55,8 @@
 #endif
 
 
-#include "../src/Globals.h"
-
-
 #ifdef _MSC_VER
-[[nodiscard]] bool
+[[nodiscard]] inline bool
 stdinHasInput()
 {
     const auto handle = GetStdHandle( STD_INPUT_HANDLE );
@@ -62,7 +66,7 @@ stdinHasInput()
 }
 
 
-[[nodiscard]] bool
+[[nodiscard]] inline bool
 stdoutIsDevNull()
 {
     /**
@@ -74,7 +78,7 @@ stdoutIsDevNull()
 
 #else
 
-[[nodiscard]] bool
+[[nodiscard]] inline bool
 stdinHasInput()
 {
     pollfd fds{};
@@ -84,7 +88,7 @@ stdinHasInput()
 }
 
 
-[[nodiscard]] bool
+[[nodiscard]] inline bool
 stdoutIsDevNull()
 {
     struct stat devNull{};
@@ -143,8 +147,11 @@ struct unique_file_descriptor
     }
 
     unique_file_descriptor() = default;
+
     unique_file_descriptor( const unique_file_descriptor& ) = delete;
-    unique_file_descriptor& operator=( const unique_file_descriptor& ) = delete;
+
+    unique_file_descriptor&
+    operator=( const unique_file_descriptor& ) = delete;
 
     unique_file_descriptor( unique_file_descriptor&& other ) noexcept :
         m_fd( other.m_fd )
@@ -192,11 +199,13 @@ using unique_file_ptr = std::unique_ptr<std::FILE, std::function<void ( std::FIL
 inline unique_file_ptr
 make_unique_file_ptr( std::FILE* file )
 {
-    return unique_file_ptr( file, []( auto* ownedFile ){
-        if ( ownedFile != nullptr ) {
-            std::fclose( ownedFile );
-        } } );
+    return unique_file_ptr( file, [] ( auto* ownedFile ) {
+                                if ( ownedFile != nullptr ) {
+                                    std::fclose( ownedFile );
+                                }
+                            } );
 }
+
 
 inline unique_file_ptr
 make_unique_file_ptr( char const* const filePath,
@@ -205,13 +214,13 @@ make_unique_file_ptr( char const* const filePath,
     return make_unique_file_ptr( std::fopen( filePath, mode ) );
 }
 
+
 inline unique_file_ptr
 make_unique_file_ptr( int         fileDescriptor,
                       char const* mode )
 {
     return make_unique_file_ptr( fdopen( fileDescriptor, mode ) );
 }
-
 
 
 inline unique_file_ptr
@@ -253,7 +262,7 @@ throwingOpen( int         fileDescriptor,
 
 
 /** dup is not strong enough to be able to independently seek in the old and the dup'ed fd! */
-[[nodiscard]] std::string
+[[nodiscard]] inline std::string
 fdFilePath( int fileDescriptor )
 {
     std::stringstream filename;
@@ -263,7 +272,7 @@ fdFilePath( int fileDescriptor )
 
 
 #ifndef __APPLE_CC__  // Missing std::filesytem::path support in wheels
-[[nodiscard]] std::string
+[[nodiscard]] inline std::string
 findParentFolderContaining( const std::string& folder,
                             const std::string& relativeFilePath )
 {
@@ -349,7 +358,7 @@ findParentFolderContaining( const std::string& folder,
  * @return true if successful and false if it could not be spliced from the beginning, e.g., because the file
  *         descriptor is not a pipe.
  */
-[[nodiscard]] bool
+[[nodiscard]] inline bool
 writeAllSpliceUnsafe( [[maybe_unused]] const int         outputFileDescriptor,
                       [[maybe_unused]] const void* const dataToWrite,
                       [[maybe_unused]] const size_t      dataToWriteSize )
@@ -374,7 +383,7 @@ writeAllSpliceUnsafe( [[maybe_unused]] const int         outputFileDescriptor,
 }
 
 
-[[nodiscard]] bool
+[[nodiscard]] inline bool
 writeAllSpliceUnsafe( [[maybe_unused]] const int                   outputFileDescriptor,
                       [[maybe_unused]] const std::vector<::iovec>& dataToWrite )
 {
@@ -393,16 +402,17 @@ writeAllSpliceUnsafe( [[maybe_unused]] const int                   outputFileDes
         }
 
         /* Skip over buffers that were written fully. */
-        for ( ; ( i < dataToWrite.size() ) && ( dataToWrite[i].iov_len <= static_cast<size_t>( nBytesWritten ) ); ++i ) {
+        for ( ; ( i < dataToWrite.size() ) && ( dataToWrite[i].iov_len <= static_cast<size_t>( nBytesWritten ) );
+              ++i ) {
             nBytesWritten -= dataToWrite[i].iov_len;
         }
 
-        /* Write out last partially written buffer if necessary so that we can resumefull vectorized writing
+        /* Write out last partially written buffer if necessary so that we can resume full vectorized writing
          * from the next iovec buffer. */
         if ( ( i < dataToWrite.size() ) && ( nBytesWritten > 0 ) ) {
             const auto& iovBuffer = dataToWrite[i];
 
-            assert( iovBuffer.iov_len < static_cast<size_t>( nBytesWritten ) );
+            assert( iovBuffer.iov_len > static_cast<size_t>( nBytesWritten ) );
             const auto size = iovBuffer.iov_len - nBytesWritten;
 
             const auto remainingData = reinterpret_cast<char*>( iovBuffer.iov_base ) + nBytesWritten;
@@ -486,7 +496,6 @@ public:
         return true;
     }
 
-
 private:
     template<typename T>
     void
@@ -549,7 +558,7 @@ private:
  * Posix write is not guaranteed to write everything and in fact was encountered to not write more than
  * 0x7ffff000 (2'147'479'552) B. To avoid this, it has to be looped over.
  */
-void
+inline void
 writeAllToFd( const int         outputFileDescriptor,
               const void* const dataToWrite,
               const uint64_t    dataToWriteSize )
@@ -557,11 +566,13 @@ writeAllToFd( const int         outputFileDescriptor,
     for ( uint64_t nTotalWritten = 0; nTotalWritten < dataToWriteSize; ) {
         const auto currentBufferPosition =
             reinterpret_cast<const void*>( reinterpret_cast<uintptr_t>( dataToWrite ) + nTotalWritten );
-        const auto nBytesWritten = ::write( outputFileDescriptor,
-                                            currentBufferPosition,
-                                            dataToWriteSize - nTotalWritten );
-        //usleep(10000000);
-        std::cerr << "small write " << dataToWriteSize - nTotalWritten << std::endl;
+
+        const auto nBytesToWritePerCall =
+            static_cast<unsigned int>(
+                std::min( static_cast<uint64_t>( std::numeric_limits<unsigned int>::max() ),
+                          dataToWriteSize - nTotalWritten ) );
+
+        const auto nBytesWritten = ::write( outputFileDescriptor, currentBufferPosition, nBytesToWritePerCall );
         if ( nBytesWritten <= 0 ) {
             std::stringstream message;
             message << "Unable to write all data to the given file descriptor. Wrote " << nTotalWritten << " out of "
@@ -572,7 +583,7 @@ writeAllToFd( const int         outputFileDescriptor,
     }
 }
 //new writeAllToFd func used in RQCP
-void
+inline void
 writeAllToFd( const int         outputFileDescriptor,
               const void* const dataToWrite,
               const uint64_t    dataToWriteSize,
@@ -623,8 +634,10 @@ writeAllToFd( const int         outputFileDescriptor,
 
 
 
+
+
 #ifdef HAVE_IOVEC
-void
+inline void
 pwriteAllToFd( const int         outputFileDescriptor,
                const void* const dataToWrite,
                const uint64_t    dataToWriteSize,
@@ -649,7 +662,7 @@ pwriteAllToFd( const int         outputFileDescriptor,
 }
 
 
-void
+inline void
 writeAllToFdVector( const int                   outputFileDescriptor,
                     const std::vector<::iovec>& dataToWrite )
 {
@@ -664,7 +677,8 @@ writeAllToFdVector( const int                   outputFileDescriptor,
         }
 
         /* Skip over buffers that were written fully. */
-        for ( ; ( i < dataToWrite.size() ) && ( dataToWrite[i].iov_len <= static_cast<size_t>( nBytesWritten ) ); ++i ) {
+        for ( ; ( i < dataToWrite.size() ) && ( dataToWrite[i].iov_len <= static_cast<size_t>( nBytesWritten ) );
+              ++i ) {
             nBytesWritten -= dataToWrite[i].iov_len;
         }
 
@@ -684,7 +698,7 @@ writeAllToFdVector( const int                   outputFileDescriptor,
 }
 
 
-void
+inline void
 pwriteAllToFdVector( const int                   outputFileDescriptor,
                      const std::vector<::iovec>& dataToWrite,
                      size_t                      fileOffset )
@@ -702,7 +716,8 @@ pwriteAllToFdVector( const int                   outputFileDescriptor,
         fileOffset += nBytesWritten;
 
         /* Skip over buffers that were written fully. */
-        for ( ; ( i < dataToWrite.size() ) && ( dataToWrite[i].iov_len <= static_cast<size_t>( nBytesWritten ) ); ++i ) {
+        for ( ; ( i < dataToWrite.size() ) && ( dataToWrite[i].iov_len <= static_cast<size_t>( nBytesWritten ) );
+              ++i ) {
             nBytesWritten -= dataToWrite[i].iov_len;
         }
 
@@ -724,7 +739,7 @@ pwriteAllToFdVector( const int                   outputFileDescriptor,
 #endif  // HAVE_IOVEC
 
 
-void
+inline void
 writeAll( const int         outputFileDescriptor,
           void* const       outputBuffer,
           const void* const dataToWrite,
@@ -745,3 +760,88 @@ writeAll( const int         outputFileDescriptor,
         std::memcpy( outputBuffer, dataToWrite, dataToWriteSize );
     }
 }
+
+
+/**
+ * Wrapper to open either stdout, a given existing file without truncation for better performance, or a new file.
+ */
+class OutputFile
+{
+public:
+    explicit
+    OutputFile( const std::string& filePath ) :
+        m_writingToStdout( filePath.empty() )
+    {
+        if ( filePath.empty() ) {
+        #ifdef _MSC_VER
+            m_fileDescriptor = _fileno( stdout );
+            _setmode( m_fileDescriptor, _O_BINARY );
+        #else
+            m_fileDescriptor = ::fileno( stdout );
+        #endif
+        } else {
+        #ifndef _MSC_VER
+            if ( fileExists( filePath ) ) {
+                m_oldOutputFileSize = fileSize( filePath );
+                /* Opening an existing file and overwriting its data can be much slower because posix_fallocate
+                 * can be relatively slow compared to the decoding speed and memory bandwidth! Note that std::fopen
+                 * would open a file with O_TRUNC, deallocating all its contents before it has to be reallocated. */
+                m_fileDescriptor = ::open( filePath.c_str(), O_WRONLY );
+                m_ownedFd = unique_file_descriptor( m_fileDescriptor );
+            }
+        #endif
+
+            if ( m_fileDescriptor == -1 ) {
+                m_outputFile = make_unique_file_ptr( filePath.c_str(), "wb" );
+                if ( !m_outputFile ) {
+                    std::cerr << "Could not open output file: " << filePath << " for writing!\n";
+                    throw std::runtime_error( "File could not be opened." );
+                }
+                m_fileDescriptor = ::fileno( m_outputFile.get() );
+            }
+        }
+    }
+
+    void
+    truncate( size_t size )
+    {
+    #ifndef _MSC_VER
+        if ( ( m_fileDescriptor != -1 ) && ( size < m_oldOutputFileSize ) ) {
+            if ( ::ftruncate( m_fileDescriptor, size ) == -1 ) {
+                std::cerr << "[Error] Failed to truncate file because of: " << strerror( errno )
+                          << " (" << errno << ")\n";
+            }
+        }
+    #endif
+    }
+
+    [[nodiscard]] bool
+    writingToStdout() const noexcept
+    {
+        return m_writingToStdout;
+    }
+
+    [[nodiscard]] int
+    fd() const noexcept
+    {
+        return m_fileDescriptor;
+    }
+
+private:
+    const bool m_writingToStdout;
+
+    int m_fileDescriptor{ -1 };  // Use this for file access.
+
+    /** This is used to decide whether to truncate the file to a smaller (decompressed) size before closing. */
+    size_t m_oldOutputFileSize{ 0 };
+
+    /**
+     * These should not be used. They are only for automatic closing!
+     * Two of them because a file may either be opened from an existing file without truncation,
+     * which does not fit into unique_file_ptr, or it might be newly created.
+     */
+    unique_file_ptr m_outputFile;
+#ifndef _MSC_VER
+    unique_file_descriptor m_ownedFd;  // This should not be used, it is only for automatic closing!
+#endif
+};

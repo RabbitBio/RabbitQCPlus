@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 
-#include <common_pragzip.hpp>
+#include <common.hpp>
 #include <BitManipulation.hpp>
 #include <filereader/FileReader.hpp>
 #include <filereader/Standard.hpp>
@@ -40,13 +40,15 @@ public:
 
     BitStringFinder( const BitStringFinder& other ) = delete;
 
-    BitStringFinder& operator=( const BitStringFinder& ) = delete;
+    BitStringFinder&
+    operator=( const BitStringFinder& ) = delete;
 
-    BitStringFinder& operator=( BitStringFinder&& ) = delete;
+    BitStringFinder&
+    operator=( BitStringFinder&& ) = delete;
 
-    BitStringFinder( std::unique_ptr<FileReader> fileReader,
-                     uint64_t                    bitStringToFind,
-                     size_t                      fileBufferSizeBytes = 1_Mi ) :
+    BitStringFinder( UniqueFileReader fileReader,
+                     uint64_t         bitStringToFind,
+                     size_t           fileBufferSizeBytes = 1_Mi ) :
         m_bitStringToFind( bitStringToFind & nLowestBitsSet<uint64_t>( bitStringSize ) ),
         m_movingBitsToKeep( bitStringSize > 0 ? bitStringSize - 1U : 0U ),
         m_movingBytesToKeep( ceilDiv( m_movingBitsToKeep, CHAR_BIT ) ),
@@ -66,12 +68,13 @@ public:
     BitStringFinder( const char* buffer,
                      size_t      size,
                      uint64_t    bitStringToFind ) :
-        BitStringFinder( std::unique_ptr<FileReader>(), bitStringToFind )
+        BitStringFinder( UniqueFileReader(), bitStringToFind )
     {
         m_buffer.assign( buffer, buffer + size );
     }
 
-    virtual ~BitStringFinder() = default;
+    virtual
+    ~BitStringFinder() = default;
 
     [[nodiscard]] bool
     seekable() const
@@ -137,7 +140,7 @@ protected:
      */
     size_t m_bufferBitsRead = 0;
 
-    std::unique_ptr<FileReader> m_fileReader;
+    UniqueFileReader m_fileReader;
 
     /** This is not the current size of @ref m_buffer but the number of bytes to read from @ref m_file if it is empty */
     const size_t m_fileChunksInBytes;

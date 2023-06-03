@@ -19,9 +19,8 @@
 #include <sys/stat.h>
 
 #include <BitManipulation.hpp>
-#include <common_pragzip.hpp>
+#include <common.hpp>
 #include <filereader/FileReader.hpp>
-#include <filereader/Standard.hpp>
 #include <filereader/Shared.hpp>
 
 
@@ -83,20 +82,30 @@ public:
 
 public:
     explicit
-    BitReader( std::unique_ptr<FileReader> fileReader ) :
-        m_file( dynamic_cast<SharedFileReader*>( fileReader.get() ) == nullptr
-                ? std::unique_ptr<FileReader>( std::make_unique<SharedFileReader>( std::move( fileReader ) ) )
-                : std::move( fileReader ) )
+    BitReader( UniqueFileReader fileReader ) :
+        /* The UniqueFileReader input argument sufficiently conveys and ensures that the file ownership is taken.
+         * But, because BitReader has a fileno getter returning the underlying fileno, it is possible that the
+         * file position is changed from the outside. To still keep correct behavior in that case, we have to
+         * to make it a SharedFileReader, which keeps track of the intended file position. */
+        m_file( ensureSharedFileReader( std::move( fileReader ) ) )
     {}
 
     BitReader( BitReader&& other ) = default;
-    BitReader& operator=( BitReader&& other ) = default;
-    BitReader& operator=( const BitReader& other ) = delete;
+
+    BitReader&
+    operator=( BitReader&& other ) = default;
+
+    BitReader&
+    operator=( const BitReader& other ) = delete;
 
     BitReader( const BitReader& other ) :
-        m_file( other.m_file ? other.m_file->clone() : nullptr ),
+        m_file( other.m_file ? other.m_file->clone() : UniqueFileReader() ),
         m_inputBuffer( other.m_inputBuffer )
     {
+        if ( dynamic_cast<const SharedFileReader*>( other.m_file.get() ) == nullptr ) {
+            throw std::invalid_argument( "Cannot copy BitReader if does not contain a SharedFileReader!" );
+        }
+
         assert( static_cast<bool>( m_file ) == static_cast<bool>( other.m_file ) );
         if ( UNLIKELY( m_file && !m_file->seekable() ) ) [[unlikely]] {
             throw std::invalid_argument( "Copying BitReader to unseekable file not supported yet!" );
@@ -104,18 +113,12 @@ public:
         seek( other.tell() );
     }
 
-    [[nodiscard]] std::unique_ptr<FileReader>
-    cloneSharedFileReader() const
-    {
-        return std::unique_ptr<FileReader>( m_file->clone() );
-    }
-
     /* File Reader Interface Implementation */
 
-    [[nodiscard]] FileReader*
+    [[nodiscard]] UniqueFileReader
     clone() const override final
     {
-        return new BitReader( *this );
+        return std::make_unique<BitReader>( *this );
     }
 
     [[nodiscard]] bool
@@ -289,7 +292,7 @@ public:
 
             /* 1. Empty bit buffer */
             for ( ; ( nBytesRead < nBytesToRead ) && ( m_bitBufferSize >= CHAR_BIT ); ++nBytesRead ) {
-                outputBuffer[nBytesRead] = peekUnsafe( CHAR_BIT );
+                outputBuffer[nBytesRead] = static_cast<char>( peekUnsafe( CHAR_BIT ) );
                 seekAfterPeek( CHAR_BIT );
             }
 
@@ -579,7 +582,8 @@ private:
                 m_originalBitBufferSize( originalBitBufferSize )
             {}
 
-            ~ShiftBackOnReturn() noexcept {
+            ~ShiftBackOnReturn() noexcept
+            {
                 /* Move LSB bits (which are filled left-to-right) to the left if so necessary
                  * so that the format is the same as for MSB bits! */
                 if constexpr ( !MOST_SIGNIFICANT_BITS_FIRST ) {
@@ -650,10 +654,10 @@ private:
     }
 
 private:
-    std::unique_ptr<FileReader> m_file;
+    UniqueFileReader m_file;
 
     std::vector<uint8_t> m_inputBuffer;
-    size_t m_inputBufferPosition = 0; /** stores current position of first valid byte in buffer */
+    size_t m_inputBufferPosition = 0;  /** stores current position of first valid byte in buffer */
 
     /* Performance profiling metrics. */
     size_t m_bufferRefillCount{ 0 };
@@ -705,8 +709,8 @@ public:
      * In both cases, the amount of bits wanted are extracted by shifting to the right and and'ing with a bit mask.
      */
     BitBuffer m_bitBuffer = 0;
-    uint8_t m_bitBufferSize = 0; // size of bitbuffer in bits
-    uint8_t m_originalBitBufferSize = 0; // size of valid bitbuffer bits including already read ones
+    uint8_t m_bitBufferSize = 0;  // size of bitbuffer in bits
+    uint8_t m_originalBitBufferSize = 0;  // size of valid bitbuffer bits including already read ones
 };
 
 
@@ -747,7 +751,7 @@ BitReader<MOST_SIGNIFICANT_BITS_FIRST, BitBuffer>::seek(
     const auto relativeOffsets = offsetBits - static_cast<long long int>( tell() );
     if ( relativeOffsets >= 0 ) {
         if ( relativeOffsets <= m_bitBufferSize ) {
-            m_bitBufferSize -= relativeOffsets;
+            m_bitBufferSize -= static_cast<decltype( m_bitBufferSize )>( relativeOffsets );
             return static_cast<size_t>( offsetBits );
         }
 
@@ -764,19 +768,19 @@ BitReader<MOST_SIGNIFICANT_BITS_FIRST, BitBuffer>::seek(
         }
     } else {
         if ( static_cast<size_t>( -relativeOffsets ) + m_bitBufferSize <= m_originalBitBufferSize ) {
-            m_bitBufferSize += -relativeOffsets;
+            m_bitBufferSize += static_cast<decltype( m_bitBufferSize )>( -relativeOffsets );
             return static_cast<size_t>( offsetBits );
         }
 
         const auto seekBackWithBuffer = -relativeOffsets + m_bitBufferSize;
         const auto bytesToSeekBack = static_cast<size_t>( ceilDiv( seekBackWithBuffer, CHAR_BIT ) );
         if ( bytesToSeekBack <= m_inputBufferPosition ) {
-            m_inputBufferPosition -= bytesToSeekBack;
+            m_inputBufferPosition -= static_cast<decltype( m_inputBufferPosition )>( bytesToSeekBack );
             clearBitBuffer();
 
             const auto bitsToSeekForward = bytesToSeekBack * CHAR_BIT - seekBackWithBuffer;
             if ( bitsToSeekForward > 0 ) {
-                read( bitsToSeekForward );
+                read( static_cast<uint8_t>( bitsToSeekForward ) );
             }
 
             return static_cast<size_t>( offsetBits );

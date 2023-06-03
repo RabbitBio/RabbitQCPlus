@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "common_pragzip.hpp"  // duration
+#include "common.hpp"  // duration
 
 
 int gnTests = 0;  // NOLINT
@@ -43,8 +43,8 @@ require( bool               condition,
 }
 
 
-#define REQUIRE_EQUAL( a, b ) requireEqual( a, b, __LINE__ ) // NOLINT
-#define REQUIRE( condition ) require( condition, #condition, __LINE__ ) // NOLINT
+#define REQUIRE_EQUAL( a, b ) requireEqual( a, b, __LINE__ )  // NOLINT
+#define REQUIRE( condition ) require( condition, #condition, __LINE__ )  // NOLINT
 
 
 template<

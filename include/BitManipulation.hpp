@@ -27,6 +27,7 @@ byteSwap( uint64_t value )
     return value;
 }
 
+
 [[nodiscard]] constexpr uint32_t
 byteSwap( uint32_t value )
 {
@@ -34,6 +35,7 @@ byteSwap( uint32_t value )
     value = ( ( value & uint32_t( 0x00FF'00FFUL ) ) << 8U  ) | ( ( value & uint32_t( 0xFF00'FF00UL ) ) >> 8U  );
     return value;
 }
+
 
 [[nodiscard]] constexpr uint16_t
 byteSwap( uint16_t value )
@@ -227,22 +229,6 @@ reverseBits( T value )
     }
 }
 
-static_assert( REVERSED_BITS_LUT<uint8_t>.size() == 256 );
-
-static_assert( REVERSED_BITS_LUT<uint8_t>[0b1111'0000U] == 0b0000'1111U );
-static_assert( REVERSED_BITS_LUT<uint8_t>[0b1010'1010U] == 0b0101'0101U );
-static_assert( reverseBitsWithoutLUT( uint8_t( 0b1111'0000 ) ) == 0b0000'1111U );
-static_assert( reverseBitsWithoutLUT( uint8_t( 0b1010'1010 ) ) == 0b0101'0101U );
-static_assert( reverseBits( uint8_t( 0b1111'0000 ) ) == 0b0000'1111U );
-static_assert( reverseBits( uint8_t( 0b1010'1010 ) ) == 0b0101'0101U );
-
-static_assert( REVERSED_BITS_LUT<uint16_t>[0b1111'0000'1111'0000U] == 0b0000'1111'0000'1111U );
-static_assert( REVERSED_BITS_LUT<uint16_t>[0b1010'1010'1010'1010U] == 0b0101'0101'0101'0101U );
-static_assert( reverseBitsWithoutLUT( uint16_t( 0b1111'0000'1111'0000 ) ) == 0b0000'1111'0000'1111U );
-static_assert( reverseBitsWithoutLUT( uint16_t( 0b1010'1010'1010'1010 ) ) == 0b0101'0101'0101'0101U );
-static_assert( reverseBits( uint16_t( 0b1111'0000'1111'0000 ) ) == 0b0000'1111'0000'1111U );
-static_assert( reverseBits( uint16_t( 0b1010'1010'1010'1010 ) ) == 0b0101'0101'0101'0101U );
-
 
 /**
  * Reverses the lowest @p bitCount bits. The highest bits are set to 0 and are assumed to be zero in the input.
@@ -276,6 +262,7 @@ requiredBits( const uint64_t stateCount )
     }
     return result;
 }
+
 
 static_assert( requiredBits( 0 ) == 0 );
 static_assert( requiredBits( 1 ) == 1 );

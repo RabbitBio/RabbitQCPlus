@@ -1,12 +1,15 @@
 #pragma once
 
+#include <cstddef>
+
 
 namespace pragzip::blockfinder
 {
 class Interface
 {
 public:
-    virtual ~Interface() = default;
+    virtual
+    ~Interface() = default;
 
     [[nodiscard]] virtual size_t
     find() = 0;

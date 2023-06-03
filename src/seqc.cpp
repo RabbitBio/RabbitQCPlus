@@ -566,21 +566,22 @@ void SeQc::PugzTask() {
     auto t0 = GetTime();
 #endif
     
-    int cnt = 5;
+    int cnt = 6;
 
-    char **infos = new char *[5];
+    char **infos = new char *[6];
     infos[0] = "./pragzip";
     infos[1] = "-c";
-    infos[2] = "-P";
+    infos[2] = "-d";
+    infos[3] = "-P";
     int th_num = cmd_info_->pugz_threads_;
     string th_num_s = to_string(th_num);
-    infos[3] = new char[th_num_s.length() + 1];
-    memcpy(infos[3], th_num_s.c_str(), th_num_s.length());
-    infos[3][th_num_s.length()] = '\0';
+    infos[4] = new char[th_num_s.length() + 1];
+    memcpy(infos[4], th_num_s.c_str(), th_num_s.length());
+    infos[4][th_num_s.length()] = '\0';
     string in_file = cmd_info_->in_file_name1_;
-    infos[4] = new char[in_file.length() + 1];
-    memcpy(infos[4], in_file.c_str(), in_file.length());
-    infos[4][in_file.length()] = '\0';
+    infos[5] = new char[in_file.length() + 1];
+    memcpy(infos[5], in_file.c_str(), in_file.length());
+    infos[5][in_file.length()] = '\0';
 
     main_pragzip(cnt, infos, pugzQueue, &producerDone);
 

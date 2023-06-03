@@ -25,7 +25,7 @@
  */
 namespace pragzip::blockfinder
 {
-class PigzStringView :
+class PigzStringView final :
     public Interface
 {
 public:
@@ -39,7 +39,7 @@ public:
 
 public:
     explicit
-    PigzStringView( std::unique_ptr<FileReader> fileReader ) :
+    PigzStringView( UniqueFileReader fileReader ) :
         m_fileReader( std::move( fileReader ) ),
         m_fileSize( m_fileReader->size() )
     {}
@@ -159,7 +159,7 @@ private:
     }
 
 private:
-    const std::unique_ptr<FileReader> m_fileReader;
+    const UniqueFileReader m_fileReader;
     const std::size_t m_fileSize;
 
     alignas( 64 ) std::array<char, BUFFER_SIZE> m_buffer;
@@ -170,7 +170,7 @@ private:
     std::size_t m_lastReturnedBlockOffset{ 0 };
 
     static constexpr std::string_view EMPTY_DEFLATE_BLOCK{
-        "\0\0\xFF\xFF", 4 /* required or else strlen is used resulting in zero */
+        "\0\0\xFF\xFF", 4  /* required or else strlen is used resulting in zero */
     };
 };
 }  // pragzip::blockfinder

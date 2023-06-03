@@ -2,6 +2,7 @@
 
 #include <climits>
 #include <cmath>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -18,8 +19,7 @@
 
 #include "AffinityHelpers.hpp"
 #include "BitStringFinder.hpp"
-#include "BitReader.hpp"
-#include "common_pragzip.hpp"
+#include "common.hpp"
 #include "ThreadPool.hpp"
 
 
@@ -39,11 +39,11 @@ public:
     static_assert( bitStringSize > 0, "Bit string to find must have positive length!" );
 
 public:
-    ParallelBitStringFinder( std::unique_ptr<FileReader> fileReader,
-                             uint64_t bitStringToFind,
-                             size_t   parallelization = std::max( 1U, availableCores() / 8U ),
-                             size_t   requestedBytes = 0,
-                             size_t   fileBufferSizeBytes = 1_Mi ) :
+    ParallelBitStringFinder( UniqueFileReader fileReader,
+                             uint64_t         bitStringToFind,
+                             size_t           parallelization = std::max( 1U, availableCores() / 8U ),
+                             size_t           requestedBytes = 0,
+                             size_t           fileBufferSizeBytes = 1_Mi ) :
         BaseType( std::move( fileReader ),
                   bitStringToFind,
                   chunkSize( fileBufferSizeBytes, requestedBytes, parallelization ) ),
@@ -55,13 +55,14 @@ public:
                              size_t      size,
                              uint64_t    bitStringToFind,
                              size_t      parallelization ) :
-        BaseType( std::unique_ptr<FileReader>(), bitStringToFind ),
+        BaseType( UniqueFileReader(), bitStringToFind ),
         m_threadPool( parallelization )
     {
         this->m_buffer.assign( buffer, buffer + size );
     }
 
-    virtual ~ParallelBitStringFinder() = default;
+    virtual
+    ~ParallelBitStringFinder() = default;
 
     /**
      * @return the next match and the requested bytes or std::numeric_limits<size_t>::max() if at end of file.
@@ -187,9 +188,9 @@ ParallelBitStringFinder<bitStringSize>::find()
                  * crashes because the predicate check is only done on condition variable notifies and on spurious
                  * wakeups but those are not guaranteed. */
                 result.changed.wait( lock, [&result] () {
-                    return !result.foundOffsets.empty() ||
-                           ( result.future.wait_for( 0s ) == std::future_status::ready );
-                } );
+                                         return !result.foundOffsets.empty() ||
+                                                ( result.future.wait_for( 0s ) == std::future_status::ready );
+                                     } );
 
                 if ( result.future.wait_for( 0s ) == std::future_status::ready ) {
                     result.future.get();
@@ -214,7 +215,7 @@ ParallelBitStringFinder<bitStringSize>::find()
         /* For very sub chunk sizes, it is more sensible to not parallelize them using threads! */
         const auto minSubChunkSizeInBytes = std::max<size_t>( 8 * bitStringSize, 4096 );
         const auto subChunkStrideInBytes =
-            std::max<size_t>( minSubChunkSizeInBytes, ceilDiv( this->m_buffer.size(), m_threadPool.size() ) );
+            std::max<size_t>( minSubChunkSizeInBytes, ceilDiv( this->m_buffer.size(), m_threadPool.capacity() ) );
 
         /* Start worker threads using the thread pool and the current buffer. */
         for ( ; !this->bufferEof(); this->m_bufferBitsRead += subChunkStrideInBytes * CHAR_BIT ) {
