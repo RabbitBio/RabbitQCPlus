@@ -265,8 +265,35 @@ int main(int argc, char **argv) {
     if (in_gz && cmd_info.use_igzip_ == 0 && manual_pugz == 0) in_module |= 1;
     if (out_gz && manual_pigz == 0) in_module |= 2;
 
-    if(cmd_info.in_file_name2_.length() == 0)cmd_info.thread_number_ = min(32, cmd_info.thread_number_);
-    else cmd_info.thread_number_ = min(cmd_info.thread_number_, 64);
+    //if(cmd_info.in_file_name2_.length() == 0)cmd_info.thread_number_ = min(32, cmd_info.thread_number_);
+    //else cmd_info.thread_number_ = min(cmd_info.thread_number_, 64);
+    if (is_pe) {
+        //PE
+        //pugz 16 * 2, w 32, pigz 48 * 2
+        if (in_module == 3){
+            cmd_info.thread_number_ = min(cmd_info.thread_number_, 160);
+        } else if (in_module == 2){
+            cmd_info.thread_number_ = min(cmd_info.thread_number_, 128);
+        } else if (in_module == 1){
+            cmd_info.thread_number_ = min(cmd_info.thread_number_, 64);
+        } else {
+            cmd_info.thread_number_ = min(cmd_info.thread_number_, 32);
+        }
+    }else {
+        //SE
+        //pugz 16, w 20, pigz 48
+        if (in_module == 3){
+            cmd_info.thread_number_ = min(cmd_info.thread_number_, 84); 
+        } else if (in_module == 2){
+            cmd_info.thread_number_ = min(cmd_info.thread_number_, 68); 
+        } else if (in_module == 1){
+            cmd_info.thread_number_ = min(cmd_info.thread_number_, 36); 
+        } else {
+            cmd_info.thread_number_ = min(cmd_info.thread_number_, 20); 
+        }
+    }
+
+
 
     int now_threads = cmd_info.thread_number_;
 
@@ -336,8 +363,8 @@ int main(int argc, char **argv) {
 
     if(ori_threads > now_threads) {
          double threads_rate = 1.0 * ori_threads / now_threads;
-         cmd_info.pugz_threads_ = ceil(threads_rate * cmd_info.pugz_threads_);
-         cmd_info.pigz_threads_ = ceil(threads_rate * cmd_info.pigz_threads_);
+         if(cmd_info.use_pugz_ && manual_pugz == 0) cmd_info.pugz_threads_ = ceil(threads_rate * cmd_info.pugz_threads_);
+         if(cmd_info.use_pigz_ && manual_pigz == 0) cmd_info.pigz_threads_ = ceil(threads_rate * cmd_info.pigz_threads_);
          cmd_info.thread_number_ = ceil(threads_rate * cmd_info.thread_number_);
     }
 

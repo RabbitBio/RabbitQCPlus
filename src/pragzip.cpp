@@ -458,8 +458,8 @@ pragzipCLI( int argc, char** argv, moodycamel::ReaderWriterQueue<std::pair<char 
 int
 main_pragzip( int argc, char** argv, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q, std::atomic_int *producerDone )
 {
-    for(int i = 0; i < argc; i++) printf("%s ", argv[i]);
-    printf("\n");
+    //for(int i = 0; i < argc; i++) printf("%s ", argv[i]);
+    //printf("\n");
     try
     {
         return pragzipCLI( argc, argv, Q, producerDone );
