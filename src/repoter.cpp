@@ -686,7 +686,7 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
     outhtml.append(insertTableBegin());
     outhtml.append(insertTableTitle("", "General(TGS)"));
     outhtml.append(insertTableTbobyBegin());
-    outhtml.append(insertTableTr("RabbitQCPlus version:", "2.0.0"));
+    outhtml.append(insertTableTr("RabbitQCPlus version:", "2.1.0"));
     outhtml.append(insertTableTr("FileName", file_name));
     outhtml.append(insertTableTr("Command", command));
     outhtml.append(insertTableTr("ReadsNumber", std::to_string(readsNum)));
@@ -1063,7 +1063,7 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
     outhtml.append(insertTableBeginFloatBig());
     outhtml.append(insertTableTitle("General", ""));
     outhtml.append(insertTableTbobyBegin());
-    outhtml.append(insertTableTr("RabbitQCPlus version:", "2.0.0"));
+    outhtml.append(insertTableTr("RabbitQCPlus version:", "2.1.0"));
     outhtml.append(insertTableTr("FileName", file_name));
     outhtml.append(insertTableTr("Command", command));
     outhtml.append(
@@ -1436,7 +1436,7 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
     outhtml.append(insertTableBeginFloatBig());
     outhtml.append(insertTableTitle("General", ""));
     outhtml.append(insertTableTbobyBegin());
-    outhtml.append(insertTableTr("RabbitQCPlus version:", "2.0.0"));
+    outhtml.append(insertTableTr("RabbitQCPlus version:", "2.1.0"));
     outhtml.append(insertTableTr("FileName", file_name1 + "," + file_name2));
     outhtml.append(insertTableTr("Command", command));
     outhtml.append(
