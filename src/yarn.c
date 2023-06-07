@@ -57,6 +57,11 @@
 char *yarn_prefix = "yarn";
 void (*yarn_abort)(int) = NULL;
 
+extern pthread_key_t gtid;
+extern int small_map[100];
+extern int threadCnt;
+
+
 
 // Immediately exit -- use for errors that shouldn't ever happen.
 local void fail(int err, char const *file, long line, char const *func) {

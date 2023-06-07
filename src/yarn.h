@@ -109,9 +109,9 @@ extern "C" {
 #endif
 
 #define MAX_PIGZTHREAD_T_NUMBER 16      //can new 16 processes at most
-pthread_key_t gtid;
-int small_map[100];
-static int threadCnt=0;
+//extern pthread_key_t gtid;
+//extern int small_map[100];
+//extern static int threadCnt=0;
 
 extern char *yarn_prefix;
 extern void (*yarn_abort)(int);

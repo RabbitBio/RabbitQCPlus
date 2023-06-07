@@ -519,6 +519,10 @@ Produce Zip64 format when needed for --zip (>= 4 GiB)
 #define EXT (BUF + CEN)     // provide enough room to unget a header
 //#define MAX_PIGZTHREAD_T_NUMBER 16      //can new 16 processes at most
 //    pthread_key_t gtid;
+pthread_key_t gtid;
+int small_map[100];
+int threadCnt = 0;
+
 
     int small_hash(unsigned int pid) {
         return pid % 91;
