@@ -11,6 +11,7 @@
 using namespace std;
 
 inline bool exists_file (const std::string& name) {
+    if(name == "/dev/stdout") return 0;
     ifstream f(name.c_str());
     return f.good();
 }
@@ -381,10 +382,12 @@ int main(int argc, char **argv) {
     if (cmd_info.isStdin_) {
         cmd_info.in_file_name1_ = "/dev/stdin";
     }
+    bool do_max_len_eval = true;
     if (cmd_info.in_file_name1_ == "/dev/stdin") {
         cmd_info.se_auto_detect_adapter_ = false;
         cmd_info.pe_auto_detect_adapter_ = false;
         cmd_info.do_overrepresentation_ = false;
+        do_max_len_eval = false;
     }
     if (!quVersion && cmd_info.in_file_name1_.length() == 0) {
         error_exit("-i/--inFile1 can't be null");
@@ -574,7 +577,8 @@ int main(int argc, char **argv) {
     //    printf("now use %d thread to do QC operations\n", cmd_info.thread_number_);
     //else
     //    printf("now use %d threads to do QC operations\n", cmd_info.thread_number_);
-    int mx_len = Adapter::EvalMaxLen(cmd_info.in_file_name1_);
+    int mx_len = 150;
+    if(do_max_len_eval) mx_len = Adapter::EvalMaxLen(cmd_info.in_file_name1_);
     //printf("auto detect max seqs len is %d\n", mx_len);
     cmd_info.seq_len_ = mx_len;
     if(cmd_info.adapter_fasta_file_.length() > 0){
