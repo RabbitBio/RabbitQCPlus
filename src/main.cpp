@@ -163,26 +163,26 @@ int main(int argc, char **argv) {
     cmd_info.correct_threadnum_ = cmd_info.thread_number_;
 
     if(cmd_info.compression_level_ < 1 || cmd_info.compression_level_ > 9){
-        printf("error : compression level should in [1, 9]!\n");
+        fprintf(stderr, "error : compression level should in [1, 9]!\n");
         return 0;
     }
 
     if (quVersion) {
-        printf("2.1.0\n");
+        fprintf(stderr, "2.1.0\n");
         return 0;
     }
 
     if(cmd_info.notKeepOrder_) {
-        //printf("now do not print data keeping order.\n");
+        //fprintf(stderr, "now do not print data keeping order.\n");
     }
 
     if(cmd_info.is_TGS_){
         if(cmd_info.in_file_name2_.length() > 0){
-            printf("WARNING : the TGS module does not support pe inputs, so ignore the -I parameter.\n");
+            fprintf(stderr, "WARNING : the TGS module does not support pe inputs, so ignore the -I parameter.\n");
             cmd_info.in_file_name2_ = "";
         }
         if(cmd_info.out_file_name1_.length() != 0 || cmd_info.out_file_name2_.length() != 0){
-            printf("WARNING : the TGS module does not support trimming and will not produce output files, so ignore the -o and -O parameter.\n");
+            fprintf(stderr, "WARNING : the TGS module does not support trimming and will not produce output files, so ignore the -o and -O parameter.\n");
             cmd_info.out_file_name1_ = "";
             cmd_info.out_file_name2_ = "";
         }
@@ -213,7 +213,7 @@ int main(int argc, char **argv) {
         }
     }
     if(files_ok == 0){
-        printf("error : for PE data, both files must be of the same type, i.e. cannot be one compressed and one uncompressed!\n");
+        fprintf(stderr, "error : for PE data, both files must be of the same type, i.e. cannot be one compressed and one uncompressed!\n");
         return 0;
     }
 
@@ -235,23 +235,23 @@ int main(int argc, char **argv) {
     if(manual_pigz) except_threas += cmd_info.pigz_threads_ * base_mul;
 
     if(except_threas >= cmd_info.thread_number_) {
-        printf("error : number of threads used for parallel (de)compression >= total number of threads (-w)!  note: processing PE files may require twice the number of threads to (de)compress the file\n");
+        fprintf(stderr, "error : number of threads used for parallel (de)compression >= total number of threads (-w)!  note: processing PE files may require twice the number of threads to (de)compress the file\n");
         return 0;
     }
     if(manual_pugz > 0 && !ends_with(cmd_info.in_file_name1_, ".gz")) {
-        printf("error : cannot specify pugzThread for uncompressed input file!\n");
+        fprintf(stderr, "error : cannot specify pugzThread for uncompressed input file!\n");
         return 0;
     }
     if(manual_pigz > 0 && !ends_with(cmd_info.out_file_name1_, ".gz")) {
-        printf("error : cannot specify pigzThread for uncompressed output file!\n");
+        fprintf(stderr, "error : cannot specify pigzThread for uncompressed output file!\n");
         return 0;
     }
     if(manual_pugz == 1 && cmd_info.pugz_threads_ == 1) {
-        printf("error : must be >=2 when using the usePugz parameter.\n");
+        fprintf(stderr, "error : must be >=2 when using the usePugz parameter.\n");
         return 0;
     }
     if(manual_pigz == 1 && cmd_info.pigz_threads_ == 1) {
-        printf("error : must be >=2 when using the usePigz parameter.\n");
+        fprintf(stderr, "error : must be >=2 when using the usePigz parameter.\n");
         return 0;
     }
     cmd_info.thread_number_ -= except_threas;
@@ -370,13 +370,13 @@ int main(int argc, char **argv) {
     }
 
 #ifdef Verbose
-    printf("t1, t2, t3 is %d %d %d\n", t1, t2, t3);
+    fprintf(stderr, "t1, t2, t3 is %d %d %d\n", t1, t2, t3);
 
-    printf(" pugz is %d\n", cmd_info.use_pugz_);
-    printf(" pigz is %d\n", cmd_info.use_pigz_);
-    printf(" pugz threads are %d\n", cmd_info.pugz_threads_);
-    printf(" pigz threads are %d\n", cmd_info.pigz_threads_);
-    printf(" qc threads are %d\n", cmd_info.thread_number_);
+    fprintf(stderr, " pugz is %d\n", cmd_info.use_pugz_);
+    fprintf(stderr, " pigz is %d\n", cmd_info.use_pigz_);
+    fprintf(stderr, " pugz threads are %d\n", cmd_info.pugz_threads_);
+    fprintf(stderr, " pigz threads are %d\n", cmd_info.pigz_threads_);
+    fprintf(stderr, " qc threads are %d\n", cmd_info.thread_number_);
 #endif
 
     if (cmd_info.isStdin_) {
@@ -392,9 +392,9 @@ int main(int argc, char **argv) {
     if (!quVersion && cmd_info.in_file_name1_.length() == 0) {
         error_exit("-i/--inFile1 can't be null");
     }
-    printf("inFile1 is %s\n", cmd_info.in_file_name1_.c_str());
+    fprintf(stderr, "inFile1 is %s\n", cmd_info.in_file_name1_.c_str());
     if (cmd_info.isStdout_) cmd_info.out_file_name1_ = "/dev/stdout";
-    if (cmd_info.in_file_name2_.length()) printf("inFile2 is %s\n", cmd_info.in_file_name2_.c_str());
+    if (cmd_info.in_file_name2_.length()) fprintf(stderr, "inFile2 is %s\n", cmd_info.in_file_name2_.c_str());
     if (cmd_info.out_file_name1_.length()) {
         bool res = exists_file(cmd_info.out_file_name1_);
         if(res){
@@ -403,12 +403,12 @@ int main(int argc, char **argv) {
                 tmps = "y";
             }else{
                 char tmp[100];
-                printf("\n");
-                printf("%s already exists, overwrite it or not ? (y/n)\n", cmd_info.out_file_name1_.c_str());
+                fprintf(stderr, "\n");
+                fprintf(stderr, "%s already exists, overwrite it or not ? (y/n)\n", cmd_info.out_file_name1_.c_str());
                 scanf("%s", tmp);
                 tmps = string(tmp);
                 while(tmps != "y" && tmps != "n"){
-                    printf("please input y or n\n");
+                    fprintf(stderr, "please input y or n\n");
                     scanf("%s", tmp);
                     tmps = string(tmp);
                 }
@@ -421,7 +421,7 @@ int main(int argc, char **argv) {
                 assert(0);
             }
         }
-        printf("outFile1 is %s\n", cmd_info.out_file_name1_.c_str());
+        fprintf(stderr, "outFile1 is %s\n", cmd_info.out_file_name1_.c_str());
     }
     if (cmd_info.out_file_name2_.length()) {
         bool res = exists_file(cmd_info.out_file_name2_);
@@ -431,12 +431,12 @@ int main(int argc, char **argv) {
                 tmps = "y";
             }else{
                 char tmp[100];
-                printf("\n");
-                printf("%s already exists, overwrite it or not ? (y/n)\n", cmd_info.out_file_name2_.c_str());
+                fprintf(stderr, "\n");
+                fprintf(stderr, "%s already exists, overwrite it or not ? (y/n)\n", cmd_info.out_file_name2_.c_str());
                 scanf("%s", tmp);
                 tmps = string(tmp);
                 while(tmps != "y" && tmps != "n"){
-                    printf("please input y or n\n");
+                    fprintf(stderr, "please input y or n\n");
                     scanf("%s", tmp);
                     tmps = string(tmp);
                 }
@@ -449,7 +449,7 @@ int main(int argc, char **argv) {
                 assert(0);
             }
         }
-        printf("outFile2 is %s\n", cmd_info.out_file_name2_.c_str());
+        fprintf(stderr, "outFile2 is %s\n", cmd_info.out_file_name2_.c_str());
     }
 
     string prefix_name1;
@@ -458,11 +458,11 @@ int main(int argc, char **argv) {
     string suffix_name2;
 
     if(out_gz){
-        //printf("===out1 is %s\n", cmd_info.out_file_name1_.c_str());
+        //fprintf(stderr, "===out1 is %s\n", cmd_info.out_file_name1_.c_str());
         if(cmd_info.out_file_name2_.length() > 0){
-            //printf("===out2 is %s\n", cmd_info.out_file_name2_.c_str());
+            //fprintf(stderr, "===out2 is %s\n", cmd_info.out_file_name2_.c_str());
         }
-        //printf("now change out file name...\n");
+        //fprintf(stderr, "now change out file name...\n");
         int real_begin1 = 0;
         for(int i = cmd_info.out_file_name1_.length() - 1; i >= 0; i--){
             if(cmd_info.out_file_name1_[i] == '/'){
@@ -472,8 +472,8 @@ int main(int argc, char **argv) {
         }
         prefix_name1 = cmd_info.out_file_name1_.substr(0, real_begin1);
         suffix_name1 = cmd_info.out_file_name1_.substr(real_begin1, cmd_info.out_file_name1_.length() - real_begin1);
-        //printf("prefix_name1 %s\n", prefix_name1.c_str());
-        //printf("suffix_name1 %s\n", suffix_name1.c_str());
+        //fprintf(stderr, "prefix_name1 %s\n", prefix_name1.c_str());
+        //fprintf(stderr, "suffix_name1 %s\n", suffix_name1.c_str());
         cmd_info.out_file_name1_ = prefix_name1 + "tmp_" + to_string(rand()) + suffix_name1;
         if(cmd_info.out_file_name2_.length() > 0){
             int real_begin2 = 0;
@@ -485,13 +485,13 @@ int main(int argc, char **argv) {
             }
             prefix_name2 = cmd_info.out_file_name2_.substr(0, real_begin2);
             suffix_name2 = cmd_info.out_file_name2_.substr(real_begin2, cmd_info.out_file_name2_.length() - real_begin2);
-            //printf("prefix_name2 %s\n", prefix_name2.c_str());
-            //printf("suffix_name2 %s\n", suffix_name2.c_str());
+            //fprintf(stderr, "prefix_name2 %s\n", prefix_name2.c_str());
+            //fprintf(stderr, "suffix_name2 %s\n", suffix_name2.c_str());
             cmd_info.out_file_name2_ = prefix_name2 + "tmp_" + to_string(rand()) + suffix_name2;
         }
-        //printf("===out1 is %s\n", cmd_info.out_file_name1_.c_str());
+        //fprintf(stderr, "===out1 is %s\n", cmd_info.out_file_name1_.c_str());
         if(cmd_info.out_file_name2_.length() > 0){
-            //printf("===out2 is %s\n", cmd_info.out_file_name2_.c_str());
+            //fprintf(stderr, "===out2 is %s\n", cmd_info.out_file_name2_.c_str());
         }
     }
 
@@ -503,29 +503,29 @@ int main(int argc, char **argv) {
         cmd_info.adapter_seq1_ = "";
         cmd_info.adapter_seq2_ = "";
         cmd_info.adapter_fasta_file_ = "";
-        printf("no adapter trim (ignore '--adapterSeq*' and '--adapterFastaFile' options) because using the '-a (--noTrimAdapter)' option!\n");
+        fprintf(stderr, "no adapter trim (ignore '--adapterSeq*' and '--adapterFastaFile' options) because using the '-a (--noTrimAdapter)' option!\n");
     }
 
     if (cmd_info.trim_5end_) {
-        printf("now do 5end trim\n");
+        fprintf(stderr, "now do 5end trim\n");
     }
     if (cmd_info.trim_3end_) {
-        printf("now do 3end trim\n");
+        fprintf(stderr, "now do 3end trim\n");
     }
     if (cmd_info.trim_polyg_) {
-        printf("now do polyg trim\n");
+        fprintf(stderr, "now do polyg trim\n");
     }
     if (cmd_info.trim_polyx_) {
-        printf("now do polyx trim\n");
+        fprintf(stderr, "now do polyx trim\n");
     }
 
 
     if (cmd_info.add_umi_) {
-        printf("now doing umi add\n");
-        printf("umi location is %s\n", umiLoc.c_str());
-        printf("umi len is %d\n", cmd_info.umi_len_);
-        printf("umi skip is %d\n", cmd_info.umi_skip_);
-        printf("umi prefix is %s\n", cmd_info.umi_prefix_.c_str());
+        fprintf(stderr, "now doing umi add\n");
+        fprintf(stderr, "umi location is %s\n", umiLoc.c_str());
+        fprintf(stderr, "umi len is %d\n", cmd_info.umi_len_);
+        fprintf(stderr, "umi skip is %d\n", cmd_info.umi_skip_);
+        fprintf(stderr, "umi prefix is %s\n", cmd_info.umi_prefix_.c_str());
 
         if (umiLoc.empty())
             error_exit("You've enabled UMI by (--addUmi), you should specify the UMI location by (--umiLoc)");
@@ -554,38 +554,38 @@ int main(int argc, char **argv) {
     }
 
     if (cmd_info.do_overrepresentation_) {
-        printf("now doing overrepresentation\n");
-        printf("overrepresentation sampling is %d\n", cmd_info.overrepresentation_sampling_);
+        fprintf(stderr, "now doing overrepresentation\n");
+        fprintf(stderr, "overrepresentation sampling is %d\n", cmd_info.overrepresentation_sampling_);
     }
 
     //if (cmd_info.isPhred64_) {
-    //    printf("now use phred64 input\n");
+    //    fprintf(stderr, "now use phred64 input\n");
     //}
 
 
     if (cmd_info.use_pugz_) {
         if(cmd_info.pugz_threads_ > 8){
-            //printf("pugz thread number must <= 8, now set pugz thread number == 8.\n");
+            //fprintf(stderr, "pugz thread number must <= 8, now set pugz thread number == 8.\n");
             //cmd_info.pugz_threads_ = 8;
         }
-        //printf("now use pugz, pugz thread number is %d\n", cmd_info.pugz_threads_);
+        //fprintf(stderr, "now use pugz, pugz thread number is %d\n", cmd_info.pugz_threads_);
     }
     if (cmd_info.use_pigz_) {
-        //printf("now use pigz, pigz thread number is %d\n", cmd_info.pigz_threads_);
+        //fprintf(stderr, "now use pigz, pigz thread number is %d\n", cmd_info.pigz_threads_);
     }
     //if (cmd_info.thread_number_ == 1)
-    //    printf("now use %d thread to do QC operations\n", cmd_info.thread_number_);
+    //    fprintf(stderr, "now use %d thread to do QC operations\n", cmd_info.thread_number_);
     //else
-    //    printf("now use %d threads to do QC operations\n", cmd_info.thread_number_);
+    //    fprintf(stderr, "now use %d threads to do QC operations\n", cmd_info.thread_number_);
     int mx_len = 150;
     if(do_max_len_eval) mx_len = Adapter::EvalMaxLen(cmd_info.in_file_name1_);
-    //printf("auto detect max seqs len is %d\n", mx_len);
+    //fprintf(stderr, "auto detect max seqs len is %d\n", mx_len);
     cmd_info.seq_len_ = mx_len;
     if(cmd_info.adapter_fasta_file_.length() > 0){
-        printf("loading adatper from %s\n", cmd_info.adapter_fasta_file_.c_str());
+        fprintf(stderr, "loading adatper from %s\n", cmd_info.adapter_fasta_file_.c_str());
         cmd_info.adapter_from_fasta_ = Adapter::LoadAdaptersFromFasta(cmd_info.adapter_fasta_file_);
         sort(cmd_info.adapter_from_fasta_.begin(), cmd_info.adapter_from_fasta_.end());
-        for(auto item : cmd_info.adapter_from_fasta_)printf(" --- %s ---\n", item.c_str());
+        for(auto item : cmd_info.adapter_from_fasta_)fprintf(stderr, " --- %s ---\n", item.c_str());
     }
     double t_start = GetTime();
 
@@ -598,75 +598,75 @@ int main(int argc, char **argv) {
 
         //adapter
         if (cmd_info.adapter_seq1_.length()) {
-            printf("input adapter1 is %s\n", cmd_info.adapter_seq1_.c_str());
+            fprintf(stderr, "input adapter1 is %s\n", cmd_info.adapter_seq1_.c_str());
             if (cmd_info.adapter_seq2_.length() == 0) {
                 cmd_info.adapter_seq2_ = cmd_info.adapter_seq1_;
             }
-            printf("input adapter2 is %s\n", cmd_info.adapter_seq2_.c_str());
+            fprintf(stderr, "input adapter2 is %s\n", cmd_info.adapter_seq2_.c_str());
             cmd_info.pe_auto_detect_adapter_ = false;
             cmd_info.detect_adapter1_ = true;
             cmd_info.detect_adapter2_ = true;
         }
         if (cmd_info.pe_auto_detect_adapter_) {
             double t2 = GetTime();
-            printf("now auto detect adapter\n");
+            fprintf(stderr, "now auto detect adapter\n");
             cmd_info.adapter_seq1_ = Adapter::AutoDetect(cmd_info.in_file_name1_, cmd_info.trim_tail1_);
             cmd_info.adapter_seq2_ = Adapter::AutoDetect(cmd_info.in_file_name2_, cmd_info.trim_tail1_);
             if (cmd_info.adapter_seq1_.length()) {
-                printf("find adapter %s in read1\n", cmd_info.adapter_seq1_.c_str());
+                fprintf(stderr, "find adapter %s in read1\n", cmd_info.adapter_seq1_.c_str());
                 cmd_info.detect_adapter1_ = true;
             } else {
-                printf("not find adapter in read1\n");
+                fprintf(stderr, "not find adapter in read1\n");
             }
             if (cmd_info.adapter_seq2_.length()) {
-                printf("find adapter %s in read2\n", cmd_info.adapter_seq2_.c_str());
+                fprintf(stderr, "find adapter %s in read2\n", cmd_info.adapter_seq2_.c_str());
                 cmd_info.detect_adapter2_ = true;
             } else {
-                printf("not find adapter in read2\n");
+                fprintf(stderr, "not find adapter in read2\n");
             }
 #ifdef Verbose
-            printf("detect adapter cost %.5f\n", GetTime() - t2);
+            fprintf(stderr, "detect adapter cost %.5f\n", GetTime() - t2);
 #endif
         }
 #ifdef Verbose
         if (cmd_info.correct_data_) {
-            printf("now correct data\n");
+            fprintf(stderr, "now correct data\n");
         }
 #endif
         if (cmd_info.trim_adapter_ || cmd_info.correct_data_ || !cmd_info.no_insert_size_) {
             cmd_info.analyze_overlap_ = true;
-            printf("for PE data, overlap analysis is used to find adapter by default\n");
+            fprintf(stderr, "for PE data, overlap analysis is used to find adapter by default\n");
         }
 
         if (cmd_info.trim_front1_) {
-            printf("read1 trim front %d bases\n", cmd_info.trim_front1_);
+            fprintf(stderr, "read1 trim front %d bases\n", cmd_info.trim_front1_);
             cmd_info.trim_front2_ = cmd_info.trim_front1_;
-            printf("read2 trim front %d bases\n", cmd_info.trim_front2_);
+            fprintf(stderr, "read2 trim front %d bases\n", cmd_info.trim_front2_);
         }
         if (cmd_info.trim_tail1_) {
-            printf("read1 trim tail %d bases\n", cmd_info.trim_tail1_);
+            fprintf(stderr, "read1 trim tail %d bases\n", cmd_info.trim_tail1_);
             cmd_info.trim_tail2_ = cmd_info.trim_tail1_;
-            printf("read2 trim tail %d bases\n", cmd_info.trim_tail2_);
+            fprintf(stderr, "read2 trim tail %d bases\n", cmd_info.trim_tail2_);
         }
 
         if (cmd_info.do_overrepresentation_) {
             double t2 = GetTime();
-            printf("now doing overrepresent preprocessing part\n");
+            fprintf(stderr, "now doing overrepresent preprocessing part\n");
             Adapter::PreOverAnalyze(cmd_info.in_file_name1_, cmd_info.hot_seqs_, cmd_info.eva_len_);
             Adapter::PreOverAnalyze(cmd_info.in_file_name2_, cmd_info.hot_seqs2_, cmd_info.eva_len2_);
-            printf("overrepresent preprocessing part done\n");
-            printf("read1 has %d hot sequence\n", cmd_info.hot_seqs_.size());
-            printf("read2 has %d hot sequence\n", cmd_info.hot_seqs2_.size());
+            fprintf(stderr, "overrepresent preprocessing part done\n");
+            fprintf(stderr, "read1 has %d hot sequence\n", cmd_info.hot_seqs_.size());
+            fprintf(stderr, "read2 has %d hot sequence\n", cmd_info.hot_seqs2_.size());
 #ifdef Verbose
-            printf("pre over representation cost %.5f\n", GetTime() - t2);
+            fprintf(stderr, "pre over representation cost %.5f\n", GetTime() - t2);
 #endif
         }
 
         if (cmd_info.interleaved_in_) {
-            printf("now input use interleaved pe data\n");
+            fprintf(stderr, "now input use interleaved pe data\n");
         }
         if (cmd_info.interleaved_out_) {
-            printf("now output use interleaved pe data\n");
+            fprintf(stderr, "now output use interleaved pe data\n");
         }
         if (cmd_info.adapter_seq1_.length() > 0)
             cmd_info.adapter_len_lim_ = min(cmd_info.adapter_len_lim_, int(cmd_info.adapter_seq1_.length()));
@@ -685,39 +685,39 @@ int main(int argc, char **argv) {
         }
         //adapter
         if (cmd_info.adapter_seq1_.length()) {
-            printf("input adapter is %s\n", cmd_info.adapter_seq1_.c_str());
+            fprintf(stderr, "input adapter is %s\n", cmd_info.adapter_seq1_.c_str());
             cmd_info.se_auto_detect_adapter_ = false;
             cmd_info.detect_adapter1_ = true;
         }
         if (cmd_info.se_auto_detect_adapter_) {
             double t2 = GetTime();
-            printf("now auto detect adapter\n");
+            fprintf(stderr, "now auto detect adapter\n");
             cmd_info.adapter_seq1_ = Adapter::AutoDetect(cmd_info.in_file_name1_, cmd_info.trim_tail1_);
             if (cmd_info.adapter_seq1_.length()) {
-                printf("find adapter %s\n", cmd_info.adapter_seq1_.c_str());
+                fprintf(stderr, "find adapter %s\n", cmd_info.adapter_seq1_.c_str());
                 cmd_info.detect_adapter1_ = true;
             } else {
-                printf("not find adapter\n");
+                fprintf(stderr, "not find adapter\n");
             }
 #ifdef Verbose
-            printf("detect adapter cost %.5f\n", GetTime() - t2);
+            fprintf(stderr, "detect adapter cost %.5f\n", GetTime() - t2);
 #endif
         }
         if (cmd_info.trim_front1_) {
-            printf("trim front %d bases\n", cmd_info.trim_front1_);
+            fprintf(stderr, "trim front %d bases\n", cmd_info.trim_front1_);
         }
         if (cmd_info.trim_tail1_) {
-            printf("trim tail %d bases\n", cmd_info.trim_tail1_);
+            fprintf(stderr, "trim tail %d bases\n", cmd_info.trim_tail1_);
         }
 
         if (cmd_info.do_overrepresentation_) {
             double t2 = GetTime();
-            printf("now doing overrepresent preprocessing part\n");
+            fprintf(stderr, "now doing overrepresent preprocessing part\n");
             Adapter::PreOverAnalyze(cmd_info.in_file_name1_, cmd_info.hot_seqs_, cmd_info.eva_len_);
-            printf("overrepresent preprocessing part done\n");
-            printf("total %d hot sqes\n", cmd_info.hot_seqs_.size());
+            fprintf(stderr, "overrepresent preprocessing part done\n");
+            fprintf(stderr, "total %d hot sqes\n", cmd_info.hot_seqs_.size());
 #ifdef Verbose
-            printf("pre over representation cost %.5f\n", GetTime() - t2);
+            fprintf(stderr, "pre over representation cost %.5f\n", GetTime() - t2);
 #endif
         }
         if (cmd_info.adapter_seq1_.length() > 0)
@@ -746,7 +746,7 @@ int main(int argc, char **argv) {
             rename(cmd_info.out_file_name2_.c_str(), init_name2.c_str());
         }
     }
-    printf("cmd is %s\n", command.c_str());
-    printf("total cost %.5fs\n", GetTime() - t_start);
+    fprintf(stderr, "cmd is %s\n", command.c_str());
+    fprintf(stderr, "total cost %.5fs\n", GetTime() - t_start);
     return 0;
 }

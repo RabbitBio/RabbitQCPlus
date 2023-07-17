@@ -11,11 +11,11 @@ namespace helpers {
     class CpuTimer{
     public:
 
-        CpuTimer() : CpuTimer("anonymous timer", std::cout)
+        CpuTimer() : CpuTimer("anonymous timer", std::cerr)
         {
         }
 
-        CpuTimer(const std::string& label) : CpuTimer(label, std::cout)
+        CpuTimer(const std::string& label) : CpuTimer(label, std::cerr)
         {
         }
 
@@ -107,20 +107,20 @@ namespace helpers {
     public:
 
         GpuTimer()
-            : GpuTimer(0, "anonymous timer", std::cout)
+            : GpuTimer(0, "anonymous timer", std::cerr)
         {
             //default stream, current device
         }
 
         GpuTimer(const std::string& label)
-            : GpuTimer(0, label, std::cout)
+            : GpuTimer(0, label, std::cerr)
         {
             //default stream, current device
         }
 
 
         GpuTimer(cudaStream_t stream, const std::string& label)
-            : GpuTimer(stream, label, std::cout)
+            : GpuTimer(stream, label, std::cerr)
         {
             //user-defined stream, current device
         }
@@ -138,7 +138,7 @@ namespace helpers {
         }
 
         GpuTimer(cudaStream_t stream, const std::string& label, int deviceId)
-            : GpuTimer(stream, label, deviceId, std::cout)
+            : GpuTimer(stream, label, deviceId, std::cerr)
         {
             //user-defined stream, user-defined device
         }

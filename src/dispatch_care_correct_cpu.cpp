@@ -42,20 +42,20 @@ namespace care{
 
         auto memInfo = datastructure.getMemoryInfo();
         
-        std::cout << name << " memory usage: " << toGB(memInfo.host) << " GB on host\n";
+        std::cerr << name << " memory usage: " << toGB(memInfo.host) << " GB on host\n";
         for(const auto& pair : memInfo.device){
-            std::cout << name << " memory usage: " << toGB(pair.second) << " GB on device " << pair.first << '\n';
+            std::cerr << name << " memory usage: " << toGB(pair.second) << " GB on device " << pair.first << '\n';
         }
     }
 
      
     void performCorrection(ProgramOptions programOptions){
 
-        std::cout << "Running CARE CPU" << std::endl;
+        std::cerr << "Running CARE CPU" << std::endl;
 
         helpers::CpuTimer step1Timer("STEP1");
 
-        std::cout << "STEP 1: Database construction" << std::endl;
+        std::cerr << "STEP 1: Database construction" << std::endl;
 
         helpers::CpuTimer buildReadStorageTimer("build_readstorage");
 
@@ -63,19 +63,19 @@ namespace care{
 
         buildReadStorageTimer.print();
 
-        std::cout << "Determined the following read properties:\n";
-        std::cout << "----------------------------------------\n";
-        std::cout << "Total number of reads: " << cpuReadStorage->getNumberOfReads() << "\n";
-        std::cout << "Minimum sequence length: " << cpuReadStorage->getSequenceLengthLowerBound() << "\n";
-        std::cout << "Maximum sequence length: " << cpuReadStorage->getSequenceLengthUpperBound() << "\n";
-        std::cout << "----------------------------------------\n";
+        std::cerr << "Determined the following read properties:\n";
+        std::cerr << "----------------------------------------\n";
+        std::cerr << "Total number of reads: " << cpuReadStorage->getNumberOfReads() << "\n";
+        std::cerr << "Minimum sequence length: " << cpuReadStorage->getSequenceLengthLowerBound() << "\n";
+        std::cerr << "Maximum sequence length: " << cpuReadStorage->getSequenceLengthUpperBound() << "\n";
+        std::cerr << "----------------------------------------\n";
 
         if(programOptions.save_binary_reads_to != ""){
-            std::cout << "Saving reads to file " << programOptions.save_binary_reads_to << std::endl;
+            std::cerr << "Saving reads to file " << programOptions.save_binary_reads_to << std::endl;
             helpers::CpuTimer timer("save_to_file");
             cpuReadStorage->saveToFile(programOptions.save_binary_reads_to);
             timer.print();
-            std::cout << "Saved reads" << std::endl;
+            std::cerr << "Saved reads" << std::endl;
         }
         
         if(programOptions.autodetectKmerlength){
@@ -91,10 +91,10 @@ namespace care{
 
             programOptions.kmerlength = getKmerSizeForHashing(maxlength);
 
-            std::cout << "Will use k-mer length = " << programOptions.kmerlength << " for hashing.\n";
+            std::cerr << "Will use k-mer length = " << programOptions.kmerlength << " for hashing.\n";
         }
 
-        std::cout << "Reads with ambiguous bases: " << cpuReadStorage->getNumberOfReadsWithN() << std::endl;        
+        std::cerr << "Reads with ambiguous bases: " << cpuReadStorage->getNumberOfReadsWithN() << std::endl;        
 
         printDataStructureMemoryUsage(*cpuReadStorage, "reads");
 
@@ -116,19 +116,19 @@ namespace care{
 
         buildMinhasherTimer.print();
 
-        std::cout << "Using minhasher type: " << to_string(minhasherAndType.second) << "\n";
-        std::cout << "CpuMinhasher can use " << cpuMinhasher->getNumberOfMaps() << " maps\n";
+        std::cerr << "Using minhasher type: " << to_string(minhasherAndType.second) << "\n";
+        std::cerr << "CpuMinhasher can use " << cpuMinhasher->getNumberOfMaps() << " maps\n";
 
         if(cpuMinhasher->getNumberOfMaps() <= 0){
-            std::cout << "Cannot construct a single cpu hashtable. Abort!" << std::endl;
+            std::cerr << "Cannot construct a single cpu hashtable. Abort!" << std::endl;
             return;
         }
 
         if(programOptions.mustUseAllHashfunctions 
             && programOptions.numHashFunctions != cpuMinhasher->getNumberOfMaps()){
-            std::cout << "Cannot use specified number of hash functions (" 
+            std::cerr << "Cannot use specified number of hash functions (" 
                 << programOptions.numHashFunctions <<")\n";
-            std::cout << "Abort!\n";
+            std::cerr << "Abort!\n";
             return;
         }
 
@@ -138,14 +138,14 @@ namespace care{
             assert(ordinaryCpuMinhasher != nullptr);
 
             if(programOptions.save_hashtables_to != "") {
-                std::cout << "Saving minhasher to file " << programOptions.save_hashtables_to << std::endl;
+                std::cerr << "Saving minhasher to file " << programOptions.save_hashtables_to << std::endl;
                 std::ofstream os(programOptions.save_hashtables_to);
                 assert((bool)os);
                 helpers::CpuTimer timer("save_to_file");
                 ordinaryCpuMinhasher->writeToStream(os);
                 timer.print();
 
-                std::cout << "Saved minhasher" << std::endl;
+                std::cerr << "Saved minhasher" << std::endl;
             }
 
         }
@@ -154,7 +154,7 @@ namespace care{
 
         step1Timer.print();
 
-        std::cout << "STEP 2: Error correction" << std::endl;
+        std::cerr << "STEP 2: Error correction" << std::endl;
 
         helpers::CpuTimer step2Timer("STEP2");
 
@@ -166,7 +166,7 @@ namespace care{
 
         step2Timer.print();
 
-        std::cout << "Correction throughput : ~" << (cpuReadStorage->getNumberOfReads() / step2Timer.elapsed()) << " reads/second.\n";
+        std::cerr << "Correction throughput : ~" << (cpuReadStorage->getNumberOfReads() / step2Timer.elapsed()) << " reads/second.\n";
 
         std::cerr << "Constructed " << partialResults.size() << " corrections. ";
         std::cerr << "They occupy a total of " << (partialResults.dataBytes() + partialResults.offsetBytes()) << " bytes\n";
@@ -198,7 +198,7 @@ namespace care{
             }
             //std::cerr << "memoryForSorting = " << memoryForSorting << "\n"; 
 
-            std::cout << "STEP 3: Constructing output file(s)" << std::endl;
+            std::cerr << "STEP 3: Constructing output file(s)" << std::endl;
 
             helpers::CpuTimer step3Timer("STEP3");
 
@@ -246,18 +246,18 @@ namespace care{
 
             //compareMaxRssToLimit(programOptions.memoryTotalLimit, "Error memorylimit after output construction");
 
-            std::cout << "Construction of output file(s) finished." << std::endl;
+            std::cerr << "Construction of output file(s) finished." << std::endl;
         }
 
     }
 
     void performCorrectionOutToQueue(ProgramOptions programOptions, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q1, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q2, std::atomic_int *producerDone, std::atomic_int *careStartWrite, int* changNum){
 
-        std::cout << "Running CARE CPU" << std::endl;
+        std::cerr << "Running CARE CPU" << std::endl;
 
         helpers::CpuTimer step1Timer("STEP1");
 
-        std::cout << "STEP 1: Database construction" << std::endl;
+        std::cerr << "STEP 1: Database construction" << std::endl;
 
         helpers::CpuTimer buildReadStorageTimer("build_readstorage");
 
@@ -265,19 +265,19 @@ namespace care{
 
         buildReadStorageTimer.print();
 
-        std::cout << "Determined the following read properties:\n";
-        std::cout << "----------------------------------------\n";
-        std::cout << "Total number of reads: " << cpuReadStorage->getNumberOfReads() << "\n";
-        std::cout << "Minimum sequence length: " << cpuReadStorage->getSequenceLengthLowerBound() << "\n";
-        std::cout << "Maximum sequence length: " << cpuReadStorage->getSequenceLengthUpperBound() << "\n";
-        std::cout << "----------------------------------------\n";
+        std::cerr << "Determined the following read properties:\n";
+        std::cerr << "----------------------------------------\n";
+        std::cerr << "Total number of reads: " << cpuReadStorage->getNumberOfReads() << "\n";
+        std::cerr << "Minimum sequence length: " << cpuReadStorage->getSequenceLengthLowerBound() << "\n";
+        std::cerr << "Maximum sequence length: " << cpuReadStorage->getSequenceLengthUpperBound() << "\n";
+        std::cerr << "----------------------------------------\n";
 
         if(programOptions.save_binary_reads_to != ""){
-            std::cout << "Saving reads to file " << programOptions.save_binary_reads_to << std::endl;
+            std::cerr << "Saving reads to file " << programOptions.save_binary_reads_to << std::endl;
             helpers::CpuTimer timer("save_to_file");
             cpuReadStorage->saveToFile(programOptions.save_binary_reads_to);
             timer.print();
-            std::cout << "Saved reads" << std::endl;
+            std::cerr << "Saved reads" << std::endl;
         }
         
         if(programOptions.autodetectKmerlength){
@@ -293,10 +293,10 @@ namespace care{
 
             programOptions.kmerlength = getKmerSizeForHashing(maxlength);
 
-            std::cout << "Will use k-mer length = " << programOptions.kmerlength << " for hashing.\n";
+            std::cerr << "Will use k-mer length = " << programOptions.kmerlength << " for hashing.\n";
         }
 
-        std::cout << "Reads with ambiguous bases: " << cpuReadStorage->getNumberOfReadsWithN() << std::endl;        
+        std::cerr << "Reads with ambiguous bases: " << cpuReadStorage->getNumberOfReadsWithN() << std::endl;        
 
         printDataStructureMemoryUsage(*cpuReadStorage, "reads");
 
@@ -318,19 +318,19 @@ namespace care{
 
         buildMinhasherTimer.print();
 
-        std::cout << "Using minhasher type: " << to_string(minhasherAndType.second) << "\n";
-        std::cout << "CpuMinhasher can use " << cpuMinhasher->getNumberOfMaps() << " maps\n";
+        std::cerr << "Using minhasher type: " << to_string(minhasherAndType.second) << "\n";
+        std::cerr << "CpuMinhasher can use " << cpuMinhasher->getNumberOfMaps() << " maps\n";
 
         if(cpuMinhasher->getNumberOfMaps() <= 0){
-            std::cout << "Cannot construct a single cpu hashtable. Abort!" << std::endl;
+            std::cerr << "Cannot construct a single cpu hashtable. Abort!" << std::endl;
             return;
         }
 
         if(programOptions.mustUseAllHashfunctions 
             && programOptions.numHashFunctions != cpuMinhasher->getNumberOfMaps()){
-            std::cout << "Cannot use specified number of hash functions (" 
+            std::cerr << "Cannot use specified number of hash functions (" 
                 << programOptions.numHashFunctions <<")\n";
-            std::cout << "Abort!\n";
+            std::cerr << "Abort!\n";
             return;
         }
 
@@ -340,14 +340,14 @@ namespace care{
             assert(ordinaryCpuMinhasher != nullptr);
 
             if(programOptions.save_hashtables_to != "") {
-                std::cout << "Saving minhasher to file " << programOptions.save_hashtables_to << std::endl;
+                std::cerr << "Saving minhasher to file " << programOptions.save_hashtables_to << std::endl;
                 std::ofstream os(programOptions.save_hashtables_to);
                 assert((bool)os);
                 helpers::CpuTimer timer("save_to_file");
                 ordinaryCpuMinhasher->writeToStream(os);
                 timer.print();
 
-                std::cout << "Saved minhasher" << std::endl;
+                std::cerr << "Saved minhasher" << std::endl;
             }
 
         }
@@ -356,7 +356,7 @@ namespace care{
 
         step1Timer.print();
 
-        std::cout << "STEP 2: Error correction" << std::endl;
+        std::cerr << "STEP 2: Error correction" << std::endl;
 
         helpers::CpuTimer step2Timer("STEP2");
 
@@ -368,7 +368,7 @@ namespace care{
 
         step2Timer.print();
 
-        std::cout << "Correction throughput : ~" << (cpuReadStorage->getNumberOfReads() / step2Timer.elapsed()) << " reads/second.\n";
+        std::cerr << "Correction throughput : ~" << (cpuReadStorage->getNumberOfReads() / step2Timer.elapsed()) << " reads/second.\n";
 
         std::cerr << "Constructed " << partialResults.size() << " corrections. ";
         std::cerr << "They occupy a total of " << (partialResults.dataBytes() + partialResults.offsetBytes()) << " bytes\n";
@@ -400,7 +400,7 @@ namespace care{
             }
             //std::cerr << "memoryForSorting = " << memoryForSorting << "\n"; 
 
-            std::cout << "STEP 3: Constructing output file(s)" << std::endl;
+            std::cerr << "STEP 3: Constructing output file(s)" << std::endl;
 
             helpers::CpuTimer step3Timer("STEP3");
 
@@ -453,7 +453,7 @@ namespace care{
 
             //compareMaxRssToLimit(programOptions.memoryTotalLimit, "Error memorylimit after output construction");
 
-            std::cout << "Construction of output file(s) finished." << std::endl;
+            std::cerr << "Construction of output file(s) finished." << std::endl;
         }
 
     }

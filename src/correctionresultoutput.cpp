@@ -144,7 +144,7 @@ void mergeSerializedResultsWithOriginalReads_multithreaded(
 
             unprocessedTcsBatches.push(nullptr);
 
-            //std::cout << "# elapsed time ("<< "tcsparsing without queues" <<"): " << adelta.count()  << " s" << std::endl;
+            //std::cerr << "# elapsed time ("<< "tcsparsing without queues" <<"): " << adelta.count()  << " s" << std::endl;
 
             // TIMERSTOPCPU(tcsparsing);
         }
@@ -211,7 +211,7 @@ void mergeSerializedResultsWithOriginalReads_multithreaded(
 
         unprocessedInputreadBatches.push(nullptr);
 
-        // std::cout << "# elapsed time ("<< "inputparsing without queues" <<"): " << adelta.count()  << " s" << std::endl;
+        // std::cerr << "# elapsed time ("<< "inputparsing without queues" <<"): " << adelta.count()  << " s" << std::endl;
 
         // TIMERSTOPCPU(inputparsing);
     };
@@ -250,7 +250,7 @@ void mergeSerializedResultsWithOriginalReads_multithreaded(
         }
 
         unprocessedInputreadBatches.push(nullptr);
-        // std::cout << "# elapsed time ("<< "inputparsing without queues" <<"): " << adelta.count()  << " s" << std::endl;
+        // std::cerr << "# elapsed time ("<< "inputparsing without queues" <<"): " << adelta.count()  << " s" << std::endl;
 
         // TIMERSTOPCPU(inputparsing);
     };
@@ -315,7 +315,7 @@ void mergeSerializedResultsWithOriginalReads_multithreaded(
 
             freeReadBatches.push(nullptr);
 
-            // std::cout << "# elapsed time ("<< "outputwriting without queues" <<"): " << adelta.count()  << " s" << std::endl;
+            // std::cerr << "# elapsed time ("<< "outputwriting without queues" <<"): " << adelta.count()  << " s" << std::endl;
 
             // TIMERSTOPCPU(outputwriting);
         }
@@ -436,7 +436,7 @@ void mergeSerializedResultsWithOriginalReads_multithreaded(
     inputReaderFuture.wait();
     outputWriterFuture.wait();
 
-    // std::cout << "\n";
+    // std::cerr << "\n";
 
     mergetimer.print();
 }
@@ -569,7 +569,7 @@ void mergeSerializedResultsWithOriginalReads_multithreadedOutToQueue(
 
             unprocessedTcsBatches.push(nullptr);
 
-            //std::cout << "# elapsed time ("<< "tcsparsing without queues" <<"): " << adelta.count()  << " s" << std::endl;
+            //std::cerr << "# elapsed time ("<< "tcsparsing without queues" <<"): " << adelta.count()  << " s" << std::endl;
 
             // TIMERSTOPCPU(tcsparsing);
         }
@@ -636,7 +636,7 @@ void mergeSerializedResultsWithOriginalReads_multithreadedOutToQueue(
 
         unprocessedInputreadBatches.push(nullptr);
 
-        // std::cout << "# elapsed time ("<< "inputparsing without queues" <<"): " << adelta.count()  << " s" << std::endl;
+        // std::cerr << "# elapsed time ("<< "inputparsing without queues" <<"): " << adelta.count()  << " s" << std::endl;
 
         // TIMERSTOPCPU(inputparsing);
     };
@@ -675,7 +675,7 @@ void mergeSerializedResultsWithOriginalReads_multithreadedOutToQueue(
         }
 
         unprocessedInputreadBatches.push(nullptr);
-        // std::cout << "# elapsed time ("<< "inputparsing without queues" <<"): " << adelta.count()  << " s" << std::endl;
+        // std::cerr << "# elapsed time ("<< "inputparsing without queues" <<"): " << adelta.count()  << " s" << std::endl;
 
         // TIMERSTOPCPU(inputparsing);
     };
@@ -841,7 +841,7 @@ void mergeSerializedResultsWithOriginalReads_multithreadedOutToQueue(
 
             freeReadBatches.push(nullptr);
 
-            // std::cout << "# elapsed time ("<< "outputwriting without queues" <<"): " << adelta.count()  << " s" << std::endl;
+            // std::cerr << "# elapsed time ("<< "outputwriting without queues" <<"): " << adelta.count()  << " s" << std::endl;
 
             // TIMERSTOPCPU(outputwriting);
         }
@@ -962,7 +962,7 @@ void mergeSerializedResultsWithOriginalReads_multithreadedOutToQueue(
     inputReaderFuture.wait();
     outputWriterFuture.wait();
 
-    // std::cout << "\n";
+    // std::cerr << "\n";
 
     mergetimer.print();
 }
@@ -1563,9 +1563,9 @@ void constructOutputFileFromCorrectionResults(
         if(showProgress){
             total += i;
 
-            printf("Written %10llu reads\r", total);
+            fprintf(stderr, "Written %10llu reads\r", total);
 
-            std::cout.flush();
+            std::cerr.flush();
         }
     };
 
@@ -1581,7 +1581,7 @@ void constructOutputFileFromCorrectionResults(
     );
 
     if(showProgress){
-        std::cout << "\n";
+        std::cerr << "\n";
     }
 }
 
@@ -1604,9 +1604,9 @@ void constructOutputFileFromCorrectionResultsOutToQueue(
         if(showProgress){
             total += i;
 
-            printf("Written %10llu reads\r", total);
+            fprintf(stderr, "Written %10llu reads\r", total);
 
-            std::cout.flush();
+            std::cerr.flush();
         }
     };
 
@@ -1627,7 +1627,7 @@ void constructOutputFileFromCorrectionResultsOutToQueue(
     );
 
     if(showProgress){
-        std::cout << "\n";
+        std::cerr << "\n";
     }
 }
 

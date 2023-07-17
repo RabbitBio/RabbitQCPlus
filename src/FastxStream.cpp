@@ -1198,7 +1198,7 @@ namespace rabbit {
                 SkipToSol(data_, pos_, size_);
                 //it is name
                 if (data_[pos_ + offset] != '@') {
-                    std::cout << "core dump is " << data_[pos_ + offset] << std::endl;
+                    //std::cout << "core dump is " << data_[pos_ + offset] << std::endl;
                     return pos_ + offset;
                 } else {
                     return pos_ + offset;
@@ -1227,7 +1227,7 @@ namespace rabbit {
             //-----[haoz:] is the following code necessary??-------------//
             SkipToEol(data_, pos_, size_);
             ++pos_;
-            if (data_[pos_] != '+') std::cout << "core dump is pos: " << pos_ << " char: " << data_[pos_] << std::endl;
+            //if (data_[pos_] != '+') std::cout << "core dump is pos: " << pos_ << " char: " << data_[pos_] << std::endl;
             ASSERT(data_[pos_] == '+');// pos0 was the start of tag
             return pos0;
         }

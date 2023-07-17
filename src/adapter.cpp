@@ -32,17 +32,17 @@ inline map<string, string> getKnownAdapter() {
 }
 
 void PrintRef(neoReference &ref) {
-    printf("%s\n", string((char *) ref.base + ref.pname, ref.lname).c_str());
-    printf("%s\n", string((char *) ref.base + ref.pseq, ref.lseq).c_str());
-    printf("%s\n", string((char *) ref.base + ref.pstrand, ref.lstrand).c_str());
-    printf("%s\n", string((char *) ref.base + ref.pqual, ref.lqual).c_str());
+    fprintf(stderr, "%s\n", string((char *) ref.base + ref.pname, ref.lname).c_str());
+    fprintf(stderr, "%s\n", string((char *) ref.base + ref.pseq, ref.lseq).c_str());
+    fprintf(stderr, "%s\n", string((char *) ref.base + ref.pstrand, ref.lstrand).c_str());
+    fprintf(stderr, "%s\n", string((char *) ref.base + ref.pqual, ref.lqual).c_str());
 }
 
 void PrintRef(Reference &ref) {
-    printf("%s\n", ref.name.c_str());
-    printf("%s\n", ref.seq.c_str());
-    printf("%s\n", ref.strand.c_str());
-    printf("%s\n", ref.quality.c_str());
+    fprintf(stderr, "%s\n", ref.name.c_str());
+    fprintf(stderr, "%s\n", ref.seq.c_str());
+    fprintf(stderr, "%s\n", ref.strand.c_str());
+    fprintf(stderr, "%s\n", ref.quality.c_str());
 }
 
 string Reverse(string seq) {
@@ -217,7 +217,7 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
                         num++;
                     }
                     if (num >= maxm) {
-                        printf("hot sequence is too many\n");
+                        fprintf(stderr, "hot sequence is too many\n");
                         exit(0);
                     }
                 }
@@ -1274,7 +1274,7 @@ int Adapter::CorrectData(neoReference &r1, neoReference &r2, OverlapRes &overlap
     if (uncorrected + corrected != overlap_res.diff_num) {
         static bool warned = false;
         if (!warned) {
-            printf("WARNING: the algorithm is wrong! uncorrected + corrected != overlap_res.diff_num");
+            fprintf(stderr, "WARNING: the algorithm is wrong! uncorrected + corrected != overlap_res.diff_num");
             warned = true;
         }
     }

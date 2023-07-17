@@ -40,20 +40,20 @@ void main_pugz(string in_name, int threads, moodycamel::ReaderWriterQueue<pair<c
 
     ret = xopen_for_read(in_name.c_str(), true, &in);
     if (ret != 0) {
-        printf("gg on xopen_for_read\n");
+        fprintf(stderr, "gg on xopen_for_read\n");
         exit(0);
     }
 
     ret = stat_file(&in, &stbuf, true);
     if (ret != 0) {
-        printf("gg on stat_file\n");
+        fprintf(stderr, "gg on stat_file\n");
         exit(0);
     }
     /* TODO: need a streaming-friendly solution */
     ret = map_file_contents(&in, size_t(stbuf.st_size));
 
     if (ret != 0) {
-        printf("gg on map_file_contents\n");
+        fprintf(stderr, "gg on map_file_contents\n");
         exit(0);
     }
 

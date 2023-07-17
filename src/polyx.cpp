@@ -55,7 +55,7 @@ void PolyX::trimPolyX(neoReference &ref, int compareReq) {
     static bool geok = 0;
     if (geok == 0) {
         geok = 1;
-        printf("compareReq %d\n", compareReq);
+        fprintf(stderr, "compareReq %d\n", compareReq);
     }
     const int allowOneMismatchForEach = 8;
     const int maxMismatch = 5;

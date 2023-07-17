@@ -133,11 +133,11 @@ void State::HashState() {
         }
         cntTotal[cnt]++;
     }
-    printf("print hash table state info ===========================\n");
+    fprintf(stderr, "print hash table state info ===========================\n");
     for (int i = 1; i < 100; i++) {
-        if (cntTotal[i]) printf("%d %d\n", i, cntTotal[i]);
+        if (cntTotal[i]) fprintf(stderr, "%d %d\n", i, cntTotal[i]);
     }
-    printf("=======================================================\n");
+    fprintf(stderr, "=======================================================\n");
 }
 
 inline bool State::HashQueryAndAdd(uint64_t now, int offset, int len, int eva_len) {
@@ -191,32 +191,32 @@ void State::ExtendBuffer(int old_len, int new_len) {
 void print128_8(__m128i var){
     char val[16];
     memcpy(val, &var, sizeof(val));
-    printf("Numerical: %c %c %c %c %c %c %c %c %c %c %c %c %c %c %c %c %c\n", 
+    fprintf(stderr, "Numerical: %c %c %c %c %c %c %c %c %c %c %c %c %c %c %c %c %c\n", 
             val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9], val[10], val[11], val[12], val[13], val[14], val[15]);
 }
 void print128_32(__m128i var){
     int val[4];
     memcpy(val, &var, sizeof(val));
-    printf("Numerical: %d %d %d %d\n", 
+    fprintf(stderr, "Numerical: %d %d %d %d\n", 
             val[0], val[1], val[2], val[3]);
 }
 void print128_64(__m128i var) {
     int64_t v64val[2];
     memcpy(v64val, &var, sizeof(v64val));
-    printf("Numerical: %lld %lld\n", v64val[0], v64val[1]);
+    fprintf(stderr, "Numerical: %lld %lld\n", v64val[0], v64val[1]);
 }
 
 
 void print256_32(__m256i var){
     int val[8];
     memcpy(val, &var, sizeof(val));
-    printf("Numerical: %d %d %d %d %d %d %d %d\n", 
+    fprintf(stderr, "Numerical: %d %d %d %d %d %d %d %d\n", 
             val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7]);
 }
 void print256_64(__m256i var) {
     int64_t v64val[4];
     memcpy(v64val, &var, sizeof(v64val));
-    printf("Numerical: %lld %lld %lld %lld\n", v64val[0], v64val[1], v64val[2], v64val[3]);
+    fprintf(stderr, "Numerical: %lld %lld %lld %lld\n", v64val[0], v64val[1], v64val[2], v64val[3]);
 }
 
 */
@@ -579,13 +579,13 @@ void State::Summarize() {
     kmer_min_ = kmer_[0];
     kmer_max_ = kmer_[0];
     for (int i = 0; i < kmer_buf_len_; i++) {
-        //        printf("%d ", kmer_[i]);
+        //        fprintf(stderr, "%d ", kmer_[i]);
         if (kmer_[i] > kmer_max_)
             kmer_max_ = kmer_[i];
         if (kmer_[i] < kmer_min_)
             kmer_min_ = kmer_[i];
     }
-    //    printf("\n");
+    //    fprintf(stderr, "\n");
 
     has_summarize_ = true;
 }
@@ -707,18 +707,18 @@ void State::PrintAdapterToFile(const State *state) {
 
 void State::PrintFilterResults(const State *state) {
 
-    printf("filtering result:\n");
-    printf("pass filter read number: %lld\n", state->pass_reads_);
-    printf("not pass filter due to too short: %lld\n", state->fail_short_);
-    printf("not pass filter due to too long: %lld\n", state->fail_long_);
-    printf("not pass filter due to too many N: %lld\n", state->fail_N_);
-    printf("not pass filter due to low quality: %lld\n", state->fail_lowq_);
+    fprintf(stderr, "filtering result:\n");
+    fprintf(stderr, "pass filter read number: %lld\n", state->pass_reads_);
+    fprintf(stderr, "not pass filter due to too short: %lld\n", state->fail_short_);
+    fprintf(stderr, "not pass filter due to too long: %lld\n", state->fail_long_);
+    fprintf(stderr, "not pass filter due to too many N: %lld\n", state->fail_N_);
+    fprintf(stderr, "not pass filter due to low quality: %lld\n", state->fail_lowq_);
     if (state->cmd_info_->print_what_trimmed_)
-        printf("trimmed adapter read number: %lld (all trimmed adapter (len >= %d) can be find in *_trimmed_adapters.txt)\n",
+        fprintf(stderr, "trimmed adapter read number: %lld (all trimmed adapter (len >= %d) can be find in *_trimmed_adapters.txt)\n",
                 state->trim_adapter_, state->cmd_info_->adapter_len_lim_);
     else
-        printf("trimmed adapter read number: %lld \n", state->trim_adapter_);
-    printf("trimmed base number due to adapter: %lld\n", state->trim_adapter_bases_);
+        fprintf(stderr, "trimmed adapter read number: %lld \n", state->trim_adapter_);
+    fprintf(stderr, "trimmed base number due to adapter: %lld\n", state->trim_adapter_bases_);
 }
 
 /**
@@ -726,19 +726,19 @@ void State::PrintFilterResults(const State *state) {
  * @param state
  */
 void State::PrintStates(const State *state) {
-    printf("total bases %lld\n", state->tot_bases_);
-    printf("q20 bases %lld\n", state->q20bases_);
-    printf("q30 bases %lld\n", state->q30bases_);
-    printf("read number %lld\n", state->lines_);
-    printf("average read length %.3f\n", state->avg_len);
-    //printf("kmer max is %lld\n", state->kmer_max_);
-    //printf("kmer min is %lld\n", state->kmer_min_);
+    fprintf(stderr, "total bases %lld\n", state->tot_bases_);
+    fprintf(stderr, "q20 bases %lld\n", state->q20bases_);
+    fprintf(stderr, "q30 bases %lld\n", state->q30bases_);
+    fprintf(stderr, "read number %lld\n", state->lines_);
+    fprintf(stderr, "average read length %.3f\n", state->avg_len);
+    //fprintf(stderr, "kmer max is %lld\n", state->kmer_max_);
+    //fprintf(stderr, "kmer min is %lld\n", state->kmer_min_);
     //if(state->do_over_represent_analyze_){
-    //	printf("orp qcnt %lld\n",state->over_representation_qcnt_);
-    //	printf("orp pcnt %lld\n",state->over_representation_pcnt_);
+    //	fprintf(stderr, "orp qcnt %lld\n",state->over_representation_qcnt_);
+    //	fprintf(stderr, "orp pcnt %lld\n",state->over_representation_pcnt_);
     //}
     //    int now_seq_len = state->real_seq_len_;
-    //    printf("position--quality :\n");
+    //    fprintf(stderr, "position--quality :\n");
     //    for (int i = 0; i < now_seq_len; i++) {
     //        int64_t tot_cnt = 0;
     //        int64_t tot_qul = 0;
@@ -746,19 +746,19 @@ void State::PrintStates(const State *state) {
     //            tot_cnt += state->pos_cnt_[i * 8 + j];
     //            tot_qul += state->pos_qul_[i * 8 + j];
     //        }
-    //        printf("pos %d, quality %.5f\n", i, 1.0 * tot_qul / tot_cnt);
+    //        fprintf(stderr, "pos %d, quality %.5f\n", i, 1.0 * tot_qul / tot_cnt);
     //    }
-    //    printf("mean_quality--ref_number :\n");
+    //    fprintf(stderr, "mean_quality--ref_number :\n");
     //    for (int i = 0; i < state->qul_range_; i++) {
-    //        printf("quality %d, ref_number %lld\n", i, state->qul_cnt_[i]);
+    //        fprintf(stderr, "quality %d, ref_number %lld\n", i, state->qul_cnt_[i]);
     //    }
-    //    printf("gc%%--ref_number :\n");
+    //    fprintf(stderr, "gc%%--ref_number :\n");
     //    for (int i = 0; i <= 100; i++) {
-    //        printf("gc%% %d, ref_number %lld\n", i, state->gc_cnt_[i]);
+    //        fprintf(stderr, "gc%% %d, ref_number %lld\n", i, state->gc_cnt_[i]);
     //    }
-    //    printf("seq_len--ref_number :\n");
+    //    fprintf(stderr, "seq_len--ref_number :\n");
     //    for (int i = 0; i < state->real_seq_len_; i++) {
-    //        printf("seq_len %d, ref_number %lld\n", i + 1, state->len_cnt_[i]);
+    //        fprintf(stderr, "seq_len %d, ref_number %lld\n", i + 1, state->len_cnt_[i]);
     //    }
 }
 

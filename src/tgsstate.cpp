@@ -135,13 +135,13 @@ void TGSStats::print() {
 
 
     auto res3 = this->GetBases51015Num();
-    printf("total bases %lld\n", this->GetBasesNum());
-    printf("q5 bases %lld\n", res3[0]);
-    printf("q10 bases %lld\n", res3[1]);
-    printf("q15 bases %lld\n", res3[2]);
-    printf("read number %lld\n", this->GetReadsNum());
-    printf("average read length %.3f\n", this->GetAvgReadsLen());
-    printf("\n");
+    fprintf(stderr, "total bases %lld\n", this->GetBasesNum());
+    fprintf(stderr, "q5 bases %lld\n", res3[0]);
+    fprintf(stderr, "q10 bases %lld\n", res3[1]);
+    fprintf(stderr, "q15 bases %lld\n", res3[2]);
+    fprintf(stderr, "read number %lld\n", this->GetReadsNum());
+    fprintf(stderr, "average read length %.3f\n", this->GetAvgReadsLen());
+    fprintf(stderr, "\n");
     /*
     //cerr << "nothing here" << endl;
     int i;

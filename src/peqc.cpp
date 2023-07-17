@@ -14,7 +14,7 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
     filter_ = new Filter(cmd_info1);
     done_thread_number_ = 0;
     int out_block_nums = int(1.0 * cmd_info1->in_file_size1_ / cmd_info1->out_block_size_);
-    //printf("out_block_nums %d\n", out_block_nums);
+    //fprintf(stderr, "out_block_nums %d\n", out_block_nums);
     out_queue1_ = NULL;
     out_queue2_ = NULL;
     nowChunkId = 1;
@@ -49,13 +49,13 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
                 out_stream2_.open(out_name2);
                 out_stream2_.close();
 #ifdef Verbose
-                printf("now use pigz to compress output data\n");
+                fprintf(stderr, "now use pigz to compress output data\n");
 #endif
 
             } else {
 #ifdef Verbose
-                printf("open gzip stream1 %s\n", cmd_info1->out_file_name1_.c_str());
-                printf("open gzip stream2 %s\n", cmd_info1->out_file_name2_.c_str());
+                fprintf(stderr, "open gzip stream1 %s\n", cmd_info1->out_file_name1_.c_str());
+                fprintf(stderr, "open gzip stream2 %s\n", cmd_info1->out_file_name2_.c_str());
 #endif
                 zip_out_stream1 = gzopen(cmd_info1->out_file_name1_.c_str(), "w");
                 gzsetparams(zip_out_stream1, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
@@ -66,9 +66,9 @@ PeQc::PeQc(CmdInfo *cmd_info1) {
             }
         } else {
 #ifdef Verbose
-            printf("open stream1 %s\n", cmd_info1->out_file_name1_.c_str());
+            fprintf(stderr, "open stream1 %s\n", cmd_info1->out_file_name1_.c_str());
             if (cmd_info_->interleaved_out_ == 0)
-                printf("open stream2 %s\n", cmd_info1->out_file_name2_.c_str());
+                fprintf(stderr, "open stream2 %s\n", cmd_info1->out_file_name2_.c_str());
 #endif
             out_stream1_.open(cmd_info1->out_file_name1_);
             if (cmd_info_->interleaved_out_ == 0){
@@ -129,8 +129,8 @@ PeQc::~PeQc() {
 
 void PeQc::careProcess() {
     
-    //printf("pairmode %s\n", cmd_info_->pairmode_.c_str());
-    //printf("coverage %d\n", cmd_info_->coverage_);
+    //fprintf(stderr, "pairmode %s\n", cmd_info_->pairmode_.c_str());
+    //fprintf(stderr, "coverage %d\n", cmd_info_->coverage_);
     vector<char*>paras;
     paras.push_back("./RabbitQCPlus");
     paras.push_back("-i");
@@ -149,12 +149,12 @@ void PeQc::careProcess() {
 
     paras.push_back("-c");
     string str_coverage = to_string(cmd_info_->coverage_);
-    //printf("str_coverage %s\n", str_coverage.c_str());
+    //fprintf(stderr, "str_coverage %s\n", str_coverage.c_str());
     paras.push_back((char*)(str_coverage.data()));
 
     paras.push_back("-t");
     string str_thread = to_string(cmd_info_->correct_threadnum_);
-    //printf("str_thread %s\n", str_thread.c_str());
+    //fprintf(stderr, "str_thread %s\n", str_thread.c_str());
     paras.push_back((char*)(str_thread.data()));
 
     paras.push_back("--pairmode");
@@ -290,19 +290,19 @@ void PeQc::careProcess() {
 
 
     //for(int i = 0; i < paras.size(); i++) {
-    //    printf("%s ", paras[i]);
+    //    fprintf(stderr, "%s ", paras[i]);
     //}
-    //printf("\n");
+    //fprintf(stderr, "\n");
 
-    printf("start care part...\n");
+    fprintf(stderr, "start care part...\n");
 
-    //printf("now output to queue, %p %p %p\n", careQueue1, careQueue2, &producerDone);
+    //fprintf(stderr, "now output to queue, %p %p %p\n", careQueue1, careQueue2, &producerDone);
     main_correction(paras.size(), &(paras[0]), careQueue1, careQueue2, &producerDone, &careStartWrite, &changeNum);
 
-    printf("care end\n");
-    //printf("care1 queue size %d\n", careQueue1->size_approx());
-    //printf("care2 queue size %d\n", careQueue2->size_approx());
-    //printf("care change size %d\n", changeNum);
+    fprintf(stderr, "care end\n");
+    //fprintf(stderr, "care1 queue size %d\n", careQueue1->size_approx());
+    //fprintf(stderr, "care2 queue size %d\n", careQueue2->size_approx());
+    //fprintf(stderr, "care change size %d\n", changeNum);
 
     careDone1 = 1;
     careDone2 = 1;
@@ -354,8 +354,8 @@ void PeQc::ProducerPeInterFastqTask(string file, rabbit::fq::FastqDataPool *fast
     dq.SetCompleted();
     delete fqFileReader;
 #ifdef Verbose
-    cout << "file " << file << " has " << n_chunks << " chunks" << endl;
-    printf("producer cost %.3f\n", GetTime() - t0);
+    //cout << "file " << file << " has " << n_chunks << " chunks" << endl;
+    fprintf(stderr, "producer cost %.3f\n", GetTime() - t0);
 #endif
 }
 
@@ -423,8 +423,8 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
     dq.SetCompleted();
     delete fqFileReader;
 #ifdef Verbose
-    cout << "file " << file << " has " << n_chunks << " chunks" << endl;
-    printf("producer cost %.3f\n", GetTime() - t0);
+    //cout << "file " << file << " has " << n_chunks << " chunks" << endl;
+    fprintf(stderr, "producer cost %.3f\n", GetTime() - t0);
 #endif
 }
 
@@ -621,7 +621,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                 mylock.lock();
                 while (queueNumNow1 >= queueSizeLim1) {
 #ifdef Verbose
-                    //printf("waiting to push a chunk to out queue1\n");
+                    //fprintf(stderr, "waiting to push a chunk to out queue1\n");
 #endif
                     usleep(100);
                 }
@@ -652,7 +652,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     mylock.lock();
                     while (queueNumNow1 >= queueSizeLim1 || queueNumNow2 >= queueSizeLim2) {
 #ifdef Verbose
-                        //printf("waiting to push a chunk to out queue1\n");
+                        //fprintf(stderr, "waiting to push a chunk to out queue1\n");
 #endif
                         usleep(100);
                     }
@@ -819,7 +819,7 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                 mylock.lock();
                 while (queueNumNow1 >= queueSizeLim1) {
 #ifdef Verbose
-                    //printf("waiting to push a chunk to out queue1\n");
+                    //fprintf(stderr, "waiting to push a chunk to out queue1\n");
 #endif
                     usleep(100);
                 }
@@ -844,7 +844,7 @@ void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDa
                     mylock.lock();
                     while (queueNumNow1 >= queueSizeLim1 || queueNumNow2 >= queueSizeLim2) {
 #ifdef Verbose
-                        //printf("waiting to push a chunk to out queue1\n");
+                        //fprintf(stderr, "waiting to push a chunk to out queue1\n");
 #endif
                         usleep(100);
                     }
@@ -889,7 +889,7 @@ void PeQc::WriteSeFastqTask1() {
                 while (pigzQueueNumNow1 > pigzQueueSizeLim1) {
 
 #ifdef Verbose
-                    //printf("waiting to push a chunk to pigz queue1\n");
+                    //fprintf(stderr, "waiting to push a chunk to pigz queue1\n");
 #endif
                     usleep(100);
                 }
@@ -898,7 +898,7 @@ void PeQc::WriteSeFastqTask1() {
             } else {
                 int written = gzwrite(zip_out_stream1, now.first, now.second);
                 if (written != now.second) {
-                    printf("gzwrite error\n");
+                    fprintf(stderr, "gzwrite error\n");
                     exit(0);
                 }
                 delete[] now.first;
@@ -923,7 +923,7 @@ void PeQc::WriteSeFastqTask1() {
         out_stream1_.close();
     }
 #ifdef Verbose
-    printf("write1 cost %.5f\n", GetTime() - t0);
+    fprintf(stderr, "write1 cost %.5f\n", GetTime() - t0);
 #endif
 }
 
@@ -953,7 +953,7 @@ void PeQc::WriteSeFastqTask2() {
                 while (pigzQueueNumNow2 > pigzQueueSizeLim2) {
 
 #ifdef Verbose
-                    //printf("waiting to push a chunk to pigz queue2\n");
+                    //fprintf(stderr, "waiting to push a chunk to pigz queue2\n");
 #endif
                     usleep(100);
                 }
@@ -962,7 +962,7 @@ void PeQc::WriteSeFastqTask2() {
             } else {
                 int written = gzwrite(zip_out_stream2, now.first, now.second);
                 if (written != now.second) {
-                    printf("GG");
+                    fprintf(stderr, "GG");
                     exit(0);
                 }
 
@@ -990,39 +990,39 @@ void PeQc::WriteSeFastqTask2() {
         out_stream2_.close();
     }
 #ifdef Verbose
-    printf("write2 cost %.5f\n", GetTime() - t0);
+    fprintf(stderr, "write2 cost %.5f\n", GetTime() - t0);
 #endif
 }
 
 /*
 void PeQc::PugzTask1() {
 #ifdef Verbose
-    printf("pugz1 start\n");
+    fprintf(stderr, "pugz1 start\n");
     double t0 = GetTime();
 #endif
     main_pugz(cmd_info_->in_file_name1_, cmd_info_->pugz_threads_, pugzQueue1, &producerDone);
     pugzDone1 = 1;
 #ifdef Verbose
-    printf("pugz1 done, cost %.6f\n", GetTime() - t0);
+    fprintf(stderr, "pugz1 done, cost %.6f\n", GetTime() - t0);
 #endif
 }
 
 void PeQc::PugzTask2() {
 #ifdef Verbose
-    printf("pugz2 start\n");
+    fprintf(stderr, "pugz2 start\n");
     double t0 = GetTime();
 #endif
     main_pugz(cmd_info_->in_file_name2_, cmd_info_->pugz_threads_, pugzQueue2, &producerDone);
     pugzDone2 = 1;
 #ifdef Verbose
-    printf("pugz2 done, cost %.6f\n", GetTime() - t0);
+    fprintf(stderr, "pugz2 done, cost %.6f\n", GetTime() - t0);
 #endif
 }
 */
 
 void PeQc::PugzTask1() {
 #ifdef Verbose
-    printf("pragzip1 start\n");
+    fprintf(stderr, "pragzip1 start\n");
     double t0 = GetTime();
 #endif
  
@@ -1047,13 +1047,13 @@ void PeQc::PugzTask1() {
 
     pugzDone1 = 1;
 #ifdef Verbose
-    printf("pragzip1 done, cost %.6f\n", GetTime() - t0);
+    fprintf(stderr, "pragzip1 done, cost %.6f\n", GetTime() - t0);
 #endif
 }
 
 void PeQc::PugzTask2() {
 #ifdef Verbose
-    printf("pragzip2 start\n");
+    fprintf(stderr, "pragzip2 start\n");
     double t0 = GetTime();
 #endif
 
@@ -1078,7 +1078,7 @@ void PeQc::PugzTask2() {
 
     pugzDone2 = 1;
 #ifdef Verbose
-    printf("pragzip2 done, cost %.6f\n", GetTime() - t0);
+    fprintf(stderr, "pragzip2 done, cost %.6f\n", GetTime() - t0);
 #endif
 }
 
@@ -1090,10 +1090,10 @@ void PeQc::PigzTask1() {
     infos[0] = "./pigz";
     infos[1] = "-p";
     int th_num = cmd_info_->pigz_threads_;
-    //    printf("th num is %d\n", th_num);
+    //    fprintf(stderr, "th num is %d\n", th_num);
     string th_num_s = to_string(th_num);
-    //    printf("th num s is %s\n", th_num_s.c_str());
-    //    printf("th num s len is %d\n", th_num_s.length());
+    //    fprintf(stderr, "th num s is %s\n", th_num_s.c_str());
+    //    fprintf(stderr, "th num s len is %d\n", th_num_s.length());
 
     infos[2] = new char[th_num_s.length() + 1];
     memcpy(infos[2], th_num_s.c_str(), th_num_s.length());
@@ -1112,15 +1112,15 @@ void PeQc::PigzTask1() {
     infos[7] = "4096";
     string out_name1 = cmd_info_->out_file_name1_;
     string out_file = out_name1.substr(0, out_name1.find(".gz"));
-    //    printf("th out_file is %s\n", out_file.c_str());
-    //    printf("th out_file len is %d\n", out_file.length());
+    //    fprintf(stderr, "th out_file is %s\n", out_file.c_str());
+    //    fprintf(stderr, "th out_file len is %d\n", out_file.length());
     infos[8] = new char[out_file.length() + 1];
     memcpy(infos[8], out_file.c_str(), out_file.length());
     infos[8][out_file.length()] = '\0';
     infos[9] = "-v";
     main_pigz(cnt, infos, pigzQueue1, &writerDone1, pigzLast1, &pigzQueueNumNow1);
 #ifdef Verbose
-    printf("pigz1 done\n");
+    fprintf(stderr, "pigz1 done\n");
 #endif
 }
 
@@ -1132,10 +1132,10 @@ void PeQc::PigzTask2() {
     infos[0] = "./pigz";
     infos[1] = "-p";
     int th_num = cmd_info_->pigz_threads_;
-    //    printf("th num is %d\n", th_num);
+    //    fprintf(stderr, "th num is %d\n", th_num);
     string th_num_s = to_string(th_num);
-    //    printf("th num s is %s\n", th_num_s.c_str());
-    //    printf("th num s len is %d\n", th_num_s.length());
+    //    fprintf(stderr, "th num s is %s\n", th_num_s.c_str());
+    //    fprintf(stderr, "th num s len is %d\n", th_num_s.length());
 
     infos[2] = new char[th_num_s.length() + 1];
     memcpy(infos[2], th_num_s.c_str(), th_num_s.length());
@@ -1153,15 +1153,15 @@ void PeQc::PigzTask2() {
     infos[7] = "4096";
     string out_name2 = cmd_info_->out_file_name2_;
     string out_file = out_name2.substr(0, out_name2.find(".gz"));
-    //    printf("th out_file is %s\n", out_file.c_str());
-    //    printf("th out_file len is %d\n", out_file.length());
+    //    fprintf(stderr, "th out_file is %s\n", out_file.c_str());
+    //    fprintf(stderr, "th out_file len is %d\n", out_file.length());
     infos[8] = new char[out_file.length() + 1];
     memcpy(infos[8], out_file.c_str(), out_file.length());
     infos[8][out_file.length()] = '\0';
     infos[9] = "-v";
     main_pigz(cnt, infos, pigzQueue2, &writerDone2, pigzLast2, &pigzQueueNumNow2);
 #ifdef Verbose
-    printf("pigz2 done\n");
+    fprintf(stderr, "pigz2 done\n");
 #endif
 }
 
@@ -1202,8 +1202,8 @@ void PeQc::ProcessPeFastq() {
                 write_thread2->join();
         }
 #ifdef Verbose
-        printf("all thrad done\n");
-        printf("now merge thread info\n");
+        fprintf(stderr, "all thrad done\n");
+        fprintf(stderr, "now merge thread info\n");
 #endif
         vector<State *> pre_vec_state1;
         vector<State *> pre_vec_state2;
@@ -1222,25 +1222,25 @@ void PeQc::ProcessPeFastq() {
         auto aft_state2 = State::MergeStates(aft_vec_state2);
 
 #ifdef Verbose
-        printf("merge done\n");
+        fprintf(stderr, "merge done\n");
 #endif
-        printf("\nprint read1 (before filter) info :\n");
+        fprintf(stderr, "\nprint read1 (before filter) info :\n");
         State::PrintStates(pre_state1);
-        printf("\nprint read1 (after filter) info :\n");
+        fprintf(stderr, "\nprint read1 (after filter) info :\n");
         State::PrintStates(aft_state1);
-        printf("\n");
+        fprintf(stderr, "\n");
 
-        printf("\nprint read2 (before filter) info :\n");
+        fprintf(stderr, "\nprint read2 (before filter) info :\n");
         State::PrintStates(pre_state2);
-        printf("\nprint read2 (after filter) info :\n");
+        fprintf(stderr, "\nprint read2 (after filter) info :\n");
         State::PrintStates(aft_state2);
-        printf("\n");
+        fprintf(stderr, "\n");
         if (cmd_info_->print_what_trimmed_) {
             State::PrintAdapterToFile(aft_state1);
             State::PrintAdapterToFile(aft_state2);
         }
         State::PrintFilterResults(aft_state1);
-        printf("\n");
+        fprintf(stderr, "\n");
 
         if (cmd_info_->do_overrepresentation_ && cmd_info_->print_ORP_seqs_) {
 
@@ -1276,7 +1276,7 @@ void PeQc::ProcessPeFastq() {
                 cnt1++;
             }
             ofs.close();
-            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
+            fprintf(stderr, "in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
                     srr_name1.c_str(), cnt1, out_name1.c_str());
 
             string out_name2 = "pe_" + srr_name2 + "_before_ORP_sequences.txt";
@@ -1290,7 +1290,7 @@ void PeQc::ProcessPeFastq() {
                 cnt2++;
             }
             ofs.close();
-            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
+            fprintf(stderr, "in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
                     srr_name2.c_str(), cnt2, out_name2.c_str());
 
 
@@ -1305,7 +1305,7 @@ void PeQc::ProcessPeFastq() {
                 cnt1++;
             }
             ofs.close();
-            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(),
+            fprintf(stderr, "in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(),
                     cnt1, out_name1.c_str());
 
             out_name2 = "pe_" + srr_name2 + "_after_ORP_sequences.txt";
@@ -1319,10 +1319,10 @@ void PeQc::ProcessPeFastq() {
                 cnt2++;
             }
             ofs.close();
-            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(),
+            fprintf(stderr, "in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(),
                     cnt2, out_name2.c_str());
 
-            printf("\n");
+            fprintf(stderr, "\n");
         }
         int *dupHist = NULL;
         double *dupMeanGC = NULL;
@@ -1334,7 +1334,7 @@ void PeQc::ProcessPeFastq() {
             dupMeanGC = new double[histSize];
             memset(dupMeanGC, 0, sizeof(double) * histSize);
             dupRate = duplicate_->statAll(dupHist, dupMeanGC, histSize);
-            printf("Duplication rate : %.5f %%\n", dupRate * 100.0);
+            fprintf(stderr, "Duplication rate : %.5f %%\n", dupRate * 100.0);
             delete[] dupHist;
             delete[] dupMeanGC;
         }
@@ -1353,8 +1353,8 @@ void PeQc::ProcessPeFastq() {
             for (int i = 0; i < cmd_info_->max_insert_size_; i++) {
                 if (merge_insert_size[i] > merge_insert_size[mx_id]) mx_id = i;
             }
-            //printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
-            printf("Insert size peak (based on PE overlap analyze): %d\n", mx_id);
+            //fprintf(stderr, "Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
+            fprintf(stderr, "Insert size peak (based on PE overlap analyze): %d\n", mx_id);
         }
         string srr_name1 = cmd_info_->in_file_name1_;
         srr_name1 = PaseFileName(srr_name1);
@@ -1364,7 +1364,7 @@ void PeQc::ProcessPeFastq() {
                 aft_state2, cmd_info_->in_file_name1_,
                 cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
 #ifdef Verbose
-        printf("report done\n");
+        fprintf(stderr, "report done\n");
 #endif
 
         delete pre_state1;
@@ -1395,7 +1395,7 @@ void PeQc::ProcessPeFastq() {
             while(careStartWrite == 0) {
                 usleep(10000);
             }
-            printf("QC start...\n");
+            fprintf(stderr, "QC start...\n");
             if(changeNum == 0) {
                 carer->join();
                 delete carer;
@@ -1483,8 +1483,8 @@ void PeQc::ProcessPeFastq() {
                 pigzer2->join();
         }
 #ifdef Verbose
-        printf("all thrad done\n");
-        printf("now merge thread info\n");
+        fprintf(stderr, "all thrad done\n");
+        fprintf(stderr, "now merge thread info\n");
 #endif
         vector<State *> pre_vec_state1;
         vector<State *> pre_vec_state2;
@@ -1503,27 +1503,27 @@ void PeQc::ProcessPeFastq() {
         auto aft_state2 = State::MergeStates(aft_vec_state2);
 #ifdef Verbose
         if (cmd_info_->do_overrepresentation_) {
-            printf("orp cost %f\n", pre_state1->GetOrpCost() + pre_state2->GetOrpCost() + aft_state1->GetOrpCost() + aft_state2->GetOrpCost());
+            fprintf(stderr, "orp cost %f\n", pre_state1->GetOrpCost() + pre_state2->GetOrpCost() + aft_state1->GetOrpCost() + aft_state2->GetOrpCost());
         }
-        printf("merge done\n");
+        fprintf(stderr, "merge done\n");
 #endif
-        printf("\nprint read1 (before filter) info :\n");
+        fprintf(stderr, "\nprint read1 (before filter) info :\n");
         State::PrintStates(pre_state1);
-        printf("\nprint read1 (after filter) info :\n");
+        fprintf(stderr, "\nprint read1 (after filter) info :\n");
         State::PrintStates(aft_state1);
-        printf("\n");
+        fprintf(stderr, "\n");
 
-        printf("\nprint read2 (before filter) info :\n");
+        fprintf(stderr, "\nprint read2 (before filter) info :\n");
         State::PrintStates(pre_state2);
-        printf("\nprint read2 (after filter) info :\n");
+        fprintf(stderr, "\nprint read2 (after filter) info :\n");
         State::PrintStates(aft_state2);
-        printf("\n");
+        fprintf(stderr, "\n");
         if (cmd_info_->print_what_trimmed_) {
             State::PrintAdapterToFile(aft_state1);
             State::PrintAdapterToFile(aft_state2);
         }
         State::PrintFilterResults(aft_state1);
-        printf("\n");
+        fprintf(stderr, "\n");
         if (cmd_info_->do_overrepresentation_ && cmd_info_->print_ORP_seqs_) {
 
             auto pre_hash_graph1 = pre_state1->GetHashGraph();
@@ -1558,7 +1558,7 @@ void PeQc::ProcessPeFastq() {
                 cnt1++;
             }
             ofs.close();
-            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
+            fprintf(stderr, "in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
                     srr_name1.c_str(), cnt1, out_name1.c_str());
 
             string out_name2 = "pe_" + srr_name2 + "_before_ORP_sequences.txt";
@@ -1572,7 +1572,7 @@ void PeQc::ProcessPeFastq() {
                 cnt2++;
             }
             ofs.close();
-            printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
+            fprintf(stderr, "in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
                     srr_name2.c_str(), cnt2, out_name2.c_str());
 
 
@@ -1587,7 +1587,7 @@ void PeQc::ProcessPeFastq() {
                 cnt1++;
             }
             ofs.close();
-            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(),
+            fprintf(stderr, "in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(),
                     cnt1, out_name1.c_str());
 
             out_name2 = "pe_" + srr_name2 + "_after_ORP_sequences.txt";
@@ -1601,10 +1601,10 @@ void PeQc::ProcessPeFastq() {
                 cnt2++;
             }
             ofs.close();
-            printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(),
+            fprintf(stderr, "in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(),
                     cnt2, out_name2.c_str());
 
-            printf("\n");
+            fprintf(stderr, "\n");
         }
         int *dupHist = NULL;
         double *dupMeanGC = NULL;
@@ -1616,7 +1616,7 @@ void PeQc::ProcessPeFastq() {
             dupMeanGC = new double[histSize];
             memset(dupMeanGC, 0, sizeof(double) * histSize);
             dupRate = duplicate_->statAll(dupHist, dupMeanGC, histSize);
-            printf("Duplication rate : %.5f %%\n", dupRate * 100.0);
+            fprintf(stderr, "Duplication rate : %.5f %%\n", dupRate * 100.0);
             delete[] dupHist;
             delete[] dupMeanGC;
         }
@@ -1635,8 +1635,8 @@ void PeQc::ProcessPeFastq() {
             for (int i = 0; i < cmd_info_->max_insert_size_; i++) {
                 if (merge_insert_size[i] > merge_insert_size[mx_id]) mx_id = i;
             }
-            //printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
-            printf("Insert size peak (based on PE overlap analyze): %d\n", mx_id);
+            //fprintf(stderr, "Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
+            fprintf(stderr, "Insert size peak (based on PE overlap analyze): %d\n", mx_id);
         }
         string srr_name1 = cmd_info_->in_file_name1_;
         srr_name1 = PaseFileName(srr_name1);
@@ -1646,7 +1646,7 @@ void PeQc::ProcessPeFastq() {
                 aft_state2, cmd_info_->in_file_name1_,
                 cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
 #ifdef Verbose
-        printf("report done\n");
+        fprintf(stderr, "report done\n");
 #endif
         delete pre_state1;
         delete pre_state2;

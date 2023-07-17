@@ -112,15 +112,15 @@ SerializedObjectStorage correct_cpu(
         if(programOptions.showProgress){
             std::size_t totalNumReads = numReadsToProcess;
 
-            printf("Processed %10u of %10lu reads (Runtime: %03d:%02d:%02d)\r",
+            fprintf(stderr, "Processed %10u of %10lu reads (Runtime: %03d:%02d:%02d)\r",
                     totalCount, totalNumReads,
                     int(seconds / 3600),
                     int(seconds / 60) % 60,
                     int(seconds) % 60);
-            std::cout.flush();
+            std::cerr.flush();
 
             if(totalCount == totalNumReads){
-                std::cout << '\n';
+                std::cerr << '\n';
             }
         }        
     };
@@ -317,7 +317,7 @@ SerializedObjectStorage correct_cpu(
     const int numThreads = programOptions.threads;
 
     auto printDuration = [&](const auto& name, const auto& duration){
-        std::cout << "# average time per thread ("<< name << "): "
+        std::cerr << "# average time per thread ("<< name << "): "
                   << duration.count() / numThreads  << " s. "
                   << (100.0 * duration.count() / totalDurationOfThreads.count()) << " %."<< std::endl;
     };

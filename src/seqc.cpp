@@ -33,11 +33,11 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
                 out_stream_.open(out_name1);
                 out_stream_.close();
 #ifdef Verbose
-                printf("now use pigz to compress output data\n");
+                fprintf(stderr, "now use pigz to compress output data\n");
 #endif
             } else {
 #ifdef Verbose
-                printf("open gzip stream %s\n", cmd_info1->out_file_name1_.c_str());
+                fprintf(stderr, "open gzip stream %s\n", cmd_info1->out_file_name1_.c_str());
 #endif
                 zip_out_stream = gzopen(cmd_info1->out_file_name1_.c_str(), "w");
                 gzsetparams(zip_out_stream, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
@@ -45,7 +45,7 @@ SeQc::SeQc(CmdInfo *cmd_info1) {
             }
         } else {
 #ifdef Verbose
-            printf("open stream %s\n", cmd_info1->out_file_name1_.c_str());
+            fprintf(stderr, "open stream %s\n", cmd_info1->out_file_name1_.c_str());
 #endif
             out_stream_.open(cmd_info1->out_file_name1_);
         }
@@ -93,8 +93,8 @@ SeQc::~SeQc() {
 
 void SeQc::careProcess() {
     
-    //printf("pairmode %s\n", cmd_info_->pairmode_.c_str());
-    //printf("coverage %d\n", cmd_info_->coverage_);
+    //fprintf(stderr, "pairmode %s\n", cmd_info_->pairmode_.c_str());
+    //fprintf(stderr, "coverage %d\n", cmd_info_->coverage_);
     vector<char*>paras;
     paras.push_back("./RabbitQCPlus");
     paras.push_back("-i");
@@ -106,12 +106,12 @@ void SeQc::careProcess() {
     
     paras.push_back("-c");
     string str_coverage = to_string(cmd_info_->coverage_);
-    //printf("str_coverage %s\n", str_coverage.c_str());
+    //fprintf(stderr, "str_coverage %s\n", str_coverage.c_str());
     paras.push_back((char*)(str_coverage.data()));
 
     paras.push_back("-t");
     string str_thread = to_string(cmd_info_->correct_threadnum_);
-    //printf("str_thread %s\n", str_thread.c_str());
+    //fprintf(stderr, "str_thread %s\n", str_thread.c_str());
     paras.push_back((char*)(str_thread.data()));
 
     paras.push_back("--pairmode");
@@ -246,18 +246,18 @@ void SeQc::careProcess() {
 
 
     //for(int i = 0; i < paras.size(); i++) {
-    //    printf("%s ", paras[i]);
+    //    fprintf(stderr, "%s ", paras[i]);
     //}
-    //printf("\n");
+    //fprintf(stderr, "\n");
 
-    printf("start care part...\n");
+    fprintf(stderr, "start care part...\n");
 
-    //printf("now output to queue, %p %p\n", careQueue, &producerDone);
+    //fprintf(stderr, "now output to queue, %p %p\n", careQueue, &producerDone);
     main_correction(paras.size(), &(paras[0]), careQueue, careQueue, &producerDone, &careStartWrite, &changeNum);
 
-    printf("care end\n");
-    //printf("care queue size %d\n", careQueue->size_approx());
-    //printf("care change size %d\n", changeNum);
+    fprintf(stderr, "care end\n");
+    //fprintf(stderr, "care queue size %d\n", careQueue->size_approx());
+    //fprintf(stderr, "care change size %d\n", changeNum);
 
     careDone = 1;
 
@@ -292,7 +292,7 @@ void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_dat
         }
         delete[] last_info.first;
     } else if(cmd_info_->do_correction_with_care_) {
-        printf("producer read data from care...\n");
+        fprintf(stderr, "producer read data from care...\n");
 		pair<char *, int> last_info;
         last_info.first = new char[1 << 22];
         last_info.second = 0;
@@ -454,7 +454,7 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPoo
                     mylock.lock();
                     while (queueNumNow >= queueSizeLim) {
 #ifdef Verbose
-                        //printf("waiting to push a chunk to out queue %d\n",out_len);
+                        //fprintf(stderr, "waiting to push a chunk to out queue %d\n",out_len);
 #endif
                         usleep(100);
                     }
@@ -497,7 +497,7 @@ void SeQc::WriteSeFastqTask() {
             if (cmd_info_->use_pigz_) {
                 while (pigzQueueNumNow > pigzQueueSizeLim) {
 #ifdef Verbose
-                    //printf("waiting to push a chunk to pigz queue\n");
+                    //fprintf(stderr, "waiting to push a chunk to pigz queue\n");
 #endif
                     usleep(100);
                 }
@@ -506,7 +506,7 @@ void SeQc::WriteSeFastqTask() {
             } else {
                 int written = gzwrite(zip_out_stream, now.first, now.second);
                 if (written != now.second) {
-                    printf("gzwrite error\n");
+                    fprintf(stderr, "gzwrite error\n");
                     exit(0);
                 }
                 delete[] now.first;
@@ -532,7 +532,7 @@ void SeQc::WriteSeFastqTask() {
         out_stream_.close();
     }
 #ifdef Verbose
-    printf("write cost %.5f\n", GetTime() - t0);
+    fprintf(stderr, "write cost %.5f\n", GetTime() - t0);
 #endif
 }
 
@@ -544,13 +544,13 @@ void SeQc::WriteSeFastqTask() {
 /*
 void SeQc::PugzTask() {
 #ifdef Verbose
-    printf("pugz start\n");
+    fprintf(stderr, "pugz start\n");
     auto t0 = GetTime();
 #endif
     main_pugz(cmd_info_->in_file_name1_, cmd_info_->pugz_threads_, pugzQueue, &producerDone);
     //main_pragzip(cmd_info_->in_file_name1_, cmd_info_->pugz_threads_, pugzQueue, &producerDone);
 #ifdef Verbose
-    printf("pugz cost %.5f\n", GetTime() - t0);
+    fprintf(stderr, "pugz cost %.5f\n", GetTime() - t0);
 #endif
     pugzDone = 1;
 }
@@ -562,7 +562,7 @@ void SeQc::PugzTask() {
 
 void SeQc::PugzTask() {
 #ifdef Verbose
-    printf("pragzip start\n");
+    fprintf(stderr, "pragzip start\n");
     auto t0 = GetTime();
 #endif
     
@@ -586,7 +586,7 @@ void SeQc::PugzTask() {
     main_pragzip(cnt, infos, pugzQueue, &producerDone);
 
 #ifdef Verbose
-    printf("pragzip cost %.5f\n", GetTime() - t0);
+    fprintf(stderr, "pragzip cost %.5f\n", GetTime() - t0);
 #endif
     pugzDone = 1;
 }
@@ -611,10 +611,10 @@ void SeQc::PigzTask() {
     infos[0] = "./pigz";
     infos[1] = "-p";
     int th_num = cmd_info_->pigz_threads_;
-    //    printf("th num is %d\n", th_num);
+    //    fprintf(stderr, "th num is %d\n", th_num);
     string th_num_s = to_string(th_num);
-    //    printf("th num s is %s\n", th_num_s.c_str());
-    //    printf("th num s len is %d\n", th_num_s.length());
+    //    fprintf(stderr, "th num s is %s\n", th_num_s.c_str());
+    //    fprintf(stderr, "th num s len is %d\n", th_num_s.length());
 
     infos[2] = new char[th_num_s.length() + 1];
     memcpy(infos[2], th_num_s.c_str(), th_num_s.length());
@@ -635,14 +635,14 @@ void SeQc::PigzTask() {
     infos[7] = "4096";
     string out_name1 = cmd_info_->out_file_name1_;
     string out_file = out_name1.substr(0, out_name1.find(".gz"));
-    //    printf("th out_file is %s\n", out_file.c_str());
-    //    printf("th out_file len is %d\n", out_file.length());
+    //    fprintf(stderr, "th out_file is %s\n", out_file.c_str());
+    //    fprintf(stderr, "th out_file len is %d\n", out_file.length());
     infos[8] = new char[out_file.length() + 1];
     memcpy(infos[8], out_file.c_str(), out_file.length());
     infos[8][out_file.length()] = '\0';
     main_pigz(cnt, infos, pigzQueue, &writerDone, pigzLast, &pigzQueueNumNow);
 #ifdef Verbose
-    printf("pigz done\n");
+    fprintf(stderr, "pigz done\n");
 #endif
 }
 
@@ -662,7 +662,7 @@ void SeQc::ProcessSeFastq() {
         while(careStartWrite == 0) {
             usleep(100);
         }
-        printf("QC start...\n");
+        fprintf(stderr, "QC start...\n");
         if(changeNum == 0) {
             carer->join();
             delete carer;
@@ -718,13 +718,13 @@ void SeQc::ProcessSeFastq() {
     producer.join();
 
 #ifdef Verbose
-    printf("producer cost %.4f\n", GetTime() - t0);
+    fprintf(stderr, "producer cost %.4f\n", GetTime() - t0);
 #endif
     for (int t = 0; t < cmd_info_->thread_number_; t++) {
         threads[t]->join();
     }
 #ifdef Verbose
-    printf("consumer cost %.4f\n", GetTime() - t0);
+    fprintf(stderr, "consumer cost %.4f\n", GetTime() - t0);
 #endif
     if (cmd_info_->write_data_) {
         write_thread->join();
@@ -734,8 +734,8 @@ void SeQc::ProcessSeFastq() {
         pigzer->join();
     }
 #ifdef Verbose
-    printf("all thrad done\n");
-    printf("now merge thread info\n");
+    fprintf(stderr, "all thrad done\n");
+    fprintf(stderr, "now merge thread info\n");
 #endif
     vector<State *> pre_vec_state;
     vector<State *> aft_vec_state;
@@ -748,19 +748,19 @@ void SeQc::ProcessSeFastq() {
     auto aft_state = State::MergeStates(aft_vec_state);
 #ifdef Verbose
     if (cmd_info_->do_overrepresentation_) {
-        printf("orp cost %lf\n", pre_state->GetOrpCost() + aft_state->GetOrpCost());
+        fprintf(stderr, "orp cost %lf\n", pre_state->GetOrpCost() + aft_state->GetOrpCost());
     }
-    printf("merge done\n");
+    fprintf(stderr, "merge done\n");
 #endif
-    printf("\nprint read (before filter) info :\n");
+    fprintf(stderr, "\nprint read (before filter) info :\n");
     State::PrintStates(pre_state);
-    printf("\nprint read (after filter) info :\n");
+    fprintf(stderr, "\nprint read (after filter) info :\n");
     State::PrintStates(aft_state);
-    printf("\n");
+    fprintf(stderr, "\n");
     if (cmd_info_->print_what_trimmed_)
         State::PrintAdapterToFile(aft_state);
     State::PrintFilterResults(aft_state);
-    printf("\n");
+    fprintf(stderr, "\n");
 
     if (cmd_info_->do_overrepresentation_ && cmd_info_->print_ORP_seqs_) {
         auto hash_graph1 = pre_state->GetHashGraph();
@@ -786,7 +786,7 @@ void SeQc::ProcessSeFastq() {
             cnt1++;
         }
         ofs.close();
-        printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n", srr_name.c_str(),
+        fprintf(stderr, "in %s (before filter) find %d possible overrepresented sequences (store in %s)\n", srr_name.c_str(),
                cnt1, out_name.c_str());
 
 
@@ -801,9 +801,9 @@ void SeQc::ProcessSeFastq() {
             cnt2++;
         }
         ofs.close();
-        printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name.c_str(),
+        fprintf(stderr, "in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name.c_str(),
                cnt2, out_name.c_str());
-        printf("\n");
+        fprintf(stderr, "\n");
     }
 
 
@@ -817,7 +817,7 @@ void SeQc::ProcessSeFastq() {
         dupMeanGC = new double[histSize];
         memset(dupMeanGC, 0, sizeof(double) * histSize);
         dupRate = duplicate_->statAll(dupHist, dupMeanGC, histSize);
-        printf("Duplication rate (may be overestimated since this is SE data): %.5f %%\n", dupRate * 100.0);
+        fprintf(stderr, "Duplication rate (may be overestimated since this is SE data): %.5f %%\n", dupRate * 100.0);
         delete[] dupHist;
         delete[] dupMeanGC;
     }
@@ -877,8 +877,8 @@ void SeQc::ProcessSeTGS() {
         threads[t]->join();
     }
 #ifdef Verbose
-    printf("all thrad done\n");
-    printf("now merge thread info\n");
+    fprintf(stderr, "all thrad done\n");
+    fprintf(stderr, "now merge thread info\n");
 #endif
     vector<TGSStats *> vec_state;
 
@@ -887,9 +887,9 @@ void SeQc::ProcessSeTGS() {
     }
     auto mer_state = TGSStats::merge(vec_state);
 #ifdef Verbose
-    printf("merge done\n");
+    fprintf(stderr, "merge done\n");
 #endif
-    printf("\nprint TGS state info :\n");
+    fprintf(stderr, "\nprint TGS state info :\n");
 
     //    report3(mer_state);
     mer_state->CalReadsLens();

@@ -99,11 +99,11 @@ namespace care{
                 break;
             }
 
-            std::cout << "Constructing maps: ";
+            std::cerr << "Constructing maps: ";
             for(int i = 0; i < addedHashFunctions; i++){
-                std::cout << (alreadyExistingHashFunctions + i) << "(" << (hashFunctionOffset + alreadyExistingHashFunctions + i) << ") ";
+                std::cerr << (alreadyExistingHashFunctions + i) << "(" << (hashFunctionOffset + alreadyExistingHashFunctions + i) << ") ";
             }
-            std::cout << '\n';
+            std::cerr << '\n';
 
             usedHashFunctionNumbers.insert(usedHashFunctionNumbers.end(), h_hashfunctionNumbers.begin(), h_hashfunctionNumbers.begin() + addedHashFunctions);
 
@@ -199,7 +199,7 @@ namespace care{
 
             const int loadedMaps = cpuMinhasher->loadFromStream(is, programOptions.numHashFunctions);
 
-            std::cout << "Loaded " << loadedMaps << " hash tables from " << programOptions.load_hashtables_from << std::endl;
+            std::cerr << "Loaded " << loadedMaps << " hash tables from " << programOptions.load_hashtables_from << std::endl;
         }else{
             constructCpuMinhasherFromReadStorage(
                 programOptions,

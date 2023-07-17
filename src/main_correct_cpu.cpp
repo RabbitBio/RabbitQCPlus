@@ -85,18 +85,18 @@ int main_correction(int argc, char** argv, moodycamel::ReaderWriterQueue<std::pa
 	auto parseresults = commandLineOptions.parse(argc, argv);
 
 	if(showVersion){
-		std::cout << "CARE version " << CARE_VERSION_STRING << std::endl;
+		std::cerr << "CARE version " << CARE_VERSION_STRING << std::endl;
 		std::exit(0);
 	}
 
 	if(help) {
-		std::cout << commandLineOptions.help({"", "Mandatory", "Additional"}) << std::endl;
+		std::cerr << commandLineOptions.help({"", "Mandatory", "Additional"}) << std::endl;
 		std::exit(0);
 	}
 
 	const bool mandatoryPresent = checkMandatoryArguments(parseresults);
 	if(!mandatoryPresent){
-		std::cout << commandLineOptions.help({"Mandatory"}) << std::endl;
+		std::cerr << commandLineOptions.help({"Mandatory"}) << std::endl;
 		std::exit(0);
 	}
 
@@ -133,20 +133,20 @@ int main_correction(int argc, char** argv, moodycamel::ReaderWriterQueue<std::pa
 		}
 	}
 
-	std::cout << std::boolalpha;
-	std::cout << "CARE CORRECT CPU will be started with the following parameters:\n";
-	std::cout << "----------------------------------------\n";
+	std::cerr << std::boolalpha;
+	std::cerr << "CARE CORRECT CPU will be started with the following parameters:\n";
+	std::cerr << "----------------------------------------\n";
 
-	programOptions.printMandatoryOptions(std::cout);
-	programOptions.printMandatoryOptionsCorrect(std::cout);
-	programOptions.printMandatoryOptionsCorrectCpu(std::cout);
+	programOptions.printMandatoryOptions(std::cerr);
+	programOptions.printMandatoryOptionsCorrect(std::cerr);
+	programOptions.printMandatoryOptionsCorrectCpu(std::cerr);
 
-	programOptions.printAdditionalOptions(std::cout);
-	programOptions.printAdditionalOptionsCorrect(std::cout);
-	programOptions.printAdditionalOptionsCorrectCpu(std::cout);
+	programOptions.printAdditionalOptions(std::cerr);
+	programOptions.printAdditionalOptionsCorrect(std::cerr);
+	programOptions.printAdditionalOptionsCorrectCpu(std::cerr);
 
-	std::cout << "----------------------------------------\n";
-	std::cout << std::noboolalpha;
+	std::cerr << "----------------------------------------\n";
+	std::cerr << std::noboolalpha;
 
     const int numThreads = programOptions.threads;
 

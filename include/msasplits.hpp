@@ -383,14 +383,14 @@ namespace gpu{
             #if 0
             if(threadIdx.x == 0){                
                 if(splitInfos.numSplitInfos > 0){
-                    printf("numSplitInfos %d\n", splitInfos.numSplitInfos);
+                    fprintf(stderr, "numSplitInfos %d\n", splitInfos.numSplitInfos);
                     for(int i = 0; i < splitInfos.numSplitInfos; i++){
-                        printf("(%c,%d, %f) ", 
+                        fprintf(stderr, "(%c,%d, %f) ", 
                             splitInfos.splitInfos[i].nuc, 
                             splitInfos.splitInfos[i].column,
                             splitInfos.splitInfos[i].ratio);
                     }
-                    printf("\n");
+                    fprintf(stderr, "\n");
 
                     for(int c = 0; c < maxCandidatesToCheck; c++){
                         const unsigned int* const myCandidate = encodedCandidates + c * encodedSequencePitchInInts;
@@ -399,7 +399,7 @@ namespace gpu{
                         const AlignmentOrientation alignmentFlag = bestAlignmentFlags[c];
 
                         for(int i = 0; i < candidateShift; i++){
-                            printf("0");
+                            fprintf(stderr, "0");
                         }
                         for(int i = 0; i < candidateLength; i++){
                             char nuc = 'F';
@@ -412,9 +412,9 @@ namespace gpu{
                                 std::uint8_t encodedCandidateNuc = SequenceHelpers::getEncodedNuc2Bit(myCandidate, candidateLength, positionInCandidate);
                                 nuc = SequenceHelpers::complementBaseDecoded(SequenceHelpers::decodeBase(encodedCandidateNuc));
                             }
-                            printf("%c", nuc);
+                            fprintf(stderr, "%c", nuc);
                         }
-                        printf("\n");
+                        fprintf(stderr, "\n");
                     }
                 }
             }
@@ -455,7 +455,7 @@ namespace gpu{
                                 nuc = SequenceHelpers::complementBaseDecoded(SequenceHelpers::decodeBase(encodedCandidateNuc));
                             }
 
-                            //printf("cand %d col %d %c\n", c, psc0.column, nuc);
+                            //fprintf(stderr, "cand %d col %d %c\n", c, psc0.column, nuc);
 
                             if(nuc == psc0.nuc){
                                 flags = flags | 0b10;
@@ -530,11 +530,11 @@ namespace gpu{
 
             // if(threadIdx.x == 0){                
             //     if(splitInfos.numSplitInfos > 0){
-            //         printf("numEncodedRows %d\n", temp.numEncodedRows);
+            //         fprintf(stderr, "numEncodedRows %d\n", temp.numEncodedRows);
             //         for(int i = 0; i < temp.numEncodedRows; i++){
-            //             printf("%lu ", temp.encodedRows[i]);
+            //             fprintf(stderr, "%lu ", temp.encodedRows[i]);
             //         }
-            //         printf("\n");
+            //         fprintf(stderr, "\n");
             //     }
             // }
 
@@ -554,7 +554,7 @@ namespace gpu{
                     //check if encodedRow is equal to another flag masked with mask. if yes, it can be removed
                     if((temp.encodedRows[threadIdx.x] & mask) == encodedRow){
                         // if(encodedRow == 172){
-                        //     printf("i = %d, thread=%d temp.encodedRows[threadIdx.x] = %lu, mask = %lu", i, threadIdx.x, temp.encodedRows[threadIdx.x], mask)
+                        //     fprintf(stderr, "i = %d, thread=%d temp.encodedRows[threadIdx.x] = %lu, mask = %lu", i, threadIdx.x, temp.encodedRows[threadIdx.x], mask)
                         // }
                         atomicAdd(&temp.flags[i], 1);
                     }
@@ -572,7 +572,7 @@ namespace gpu{
             if(threadIdx.x == 0){
                 temp.broadcastint = count;
                 // if(splitInfos.numSplitInfos > 0){
-                //     printf("count = %d\n", count);
+                //     fprintf(stderr, "count = %d\n", count);
                 // }
             }
             __syncthreads();

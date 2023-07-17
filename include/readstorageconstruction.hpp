@@ -107,7 +107,7 @@ void constructReadStorageFromFiles(
 
     auto showProgressFunc = [show = showProgress](auto totalCount, auto seconds){
         if(show){
-            std::cout << "Processed " << totalCount << " reads in file. Elapsed time: " 
+            std::cerr << "Processed " << totalCount << " reads in file. Elapsed time: " 
                             << seconds << " seconds." << std::endl;
         }
     };
@@ -123,7 +123,7 @@ void constructReadStorageFromFiles(
     );
 
     for(const auto& inputfile : inputfiles){
-        std::cout << "Converting reads of file " << inputfile << ", storing them in memory\n";
+        std::cerr << "Converting reads of file " << inputfile << ", storing them in memory\n";
 
         forEachReadInFile(inputfile,
                         [&](auto /*readnum*/, auto& read){
@@ -337,7 +337,7 @@ void constructReadStorageFromPairedEndFiles(
 
     auto showProgressFunc = [show = showProgress](auto totalCount, auto seconds){
         if(show){
-            std::cout << "Processed " << totalCount << " reads in file. Elapsed time: " 
+            std::cerr << "Processed " << totalCount << " reads in file. Elapsed time: " 
                             << seconds << " seconds." << std::endl;
         }
     };
@@ -443,7 +443,7 @@ void constructReadStorageFromPairedEndFiles(
 
         const auto& filename1 = inputfiles[0];
 
-        std::cout << "Converting paired reads of files " 
+        std::cerr << "Converting paired reads of files " 
             << filename1  << ", storing them in memory\n";
 
         forEachReadInFile(filename1, work);
@@ -454,7 +454,7 @@ void constructReadStorageFromPairedEndFiles(
         const auto& filename1 = inputfiles[0];
         const auto& filename2 = inputfiles[1];
 
-        std::cout << "Converting paired reads of files " 
+        std::cerr << "Converting paired reads of files " 
             << filename1 << " and " << filename2 << ", storing them in memory\n";
 
         forEachReadInPairedFiles(filename1, filename2, work);

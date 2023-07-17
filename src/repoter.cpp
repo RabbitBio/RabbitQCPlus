@@ -54,17 +54,17 @@ var Dr={},Ar={};var kr=function(){function t(t,e,n){var i=this;this._sleepAfterS
 )RAWJSONDDAA";
 
 void Repoter::PrintRef(neoReference &ref) {
-    printf("%s\n", std::string((char *) ref.base + ref.pname, ref.lname).c_str());
-    printf("%s\n", std::string((char *) ref.base + ref.pseq, ref.lseq).c_str());
-    printf("%s\n", std::string((char *) ref.base + ref.pstrand, ref.lstrand).c_str());
-    printf("%s\n", std::string((char *) ref.base + ref.pqual, ref.lqual).c_str());
+    fprintf(stderr, "%s\n", std::string((char *) ref.base + ref.pname, ref.lname).c_str());
+    fprintf(stderr, "%s\n", std::string((char *) ref.base + ref.pseq, ref.lseq).c_str());
+    fprintf(stderr, "%s\n", std::string((char *) ref.base + ref.pstrand, ref.lstrand).c_str());
+    fprintf(stderr, "%s\n", std::string((char *) ref.base + ref.pqual, ref.lqual).c_str());
 }
 
 void Repoter::PrintRef(Reference &ref) {
-    printf("%s\n", ref.name.c_str());
-    printf("%s\n", ref.seq.c_str());
-    printf("%s\n", ref.strand.c_str());
-    printf("%s\n", ref.quality.c_str());
+    fprintf(stderr, "%s\n", ref.name.c_str());
+    fprintf(stderr, "%s\n", ref.seq.c_str());
+    fprintf(stderr, "%s\n", ref.strand.c_str());
+    fprintf(stderr, "%s\n", ref.quality.c_str());
 }
 
 Reference Repoter::GetRevRef(neoReference &ref) {
@@ -105,7 +105,7 @@ std::string HTMLHeader() {
     while(std::cin>>tmpInfo){
         jsInfo+=tmpInfo;
     }
-    printf("rr %d\n",jsInfo.length());
+    fprintf(stderr, "rr %d\n",jsInfo.length());
     fclose(stdin);
 */
     return std::string("<!DOCTYPE html>\n"
@@ -667,7 +667,7 @@ std::string insertTableTr(std::string str1, std::string str2) {
 }
 
 void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats *tgs_stats, std::string file_name) {
-    printf("report TGS html data in %s\n", html_name.c_str());
+    fprintf(stderr, "report TGS html data in %s\n", html_name.c_str());
     std::string outhtml;
     int mx_len = 100;
     double *tmp_double = new double[mx_len];
@@ -1041,7 +1041,7 @@ void Repoter::ReportHtmlSe(std::string html_name, State *state1, State *state2, 
     auto cmd_info = state1->GetCmdInfo();
 
     std::string command = cmd_info->command_;
-    printf("report se html data in %s\n", html_name.c_str());
+    fprintf(stderr, "report se html data in %s\n", html_name.c_str());
     std::string outhtml;
 
     int mx_len1 = state1->GetRealSeqLen();
@@ -1403,7 +1403,7 @@ void Repoter::ReportHtmlPe(std::string html_name, State *pre_state1, State *pre_
     int size_require = cmd_info->overlap_require_;
 
     std::string command = cmd_info->command_;
-    printf("report pe html data in %s\n", html_name.c_str());
+    fprintf(stderr, "report pe html data in %s\n", html_name.c_str());
 
     std::string outhtml;
     double *tmp_double;

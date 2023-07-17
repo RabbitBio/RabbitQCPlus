@@ -88,18 +88,18 @@ analyze( UniqueFileReader inputFile )
             streamBlockCount = 0;
             streamBytesRead = 0;
 
-            std::cout << "Gzip header:\n";
-            std::cout << "    Gzip Stream Count   : " << streamCount << "\n";
-            std::cout << "    Compressed Offset   : " << formatBits( headerOffset ) << "\n";
-            std::cout << "    Uncompressed Offset : " << totalBytesRead << " B\n";
+            std::cerr << "Gzip header:\n";
+            std::cerr << "    Gzip Stream Count   : " << streamCount << "\n";
+            std::cerr << "    Compressed Offset   : " << formatBits( headerOffset ) << "\n";
+            std::cerr << "    Uncompressed Offset : " << totalBytesRead << " B\n";
             if ( header.fileName ) {
-                std::cout << "    File Name           : " << *header.fileName << "\n";
+                std::cerr << "    File Name           : " << *header.fileName << "\n";
             }
-            std::cout << "    Modification Time   : " << header.modificationTime << "\n";
-            std::cout << "    OS                  : " << gzip::getOperatingSystemName( header.operatingSystem ) << "\n";
-            std::cout << "    Flags               : " << gzip::getExtraFlagsDescription( header.extraFlags ) << "\n";
+            std::cerr << "    Modification Time   : " << header.modificationTime << "\n";
+            std::cerr << "    OS                  : " << gzip::getOperatingSystemName( header.operatingSystem ) << "\n";
+            std::cerr << "    Flags               : " << gzip::getExtraFlagsDescription( header.extraFlags ) << "\n";
             if ( header.comment ) {
-                std::cout << "    Comment             : " << *header.comment << "\n";
+                std::cerr << "    Comment             : " << *header.comment << "\n";
             }
             if ( header.extra ) {
                 std::stringstream extraString;
@@ -113,14 +113,14 @@ analyze( UniqueFileReader inputFile )
                         extraString << '\\' << 'x' << hexCode.str();
                     }
                 }
-                std::cout << "    Extra               : " << extraString.str() << "\n";
+                std::cerr << "    Extra               : " << extraString.str() << "\n";
             }
             if ( header.crc16 ) {
                 std::stringstream crc16String;
                 crc16String << std::hex << std::setw( 16 ) << std::setfill( '0' ) << *header.crc16;
-                std::cout << "    CRC16               : 0x" << crc16String.str() << "\n";
+                std::cerr << "    CRC16               : 0x" << crc16String.str() << "\n";
             }
-            std::cout << "\n";
+            std::cerr << "\n";
         }
 
         const auto blockOffset = bitReader.tell();
@@ -223,7 +223,7 @@ analyze( UniqueFileReader inputFile )
                 return std::move( result ).str();
             };
 
-        std::cout
+        std::cerr
             << "Deflate block:\n"
             << "    Final Block             : " << ( block.isLastBlock() ? "True" : "False" ) << "\n"
             << "    Compression Type        : " << toString( block.compressionType() ) << "\n"
@@ -252,14 +252,14 @@ analyze( UniqueFileReader inputFile )
             distanceCodeLengths.emplace_back( block.codeCounts.distance );
             literalCodeLengths.emplace_back( block.codeCounts.literal );
 
-            std::cout
+            std::cerr
                 << "    Huffman Alphabets:\n"
                 << "        Precode  : " << printCodeLengthStatistics( precodeCL, block.codeCounts.precode ) << "\n"
                 << "        Distance : " << printCodeLengthStatistics( distanceCL, block.codeCounts.distance ) << "\n"
                 << "        Literals : " << printCodeLengthStatistics( literalCL, block.codeCounts.literal ) << "\n";
         }
         if ( block.compressionType() != deflate::CompressionType::UNCOMPRESSED ) {
-            std::cout
+            std::cerr
                 << "    Symbol Types:\n"
                 << "        Literal         : " << formatSymbolType( block.symbolTypes.literal ) << "\n"
                 << "        Back-References : " << formatSymbolType( block.symbolTypes.backreference ) << "\n"
@@ -271,9 +271,9 @@ analyze( UniqueFileReader inputFile )
 
             std::stringstream crcAsString;
             crcAsString << "0x" << std::hex << std::setw( 8 ) << std::setfill( '0' ) << footer.crc32;
-            std::cout << "Gzip footer:\n";
-            std::cout << "    Decompressed Size % 2^32  : " << footer.uncompressedSize << "\n";
-            std::cout << "    CRC32                     : " << std::move( crcAsString ).str() << "\n";
+            std::cerr << "Gzip footer:\n";
+            std::cerr << "    Decompressed Size % 2^32  : " << footer.uncompressedSize << "\n";
+            std::cerr << "    CRC32                     : " << std::move( crcAsString ).str() << "\n";
 
             if ( static_cast<uint32_t>( streamBytesRead ) != footer.uncompressedSize ) {
                 std::stringstream message;
@@ -290,7 +290,7 @@ analyze( UniqueFileReader inputFile )
         }
 
         if ( bitReader.eof() ) {
-            std::cout << "Bit reader EOF reached at " << formatBits( bitReader.tell() ) << "\n";
+            std::cerr << "Bit reader EOF reached at " << formatBits( bitReader.tell() ) << "\n";
             break;
         }
     }
@@ -329,7 +329,7 @@ analyze( UniqueFileReader inputFile )
             return std::move( result ).str();
         };
 
-    std::cout
+    std::cerr
         << "\n\n== Benchmark Profile (Cumulative Times) ==\n"
         << "\n"
         << "readDynamicHuffmanCoding : " << printCategorizedDuration( block.durations.readDynamicHeader ) << "\n"
@@ -378,10 +378,10 @@ analyze( UniqueFileReader inputFile )
         << "\n";
 
     for ( const auto& [compressionType, count] : compressionTypes ) {
-        std::cout << std::setw( 10 ) << toString( compressionType ) << " : " << count << "\n";
+        std::cerr << std::setw( 10 ) << toString( compressionType ) << " : " << count << "\n";
     }
 
-    std::cout << std::endl;
+    std::cerr << std::endl;
 
     return Error::NONE;
 }
