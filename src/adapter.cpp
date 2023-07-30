@@ -396,7 +396,8 @@ string Adapter::AutoDetect(string file_name, int trim_tail) {
     for (int i = 0; i < records; i++) {
         neoReference r = loadedReads[i];
         int key = -1;
-        for (int pos = 20; pos <= r.lseq - keylen - shiftTail; pos++) {
+        int last_pos = r.lseq - keylen - shiftTail;
+        for (int pos = 20; pos <= last_pos; pos++) {
             key = seq2int(reinterpret_cast<const char *>(r.base + r.pseq), pos, keylen, key);
             if (key >= 0) {
                 counts[key]++;
@@ -499,7 +500,8 @@ Adapter::getAdapterWithSeed(int seed, vector<neoReference> loadedReads, long rec
         neoReference r = loadedReads[i];
         struct AdapterSeedInfo seedInfo;
         int key = -1;
-        for (int pos = 20; pos <= r.lseq - keylen - shiftTail; pos++) {
+        int last_pos = r.lseq - keylen - shiftTail;
+        for (int pos = 20; pos <= last_pos; pos++) {
             key = seq2int(reinterpret_cast<const char *>(r.base + r.pseq), pos, keylen, key);
             if (key == seed) {
                 seedInfo.recordsID = i;
