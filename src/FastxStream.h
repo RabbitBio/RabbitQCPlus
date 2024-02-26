@@ -301,8 +301,13 @@ namespace rabbit {
         private:
             uint32 SwapBufferSize = 1 << 22;
             uint32 GetNxtBuffSize = 1 << 20;
+            byte* MemData;
+            int64 MemDataTotSize = 0;
+            int64 MemDataNowPos = 0;
+            bool MemDataReadFinish = 0;
 
         public:
+
             /**
              * @brief FastaFileReader Constructor
              * @param fileName_ Fastq file name
@@ -364,8 +369,20 @@ namespace rabbit {
                 if (mFqReader2 != NULL) delete mFqReader2;
             }
 
+            void MemDataReader();
+
+            void ReleaseMemData();
+            
+            int64 ReadFromMem(byte *memory_, uint64 size_);
+
+            int64 ReadSeekFromMem(byte *memory_, uint64 size_, uint64 pos_);
+
+            bool FinishReadFromMem();
+
             // added from fastxIO.h
             FastqDataChunk *readNextChunk(int64 offset = -1, int64 lim_size = 1e9);
+
+            FastqDataChunk *readNextChunkFromMem(int64 offset = -1, int64 lim_size = 1e9);
 
             FastqDataChunk *readNextInterChunk();
 
@@ -374,6 +391,8 @@ namespace rabbit {
             void readChunk();
 
             bool ReadNextChunk_(FastqDataChunk *chunk_, int64 offset = -1, int64 lim_size = 1e9);
+
+            bool ReadNextChunkFromMem_(FastqDataChunk *chunk_, int64 offset = -1, int64 lim_size = 1e9);
             
             bool ReadNextInterChunk_(FastqDataChunk *chunk_);
 

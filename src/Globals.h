@@ -65,6 +65,11 @@ inline double GetTime() {
     return (double) tv.tv_sec + (double) tv.tv_usec / 1000000;
 }
 
+//#define use_swlu
+#ifdef use_swlu
+#include "swlu.h"
+#endif
+
 static int valAGCT[8] = {-1, 0, -1, 2, 1, -1, -1, 3};
 static int valAGCT2[8] = {-1, 1, -1, 3, 2, -1, 5, 4};
 

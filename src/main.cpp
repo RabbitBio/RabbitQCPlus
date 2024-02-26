@@ -30,6 +30,11 @@ int main(int argc, char **argv) {
     //}
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+#ifdef use_swlu
+    //swlu_debug_init();
+    //swlu_prof_init();
+    //swlu_prof_start();
+#endif	
     
     //printf(" %d / %d\n", my_rank, comm_size);
     if(my_rank != 0) freopen("dev/null", "w", stdout);
@@ -681,6 +686,11 @@ int main(int argc, char **argv) {
     }
     printf("cmd is %s\n", command.c_str());
     printf("total cost %.5fs\n", GetTime() - t_start);
+
+#ifdef use_swlu
+    //swlu_prof_stop();
+    //swlu_prof_print();
+#endif	
 
     MPI_Finalize();
     return 0;

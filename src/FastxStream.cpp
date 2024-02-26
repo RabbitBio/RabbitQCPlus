@@ -380,6 +380,17 @@ namespace rabbit {
           @brief Read the next chunk
           @return FastqChunk pointer if next chunk data has data, else return NULL
           */
+
+        FastqDataChunk *FastqFileReader::readNextChunkFromMem(int64 offset, int64 lim_size) {
+            FastqDataChunk *part = NULL;
+            recordsPool.Acquire(part);
+            if (ReadNextChunkFromMem_(part, offset, lim_size)) {
+                return part;
+            } else {
+                recordsPool.Release(part);
+                return NULL;
+            }
+        }
         FastqDataChunk *FastqFileReader::readNextChunk(int64 offset, int64 lim_size) {
             FastqDataChunk *part = NULL;
             recordsPool.Acquire(part);
@@ -1075,9 +1086,122 @@ namespace rabbit {
             return pair;
         }
 
+        void FastqFileReader::MemDataReader() {
+            byte* tmpData = new byte[SwapBufferSize];
+            while(true) {
+                int64 r = mFqReader->Read(tmpData, SwapBufferSize);
+                MemDataTotSize += r;
+                if(r < SwapBufferSize) break;
+            }
+            fprintf(stderr, "tot size is %lld\n", MemDataTotSize);
+            MemData = new byte[MemDataTotSize];
+            mFqReader->ReadSeek(MemData, MemDataTotSize, 0);
+            fprintf(stderr, "read to mem done\n");
+        }
+
+        void FastqFileReader::ReleaseMemData() {
+            delete MemData;
+            
+        }
+
+
+        int64 FastqFileReader::ReadSeekFromMem(byte *memory_, uint64 size_, uint64 pos_) {
+            MemDataNowPos = pos_;
+            int64 lastDataSize = MemDataTotSize - MemDataNowPos;
+            if(size_ > lastDataSize) {
+               memcpy(memory_, MemData + MemDataNowPos, lastDataSize);
+               MemDataNowPos += lastDataSize;
+               MemDataReadFinish = 1;
+               return lastDataSize;
+            } else {
+                memcpy(memory_, MemData + MemDataNowPos, size_);
+                MemDataNowPos += size_;
+                return size_;
+            }
+
+        }
+            
+
+        int64 FastqFileReader::ReadFromMem(byte *memory_, uint64 size_) {
+            int64 lastDataSize = MemDataTotSize - MemDataNowPos;
+            //fprintf(stderr, "read from mem %lld / %lld / %lld\n", MemDataTotSize, MemDataNowPos, size_);
+            if(size_ > lastDataSize) {
+               memcpy(memory_, MemData + MemDataNowPos, lastDataSize);
+               MemDataNowPos += lastDataSize;
+               MemDataReadFinish = 1;
+               return lastDataSize;
+            } else {
+                memcpy(memory_, MemData + MemDataNowPos, size_);
+                MemDataNowPos += size_;
+                return size_;
+            }
+
+        }
+
+        bool FastqFileReader::FinishReadFromMem() {
+            return MemDataReadFinish;
+        }
             
 
         //tagg
+          
+        bool FastqFileReader::ReadNextChunkFromMem_(FastqDataChunk *chunk_, int64 offset, int64 lim_size) {
+            
+            static int64 now_size = 0;
+            if ((FinishReadFromMem() || now_size == lim_size) && bufferSize == 0) {
+                chunk_->size = 0;
+                return false;
+            }
+
+            // flush the data from previous incomplete chunk
+            uchar *data = chunk_->data.Pointer();
+            uint64 cbufSize = chunk_->data.Size();
+            chunk_->size = 0;
+            int64 toRead = cbufSize - bufferSize;
+            //---------------------------------
+            if (bufferSize > 0) {
+                std::copy(swapBuffer.Pointer(), swapBuffer.Pointer() + bufferSize, data);
+                chunk_->size = bufferSize;
+                bufferSize = 0;
+            }
+
+            // read the next chunk
+            if(now_size + toRead > lim_size) {
+                toRead = lim_size - now_size;
+            }
+            //printf("read %lld %lld %lld\n", toRead, offset, lim_size);
+            int64 r = 0;
+            //if(offset == -1 || offset == -2) r = mFqReader->Read(data + chunk_->size, toRead);
+            if(offset == -1 || offset == -2) r = ReadFromMem(data + chunk_->size, toRead);
+            else {
+                //std::cerr << "seek_read " << offset << " " << chunk_->size << std::endl;
+                //r = mFqReader->ReadSeek(data + chunk_->size, toRead, offset);
+                r = ReadSeekFromMem(data + chunk_->size, toRead, offset);
+                //uchar *pos_tmp = data + chunk_->size;
+                //for(int i = 0; i < 40; i++) std::cerr << pos_tmp[i];
+                //std::cerr << std::endl;
+            }
+            if(offset != -2) now_size += r;
+            //printf("=== res %lld, %lld\n", r, now_size);
+            //if (!mFqReader->FinishRead() && now_size < lim_size) {
+            if (!FinishReadFromMem() && now_size < lim_size) {
+                cbufSize = r + chunk_->size;
+                uint64 chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize : GetNxtBuffSize);
+                chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
+                chunk_->size = chunkEnd - 1;
+                if (usesCrlf) chunk_->size -= 1;
+
+                std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
+                bufferSize = cbufSize - chunkEnd;
+            } else {                  // at the end of file
+                chunk_->size += r - 1;// skip the last EOF symbol
+                if (usesCrlf) chunk_->size -= 1;
+                //mFqReader->setEof();
+            }
+            return true;
+        }
+
+ 
         bool FastqFileReader::ReadNextChunk_(FastqDataChunk *chunk_, int64 offset, int64 lim_size) {
             
             static int64 now_size = 0;

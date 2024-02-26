@@ -35,15 +35,15 @@ CXX = mpicxx
 
 
 CXXFLAGS := $(InstructSet)
-CXXFLAGS +=  -DVerbose -std=c++11 -I./ -I./common -g -O3 -w
+CXXFLAGS +=  -DVerbose -std=c++11 -I./ -I./common -g -O3 -w -I ~/online/ylf/init_swlu/swlu/include
 
 
 CXX2 = mpicc
 #CXX2 = swgcc
 
-CXXFLAGS2 :=  -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
+CXXFLAGS2 :=  -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual -I ~/online/ylf/init_swlu/swlu/include
 
-LIBS := -lz -lpthread -lrt
+LIBS := ~/online/ylf/init_swlu/swlu/lib/libswlu_mpi.a -lz -lpthread -lrt
 
 
 LD_FLAGS := $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir)) $(LIBS)

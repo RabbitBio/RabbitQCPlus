@@ -73,6 +73,15 @@ int64_t GetNextFastq(char *data_, int64_t pos_, const int64_t size_) {
     ASSERT(data_[pos_] == '+');// pos0 was the start of tag
     return pos0;
 }
+
+//#define use_in_mem
+//#define use_out_mem
+
+#ifdef use_out_mem
+char* OutMemData;
+#endif
+
+
 /**
  * @brief Construct function
  * @param cmd_info1 : cmd information
@@ -180,6 +189,9 @@ SeQc::SeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
 #ifdef Verbose
             printf("open stream %s\n", cmd_info1->out_file_name1_.c_str());
 #endif
+#ifdef use_out_mem
+            OutMemData = new char[real_file_size];
+#endif
             if(my_rank == 0) {
                 printf("pre real file size %lld\n", real_file_size);
                 int fd = open(cmd_info1->out_file_name1_.c_str(), O_CREAT | O_TRUNC | O_RDWR | O_EXCL, 0644);
@@ -260,6 +272,7 @@ SeQc::~SeQc() {
  * @param dq : a data queue
  */
 
+rabbit::fq::FastqFileReader *fqFileReader;
 void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_data_pool,
         rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
 
@@ -267,10 +280,8 @@ void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_dat
     //cerr << "part_sizes ";
     //for(int i = 0; i < comm_size; i++) cerr << part_sizes[i] << " ";
     //cerr << endl;
-    rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize = 1 << 20;
     if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
-    fqFileReader = new rabbit::fq::FastqFileReader(file, *fastq_data_pool, "", in_is_zip_, tmpSize);
     int64_t n_chunks = 0;
 
     if (cmd_info_->use_pugz_) {
@@ -303,7 +314,11 @@ void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_dat
                 offset = -1;
             }
             is_first = 0;
+#ifdef use_in_mem
+            fqdatachunk = fqFileReader->readNextChunkFromMem(offset, part_sizes[my_rank]);
+#else 
             fqdatachunk = fqFileReader->readNextChunk(offset, part_sizes[my_rank]);
+#endif
             t_sum1 += GetTime() - tt0;
             tt0 = GetTime();
             if (fqdatachunk == NULL) {
@@ -342,7 +357,6 @@ void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_dat
 
     printf("producer%d cost %lf\n", my_rank, GetTime() - t0);
     dq.SetCompleted();
-    delete fqFileReader;
     producerDone = 1;
 }
 
@@ -370,6 +384,11 @@ void SeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
 
 void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataPool *fastq_data_pool,
         rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
+#ifdef use_swlu
+    swlu_debug_init();
+    swlu_prof_init();
+    swlu_prof_start();
+#endif
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;
     qc_data para;
@@ -598,6 +617,11 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
     done_thread_number_++;
     athread_halt();
     //printf("consumer done\n");
+#ifdef use_swlu
+    swlu_prof_stop();
+    swlu_prof_print();
+#endif	
+
 }
 
 /**
@@ -646,8 +670,12 @@ void SeQc::WriteSeFastqTask() {
         } else {
             tot_size += now.second.first;
             if(now.second.first) {
+#ifdef use_out_mem
+                memcpy(OutMemData + now.second.second, now.first, now.second.first); 
+#else
                 fseek(out_stream_, now.second.second, SEEK_SET);
                 fwrite(now.first, sizeof(char), now.second.first, out_stream_);
+#endif
                 delete[] now.first;
             }
             //printf("write%d %d done\n", my_rank, cnt++);
@@ -964,6 +992,7 @@ bool checkStates(State* s1, State* s2) {
  * @brief do QC for single-end data
  */
 
+//tagg
 void SeQc::ProcessSeFastq() {
     if(my_rank == 0) block_size = 6 * (1 << 20);
     else block_size = 4 * (1 << 20);
@@ -974,6 +1003,15 @@ void SeQc::ProcessSeFastq() {
     for (int t = 0; t < slave_num; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, false);
     }
+    rabbit::uint32 tmpSize = 1 << 20;
+    if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
+    
+    fqFileReader = new rabbit::fq::FastqFileReader(cmd_info_->in_file_name1_, *fastqPool, "", in_is_zip_, tmpSize);
+#ifdef use_in_mem
+    fqFileReader->MemDataReader();
+    double ttt = GetTime();
+#endif
+
     thread *write_thread;
     if (cmd_info_->write_data_) {
         write_thread = new thread(bind(&SeQc::WriteSeFastqTask, this));
@@ -1191,6 +1229,14 @@ void SeQc::ProcessSeFastq() {
     }
 
     delete[] p_thread_info;
+#ifdef use_in_mem
+    fprintf(stderr, "TOT TIME %lf\n", GetTime() - ttt);
+    fqFileReader->ReleaseMemData();
+#endif
+    delete fqFileReader;
+#ifdef use_out_mem
+    delete OutMemData;
+#endif
 }
 
 void SeQc::ProcessSeFastqOneThread() {
