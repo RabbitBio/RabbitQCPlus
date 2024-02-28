@@ -16,6 +16,26 @@ inline bool exists_file(const std::string &name) {
 }
 
 int main(int argc, char **argv) {
+
+    volatile int aa = 0;
+    bool runLoop = false;
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--swpdb") == 0) {
+            runLoop = true;
+            break;
+        }
+    }
+
+    fprintf(stderr, "aa %d\n", aa);
+    
+    if (runLoop) {
+        while(aa == 0) {
+        }
+    }
+
+    fprintf(stderr, "aa %d\n", aa);
+
     int my_rank = 0;
     int comm_size = 1;
     MPI_Init(&argc, &argv);
@@ -51,7 +71,9 @@ int main(int argc, char **argv) {
     app.add_option("--compressLevel", cmd_info.compression_level_,
             "output file compression level (1 - 9), default is 4");
 
+    int aaaa;
     app.add_flag("--overWrite", cmd_info.overWrite_, "overwrite out file if already exists.");
+    app.add_flag("--swpdb", aaaa, "overwrite out file if already exists.");
     app.add_flag("--phred64", cmd_info.isPhred64_, "input is using phred64 scoring, default is phred33");
     app.add_flag("--stdin", cmd_info.isStdin_,
             "input from stdin, or -i /dev/stdin, only for se data or interleaved pe data(which means use --interleavedIn)");

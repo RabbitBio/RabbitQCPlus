@@ -26,8 +26,10 @@ OBJ += $(patsubst %.cpp,${DIR_OBJ}/%.o,$(notdir ${SRC3}))
 
 
 TARGET := RabbitQCPlus
+TARGET_MPI := RabbitQCPlus_mpi
 
 BIN_TARGET := ${TARGET}
+BIN_TARGET_MPI := ${TARGET_MPI}
 
 
 CXX = mpicxx
@@ -35,20 +37,25 @@ CXX = mpicxx
 
 
 CXXFLAGS := $(InstructSet)
-CXXFLAGS +=  -DVerbose -std=c++11 -I./ -I./common -g -O3 -w -I ~/online/ylf/init_swlu/swlu/include
+CXXFLAGS += -fPIC -DVerbose -std=c++11 -I./ -I./common -g -O3 -w 
 
 
 CXX2 = mpicc
 #CXX2 = swgcc
 
-CXXFLAGS2 :=  -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual -I ~/online/ylf/init_swlu/swlu/include
+CXXFLAGS2 := -fPIC -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
 
-LIBS := ~/online/ylf/init_swlu/swlu/lib/libswlu_mpi.a -lz -lpthread -lrt
+LIBS := -lz -lpthread -lrt
 
 
 LD_FLAGS := $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir)) $(LIBS)
 
+all: ${BIN_TARGET} ${BIN_TARGET_MPI}
+
 ${BIN_TARGET}:${OBJ}
+		$(CXX) -mhybrid $^ -o $@ $(LD_FLAGS)
+
+${BIN_TARGET_MPI}: ${OBJ}
 		$(CXX) -mdynamic $^ -o $@ $(LD_FLAGS)
 
 ${DIR_OBJ}/%.o:${DIR_SRC}/%.cpp

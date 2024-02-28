@@ -686,7 +686,6 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
                         if(stops[ii] == 0) all_stop = 0;
                         if(stops[ii] == 1) some_stop = 1;
                     }
-                    //printf("stop%d %d %d\n", my_rank, all_stop, some_stop);
                     if(all_stop) {
                         int64_t chunk_sizes[comm_size];
                         chunk_sizes[0] = now_chunks;
@@ -714,7 +713,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
                     } else if(some_stop){
                         int goonn = 1;
                         while(goonn) {
-                            usleep(100000);
+                            usleep(10000);
                             int proStop = producerStop.load();
                             int stops[comm_size];
                             stops[0] = proStop;

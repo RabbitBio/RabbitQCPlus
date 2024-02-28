@@ -1093,10 +1093,10 @@ namespace rabbit {
                 MemDataTotSize += r;
                 if(r < SwapBufferSize) break;
             }
-            fprintf(stderr, "tot size is %lld\n", MemDataTotSize);
+            //fprintf(stderr, "tot size is %lld\n", MemDataTotSize);
             MemData = new byte[MemDataTotSize];
             mFqReader->ReadSeek(MemData, MemDataTotSize, 0);
-            fprintf(stderr, "read to mem done\n");
+            //fprintf(stderr, "read to mem done\n");
         }
 
         void FastqFileReader::ReleaseMemData() {

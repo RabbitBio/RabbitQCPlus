@@ -24,6 +24,27 @@
 #include "threadinfo.h"
 #include "umier.h"
 #define CIPair std::pair<char *, std::pair<int, long long>>
+#define CRPair std::pair<int64_t, std::vector<rabbit::fq::FastqDataChunk *>>
+
+struct dupInfo{
+    uint32_t key;
+    uint64_t kmer32;
+    uint8_t gc;
+};
+
+struct qc_data {
+    ThreadInfo **thread_info_;
+    CmdInfo *cmd_info_;
+    std::vector <dupInfo> *dups;
+    std::vector <neoReference> *data1_;
+    std::vector <neoReference> *data2_;
+    std::vector <neoReference> *pass_data1_;
+    std::vector <neoReference> *pass_data2_;
+    int *cnt;
+    int bit_len;
+};
+
+
 
 class SeQc {
 public:
@@ -53,6 +74,11 @@ private:
 
     void TGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool, ThreadInfo **thread_infos);
 
+    void ProducerSeFastqTask64(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool);
+
+    void ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDataPool *fastq_data_pool);
+
+
     void ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
 
@@ -65,12 +91,17 @@ private:
 
     void PigzTask();
 
+    void ProcessNgsData(bool &proDone, std::vector <neoReference> &data, rabbit::fq::FastqDataChunk *fqdatachunk, qc_data *para, rabbit::fq::FastqDataPool *fastq_data_pool);
+
+
+
 private:
     int my_rank, comm_size;
     CmdInfo *cmd_info_;
 
     Filter *filter_;
     CIPair *out_queue_;
+    std::vector<rabbit::fq::FastqDataChunk *> *p_out_queue_;
     std::atomic_int done_thread_number_;
     FILE *out_stream_;
     Duplicate *duplicate_;
@@ -89,6 +120,11 @@ private:
             pigzQueue;
     std::pair<char *, int> pigzLast;
 
+    std::atomic_int p_queueP1;
+    std::atomic_int p_queueP2;
+    std::atomic_int p_queueNumNow;
+    std::atomic_int p_queueSizeLim;
+
     std::atomic_int producerDone;
     std::atomic_int writerDone;
     std::atomic_int queueP1;
@@ -102,6 +138,7 @@ private:
     std::atomic_int consumerCommDone;
     std::atomic_int producerStop;
     std::mutex mylock;
+    std::mutex p_mylock;
 
     int64_t *part_sizes;
 };

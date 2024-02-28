@@ -8,6 +8,8 @@ extern "C"
 #include <vector>
 #include <unordered_map>
 
+#include "FastxChunk.h"
+#include "Globals.h"
 #include "Reference.h"
 #include "cmdinfo.h"
 #include "state.h"
@@ -626,6 +628,106 @@ void StateDup(neoReference &ref, int ids, int bit_len) {
     local_dup_info[ids & (BATCH_SIZE - 1)].key = key;
     local_dup_info[ids & (BATCH_SIZE - 1)].kmer32 = kmer32;
     local_dup_info[ids & (BATCH_SIZE - 1)].gc = (uint8_t)gc;
+}
+
+
+int neoGetLine(rabbit::fq::FastqDataChunk *&chunk, uint64_t &pos, uint64_t &len) {
+    int start_pos = pos;
+    const char *data = (char *) chunk->data.Pointer();
+    const uint64_t chunk_size = chunk->size + 1;
+    while (pos <= chunk_size) {
+        if (data[pos] == '\n') {
+            pos++;
+            len = pos - start_pos - 1;
+            return len;
+        } else {
+            pos++;
+        }
+    }
+    return 0;
+}
+
+struct format_data {
+    std::vector <neoReference> *data;
+    rabbit::fq::FastqDataChunk *fqdatachunk;
+    uint64_t *res;
+    int fqSize;
+    int my_rank;
+};
+
+
+
+void PrintRef(neoReference &ref) {
+    fprintf(stderr, "%.*s\n", ref.lname, (char *) ref.base + ref.pname);
+    fprintf(stderr, "%.*s\n", ref.lseq, (char *) ref.base + ref.pseq);
+    fprintf(stderr, "%.*s\n", ref.lstrand, (char *) ref.base + ref.pstrand);
+    fprintf(stderr, "%.*s\n", ref.lqual, (char *) ref.base + ref.pqual);
+}
+
+
+struct format_data2 {
+    uint64_t *res;
+    int my_rank;
+};
+
+__uncached long lock_s2;
+extern "C" void formatfunc2(format_data2 *para) {
+    athread_lock(&lock_s2);
+    fprintf(stderr, "rank%d - %d\n", para->my_rank, _PEN);
+    athread_unlock(&lock_s2);
+    athread_ssync_array();
+    para->res[_PEN] = _PEN;
+}
+
+__uncached long lock_s;
+extern "C" void formatfunc(format_data paras[64]) {
+    
+    //if(paras[_PEN].my_rank) fprintf(stderr, "rank%d - %d\n", paras[_PEN].my_rank, _PEN);
+    format_data *para = &(paras[_PEN]);
+
+    //athread_lock(&lock_s);
+    //fprintf(stderr, "rank%d - %d : fqSize %d\n", para->my_rank, _PEN, para->fqSize);
+    //athread_unlock(&lock_s);
+    //athread_ssync_array();
+
+    if(_PEN >= para->fqSize) return;
+    //if(_PEN >= 1) return;
+    rabbit::fq::FastqDataChunk *chunk = para->fqdatachunk;
+    //fprintf(stderr, "rank%d chunk addr %p\n", para->my_rank, chunk);
+    if(para->fqdatachunk == NULL) {
+        para->res[_PEN] = 0; 
+        return;
+    }
+    uint64_t seq_count = 0;
+    uint64_t line_count = 0;
+    uint64_t pos_ = 0;
+    neoReference ref;
+    while (true) {
+        ref.base = chunk->data.Pointer();
+        ref.pname = pos_;
+        if (neoGetLine(chunk, pos_, ref.lname)) {
+            ref.pseq = pos_;
+        } else {
+            break;
+        }
+        neoGetLine(chunk, pos_, ref.lseq);
+        ref.pstrand = pos_;
+        neoGetLine(chunk, pos_, ref.lstrand);
+        ref.pqual = pos_;
+        neoGetLine(chunk, pos_, ref.lqual);
+        //TODO resize
+        if(seq_count >= para->data->size()) fprintf(stderr, "GG %d %d\n", seq_count, para->data->size());
+        (*para->data)[seq_count] = ref;
+        //PrintRef(ref);
+        
+        seq_count++;
+    }
+    //athread_lock(&lock_s);
+    //fprintf(stderr, "%d : seq_count %d\n", _PEN, seq_count);
+    //athread_unlock(&lock_s);
+    //athread_ssync_array();
+    para->res[_PEN] = seq_count;
+    //dma_putn(&(para->res[_PEN]), &seq_count, sizeof(uint64_t));
 }
 
 extern "C" void ngsfunc(qc_data *para){
