@@ -12,12 +12,8 @@ extern "C" {
     void slave_tgsfunc();
     void slave_ngsfunc();
     void slave_formatfunc();
-    void slave_formatfunc2();
 }
 
-//extern void slave_tgsfunc(qc_data *para);
-//extern void slave_ngsfunc(qc_data *para);
-//extern void slave_formatfunc(qc_data *para);
 
 int Q_lim = 256;
 
@@ -62,6 +58,8 @@ int64_t GetNextFastq(char *data_, int64_t pos_, const int64_t size_) {
 
 //#define use_in_mem
 //#define use_out_mem
+//
+#define use_mpi_file
 
 #ifdef use_out_mem
 char* OutMemData;
@@ -80,29 +78,6 @@ struct format_data2 {
 SeQc::SeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
     my_rank = my_rank_;
     comm_size = comm_size_;
-
-    //std::thread worker_thread([=]() mutable {
-
-    //athread_init();
-    //format_data2 para;
-    //para.my_rank = my_rank;
-    //uint64_t counts[64] = {0};
-    //para.res = counts;
-    //fprintf(stderr, "rank%d 1111\n", my_rank);
-    //__real_athread_spawn((void *)slave_formatfunc2, &para, 1);
-    //athread_join();
-    //fprintf(stderr, "rank%d 2222\n", my_rank);
-    //for(int i = 0; i < 64; i++) fprintf(stderr, "%d ", counts[i]);
-    //fprintf(stderr, "\n");
-    //athread_halt();
-
-
-    //});
-
-    //    
-    //worker_thread.join();
- 
-    //exit(0);
 
     part_sizes = new int64_t[comm_size];
     now_pos_ = 0;
@@ -132,6 +107,7 @@ SeQc::SeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
     }
     if(end_pos > real_file_size) end_pos = real_file_size;
 
+    //fprintf(stderr, "rank%d [%lld %lld]\n", my_rank, start_pos, end_pos);
     //cerr << "startpos" << my_rank << " " << start_pos << "-" << end_pos << endl;
     FILE *pre_fp;
     pre_fp = fopen(cmd_info1->in_file_name1_.c_str(), "rb");
@@ -215,6 +191,37 @@ SeQc::SeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
 #ifdef use_out_mem
             OutMemData = new char[real_file_size];
 #endif
+ 
+
+#ifdef use_mpi_file
+
+            std::ofstream file(cmd_info1->out_file_name1_.c_str());
+
+            if (file.is_open()) {
+                file << "Hello, file!" << std::endl;
+                file.close();
+                //std::cout << "File " << cmd_info1->out_file_name1_ << " has been created and written successfully." << std::endl;
+            } else {
+                //std::cerr << "Failed to open file: " << cmd_info1->out_file_name1_ << std::endl;
+            }
+
+            int err = MPI_File_open(MPI_COMM_WORLD, cmd_info1->out_file_name1_.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+
+            if (err != MPI_SUCCESS) {
+                char error_string[BUFSIZ];
+                int length_of_error_string, error_class;
+
+                MPI_Error_class(err, &error_class);
+                MPI_Error_string(error_class, error_string, &length_of_error_string);
+
+                fprintf(stderr, "%3d: Couldn't open file, MPI Error: %s\n", my_rank, error_string);
+
+                MPI_Abort(MPI_COMM_WORLD, err);
+                exit(0);
+            }
+
+
+#else
             if(my_rank == 0) {
                 printf("pre real file size %lld\n", real_file_size);
                 int fd = open(cmd_info1->out_file_name1_.c_str(), O_CREAT | O_TRUNC | O_RDWR | O_EXCL, 0644);
@@ -225,11 +232,13 @@ SeQc::SeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
                 do {
                     if(-1 == access(cmd_info1->out_file_name1_.c_str(), F_OK)) {
                         if(ENOENT == errno) {
+                            fprintf(stderr, "rank%d waiting file1\n");
                             //cerr << "waiting file be created..." << endl;
-                            usleep(100);
+                            usleep(1000000);
                         } else {
+                            fprintf(stderr, "rank%d waiting file2\n");
                             //cerr << "file open GG" << endl;
-                            usleep(100);
+                            usleep(1000000);
                             //exit(0);
                         }
                     } else {
@@ -238,6 +247,7 @@ SeQc::SeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
                     }
                 } while(found == 0);
             }
+#endif
             MPI_Barrier(MPI_COMM_WORLD);
             //if((out_stream_ = fopen(cmd_info1->out_file_name1_.c_str(),"w")) == NULL) {
             //    printf("File cannot be opened\n");
@@ -544,10 +554,21 @@ double tsum2 = 0;
 double tsum3 = 0;
 double tsum4 = 0;
 double tsum4_1 = 0;
+double tsum4_1_1 = 0;
+double tsum4_1_2 = 0;
+double tsum4_1_3 = 0;
 double tsum4_2 = 0;
 double tsum4_3 = 0;
 double tsum4_4 = 0;
 double tsum5 = 0;
+
+void PrintRef(neoReference &ref) {
+    printf("%.*s\n", ref.lname, (char *) ref.base + ref.pname);
+    printf("%.*s\n", ref.lseq, (char *) ref.base + ref.pseq);
+    printf("%.*s\n", ref.lstrand, (char *) ref.base + ref.pstrand);
+    printf("%.*s\n", ref.lqual, (char *) ref.base + ref.pqual);
+}
+
 
 void SeQc::ProcessNgsData(bool &proDone, vector <neoReference> &data, rabbit::fq::FastqDataChunk *fqdatachunk, qc_data *para, rabbit::fq::FastqDataPool *fastq_data_pool) {
 
@@ -600,26 +621,67 @@ void SeQc::ProcessNgsData(bool &proDone, vector <neoReference> &data, rabbit::fq
     tt0 = GetTime();
     if (cmd_info_->write_data_) {
         double tt1 = GetTime();
+        double tt2 = GetTime();
         int out_len = 0;
         for(auto item : pass_data){
             if(item.lname == 0) continue;
             out_len += item.lname + item.lseq + item.lstrand + item.lqual + 4;
         }
+        tsum4_1_1 += GetTime() - tt2;
+
+
+        tt2 = GetTime();
         char *out_data;
         if(out_len) out_data = new char[out_len];
         else out_data = (char *)(NULL);
+        if(out_len) memset(out_data, 0, sizeof(char) * out_len);
+        tsum4_1_2 += GetTime() - tt2;
+        
+        tt2 = GetTime();
+        //OPT: reduce memcpy times, merge contiguous datas.
         int pos = 0;
-        for (auto item: pass_data) {
-            if(item.lname == 0) continue;
-            Read2Chars(item, out_data, pos);
+        char* start_pos = NULL;
+        int tmp_len = 0;
+        for(int i = 0; i < pass_data.size(); i++) {
+            if(pass_data[i].lname == 0 || pass_data[i].pname + pass_data[i].lname + pass_data[i].lseq + pass_data[i].lstrand + 3 != pass_data[i].pqual) { 
+                //this record has been trimmed
+                if(tmp_len) memcpy(out_data + pos, start_pos, tmp_len);
+                pos += tmp_len;
+                if(pass_data[i].lname) Read2Chars(pass_data[i], out_data, pos);
+                tmp_len = 0;
+                if(i < pass_data.size() - 1) {
+                    start_pos = (char*)pass_data[i + 1].base + pass_data[i + 1].pname;
+                }
+                continue;
+            }
+            if((char*)pass_data[i].base + pass_data[i].pname != start_pos + tmp_len) {
+                //record is complete, but can extend to last record
+                if(tmp_len) memcpy(out_data + pos, start_pos, tmp_len);
+                pos += tmp_len;
+                tmp_len = 0;
+                start_pos = (char*)pass_data[i].base + pass_data[i].pname;
+            } 
+            tmp_len += pass_data[i].lname + pass_data[i].lseq + pass_data[i].lstrand + pass_data[i].lqual + 4;
         }
+        if(tmp_len) {
+            memcpy(out_data + pos, start_pos, tmp_len);
+            pos += tmp_len;
+        }
+
+
+        //for (auto item: pass_data) {
+        //    if(item.lname == 0) continue;
+        //    Read2Chars(item, out_data, pos);
+        //}
+
         ASSERT(pos == out_len);
+        tsum4_1_3 += GetTime() - tt2;
+
         tsum4_1 += GetTime() - tt1;
 
 
         tt1 = GetTime();
         int now_size = out_len;
-        char *now_pos = out_data;
         int now_sizes[comm_size];
         now_sizes[0] = now_size;
         MPI_Barrier(MPI_COMM_WORLD);
@@ -791,8 +853,6 @@ void SeQc::ProcessNgsData(bool &proDone, vector <neoReference> &data, rabbit::fq
 #endif
             usleep(100);
         }
-
-        //out_queue_->enqueue(make_pair(out_data, make_pair(out_len, now_pos_base)));
         out_queue_[queueP2++] = make_pair(out_data, make_pair(out_len, now_pos_base));
         queueNumNow++;
         //mylock.unlock();
@@ -808,11 +868,6 @@ void SeQc::ProcessNgsData(bool &proDone, vector <neoReference> &data, rabbit::fq
 }
 
 void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDataPool *fastq_data_pool) {
-#ifdef use_swlu
-    swlu_debug_init();
-    swlu_prof_init();
-    swlu_prof_start();
-#endif
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataChunk *fqdatachunk;
     qc_data para;
@@ -877,10 +932,8 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
             para2[i].fqSize = fq_size;
         }
 
-        //fprintf(stderr, "rank%d 1111\n", my_rank);
         __real_athread_spawn((void *)slave_formatfunc, para2, 1);
         athread_join();
-        //fprintf(stderr, "rank%d 2222\n", my_rank);
         t_format += GetTime() - tt0;
 
         for(int i = 0; i < fq_size; i++) {
@@ -897,16 +950,11 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     printf("NGSnew resize cost %lf\n", tsum1);
     printf("NGSnew slave cost %lf\n", tsum2);
     printf("NGSnew dup cost %lf\n", tsum3);
-    printf("NGSnew write cost %lf (%lf, %lf, %lf, %lf)\n", tsum4, tsum4_1, tsum4_2, tsum4_3, tsum4_4);
+    printf("NGSnew write cost %lf (%lf [%lf %lf %lf], %lf, %lf, %lf)\n", tsum4, tsum4_1, tsum4_1_1, tsum4_1_2, tsum4_1_3, tsum4_2, tsum4_3, tsum4_4);
     printf("NGSnew release cost %lf\n", tsum5);
     done_thread_number_++;
     athread_halt();
     fprintf(stderr, "consumer%d done\n", my_rank);
-#ifdef use_swlu
-    swlu_prof_stop();
-    swlu_prof_print();
-#endif	
-
 }
 
 void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataPool *fastq_data_pool,
@@ -1049,30 +1097,24 @@ void SeQc::WriteSeFastqTask() {
     long long tot_size = 0;
     bool overWhile = 0;
     CIPair now;
-    int round = 0;
     while (true) {
         while (queueNumNow == 0) {
             if (done_thread_number_ == cmd_info_->thread_number_) {
                 overWhile = 1;
-                printf("rank %d write done\n", my_rank);
+                fprintf(stderr, "rank %d write done\n", my_rank);
                 break;
             }
-            usleep(100);
+            
+            //fprintf(stderr, "rank %d write wait\n", my_rank);
+            usleep(10000);
         }
         if (overWhile) break;
         now = out_queue_[queueP1++];
         queueNumNow--;
+        //fprintf(stderr, "rank %d write get %p\n", my_rank, now.first);
         if (out_is_zip_) {
             if (cmd_info_->use_pigz_) {
                 printf("use pigz TODO...\n");
-                //                while (pigzQueueNumNow > pigzQueueSizeLim) {
-                //#ifdef Verbose
-                //                    //printf("waiting to push a chunk to pigz queue\n");
-                //#endif
-                //                    usleep(100);
-                //                }
-                //                pigzQueue->enqueue(now);
-                //                pigzQueueNumNow++;
             } else {
                 int written = gzwrite(zip_out_stream, now.first, now.second.first);
                 if (written != now.second.first) {
@@ -1087,16 +1129,31 @@ void SeQc::WriteSeFastqTask() {
 #ifdef use_out_mem
                 memcpy(OutMemData + now.second.second, now.first, now.second.first); 
 #else
+                //fprintf(stderr, "rank %d write seek %lld\n", my_rank, now.second.second);
+
+#ifdef use_mpi_file
+
+                MPI_File_seek(fh, now.second.second, MPI_SEEK_SET);
+                //fprintf(stderr, "rank %d write ww %lld\n", my_rank, now.second.first);
+                MPI_File_write(fh, now.first, now.second.first, MPI_CHAR, &status);
+                //fprintf(stderr, "rank %d write ww done\n", my_rank);
+#else
                 fseek(out_stream_, now.second.second, SEEK_SET);
+                //fprintf(stderr, "rank %d write ww %lld\n", my_rank, now.second.first);
                 fwrite(now.first, sizeof(char), now.second.first, out_stream_);
+                //fprintf(stderr, "rank %d write ww done\n", my_rank);
+#endif
+
 #endif
                 delete[] now.first;
+                //fprintf(stderr, "rank %d write del done\n", my_rank);
             }
-            //printf("write%d %d done\n", my_rank, cnt++);
+            //fprintf(stderr, "write%d %d done\n", my_rank, cnt++);
 
         }
     }
 
+    //fprintf(stderr, "rank%d write donedone\n", my_rank);
     if (out_is_zip_) {
         if (cmd_info_->use_pigz_) {
 
@@ -1108,11 +1165,14 @@ void SeQc::WriteSeFastqTask() {
             }
         }
     } else {
-        //out_stream_.close();
+#ifdef use_mpi_file
+        MPI_File_close(&fh);
+#else
         fclose(out_stream_);
         if(my_rank == 0) {
             truncate(cmd_info_->out_file_name1_.c_str(), sizeof(char) * now_pos_);
         }
+#endif
 
     }
 #ifdef Verbose
@@ -1448,8 +1508,10 @@ void SeQc::ProcessSeFastq() {
     MPI_Barrier(MPI_COMM_WORLD);
     printf("all pro write done2\n");
 
+#ifdef Verbose
     printf("all thrad done\n");
     printf("now merge thread info\n");
+#endif
     vector < State * > pre_vec_state;
     vector < State * > aft_vec_state;
 
@@ -1474,39 +1536,16 @@ void SeQc::ProcessSeFastq() {
             MPI_Recv(&now_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             char* info = new char[now_size];
             MPI_Recv(info, now_size, MPI_CHAR, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            //printf("%d ", now_size);
-            //for(int j = 0; j < now_size; j++) printf("%c", info[j]);
-            //printf("\n");
             State* tmp_state = new State(info, now_size, cmd_info_, cmd_info_->seq_len_, cmd_info_->qul_range_, false);
-            //string s_tmp = tmp_state->ParseString();
-            //string ss_tmp = string(info, now_size);
-            //if(now_size != s_tmp.length()) printf("WWWWWWWWW2\n");
-            //if(ss_tmp != ss_tmp) printf("WWWWWWWWWWWW3\n");
             delete[] info;
-
             pre_state_mpis.push_back(tmp_state);
-            //pre_state_mpis.push_back(pre_state_tmp);
         }
     } else {
         string pre_state_is = pre_state_tmp->ParseString();
-
-        //ofstream off1;
-        //off1.open("state1_" + to_string(my_rank));
-        //off1 << pre_state_is << endl;
-        //off1.close();
-
         State* tmp_state = new State(pre_state_is.c_str(), pre_state_is.length(), cmd_info_, cmd_info_->seq_len_, cmd_info_->qul_range_, false);
-        //string new_s = tmp_state->ParseString();
-
-        //ofstream off2;
-        //off2.open("state2_" + to_string(my_rank));
-        //off2 << new_s << endl;
-        //off2.close();
-        
         bool res = checkStates(pre_state_tmp, tmp_state);
         if(!res) cerr << "GGGGGGGG" << endl;
         int now_size = pre_state_is.length();
-        //printf("%d %s\n", now_size, pre_state_is.c_str());
         MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
         MPI_Send(pre_state_is.c_str(), now_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
     }
@@ -1518,30 +1557,21 @@ void SeQc::ProcessSeFastq() {
         for(int i = 1; i < comm_size; i++) {
             int now_size = 0;
             MPI_Recv(&now_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            //printf("recv %d -- %d\n", i, now_size);
             char* info = new char[now_size];
             MPI_Recv(info, now_size, MPI_CHAR, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            //printf("recv2 %d\n", i);
-            //for(int j = 0; j < now_size; j++) printf("%c", info[j]);
-            //printf("\n");
             State* tmp_state = new State(info, now_size, cmd_info_, cmd_info_->seq_len_, cmd_info_->qul_range_, false);
-            //printf("state done\n");
             delete[] info;
             aft_state_mpis.push_back(tmp_state);
-            //aft_state_mpis.push_back(aft_state_tmp);
-            //printf("done %d\n", i);
         }
     } else {
         string aft_state_is = aft_state_tmp->ParseString();
         int now_size = aft_state_is.length();
-        //cerr << now_size << " == " << aft_state_is << endl; 
         MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-        //cerr << my_rank << " send1 ok" << endl;
         MPI_Send(aft_state_is.c_str(), now_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
-        //cerr << my_rank << " send2 ok" << endl;
     }
     MPI_Barrier(MPI_COMM_WORLD);
     printf("aft merge done\n");
+
     if(my_rank) {
         delete pre_state_tmp;
         delete aft_state_tmp;

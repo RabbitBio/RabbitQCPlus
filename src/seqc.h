@@ -23,27 +23,9 @@
 #include "state.h"
 #include "threadinfo.h"
 #include "umier.h"
+#include "qcdata.h"
 #define CIPair std::pair<char *, std::pair<int, long long>>
 #define CRPair std::pair<int64_t, std::vector<rabbit::fq::FastqDataChunk *>>
-
-struct dupInfo{
-    uint32_t key;
-    uint64_t kmer32;
-    uint8_t gc;
-};
-
-struct qc_data {
-    ThreadInfo **thread_info_;
-    CmdInfo *cmd_info_;
-    std::vector <dupInfo> *dups;
-    std::vector <neoReference> *data1_;
-    std::vector <neoReference> *data2_;
-    std::vector <neoReference> *pass_data1_;
-    std::vector <neoReference> *pass_data2_;
-    int *cnt;
-    int bit_len;
-};
-
 
 
 class SeQc {
@@ -104,6 +86,8 @@ private:
     std::vector<rabbit::fq::FastqDataChunk *> *p_out_queue_;
     std::atomic_int done_thread_number_;
     FILE *out_stream_;
+    MPI_File fh;
+    MPI_Status status;
     Duplicate *duplicate_;
     Umier *umier_;
     long long now_pos_;

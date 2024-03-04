@@ -24,8 +24,11 @@
 #include "state.h"
 #include "threadinfo.h"
 #include "umier.h"
+#include "qcdata.h"
 
 #define CIPair std::pair<char *, std::pair<int, long long>>
+#define CRPair std::pair<int64_t, std::vector<rabbit::fq::FastqDataPairChunk *>>
+
 
 class PeQc {
 public:
@@ -46,17 +49,25 @@ private:
 
     void Read2Chars(neoReference &ref, char *out_data, int &pos);
 
+    void ProducerPeFastqTask64(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool);
+
+
     void ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
 
     void ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
                                   rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
 
+    void ConsumerPeFastqTask64(ThreadInfo **thread_info, rabbit::fq::FastqDataPool *fastqPool);
+
+
     void ConsumerPeFastqTask(ThreadInfo **thread_info, rabbit::fq::FastqDataPool *fastqPool,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
 
     void ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
                                   rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
+
+    void WriteSeFastqTask12();
 
     void WriteSeFastqTask1();
 
@@ -72,6 +83,11 @@ private:
 
     void NGSTask(std::string file1, std::string file2, rabbit::fq::FastqDataPool *fastq_data_pool, ThreadInfo **thread_infos);
 
+    void ProcessNgsData(bool &proDone, std::vector <neoReference> &data1, std::vector <neoReference> &data2, rabbit::fq::FastqDataPairChunk *fqdatachunk, qc_data *para, rabbit::fq::FastqDataPool *fastqPool);
+
+
+
+
 private:
 
     int my_rank, comm_size;
@@ -80,9 +96,18 @@ private:
 
     CIPair *out_queue1_;
     CIPair *out_queue2_;
+    std::pair<CIPair, CIPair> *out_queue_;
+    
+
+
+    std::vector<rabbit::fq::FastqDataPairChunk *> *p_out_queue_;
     std::atomic_int done_thread_number_;
     FILE *out_stream1_;
     FILE *out_stream2_;
+    MPI_File fh1;
+    MPI_File fh2;
+    MPI_Status status1;
+    MPI_Status status2;
     Duplicate *duplicate_;
     Umier *umier_;
     long long now_pos1_;
@@ -107,6 +132,18 @@ private:
             pigzQueue2;
     std::pair<char *, int> pigzLast2;
 
+    std::atomic_int p_queueP1;
+    std::atomic_int p_queueP2;
+    std::atomic_int p_queueNumNow;
+    std::atomic_int p_queueSizeLim;
+
+    std::atomic_int queueP1;
+    std::atomic_int queueP2;
+    std::atomic_int queueNumNow;
+    std::atomic_int queueSizeLim;
+
+
+
 
     std::atomic_int producerDone;
     std::atomic_int writerDone1;
@@ -129,6 +166,7 @@ private:
     std::atomic_int consumerCommDone;
     std::atomic_int producerStop;
     std::mutex mylock;
+    std::mutex p_mylock;
 
     int64_t *part_sizes;
 };

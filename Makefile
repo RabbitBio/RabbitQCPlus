@@ -37,13 +37,13 @@ CXX = mpicxx
 
 
 CXXFLAGS := $(InstructSet)
-CXXFLAGS += -fPIC -DVerbose -std=c++11 -I./ -I./common -g -O3 -w 
+CXXFLAGS += -DVerbose -std=c++11 -I./ -I./common -g -O3 -w 
 
 
 CXX2 = mpicc
 #CXX2 = swgcc
 
-CXXFLAGS2 := -fPIC -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
+CXXFLAGS2 := -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
 
 LIBS := -lz -lpthread -lrt
 
@@ -51,6 +51,7 @@ LIBS := -lz -lpthread -lrt
 LD_FLAGS := $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir)) $(LIBS)
 
 all: ${BIN_TARGET} ${BIN_TARGET_MPI}
+#all: ${BIN_TARGET_MPI}
 
 ${BIN_TARGET}:${OBJ}
 		$(CXX) -mhybrid $^ -o $@ $(LD_FLAGS)
@@ -69,8 +70,9 @@ ${DIR_OBJ}/%.o:${DIR_SRC}/%.c
 
 .PHONY:clean
 clean:
-	rm $(DIR_OBJ)/*.o
-	rm $(TARGET)
+	rm -rf $(DIR_OBJ)/*.o
+	rm -rf $(TARGET)
+	rm -rf $(TARGET_MPI)
 
 install:
 	install $(TARGET) $(BINDIR)/$(TARGET)

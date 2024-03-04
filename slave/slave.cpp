@@ -36,11 +36,25 @@ struct dupInfo{
     uint8_t gc;
 };
 
+struct qc_data {
+    ThreadInfo **thread_info_;
+    CmdInfo *cmd_info_;
+    std::vector <dupInfo> *dups;
+    std::vector <neoReference> *data1_;
+    std::vector <neoReference> *data2_;
+    std::vector <neoReference> *pass_data1_;
+    std::vector <neoReference> *pass_data2_;
+    int *cnt;
+    int bit_len;
+};
+
+
 __thread_local dupInfo local_dup_info[BATCH_SIZE];
 
 __thread_local int valAGCT[8]  = {-1, 0, -1, 2, 1, -1, -1, 3};
 
 __thread_local char reMap[8] = {0, 'T', 0, 'G', 'A', 0, 0, 'C'};
+
 int max(int x,int y) {
     return x > y ? x : y;
 }
@@ -63,20 +77,6 @@ void rtc_(unsigned long *counter){
 
 extern "C" void* ldm_malloc(size_t size);
 extern "C" void ldm_free(void *addr, size_t size);
-//extern "C" size_t get_allocatable_size();
-
-struct qc_data {
-    ThreadInfo **thread_info_;
-    CmdInfo *cmd_info_;
-    std::vector <dupInfo> *dups;
-    std::vector <neoReference> *data1_;
-    std::vector <neoReference> *data2_;
-    std::vector <neoReference> *pass_data1_;
-    std::vector <neoReference> *pass_data2_;
-    int *cnt;
-    int bit_len;
-};
-
 
 
 
@@ -656,6 +656,16 @@ struct format_data {
 };
 
 
+struct formatpe_data {
+    std::vector <neoReference> *data1;
+    std::vector <neoReference> *data2;
+    rabbit::fq::FastqDataPairChunk *fqdatachunk;
+    uint64_t *res;
+    int fqSize;
+    int my_rank;
+};
+
+
 
 void PrintRef(neoReference &ref) {
     fprintf(stderr, "%.*s\n", ref.lname, (char *) ref.base + ref.pname);
@@ -665,21 +675,8 @@ void PrintRef(neoReference &ref) {
 }
 
 
-struct format_data2 {
-    uint64_t *res;
-    int my_rank;
-};
-
-__uncached long lock_s2;
-extern "C" void formatfunc2(format_data2 *para) {
-    athread_lock(&lock_s2);
-    fprintf(stderr, "rank%d - %d\n", para->my_rank, _PEN);
-    athread_unlock(&lock_s2);
-    athread_ssync_array();
-    para->res[_PEN] = _PEN;
-}
-
 __uncached long lock_s;
+
 extern "C" void formatfunc(format_data paras[64]) {
     
     //if(paras[_PEN].my_rank) fprintf(stderr, "rank%d - %d\n", paras[_PEN].my_rank, _PEN);
@@ -699,7 +696,6 @@ extern "C" void formatfunc(format_data paras[64]) {
         return;
     }
     uint64_t seq_count = 0;
-    uint64_t line_count = 0;
     uint64_t pos_ = 0;
     neoReference ref;
     while (true) {
@@ -716,7 +712,7 @@ extern "C" void formatfunc(format_data paras[64]) {
         ref.pqual = pos_;
         neoGetLine(chunk, pos_, ref.lqual);
         //TODO resize
-        if(seq_count >= para->data->size()) fprintf(stderr, "GG %d %d\n", seq_count, para->data->size());
+        if(seq_count >= para->data->size()) fprintf(stderr, "GG formart, over size: %d %d\n", seq_count, para->data->size());
         (*para->data)[seq_count] = ref;
         //PrintRef(ref);
         
@@ -727,6 +723,84 @@ extern "C" void formatfunc(format_data paras[64]) {
     //athread_unlock(&lock_s);
     //athread_ssync_array();
     para->res[_PEN] = seq_count;
+    //dma_putn(&(para->res[_PEN]), &seq_count, sizeof(uint64_t));
+}
+
+
+extern "C" void formatpefunc(formatpe_data paras[64]) {
+    
+    //if(paras[_PEN].my_rank) fprintf(stderr, "rank%d - %d\n", paras[_PEN].my_rank, _PEN);
+    formatpe_data *para = &(paras[_PEN]);
+
+    //athread_lock(&lock_s);
+    //fprintf(stderr, "rank%d - %d : fqSize %d\n", para->my_rank, _PEN, para->fqSize);
+    //athread_unlock(&lock_s);
+    //athread_ssync_array();
+
+    if(_PEN >= para->fqSize) return;
+    //if(_PEN >= 1) return;
+    rabbit::fq::FastqDataChunk *chunk1 = para->fqdatachunk->left_part;
+    rabbit::fq::FastqDataChunk *chunk2 = para->fqdatachunk->right_part;
+    //fprintf(stderr, "rank%d chunk addr %p\n", para->my_rank, chunk);
+    if(para->fqdatachunk == NULL) {
+        para->res[_PEN] = 0; 
+        return;
+    }
+    uint64_t seq_count1 = 0;
+    uint64_t pos1_ = 0;
+    neoReference ref1;
+
+    while (true) {
+        ref1.base = chunk1->data.Pointer();
+        ref1.pname = pos1_;
+        if (neoGetLine(chunk1, pos1_, ref1.lname)) {
+            ref1.pseq = pos1_;
+        } else {
+            break;
+        }
+        neoGetLine(chunk1, pos1_, ref1.lseq);
+        ref1.pstrand = pos1_;
+        neoGetLine(chunk1, pos1_, ref1.lstrand);
+        ref1.pqual = pos1_;
+        neoGetLine(chunk1, pos1_, ref1.lqual);
+        //TODO resize
+        if(seq_count1 >= para->data1->size()) fprintf(stderr, "GG formart, over size: %d %d\n", seq_count1, para->data1->size());
+        (*para->data1)[seq_count1] = ref1;
+        seq_count1++;
+    }
+
+    uint64_t seq_count2 = 0;
+    uint64_t pos2_ = 0;
+    neoReference ref2;
+
+    while (true) {
+        ref2.base = chunk2->data.Pointer();
+        ref2.pname = pos2_;
+        if (neoGetLine(chunk2, pos2_, ref2.lname)) {
+            ref2.pseq = pos2_;
+        } else {
+            break;
+        }
+        neoGetLine(chunk2, pos2_, ref2.lseq);
+        ref2.pstrand = pos2_;
+        neoGetLine(chunk2, pos2_, ref2.lstrand);
+        ref2.pqual = pos2_;
+        neoGetLine(chunk2, pos2_, ref2.lqual);
+        //TODO resize
+        if(seq_count2 >= para->data2->size()) fprintf(stderr, "GG formart, over size: %d %d\n", seq_count2, para->data2->size());
+        (*para->data2)[seq_count2] = ref2;
+        seq_count2++;
+    }
+
+    if(seq_count1 != seq_count2) {
+        fprintf(stderr, "rank%d-%d: pr format error, %d %d\n", para->my_rank, _PEN, seq_count1, seq_count2);
+    }
+
+    //athread_lock(&lock_s);
+    //fprintf(stderr, "%d : seq_count %d\n", _PEN, seq_count);
+    //athread_unlock(&lock_s);
+    //athread_ssync_array();
+    para->res[_PEN] = seq_count1;
     //dma_putn(&(para->res[_PEN]), &seq_count, sizeof(uint64_t));
 }
 

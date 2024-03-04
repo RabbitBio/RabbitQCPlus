@@ -301,10 +301,16 @@ namespace rabbit {
         private:
             uint32 SwapBufferSize = 1 << 22;
             uint32 GetNxtBuffSize = 1 << 20;
+
             byte* MemData;
             int64 MemDataTotSize = 0;
             int64 MemDataNowPos = 0;
             bool MemDataReadFinish = 0;
+
+            byte* MemData2;
+            int64 MemDataTotSize2 = 0;
+            int64 MemDataNowPos2 = 0;
+            bool MemDataReadFinish2 = 0;
 
         public:
 
@@ -370,14 +376,19 @@ namespace rabbit {
             }
 
             void MemDataReader();
+            void MemDataReader2();
 
             void ReleaseMemData();
+            void ReleaseMemData2();
             
             int64 ReadFromMem(byte *memory_, uint64 size_);
+            int64 ReadFromMem2(byte *memory_, uint64 size_);
 
             int64 ReadSeekFromMem(byte *memory_, uint64 size_, uint64 pos_);
+            int64 ReadSeekFromMem2(byte *memory_, uint64 size_, uint64 pos_);
 
             bool FinishReadFromMem();
+            bool FinishReadFromMem2();
 
             // added from fastxIO.h
             FastqDataChunk *readNextChunk(int64 offset = -1, int64 lim_size = 1e9);
@@ -399,6 +410,8 @@ namespace rabbit {
             bool ReadNextChunk_(FastqDataChunk *chunk_, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, std::atomic_int *d, std::pair<char *, int> &l);
 
             FastqDataPairChunk *readNextPairChunk(int64 offset = -1, int64 lim_size = 1e9);
+
+            FastqDataPairChunk *readNextPairChunkFromMem(int64 offset = -1, int64 lim_size = 1e9);
 
             FastqDataPairChunk *readNextPairChunkParallel();
 
