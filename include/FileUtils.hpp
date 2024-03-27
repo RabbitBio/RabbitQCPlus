@@ -16,6 +16,7 @@
 
 #include <sys/stat.h>
 #include "../src/Globals.h"
+#define DEFAULT_PIPE_BUFFER_SIZE 65536
 
 #ifdef _MSC_VER
     #define NOMINMAX
@@ -523,7 +524,13 @@ private:
     explicit
     SpliceVault( int fileDescriptor ) :
         m_fileDescriptor( fileDescriptor ),
-        m_pipeBufferSize( fcntl( fileDescriptor, F_GETPIPE_SZ ) )
+        m_pipeBufferSize( 
+#ifdef F_GETPIPE_SZ
+                fcntl( fileDescriptor, F_GETPIPE_SZ ) 
+#else
+                DEFAULT_PIPE_BUFFER_SIZE
+#endif
+                )
     {}
 
     [[nodiscard]] VaultLock
