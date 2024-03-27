@@ -1,10 +1,14 @@
 PRINTDEBUG := 0
 
-#query gcc version
-GCCVERSION := $(shell gcc -dumpfullversion -dumpversion)
-GCC_GTEQ_485 := $(shell expr `gcc -dumpfullversion -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/'` \>= 40805)
-GCC_GTEQ_700 := $(shell expr `gcc -dumpfullversion -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/'` \>= 70000)
-GCC_GTEQ_1000 := $(shell expr `gcc -dumpfullversion -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/'` \>= 100000)
+CC ?= gcc
+CXX ?= g++
+
+# Query CC version
+GCCVERSION := $(shell $(CC) -dumpfullversion -dumpversion)
+GCC_GTEQ_485 := $(shell expr `$(CC) -dumpfullversion -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/'` \>= 40805)
+GCC_GTEQ_700 := $(shell expr `$(CC) -dumpfullversion -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/'` \>= 70000)
+GCC_GTEQ_1000 := $(shell expr `$(CC) -dumpfullversion -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/'` \>= 100000)
+
 
 #select which instruction set to use
 sse2F := 0
@@ -115,7 +119,6 @@ BIN_TARGET := ${TARGET}
 
 THRUST_INCDIR = ./dependencies/thrust-1.17.0
 
-CXX ?= g++
 
 # you can add -DUSE_IGZIP to CXXFLAGS and -lisal to LIBS, to use igzip by default
 
@@ -130,7 +133,6 @@ CXXFLAGS += -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -fconstexpr-ops-limi
 #CXXFLAGS += -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -march=native -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
 
 
-CC ?= gcc
 CCFLAGS := -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
 
 LIBS := -lpthread -fopenmp -lrt -lgomp -lstdc++fs -lz -ldl

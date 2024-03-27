@@ -20,7 +20,7 @@ last modified by Zekun Yin 2020/5/18
 #include "utils.h"
 #include <iostream>
 #include <string>
-#include <zlib.h>//support gziped files, functional but inefficient
+#include "zlib.h"//support gziped files, functional but inefficient
 
 #if defined(_WIN32)
 #define _CRT_SECURE_NO_WARNINGS

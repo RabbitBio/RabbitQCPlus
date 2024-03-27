@@ -10,7 +10,7 @@
 #include "igzip_lib.h"
 
 #endif
-#include <zlib.h>//support gziped files, functional but inefficient
+#include "zlib.h"//support gziped files, functional but inefficient
 
 
 #if defined(_WIN32)
