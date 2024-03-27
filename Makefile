@@ -161,6 +161,7 @@ clean:
 	rm -rf $(TARGET)
 
 install:
+	mkdir -p $(BINDIR)
 	install $(TARGET) $(BINDIR)/$(TARGET)
 	@echo "Installed."
 
