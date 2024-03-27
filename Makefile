@@ -115,7 +115,7 @@ BIN_TARGET := ${TARGET}
 
 THRUST_INCDIR = ./dependencies/thrust-1.17.0
 
-CXX = g++
+CXX ?= g++
 
 # you can add -DUSE_IGZIP to CXXFLAGS and -lisal to LIBS, to use igzip by default
 
@@ -130,8 +130,8 @@ CXXFLAGS += -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -fconstexpr-ops-limi
 #CXXFLAGS += -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -march=native -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
 
 
-CXX2 = gcc
-CXXFLAGS2 := -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
+CC ?= gcc
+CCFLAGS := -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
 
 LIBS := -lpthread -fopenmp -lrt -lgomp -lstdc++fs -lz -ldl
 
@@ -149,7 +149,7 @@ ${DIR_OBJ}/%.o:${DIR_SRC}/%.cpp
 
 
 ${DIR_OBJ}/%.o:${DIR_SRC}/%.c
-	$(CXX2) $(CXXFLAGS2) -c $< -o $@
+	$(CC) $(CCFLAGS) -c $< -o $@
 
 .PHONY:clean
 clean:
