@@ -406,7 +406,7 @@ Produce Zip64 format when needed for --zip (>= 4 GiB)
 #  define _exit(s)     exit(s)
 #endif
 
-#include "zlib.h"       // deflateInit2(), deflateReset(), deflate(),
+#include <zlib.h>       // deflateInit2(), deflateReset(), deflate(),
     // deflateEnd(), deflateSetDictionary(), crc32(),
     // adler32(), inflateBackInit(), inflateBack(),
     // inflateBackEnd(), Z_DEFAULT_COMPRESSION,

@@ -129,7 +129,7 @@ THRUST_INCDIR = ./dependencies/thrust-1.17.0
 # you can add -DVerbose to print more log information
 
 CXXFLAGS := $(InstructSet)
-CXXFLAGS += -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -fconstexpr-ops-limit=99000100 -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -march=native -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
+CXXFLAGS += -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -fconstexpr-ops-limit=99000100 -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -I./src/include -march=native -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
 #CXXFLAGS += -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -march=native -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
 
 
@@ -155,8 +155,8 @@ ${DIR_OBJ}/%.o:${DIR_SRC}/%.c
 
 .PHONY:clean
 clean:
-	rm $(DIR_OBJ)/*.o
-	rm $(TARGET)
+	rm -rf $(DIR_OBJ)/*.o
+	rm -rf $(TARGET)
 
 install:
 	install $(TARGET) $(BINDIR)/$(TARGET)
