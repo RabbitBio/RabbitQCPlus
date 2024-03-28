@@ -119,6 +119,8 @@ TARGET := RabbitQCPlus
 
 BIN_TARGET := ${TARGET}
 
+LOWERCASE_TARGET := $(shell echo $(TARGET) | tr A-Z a-z)
+
 THRUST_INCDIR = ./dependencies/thrust-1.17.0
 
 
@@ -147,6 +149,7 @@ LD_FLAGS := $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir)) $(LIBS)
 
 ${BIN_TARGET}:${OBJ}
 	$(CXX) $(OBJ) -o $@ $(LD_FLAGS)
+	cp $@ $(LOWERCASE_TARGET)
 
 ${DIR_OBJ}/%.o:${DIR_SRC}/%.cpp
 	$(CXX) -c $< -o $@ $(CXXFLAGS)
@@ -158,10 +161,11 @@ ${DIR_OBJ}/%.o:${DIR_SRC}/%.c
 .PHONY:clean
 clean:
 	rm -rf $(DIR_OBJ)/*.o
-	rm -rf $(TARGET)
+	rm -rf $(BIN_TARGET) $(LOWERCASE_TARGET)
 
 install:
 	mkdir -p $(BINDIR)
 	install $(TARGET) $(BINDIR)/$(TARGET)
-	@echo "Installed."
+	install $(LOWERCASE_TARGET) $(BINDIR)/$(LOWERCASE_TARGET)
+	@echo "Installed $(BIN_TARGET) and $(LOWERCASE_TARGET)."
 
