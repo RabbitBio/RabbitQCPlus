@@ -27,14 +27,14 @@ int main(int argc, char **argv) {
         }
     }
 
-    fprintf(stderr, "aa %d\n", aa);
+    //fprintf(stderr, "aa %d\n", aa);
     
     if (runLoop) {
         while(aa == 0) {
         }
     }
 
-    fprintf(stderr, "aa %d\n", aa);
+    //fprintf(stderr, "aa %d\n", aa);
 
     int my_rank = 0;
     int comm_size = 1;
@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
     //swlu_prof_start();
 #endif	
     
+
     //printf(" %d / %d\n", my_rank, comm_size);
     if(my_rank != 0) freopen("dev/null", "w", stdout);
     //if(my_rank == 0) freopen("dev/null", "w", stdout);
@@ -174,6 +175,7 @@ int main(int argc, char **argv) {
 
     CLI11_PARSE(app, argc, argv);
 
+    //TODO remove it
     if(preCache) {
         printf("now pre read to cache data...\n");
         double t_t0 = GetTime();
@@ -188,8 +190,6 @@ int main(int argc, char **argv) {
         printf("lines is %d\n", t_line);
         iff.close();
         printf("cost %lf\n", GetTime() - t_t0);
-
-
     }
 
 
@@ -715,5 +715,7 @@ int main(int argc, char **argv) {
 #endif	
 
     MPI_Finalize();
+    printf("MPI_Finalize done\n");
+    //exit(0);
     return 0;
 }

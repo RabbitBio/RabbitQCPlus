@@ -343,11 +343,11 @@ int Adapter::EvalMaxLen(string file_name) {
 }
 
 string Adapter::AutoDetect(string file_name, int trim_tail) {
-    auto *fastq_data_pool = new rabbit::fq::FastqDataPool(4, 1 << 22);
+    auto *fastq_data_pool = new rabbit::fq::FastqDataPool(128, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
             file_name.find(".gz") != string::npos);
     int64_t n_chunks = 0;
-    const long READ_LIMIT = 4 * 1024;
+    const long READ_LIMIT = 256 * 1024;
     const long BASE_LIMIT = 151 * READ_LIMIT;
     long records = 0;
     long bases = 0;

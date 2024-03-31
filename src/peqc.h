@@ -9,8 +9,6 @@
 #include <cstring>
 #include <fstream>
 #include <functional>
-#include <queue>
-#include <sys/time.h>
 
 #include "Formater.h"
 #include "Globals.h"
@@ -39,8 +37,6 @@ public:
     ~PeQc();
 
     void ProcessPeFastq();
-
-    void ProcessPeFastqOneThread();
 
 
 private:
@@ -72,16 +68,6 @@ private:
     void WriteSeFastqTask1();
 
     void WriteSeFastqTask2();
-
-    void PugzTask1();
-
-    void PugzTask2();
-
-    void PigzTask1();
-
-    void PigzTask2();
-
-    void NGSTask(std::string file1, std::string file2, rabbit::fq::FastqDataPool *fastq_data_pool, ThreadInfo **thread_infos);
 
     void ProcessNgsData(bool &proDone, std::vector <neoReference> &data1, std::vector <neoReference> &data2, rabbit::fq::FastqDataPairChunk *fqdatachunk, qc_data *para, rabbit::fq::FastqDataPool *fastqPool);
 

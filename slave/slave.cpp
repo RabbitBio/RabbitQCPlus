@@ -739,13 +739,13 @@ extern "C" void formatpefunc(formatpe_data paras[64]) {
 
     if(_PEN >= para->fqSize) return;
     //if(_PEN >= 1) return;
-    rabbit::fq::FastqDataChunk *chunk1 = para->fqdatachunk->left_part;
-    rabbit::fq::FastqDataChunk *chunk2 = para->fqdatachunk->right_part;
-    //fprintf(stderr, "rank%d chunk addr %p\n", para->my_rank, chunk);
     if(para->fqdatachunk == NULL) {
         para->res[_PEN] = 0; 
         return;
     }
+    rabbit::fq::FastqDataChunk *chunk1 = para->fqdatachunk->left_part;
+    rabbit::fq::FastqDataChunk *chunk2 = para->fqdatachunk->right_part;
+    //fprintf(stderr, "rank%d chunk addr %p\n", para->my_rank, chunk);
     uint64_t seq_count1 = 0;
     uint64_t pos1_ = 0;
     neoReference ref1;

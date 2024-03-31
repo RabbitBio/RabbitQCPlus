@@ -17,7 +17,7 @@ extern "C" {
 
 
 
-int Q_lim = 256;
+int Q_lim = 4;
 
 void PrintRef(neoReference &ref) {
     printf("%.*s\n", ref.lname, (char *) ref.base + ref.pname);
@@ -66,8 +66,8 @@ int64_t GetNextFastq(char *data_, int64_t pos_, const int64_t size_) {
 }
 
 
-#define use_in_mem
-#define use_out_mem
+//#define use_in_mem
+//#define use_out_mem
 //
 #define use_mpi_file
 
@@ -95,8 +95,9 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
     int out_block_nums = int(1.0 * cmd_info1->in_file_size1_ / cmd_info1->out_block_size_);
     //printf("out_block_nums %d\n", out_block_nums);
     out_queue_ = NULL;
-    out_queue1_ = NULL;
-    out_queue2_ = NULL;
+    p_out_queue_ = NULL;
+    //out_queue1_ = NULL;
+    //out_queue2_ = NULL;
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != string::npos;
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != string::npos;
 
@@ -397,7 +398,7 @@ PeQc::~PeQc() {
     delete filter_;
     delete[] p_out_queue_;
     if (cmd_info_->write_data_) {
-        delete out_queue_;
+        delete []out_queue_;
         //delete out_queue1_;
         //if (cmd_info_->interleaved_out_ == 0)
         //    delete out_queue2_;
@@ -495,10 +496,11 @@ void PeQc::ProducerPeFastqTask64(string file, string file2, rabbit::fq::FastqDat
         tt0 = GetTime();
         if (fqdatachunk == NULL) {
             if(tmp_chunks.size()) {
-                //fprintf(stderr, "put last %d\n", tmp_chunks.size());
+                //fprintf(stderr, "producer %d put last %d\n", my_rank, tmp_chunks.size());
                 //p_mylock.lock();
                 while (p_queueNumNow >= p_queueSizeLim) {
-                    usleep(100);
+                    usleep(1000);
+                    //fprintf(stderr, "producer %d waiting2\n", my_rank);
                 }
                 p_out_queue_[p_queueP2++] = tmp_chunks;
                 p_queueNumNow++;
@@ -507,21 +509,21 @@ void PeQc::ProducerPeFastqTask64(string file, string file2, rabbit::fq::FastqDat
                 n_chunks++;
             }
             producerStop = 1;
-            //fprintf(stderr, "rank%d producer stop, tot chunk size %d\n", my_rank, n_chunks);
-     
+            //fprintf(stderr, "producer %d stop, tot chunk size %d\n", my_rank, n_chunks);
             if(cmd_info_->write_data_) {
                 now_chunks = n_chunks;
                 while(consumerCommDone == 0) {
-                    usleep(100);
+                    usleep(1000);
+                    //fprintf(stderr, "producer %d waiting consumerCommDone\n", my_rank);
                 }
                 int bu_chunks = mx_chunks - now_chunks;
-                cerr << "bu rank" << my_rank << " : " << bu_chunks << " of (" << now_chunks << ", " << mx_chunks << ")" << endl;
+                cerr << "producer bu rank" << my_rank << " : " << bu_chunks << " of (" << now_chunks << ", " << mx_chunks << ")" << endl;
                 if(bu_chunks) {
                     for(int i = 0; i < bu_chunks; i++) {
                         if(tmp_chunks.size() == 64) {
                             //p_mylock.lock();
                             while (p_queueNumNow >= p_queueSizeLim) {
-                                usleep(100);
+                                usleep(1000);
                             }
                             p_out_queue_[p_queueP2++] = tmp_chunks;
                             p_queueNumNow++;
@@ -535,7 +537,7 @@ void PeQc::ProducerPeFastqTask64(string file, string file2, rabbit::fq::FastqDat
                     if(tmp_chunks.size()) {
                         //p_mylock.lock();
                         while (p_queueNumNow >= p_queueSizeLim) {
-                            usleep(100);
+                            usleep(1000);
                         }
                         p_out_queue_[p_queueP2++] = tmp_chunks;
                         p_queueNumNow++;
@@ -552,7 +554,8 @@ void PeQc::ProducerPeFastqTask64(string file, string file2, rabbit::fq::FastqDat
             if(tmp_chunks.size()) {
                 //p_mylock.lock();
                 while (p_queueNumNow >= p_queueSizeLim) {
-                    usleep(100);
+                    usleep(1000);
+                    //fprintf(stderr, "producer %d waiting0\n", my_rank);
                 }
                 p_out_queue_[p_queueP2++] = tmp_chunks;
                 p_queueNumNow++;
@@ -561,14 +564,15 @@ void PeQc::ProducerPeFastqTask64(string file, string file2, rabbit::fq::FastqDat
                 n_chunks++;
             }
             break;
-
         }
         tmp_chunks.push_back(fqdatachunk); 
+        //fprintf(stderr, "producer %d read a chunk\n", my_rank);
         if(tmp_chunks.size() == 64) {
-            //fprintf(stderr, "put 64\n");
+            //fprintf(stderr, "producer %d put 64\n", my_rank);
             //p_mylock.lock();
             while (p_queueNumNow >= p_queueSizeLim) {
-                usleep(100);
+                usleep(1000);
+                //fprintf(stderr, "producer %d waiting1\n", my_rank);
             }
             p_out_queue_[p_queueP2++] = tmp_chunks;
             p_queueNumNow++;
@@ -583,6 +587,7 @@ void PeQc::ProducerPeFastqTask64(string file, string file2, rabbit::fq::FastqDat
     printf("producer sum1 cost %lf\n", t_sum1);
     printf("producer sum2 cost %lf\n", t_sum2);
     printf("producer%d cost %lf\n", my_rank, GetTime() - t0);
+    fprintf(stderr, "producer %d in func done\n", my_rank);
     //dq.SetCompleted();
     producerDone = 1;
 }
@@ -647,7 +652,7 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
                     now_chunks = n_chunks;
                     producerStop = 1;
                     while(consumerCommDone == 0) {
-                        usleep(10000);
+                        usleep(1000);
                     }
                     //printf("producer%d get val done %lld %lld\n", my_rank, now_chunks, mx_chunks);
                     int bu_chunks = mx_chunks - now_chunks;
@@ -672,7 +677,7 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
     }
     dq.SetCompleted();
     producerDone = 1;
-    fprintf(stderr, "rank%d producer baba cost %lf\n", my_rank, GetTime() - t0);
+    printf("rank%d producer baba cost %lf\n", my_rank, GetTime() - t0);
 }
 
 struct formatpe_data {
@@ -702,7 +707,7 @@ double tsum5 = 0;
 
 void PeQc::ProcessNgsData(bool &proDone, std::vector <neoReference> &data1, std::vector <neoReference> &data2, rabbit::fq::FastqDataPairChunk *fqdatachunk, qc_data *para, rabbit::fq::FastqDataPool *fastqPool) {
 
-    //fprintf(stderr, "rank%d data size %d %d\n", my_rank, data1.size(), data2.size());
+    //fprintf(stderr, "consumer %d data size %d %d\n", my_rank, data1.size(), data2.size());
     double tt0 = GetTime();
     vector <neoReference> pass_data1(data1);
     vector <neoReference> pass_data2(data2);
@@ -727,7 +732,7 @@ void PeQc::ProcessNgsData(bool &proDone, std::vector <neoReference> &data1, std:
         athread_join();
     }
     tsum2 += GetTime() - tt0;
-    //fprintf(stderr, "rank%d data_pass size %d %d\n", my_rank, pass_data1.size(), pass_data2.size());
+    //fprintf(stderr, "consumer %d data_pass size %d %d\n", my_rank, pass_data1.size(), pass_data2.size());
 
     tt0 = GetTime(); 
     if(cmd_info_->state_duplicate_) {
@@ -784,7 +789,7 @@ void PeQc::ProcessNgsData(bool &proDone, std::vector <neoReference> &data1, std:
             if(out_len2) memset(out_data2, 0, sizeof(char) * out_len2);
             tsum4_1_2 += GetTime() - tt2;
 
-            //fprintf(stderr, "out_len %d %d\n", out_len1, out_len2);
+            //fprintf(stderr, "consumer %d out_len %d %d\n", my_rank, out_len1, out_len2);
 
             tt2 = GetTime();
             //OPT: reduce memcpy times, merge contiguous datas.
@@ -990,7 +995,7 @@ void PeQc::ProcessNgsData(bool &proDone, std::vector <neoReference> &data1, std:
                 } else if(some_stop){
                     int goonn = 1;
                     while(goonn) {
-                        usleep(10000);
+                        usleep(1000);
                         int proStop = producerStop.load();
                         int stops[comm_size];
                         stops[0] = proStop;
@@ -1017,7 +1022,7 @@ void PeQc::ProcessNgsData(bool &proDone, std::vector <neoReference> &data1, std:
                             if(stops[ii] == 1) some_stop = 1;
                         }
                         //cerr << "===waiting stop" << my_rank << " " << proStop << endl;
-                        //printf("waiting stop%d %d\n", my_rank, all_stop);
+                        //printf("consumer %d all stop: %d\n", my_rank, all_stop);
                         if(all_stop) {
                             int64_t chunk_sizes[comm_size];
                             chunk_sizes[0] = now_chunks;
@@ -1058,10 +1063,11 @@ void PeQc::ProcessNgsData(bool &proDone, std::vector <neoReference> &data1, std:
 #ifdef Verbose
                 //printf("waiting to push a chunk to out queue1\n");
 #endif
-                usleep(10000);
+                usleep(1000);
             }
             out_queue_[queueP2++] = make_pair(make_pair(out_data1, make_pair(out_len1, now_pos_base1)), make_pair(out_data2, make_pair(out_len2, now_pos_base2)));
             queueNumNow++;
+            //fprintf(stderr, "consumer %d push to queue\n", my_rank);
          
 
 //            //mylock.lock();
@@ -1081,11 +1087,13 @@ void PeQc::ProcessNgsData(bool &proDone, std::vector <neoReference> &data1, std:
     }
     tsum4 += GetTime() - tt0;
 
+    //fprintf(stderr, "consumer %d release1\n", my_rank);
     tt0 = GetTime();
     if(fqdatachunk != NULL) {
         fastqPool->Release(fqdatachunk->left_part);
         fastqPool->Release(fqdatachunk->right_part);
     }
+    //fprintf(stderr, "consumer %d release2\n", my_rank);
     tsum5 += GetTime() - tt0;
 }
 
@@ -1114,15 +1122,16 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
             int proStop = producerStop.load();
             if (proStop && proDone) {
                 p_overWhile = 1;
-                fprintf(stderr, "rank %d process done\n", my_rank);
+                printf("consumer %d process done\n", my_rank);
                 break;
             } else if(proStop && !proDone) {
                 pushNull = 1;
                 break;
             }
+            //fprintf(stderr, "consumer %d waiting\n", my_rank);
             usleep(1000);
         }
-        //fprintf(stderr, "rank%d pushNull: %d\n", my_rank, pushNull);
+        //fprintf(stderr, "consumer %d pushNull: %d\n", my_rank, pushNull);
         if (p_overWhile) {
             consumerCommDone = 1;
             break;
@@ -1140,12 +1149,15 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
         vector<neoReference> data2[64];
         formatpe_data para2[64];
         uint64_t counts[64] = {0};
+        for(int i = fqdatachunks.size(); i < 64; i++) {
+            fqdatachunks.push_back(NULL);
+        }
         int fq_size = fqdatachunks.size();
         for(int i = 0; i < 64; i++) {
             para2[i].fqSize = fq_size;
             para2[i].my_rank = my_rank;
         }
-        //fprintf(stderr, "rank%d fq_size %d\n", my_rank, fq_size);
+        //fprintf(stderr, "consumer %d fq_size %d\n", my_rank, fq_size);
         for(int i = 0; i < fq_size; i++) {
             //if(fqdatachunks[i] != NULL) fprintf(stderr, "rank%d %p %p - %d %d\n", my_rank, fqdatachunks[i]->left_part, fqdatachunks[i]->right_part, fqdatachunks[i]->left_part->size, fqdatachunks[i]->right_part->size); 
             if(fqdatachunks[i] != NULL) data1[i].resize(fqdatachunks[i]->left_part->size / (cmd_info_->seq_len_ * 2));
@@ -1162,7 +1174,7 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
         t_format += GetTime() - tt0;
 
         for(int i = 0; i < fq_size; i++) {
-            //fprintf(stderr, "rank%d count %d\n", my_rank, counts[i]);
+            //fprintf(stderr, "consumer rank%d count %d\n", my_rank, counts[i]);
             data1[i].resize(counts[i]);
             data2[i].resize(counts[i]);
             ProcessNgsData(allProDone, data1[i], data2[i], fqdatachunks[i], &para, fastqPool);
@@ -1178,7 +1190,7 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     printf("NGSnew release cost %lf\n", tsum5);
     done_thread_number_++;
     athread_halt();
-    fprintf(stderr, "consumer%d done\n", my_rank);
+    fprintf(stderr, "consumer %d in func done\n", my_rank);
 }
 
 
@@ -1415,7 +1427,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
                     } else if(some_stop){
                         int goonn = 1;
                         while(goonn) {
-                            usleep(10000);
+                            usleep(1000);
                             int proStop = producerStop.load();
                             int stops[comm_size];
                             stops[0] = proStop;
@@ -1480,7 +1492,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
 #ifdef Verbose
                     //printf("waiting to push a chunk to out queue1\n");
 #endif
-                    usleep(10000);
+                    usleep(1000);
                 }
                 out_queue_[queueP2++] = make_pair(make_pair(out_data1, make_pair(out_len1, now_pos_base1)), make_pair(out_data2, make_pair(out_len2, now_pos_base2)));
                 queueNumNow++;
@@ -1490,7 +1502,7 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
 //#ifdef Verbose
 //                    //printf("waiting to push a chunk to out queue1\n");
 //#endif
-//                    usleep(10000);
+//                    usleep(1000);
 //                }
 //                out_queue1_[queue1P2++] = make_pair(out_data1, make_pair(out_len1, now_pos_base1));
 //                queueNumNow1++;
@@ -1542,19 +1554,18 @@ void PeQc::WriteSeFastqTask12() {
         while (queueNumNow == 0) {
             if (done_thread_number_ == cmd_info_->thread_number_) {
                 overWhile = 1;
-                fprintf(stderr, "rank %d write done\n", my_rank);
+                printf("writer %d write done\n", my_rank);
                 break;
             }
 
-            //fprintf(stderr, "rank %d write wait\n", my_rank);
-            usleep(10000);
+            //fprintf(stderr, "writer %d waiting\n", my_rank);
+            usleep(1000);
         }
         if (overWhile) break;
         now0 = out_queue_[queueP1++];
         now1 = now0.first;
         now2 = now0.second;
         queueNumNow--;
-        //fprintf(stderr, "rank %d write get %p\n", my_rank, now.first);
         if (out_is_zip_) {
             if (cmd_info_->use_pigz_) {
                 printf("use pigz TODO...\n");
@@ -1583,11 +1594,11 @@ void PeQc::WriteSeFastqTask12() {
 #else
 
 #ifdef use_mpi_file
-                //fprintf(stderr, "rank %d write seek %lld\n", my_rank, now.second.first);
+                //fprintf(stderr, "writer %d write seek\n", my_rank);
                 MPI_File_seek(fh1, now1.second.second, MPI_SEEK_SET);
-                //fprintf(stderr, "rank %d write ww %lld\n", my_rank, now.second.first);
+                //fprintf(stderr, "writer %d write ww\n", my_rank);
                 MPI_File_write(fh1, now1.first, now1.second.first, MPI_CHAR, &status1);
-                //fprintf(stderr, "rank %d write ww done\n", my_rank);
+                //fprintf(stderr, "writer %d write ww done\n", my_rank);
 #else
                 fseek(out_stream1_, now1.second.second, SEEK_SET);
                 //fprintf(stderr, "rank %d write ww %lld\n", my_rank, now.second.first);
@@ -1597,7 +1608,7 @@ void PeQc::WriteSeFastqTask12() {
 
 #endif
                 delete[] now1.first;
-                //fprintf(stderr, "rank %d write del done\n", my_rank);
+                //fprintf(stderr, "writer %d write del done\n", my_rank);
             }
 
 
@@ -1610,11 +1621,11 @@ void PeQc::WriteSeFastqTask12() {
 #else
 
 #ifdef use_mpi_file
-                //fprintf(stderr, "rank %d write seek %lld\n", my_rank, now.second.first);
+                //fprintf(stderr, "writer %d write seek\n", my_rank);
                 MPI_File_seek(fh2, now2.second.second, MPI_SEEK_SET);
-                //fprintf(stderr, "rank %d write ww %lld\n", my_rank, now.second.first);
+                //fprintf(stderr, "writer %d write ww\n", my_rank);
                 MPI_File_write(fh2, now2.first, now2.second.first, MPI_CHAR, &status2);
-                //fprintf(stderr, "rank %d write ww done\n", my_rank);
+                //fprintf(stderr, "writer %d write ww done\n", my_rank);
 #else
                 fseek(out_stream2_, now2.second.second, SEEK_SET);
                 //fprintf(stderr, "rank %d write ww %lld\n", my_rank, now.second.first);
@@ -1624,15 +1635,14 @@ void PeQc::WriteSeFastqTask12() {
 
 #endif
                 delete[] now2.first;
-                //fprintf(stderr, "rank %d write del done\n", my_rank);
+                //fprintf(stderr, "writer %d write del done\n", my_rank);
             }
-            //fprintf(stderr, "write%d %d done\n", my_rank, cnt++);
+            //fprintf(stderr, "writer %d %d done\n", my_rank, cnt++);
         }
     }
 
-    //fprintf(stderr, "111111 rank%d donedone1\n", my_rank);
     MPI_Barrier(MPI_COMM_WORLD);
-    //fprintf(stderr, "111111 rank%d donedone2\n", my_rank);
+    //fprintf(stderr, "writer rank%d write donedone\n", my_rank);
     if (out_is_zip_) {
         if (cmd_info_->use_pigz_) {
 
@@ -1651,10 +1661,10 @@ void PeQc::WriteSeFastqTask12() {
 
     } else {
 #ifdef use_mpi_file
-        //fprintf(stderr, "111111 rank%d donedone3\n", my_rank);
+        //fprintf(stderr, "writer%d close file 1\n", my_rank);
         MPI_File_close(&fh1);
         MPI_File_close(&fh2);
-        //fprintf(stderr, "111111 rank%d donedone4\n", my_rank);
+        //fprintf(stderr, "writer%d close file 2\n", my_rank);
 #else
         fclose(out_stream1_);
         if(my_rank == 0) {
@@ -1667,7 +1677,8 @@ void PeQc::WriteSeFastqTask12() {
 #endif
     }
 #ifdef Verbose
-    cerr << "write" << my_rank << " cost " << GetTime() - t0 << ", tot size " << tot_size1 << " " << tot_size2 << endl;
+    printf("writer%d cost %lf, tot size %lld %lld\n", my_rank, GetTime() - t0, tot_size1, tot_size2);
+    fprintf(stderr, "writer %d in func done\n", my_rank);
     //printf("write %d cost %.5f --- %lld\n", my_rank, GetTime() - t0, tot_size);
     //
 #endif
@@ -1690,12 +1701,12 @@ void PeQc::WriteSeFastqTask1() {
         while (queueNumNow1 == 0) {
             if (done_thread_number_ == cmd_info_->thread_number_) {
                 overWhile = 1;
-                fprintf(stderr, "rank %d write done\n", my_rank);
+                printf("rank %d write done\n", my_rank);
                 break;
             }
 
             //fprintf(stderr, "rank %d write wait\n", my_rank);
-            usleep(10000);
+            usleep(1000);
         }
         if (overWhile) break;
         now = out_queue1_[queue1P1++];
@@ -1782,12 +1793,12 @@ void PeQc::WriteSeFastqTask2() {
         while (queueNumNow2 == 0) {
             if (done_thread_number_ == cmd_info_->thread_number_) {
                 overWhile = 1;
-                fprintf(stderr, "rank %d write done\n", my_rank);
+                printf("rank %d write done\n", my_rank);
                 break;
             }
 
             //fprintf(stderr, "rank %d write wait\n", my_rank);
-            usleep(10000);
+            usleep(1000);
         }
         if (overWhile) break;
         now = out_queue2_[queue2P1++];
@@ -1859,477 +1870,6 @@ void PeQc::WriteSeFastqTask2() {
 #endif
 }
 
-
-void PeQc::PugzTask1() {
-#ifdef Verbose
-    printf("pugz1 start\n");
-    double t0 = GetTime();
-#endif
-    main_pugz(cmd_info_->in_file_name1_, cmd_info_->pugz_threads_, pugzQueue1, &producerDone);
-    pugzDone1 = 1;
-#ifdef Verbose
-    printf("pugz1 done, cost %.6f\n", GetTime() - t0);
-#endif
-}
-
-void PeQc::PugzTask2() {
-#ifdef Verbose
-    printf("pugz2 start\n");
-    double t0 = GetTime();
-#endif
-    main_pugz(cmd_info_->in_file_name2_, cmd_info_->pugz_threads_, pugzQueue2, &producerDone);
-    pugzDone2 = 1;
-#ifdef Verbose
-    printf("pugz2 done, cost %.6f\n", GetTime() - t0);
-#endif
-}
-
-
-void PeQc::PigzTask1() {
-    int cnt = 10;
-
-    char **infos = new char *[10];
-    infos[0] = "./pigz";
-    infos[1] = "-p";
-    int th_num = cmd_info_->pigz_threads_;
-    //    printf("th num is %d\n", th_num);
-    string th_num_s = to_string(th_num);
-    //    printf("th num s is %s\n", th_num_s.c_str());
-    //    printf("th num s len is %d\n", th_num_s.length());
-
-    infos[2] = new char[th_num_s.length() + 1];
-    memcpy(infos[2], th_num_s.c_str(), th_num_s.length());
-    infos[2][th_num_s.length()] = '\0';
-    infos[3] = "-k";
-
-    string tmp_level = to_string(cmd_info_->compression_level_);
-    tmp_level = "-" + tmp_level;
-    infos[4] = new char[tmp_level.length() + 1];
-    memcpy(infos[4], tmp_level.c_str(), tmp_level.length());
-    infos[4][tmp_level.length()] = '\0';
-
-
-    infos[5] = "-f";
-    infos[6] = "-b";
-    infos[7] = "4096";
-    string out_name1 = cmd_info_->out_file_name1_;
-    string out_file = out_name1.substr(0, out_name1.find(".gz"));
-    //    printf("th out_file is %s\n", out_file.c_str());
-    //    printf("th out_file len is %d\n", out_file.length());
-    infos[8] = new char[out_file.length() + 1];
-    memcpy(infos[8], out_file.c_str(), out_file.length());
-    infos[8][out_file.length()] = '\0';
-    infos[9] = "-v";
-    main_pigz(cnt, infos, pigzQueue1, &writerDone1, pigzLast1, &pigzQueueNumNow1);
-#ifdef Verbose
-    printf("pigz1 done\n");
-#endif
-}
-
-void PeQc::PigzTask2() {
-
-    int cnt = 10;
-
-    char **infos = new char *[10];
-    infos[0] = "./pigz";
-    infos[1] = "-p";
-    int th_num = cmd_info_->pigz_threads_;
-    //    printf("th num is %d\n", th_num);
-    string th_num_s = to_string(th_num);
-    //    printf("th num s is %s\n", th_num_s.c_str());
-    //    printf("th num s len is %d\n", th_num_s.length());
-
-    infos[2] = new char[th_num_s.length() + 1];
-    memcpy(infos[2], th_num_s.c_str(), th_num_s.length());
-    infos[2][th_num_s.length()] = '\0';
-    infos[3] = "-k";
-
-    string tmp_level = to_string(cmd_info_->compression_level_);
-    tmp_level = "-" + tmp_level;
-    infos[4] = new char[tmp_level.length() + 1];
-    memcpy(infos[4], tmp_level.c_str(), tmp_level.length());
-    infos[4][tmp_level.length()] = '\0';
-
-    infos[5] = "-f";
-    infos[6] = "-b";
-    infos[7] = "4096";
-    string out_name2 = cmd_info_->out_file_name2_;
-    string out_file = out_name2.substr(0, out_name2.find(".gz"));
-    //    printf("th out_file is %s\n", out_file.c_str());
-    //    printf("th out_file len is %d\n", out_file.length());
-    infos[8] = new char[out_file.length() + 1];
-    memcpy(infos[8], out_file.c_str(), out_file.length());
-    infos[8][out_file.length()] = '\0';
-    infos[9] = "-v";
-    main_pigz(cnt, infos, pigzQueue2, &writerDone2, pigzLast2, &pigzQueueNumNow2);
-#ifdef Verbose
-    printf("pigz2 done\n");
-#endif
-}
-
-void PeQc::NGSTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastq_data_pool, ThreadInfo **thread_infos){
-    rabbit::fq::FastqFileReader *fqFileReader;
-    rabbit::uint32 tmpSize = 1 << 20;
-    if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
-    fqFileReader = new rabbit::fq::FastqFileReader(file, *fastq_data_pool, file2, in_is_zip_, tmpSize);
-    int64_t n_chunks = 0;
-    qc_data para;
-    para.cmd_info_ = cmd_info_;
-    para.thread_info_ = thread_infos;
-    para.bit_len = 0;
-    if(cmd_info_->state_duplicate_) {
-        para.bit_len = duplicate_->key_len_base_;
-    }
-    athread_init();
-    double t0 = GetTime();
-    double tsum1 = 0;
-    double tsum2 = 0;
-    double tsum3 = 0;
-    double tsum4 = 0;
-    double tsum4_1 = 0;
-    double tsum4_2 = 0;
-    char enter_char[1];
-    enter_char[0] = '\n';
-    int nums = 0;
-    while (true) {
-        double tt0 = GetTime();
-        rabbit::fq::FastqDataPairChunk *fqdatachunk;
-        fqdatachunk = fqFileReader->readNextPairChunk();
-        if (fqdatachunk == NULL) break;
-        n_chunks++;
-        tsum1 += GetTime() - tt0;
-        tt0 = GetTime();
-        vector <neoReference> data1;
-        vector <neoReference> data2;
-        rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->left_part), data1, true);
-        rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->right_part), data2, true);
-        if(data1.size() != data2.size()) printf("GG size pe\n");
-        //printf("num %d\n", data1.size());
-        nums += data1.size();
-        vector <neoReference> pass_data1(data1);
-        vector <neoReference> pass_data2(data2);
-        vector <dupInfo> dups;
-        //if(cmd_info_->write_data_) {
-        //    pass_data1.resize(data1.size());
-        //    pass_data2.resize(data2.size());
-        //}
-        if(cmd_info_->state_duplicate_) {
-            dups.resize(data1.size());
-        }
-        tsum2 += GetTime() - tt0;
-        tt0 = GetTime();
-
-        para.data1_ = &data1;
-        para.data2_ = &data2;
-        para.pass_data1_ = &pass_data1;
-        para.pass_data2_ = &pass_data2;
-        para.dups = &dups;
-        //athread_spawn_tupled(slave_ngspefunc, &para);
-        __real_athread_spawn((void *)slave_ngspefunc, &para, 1);
-        athread_join();
-        tsum3 += GetTime() - tt0;
-        tt0 = GetTime(); 
-        if(cmd_info_->state_duplicate_) {
-            for(auto item : dups) {
-                auto key = item.key;
-                auto kmer32 = item.kmer32;
-                auto gc = item.gc;
-                if (duplicate_->counts_[key] == 0) {
-                    duplicate_->counts_[key] = 1;
-                    duplicate_->dups_[key] = kmer32;
-                    duplicate_->gcs_[key] = gc;
-                } else {
-                    if (duplicate_->dups_[key] == kmer32) {
-                        duplicate_->counts_[key]++;
-                        if (duplicate_->gcs_[key] > gc) duplicate_->gcs_[key] = gc;
-                    } else if (duplicate_->dups_[key] > kmer32) {
-                        duplicate_->dups_[key] = kmer32;
-                        duplicate_->counts_[key] = 1;
-                        duplicate_->gcs_[key] = gc;
-                    }
-                }
-            }
-        }
-        if(cmd_info_->write_data_) {
-
-            int tot_len1 = 0;
-            double tt00 = GetTime();
-            for(auto item : pass_data1){
-                if(item.lname == 0) continue;
-                tot_len1 += item.lname + item.lseq + item.lstrand + item.lqual + 4;
-            }
-            char *tmp_out1 = new char[tot_len1];
-            char *now_out1 = tmp_out1;
-            for(auto item : pass_data1) {
-                if(item.lname == 0) continue;
-                memcpy(now_out1, (char *)item.base + item.pname, item.lname);
-                now_out1 += item.lname;
-                memcpy(now_out1, enter_char, 1);
-                now_out1++;
-                memcpy(now_out1, (char *)item.base + item.pseq, item.lseq);
-                now_out1 += item.lseq;
-                memcpy(now_out1, enter_char, 1);
-                now_out1++;
-                memcpy(now_out1, (char *)item.base + item.pstrand, item.lstrand);
-                now_out1 += item.lstrand;
-                memcpy(now_out1, enter_char, 1);
-                now_out1++;
-                memcpy(now_out1, (char *)item.base + item.pqual, item.lqual);
-                now_out1 += item.lqual;
-                memcpy(now_out1, enter_char, 1);
-                now_out1++;
-            }
-            tsum4_1 += GetTime() - tt00;
-            tt00 = GetTime();
-            //out_stream1_.write(tmp_out1, tot_len1);
-            fwrite(tmp_out1, sizeof(char), tot_len1, out_stream1_);
-            delete[] tmp_out1;
-
-
-
-            int tot_len2 = 0;
-            tt00 = GetTime();
-            for(auto item : pass_data2){
-                if(item.lname == 0) continue;
-                tot_len2 += item.lname + item.lseq + item.lstrand + item.lqual + 4;
-            }
-            char *tmp_out2 = new char[tot_len2];
-            char *now_out2 = tmp_out2;
-            for(auto item : pass_data2) {
-                if(item.lname == 0) continue;
-                memcpy(now_out2, (char *)item.base + item.pname, item.lname);
-                now_out2 += item.lname;
-                memcpy(now_out2, enter_char, 1);
-                now_out2++;
-                memcpy(now_out2, (char *)item.base + item.pseq, item.lseq);
-                now_out2 += item.lseq;
-                memcpy(now_out2, enter_char, 1);
-                now_out2++;
-                memcpy(now_out2, (char *)item.base + item.pstrand, item.lstrand);
-                now_out2 += item.lstrand;
-                memcpy(now_out2, enter_char, 1);
-                now_out2++;
-                memcpy(now_out2, (char *)item.base + item.pqual, item.lqual);
-                now_out2 += item.lqual;
-                memcpy(now_out2, enter_char, 1);
-                now_out2++;
-            }
-            tsum4_1 += GetTime() - tt00;
-            tt00 = GetTime();
-            //out_stream2_.write(tmp_out2, tot_len2);
-            fwrite(tmp_out2, sizeof(char), tot_len2, out_stream2_);
-            delete[] tmp_out2;
-
-            tsum4_2 += GetTime() - tt00;
-        }
-        tsum4 += GetTime() - tt0;
-        fastq_data_pool->Release(fqdatachunk->left_part);
-        fastq_data_pool->Release(fqdatachunk->right_part);
-    }
-    athread_halt();
-    printf("NGS tot cost %lf\n", GetTime() - t0);
-    printf("NGS producer cost %lf\n", tsum1);
-    printf("NGS format cost %lf\n", tsum2);
-    printf("NGS slave cost %lf\n", tsum3);
-    printf("NGS write cost %lf\n", tsum4);
-    printf("NGS write1 cost %lf\n", tsum4_1);
-    printf("NGS write2 cost %lf\n", tsum4_2);
-    printf("nums %d\n", nums);
-    delete fqFileReader;
-}
-
-
-/**
- * @brief do QC for pair-end data
- */
-void PeQc::ProcessPeFastqOneThread() {
-    auto *fastqPool = new rabbit::fq::FastqDataPool(2, 1 << 26);
-    auto **p_thread_info = new ThreadInfo *[slave_num];
-    for (int t = 0; t < slave_num; t++) {
-        p_thread_info[t] = new ThreadInfo(cmd_info_, true);
-    }
-    NGSTask(cmd_info_->in_file_name1_, cmd_info_->in_file_name2_, fastqPool, p_thread_info);
-#ifdef Verbose
-    printf("all thrad done\n");
-    printf("now merge thread info\n");
-#endif
-    vector<State *> pre_vec_state1;
-    vector<State *> pre_vec_state2;
-    vector<State *> aft_vec_state1;
-    vector<State *> aft_vec_state2;
-
-    for (int t = 0; t < slave_num; t++) {
-        pre_vec_state1.push_back(p_thread_info[t]->pre_state1_);
-        pre_vec_state2.push_back(p_thread_info[t]->pre_state2_);
-        aft_vec_state1.push_back(p_thread_info[t]->aft_state1_);
-        aft_vec_state2.push_back(p_thread_info[t]->aft_state2_);
-    }
-    auto pre_state1 = State::MergeStates(pre_vec_state1);
-    auto pre_state2 = State::MergeStates(pre_vec_state2);
-    auto aft_state1 = State::MergeStates(aft_vec_state1);
-    auto aft_state2 = State::MergeStates(aft_vec_state2);
-#ifdef Verbose
-    if (cmd_info_->do_overrepresentation_) {
-        printf("orp cost %f\n", pre_state1->GetOrpCost() + pre_state2->GetOrpCost() + aft_state1->GetOrpCost() + aft_state2->GetOrpCost());
-    }
-    printf("merge done\n");
-#endif
-    printf("\nprint read1 (before filter) info :\n");
-    State::PrintStates(pre_state1);
-    printf("\nprint read1 (after filter) info :\n");
-    State::PrintStates(aft_state1);
-    printf("\n");
-
-    printf("\nprint read2 (before filter) info :\n");
-    State::PrintStates(pre_state2);
-    printf("\nprint read2 (after filter) info :\n");
-    State::PrintStates(aft_state2);
-    printf("\n");
-    if (cmd_info_->print_what_trimmed_) {
-        State::PrintAdapterToFile(aft_state1);
-        State::PrintAdapterToFile(aft_state2);
-    }
-    State::PrintFilterResults(aft_state1);
-    printf("\n");
-
-    if (cmd_info_->do_overrepresentation_ && cmd_info_->print_ORP_seqs_) {
-
-        auto pre_hash_graph1 = pre_state1->GetHashGraph();
-        int pre_hash_num1 = pre_state1->GetHashNum();
-        auto pre_hash_graph2 = pre_state2->GetHashGraph();
-        int pre_hash_num2 = pre_state2->GetHashNum();
-
-        auto aft_hash_graph1 = aft_state1->GetHashGraph();
-        int aft_hash_num1 = aft_state1->GetHashNum();
-        auto aft_hash_graph2 = aft_state2->GetHashGraph();
-        int aft_hash_num2 = aft_state2->GetHashNum();
-
-
-        int spg = cmd_info_->overrepresentation_sampling_;
-        ofstream ofs;
-
-        string srr_name1 = cmd_info_->in_file_name1_;
-        srr_name1 = PaseFileName(srr_name1);
-
-        string srr_name2 = cmd_info_->in_file_name2_;
-        srr_name2 = PaseFileName(srr_name2);
-
-        string out_name1 = "pe_" + srr_name1 + "_before_ORP_sequences.txt";
-        ofs.open(out_name1, ifstream::out);
-
-        int cnt1 = 0;
-        ofs << "sequence count"
-            << "\n";
-        for (int i = 0; i < pre_hash_num1; i++) {
-            if (!overRepPassed(pre_hash_graph1[i].seq, pre_hash_graph1[i].cnt, spg)) continue;
-            ofs << pre_hash_graph1[i].seq << " " << pre_hash_graph1[i].cnt << "\n";
-            cnt1++;
-        }
-        ofs.close();
-        printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
-                srr_name1.c_str(), cnt1, out_name1.c_str());
-
-        string out_name2 = "pe_" + srr_name2 + "_before_ORP_sequences.txt";
-        ofs.open(out_name2, ifstream::out);
-        int cnt2 = 0;
-        ofs << "sequence count"
-            << "\n";
-        for (int i = 0; i < pre_hash_num2; i++) {
-            if (!overRepPassed(pre_hash_graph2[i].seq, pre_hash_graph2[i].cnt, spg)) continue;
-            ofs << pre_hash_graph2[i].seq << " " << pre_hash_graph2[i].cnt << "\n";
-            cnt2++;
-        }
-        ofs.close();
-        printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n",
-                srr_name2.c_str(), cnt2, out_name2.c_str());
-
-
-        out_name1 = "pe_" + srr_name1 + "_after_ORP_sequences.txt";
-        ofs.open(out_name1, ifstream::out);
-        cnt1 = 0;
-        ofs << "sequence count"
-            << "\n";
-        for (int i = 0; i < aft_hash_num1; i++) {
-            if (!overRepPassed(aft_hash_graph1[i].seq, aft_hash_graph1[i].cnt, spg)) continue;
-            ofs << aft_hash_graph1[i].seq << " " << aft_hash_graph1[i].cnt << "\n";
-            cnt1++;
-        }
-        ofs.close();
-        printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name1.c_str(),
-                cnt1, out_name1.c_str());
-
-        out_name2 = "pe_" + srr_name2 + "_after_ORP_sequences.txt";
-        ofs.open(out_name2, ifstream::out);
-        cnt2 = 0;
-        ofs << "sequence count"
-            << "\n";
-        for (int i = 0; i < aft_hash_num2; i++) {
-            if (!overRepPassed(aft_hash_graph2[i].seq, aft_hash_graph2[i].cnt, spg)) continue;
-            ofs << aft_hash_graph2[i].seq << " " << aft_hash_graph2[i].cnt << "\n";
-            cnt2++;
-        }
-        ofs.close();
-        printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name2.c_str(),
-                cnt2, out_name2.c_str());
-
-        printf("\n");
-    }
-    int *dupHist = NULL;
-    double *dupMeanGC = NULL;
-    double dupRate = 0.0;
-    int histSize = 32;
-    if (cmd_info_->state_duplicate_) {
-        dupHist = new int[histSize];
-        memset(dupHist, 0, sizeof(int) * histSize);
-        dupMeanGC = new double[histSize];
-        memset(dupMeanGC, 0, sizeof(double) * histSize);
-        dupRate = duplicate_->statAll(dupHist, dupMeanGC, histSize);
-        printf("Duplication rate : %.5f %%\n", dupRate * 100.0);
-        delete[] dupHist;
-        delete[] dupMeanGC;
-    }
-
-    int *merge_insert_size;
-    if (!cmd_info_->no_insert_size_) {
-        merge_insert_size = new int[cmd_info_->max_insert_size_ + 1];
-        memset(merge_insert_size, 0, sizeof(int) * (cmd_info_->max_insert_size_ + 1));
-
-        for (int t = 0; t < cmd_info_->thread_number_; t++) {
-            for (int i = 0; i <= cmd_info_->max_insert_size_; i++) {
-                merge_insert_size[i] += p_thread_info[t]->insert_size_dist_[i];
-            }
-        }
-        int mx_id = 0;
-        for (int i = 0; i < cmd_info_->max_insert_size_; i++) {
-            if (merge_insert_size[i] > merge_insert_size[mx_id]) mx_id = i;
-        }
-        //printf("Insert size peak (evaluated by paired-end reads): %d\n", mx_id);
-        printf("Insert size peak (based on PE overlap analyze): %d\n", mx_id);
-    }
-    string srr_name1 = cmd_info_->in_file_name1_;
-    srr_name1 = PaseFileName(srr_name1);
-    string srr_name2 = cmd_info_->in_file_name2_;
-    srr_name2 = PaseFileName(srr_name2);
-    Repoter::ReportHtmlPe(srr_name1 + "_" + srr_name2 + "_RabbitQCPlus.html", pre_state1, pre_state2, aft_state1,
-            aft_state2, cmd_info_->in_file_name1_,
-            cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
-#ifdef Verbose
-    printf("report done\n");
-#endif
-    delete pre_state1;
-    delete pre_state2;
-    delete aft_state1;
-    delete aft_state2;
-    if (!cmd_info_->no_insert_size_)
-        delete[] merge_insert_size;
-
-    delete fastqPool;
-    for (int t = 0; t < slave_num; t++) {
-        delete p_thread_info[t];
-    }
-
-    delete[] p_thread_info;
-}
 
 bool checkStates(State* s1, State* s2) {
     int ok = 1;
@@ -2420,8 +1960,8 @@ bool checkStates(State* s1, State* s2) {
 void PeQc::ProcessPeFastq() {
     if(my_rank == 0) block_size = 6 * (1 << 20);
     else block_size = 4 * (1 << 20);
-    auto *fastqPool = new rabbit::fq::FastqDataPool(Q_lim, block_size);
-    rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(Q_lim, 1);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(Q_lim * 64 * 2, block_size);
+    //rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(Q_lim, 1);
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, true);
@@ -2439,46 +1979,80 @@ void PeQc::ProcessPeFastq() {
 
     //tagg
 
-    thread *write_thread12;
-    thread *write_thread1;
-    thread *write_thread2;
-    if (cmd_info_->write_data_) {
-        write_thread12 = new thread(bind(&PeQc::WriteSeFastqTask12, this));
-        //write_thread1 = new thread(bind(&PeQc::WriteSeFastqTask1, this));
-        //if (cmd_info_->interleaved_out_ == 0)
-        //    write_thread2 = new thread(bind(&PeQc::WriteSeFastqTask2, this));
-    }
+    //thread *write_thread12;
+    //thread *write_thread1;
+    //thread *write_thread2;
+    //if (cmd_info_->write_data_) {
+    //    write_thread12 = new thread(bind(&PeQc::WriteSeFastqTask12, this));
+    //    //write_thread1 = new thread(bind(&PeQc::WriteSeFastqTask1, this));
+    //    //if (cmd_info_->interleaved_out_ == 0)
+    //    //    write_thread2 = new thread(bind(&PeQc::WriteSeFastqTask2, this));
+    //}
 
     //thread producer(bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_, fastqPool, ref(queue1)));
     thread producer(bind(&PeQc::ProducerPeFastqTask64, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_, fastqPool));
     //thread consumer(bind(&PeQc::ConsumerPeFastqTask, this, p_thread_info, fastqPool, ref(queue1)));
     thread consumer(bind(&PeQc::ConsumerPeFastqTask64, this, p_thread_info, fastqPool));
 
-    producer.join();
-    printf("producer%d done\n", my_rank);
+    if (cmd_info_->write_data_) {
+        WriteSeFastqTask12();
+        printf("write%d done\n", my_rank);
+    }
+
+    //bool writeThreadJoined = false;
+    //bool consumerThreadJoined = false;
+    //bool producerThreadJoined = false;
+    //if(cmd_info_->write_data_ == 0) writeThreadJoined = 1;
+
+    //while (!writeThreadJoined || !consumerThreadJoined || !producerThreadJoined) {
+    //    if (cmd_info_->write_data_ && !writeThreadJoined && write_thread12->joinable()) {
+    //        write_thread12->join();
+    //        printf("write%d done\n", my_rank);
+    //        writerDone1 = 1;
+    //        writeThreadJoined = true;
+    //    }
+
+    //    if (!consumerThreadJoined && consumer.joinable()) {
+    //        consumer.join();
+    //        printf("consumer%d done\n", my_rank);
+    //        consumerThreadJoined = true;
+    //    }
+
+    //    if (!producerThreadJoined && producer.joinable()) {
+    //        producer.join();
+    //        printf("producer%d done\n", my_rank);
+    //        producerThreadJoined = true;
+    //    }
+    //    printf("waiting %d %d %d\n", producerThreadJoined, consumerThreadJoined, writeThreadJoined);
+    //    usleep(1000);
+    //}
+
+    //if (cmd_info_->write_data_) {
+    //    //write_thread1->join();
+    //    write_thread12->join();
+    //    printf("write%d done\n", my_rank);
+    //    writerDone1 = 1;
+    //    //if (cmd_info_->interleaved_out_ == 0) {
+    //    //    write_thread2->join();
+    //    //    printf("write%d done2\n", my_rank);
+    //    //    writerDone2 = 1;
+    //    //}
+    //}
 
     consumer.join();
     printf("consumer%d done\n", my_rank);
 
-    if (cmd_info_->write_data_) {
-        //write_thread1->join();
-        write_thread12->join();
-        printf("write%d done1\n", my_rank);
-        writerDone1 = 1;
-        //if (cmd_info_->interleaved_out_ == 0) {
-        //    write_thread2->join();
-        //    printf("write%d done2\n", my_rank);
-        //    writerDone2 = 1;
-        //}
-    }
+    producer.join();
+    printf("producer%d done\n", my_rank);
 
-    printf("all pro write done1\n");
+
+    printf("rank%d all pro done1\n", my_rank);
     MPI_Barrier(MPI_COMM_WORLD);
-    printf("all pro write done2\n");
+    printf("rank%d all pro done2\n", my_rank);
 
 
 #ifdef Verbose
-    printf("all thrad done\n");
+    printf("all thread done\n");
     printf("now merge thread info\n");
 #endif
     vector<State *> pre_vec_state1;
@@ -2779,8 +2353,8 @@ void PeQc::ProcessPeFastq() {
 #endif
     delete fqFileReader;
 #ifdef use_out_mem
-    delete OutMemData1;
-    delete OutMemData2;
+    delete[] OutMemData1;
+    delete[] OutMemData2;
 #endif
 
 }

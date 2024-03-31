@@ -15,7 +15,7 @@ extern "C" {
 }
 
 
-int Q_lim = 256;
+int Q_lim = 4;
 
 void SkipToLineEnd(char *data_, int64_t &pos_, const int64_t size_) {
     // cerr << "pos: " << pos_ << " size: " << size_ << endl;
@@ -189,7 +189,7 @@ SeQc::SeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
             printf("open stream %s\n", cmd_info1->out_file_name1_.c_str());
 #endif
 #ifdef use_out_mem
-            OutMemData = new char[real_file_size];
+            OutMemData = new char[128 << 20];
 #endif
  
 
@@ -354,14 +354,14 @@ void SeQc::ProducerSeFastqTask64(string file, rabbit::fq::FastqDataPool *fastq_d
                 n_chunks++;
             }
             producerStop = 1;
-            //fprintf(stderr, "rank%d producer stop, tot chunk size %d\n", my_rank, n_chunks);
+            //fprintf(stderr, "producer rank%d stop, tot chunk size %d\n", my_rank, n_chunks);
             if(cmd_info_->write_data_) {
                 now_chunks = n_chunks;
                 while(consumerCommDone == 0) {
                     usleep(100);
                 }
                 int bu_chunks = mx_chunks - now_chunks;
-                cerr << "bu rank" << my_rank << " : " << bu_chunks << " of (" << now_chunks << ", " << mx_chunks << ")" << endl;
+                cerr << "producer bu rank" << my_rank << " : " << bu_chunks << " of (" << now_chunks << ", " << mx_chunks << ")" << endl;
                 if(bu_chunks) {
                     for(int i = 0; i < bu_chunks; i++) {
                         if(tmp_chunks.size() == 64) {
@@ -427,95 +427,9 @@ void SeQc::ProducerSeFastqTask64(string file, rabbit::fq::FastqDataPool *fastq_d
 
     printf("producer sum1 cost %lf\n", t_sum1);
     printf("producer sum2 cost %lf\n", t_sum2);
-    printf("producer%d cost %lf\n", my_rank, GetTime() - t0);
+    printf("producer %d cost %lf\n", my_rank, GetTime() - t0);
+    fprintf(stderr, "producer %d done in func\n", my_rank);
     //dq.SetCompleted();
-    producerDone = 1;
-}
-void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_data_pool,
-        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
-
-    double t0 = GetTime();
-    //cerr << "part_sizes ";
-    //for(int i = 0; i < comm_size; i++) cerr << part_sizes[i] << " ";
-    //cerr << endl;
-    rabbit::uint32 tmpSize = 1 << 20;
-    if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
-    int64_t n_chunks = 0;
-
-    if (cmd_info_->use_pugz_) {
-        pair<char *, int> last_info;
-        last_info.first = new char[1 << 20];
-        last_info.second = 0;
-        while (true) {
-            rabbit::fq::FastqDataChunk *fqdatachunk;
-            fqdatachunk = fqFileReader->readNextChunk(pugzQueue, &pugzDone, last_info);
-            if (fqdatachunk == NULL) break;
-            dq.Push(n_chunks, fqdatachunk);
-            n_chunks++;
-        }
-        delete[] last_info.first;
-    } else {
-        double t_sum1 = 0;
-        double t_sum2 = 0;
-        double t_sum3 = 0;
-        bool is_first = 1;
-        int64_t tot_size = 0;
-        while (true) {
-            double tt0 = GetTime();
-            rabbit::fq::FastqDataChunk *fqdatachunk;
-            int64_t offset;
-            if(is_first) {
-                offset = 0;
-                for(int i = 0; i < my_rank; i++)
-                    offset += part_sizes[i];
-            } else {
-                offset = -1;
-            }
-            is_first = 0;
-#ifdef use_in_mem
-            fqdatachunk = fqFileReader->readNextChunkFromMem(offset, part_sizes[my_rank]);
-#else 
-            fqdatachunk = fqFileReader->readNextChunk(offset, part_sizes[my_rank]);
-#endif
-            t_sum1 += GetTime() - tt0;
-            tt0 = GetTime();
-            if (fqdatachunk == NULL) {
-                //fprintf(stderr, "rank%d producer stop, tot chunk size %d\n", my_rank, n_chunks);
-                if(cmd_info_->write_data_) {
-                    now_chunks = n_chunks;
-                    producerStop = 1;
-                    while(consumerCommDone == 0) {
-                        usleep(100);
-                    }
-                    //printf("producer%d get val done %lld %lld\n", my_rank, now_chunks, mx_chunks);
-                    int bu_chunks = mx_chunks - now_chunks;
-                    cerr << "bu rank" << my_rank << " : " << bu_chunks << " of (" << now_chunks << ", " << mx_chunks << ")" << endl;
-                    if(bu_chunks) {
-                        for(int i = 0; i < bu_chunks; i++) {
-                            dq.Push(n_chunks, fqdatachunk);
-                            n_chunks++;
-                        }
-                    }
-                } 
-                break;
-            }
-            tot_size += fqdatachunk->size;
-            if(fqdatachunk->size <= 0 || tot_size <= 0) break;
-            //printf("producer%d read %lld\n", my_rank, tot_size);
-            dq.Push(n_chunks, fqdatachunk);
-
-
-            //printf("producer%d %lld done\n", my_rank, n_chunks);
-            n_chunks++;
-            t_sum2 += GetTime() - tt0;
-        }
-        //printf("totsize %lld\n", tot_size);
-        printf("producer sum1 cost %lf\n", t_sum1);
-        printf("producer sum2 cost %lf\n", t_sum2);
-    }
-
-    printf("producer%d cost %lf\n", my_rank, GetTime() - t0);
-    dq.SetCompleted();
     producerDone = 1;
 }
 
@@ -892,7 +806,7 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
             int proStop = producerStop.load();
             if (proStop && proDone) {
                 p_overWhile = 1;
-                fprintf(stderr, "rank %d process done\n", my_rank);
+                fprintf(stderr, "consumer rank %d process done\n", my_rank);
                 break;
             } else if(proStop && !proDone) {
                 pushNull = 1;
@@ -900,7 +814,7 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
             }
             usleep(1000);
         }
-        //fprintf(stderr, "rank%d pushNull: %d\n", my_rank, pushNull);
+        //fprintf(stderr, "consumer rank%d pushNull: %d\n", my_rank, pushNull);
         if (p_overWhile) {
             consumerCommDone = 1;
             break;
@@ -917,12 +831,15 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
         vector<neoReference> data[64];
         format_data para2[64];
         uint64_t counts[64] = {0};
+        for(int i = fqdatachunks.size(); i < 64; i++) {
+            fqdatachunks.push_back(NULL);
+        }
         int fq_size = fqdatachunks.size();
         for(int i = 0; i < 64; i++) {
             para2[i].fqSize = fq_size;
             para2[i].my_rank = my_rank;
         }
-        //fprintf(stderr, "rank%d fq_size %d\n", my_rank, fq_size);
+        //fprintf(stderr, "consumer rank%d fq_size %d\n", my_rank, fq_size);
         for(int i = 0; i < fq_size; i++) {
             //if(fqdatachunks[i] != NULL) fprintf(stderr, "rank%d addr %p, size %d\n", my_rank, fqdatachunks[i], fqdatachunks[i]->size);
             if(fqdatachunks[i] != NULL) data[i].resize(fqdatachunks[i]->size / (cmd_info_->seq_len_ * 2));
@@ -945,146 +862,18 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     }
 
 
-    printf("NGSnew tot cost %lf\n", GetTime() - t0);
-    printf("NGSnew format cost %lf\n", t_format);
-    printf("NGSnew resize cost %lf\n", tsum1);
-    printf("NGSnew slave cost %lf\n", tsum2);
-    printf("NGSnew dup cost %lf\n", tsum3);
-    printf("NGSnew write cost %lf (%lf [%lf %lf %lf], %lf, %lf, %lf)\n", tsum4, tsum4_1, tsum4_1_1, tsum4_1_2, tsum4_1_3, tsum4_2, tsum4_3, tsum4_4);
-    printf("NGSnew release cost %lf\n", tsum5);
+    printf("consumer NGSnew tot cost %lf\n", GetTime() - t0);
+    printf("consumer NGSnew format cost %lf\n", t_format);
+    printf("consumer NGSnew resize cost %lf\n", tsum1);
+    printf("consumer NGSnew slave cost %lf\n", tsum2);
+    printf("consumer NGSnew dup cost %lf\n", tsum3);
+    printf("consumer NGSnew write cost %lf (%lf [%lf %lf %lf], %lf, %lf, %lf)\n", tsum4, tsum4_1, tsum4_1_1, tsum4_1_2, tsum4_1_3, tsum4_2, tsum4_3, tsum4_4);
+    printf("consumer NGSnew release cost %lf\n", tsum5);
     done_thread_number_++;
     athread_halt();
-    fprintf(stderr, "consumer%d done\n", my_rank);
+    fprintf(stderr, "consumer %d done in func\n", my_rank);
 }
 
-void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataPool *fastq_data_pool,
-        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
-#ifdef use_swlu
-    swlu_debug_init();
-    swlu_prof_init();
-    swlu_prof_start();
-#endif
-    rabbit::int64 id = 0;
-    rabbit::fq::FastqDataChunk *fqdatachunk;
-    qc_data para;
-    para.cmd_info_ = cmd_info_;
-    para.thread_info_ = thread_infos;
-    para.bit_len = 0;
-
-    bool proDone = 0;
-    if(cmd_info_->state_duplicate_) {
-        para.bit_len = duplicate_->key_len_base_;
-    }
-    athread_init();
-    if (cmd_info_->is_TGS_) {
-        athread_init();
-        double t0 = GetTime();
-        double tsum1 = 0;
-        double tsum2 = 0;
-        double tsum3 = 0;
-        while (dq.Pop(id, fqdatachunk)) {
-            double tt0 = GetTime();
-            tsum1 += GetTime() - tt0;
-            tt0 = GetTime();
-            vector <neoReference> data;
-            rabbit::fq::chunkFormat(fqdatachunk, data, true);
-            tsum2 += GetTime() - tt0;
-            tt0 = GetTime();
-            para.data1_ = &data;
-            __real_athread_spawn((void *)slave_tgsfunc, &para, 1);
-            athread_join();
-            tsum3 += GetTime() - tt0;
-            fastq_data_pool->Release(fqdatachunk);
-        }
-        printf("TGSnew tot cost %lf\n", GetTime() - t0);
-        printf("TGSnew producer cost %lf\n", tsum1);
-        printf("TGSnew format cost %lf\n", tsum2);
-        printf("TGSnew slave cost %lf\n", tsum3);
-    } else {
-
-        double t0 = GetTime();
-        double t_format = 0;
-        //tag_ngs
-        vector<rabbit::fq::FastqDataChunk*> fqdatachunks;
-        while (dq.Pop(id, fqdatachunk)) {
-            fqdatachunks.push_back(fqdatachunk);
-            //fprintf(stderr, "%d_0 %d\n",my_rank, fqdatachunks.size());
-            if(fqdatachunks.size() < 64) {
-                continue; 
-            }
-            assert(fqdatachunks.size() == 64);
-
-            double tt0 = GetTime();
-            vector<neoReference> data[64];
-            format_data para2[64];
-            uint64_t counts[64];
-            for(int i = 0; i < 64; i++) {
-                data[i].resize(fqdatachunks[i]->size / (cmd_info_->seq_len_ * 2));
-                para2[i].data = &(data[i]);
-                para2[i].fqdatachunk = fqdatachunks[i];
-                para2[i].res = counts;
-                para2[i].fqSize = 64;
-            }
-
-            //fprintf(stderr, "%d_1\n",my_rank);
-            __real_athread_spawn((void *)slave_formatfunc, para2, 1);
-            athread_join();
-            t_format += GetTime() - tt0;
-            //fprintf(stderr, "%d_2\n",my_rank);
-
-            for(int i = 0; i < 64; i++) {
-                //fprintf(stderr, "seq count %lld\n", counts[i]);
-                data[i].resize(counts[i]);
-                ProcessNgsData(proDone, data[i], fqdatachunks[i], &para, fastq_data_pool);
-            }
-            fqdatachunks.clear();
-        }
-
-        int fq_size = fqdatachunks.size();
-        //fprintf(stderr, "last chunks %d\n", fqdatachunks.size());
-
-        double tt0 = GetTime();
-        vector<neoReference> data[64];
-        format_data para2[64];
-        uint64_t counts[64];
-        for(int i = 0; i < 64; i++) {
-            para2[i].fqSize = fq_size;
-        }
-        for(int i = 0; i < fq_size; i++) {
-            if(fqdatachunks[i] != NULL) data[i].resize(fqdatachunks[i]->size / (cmd_info_->seq_len_ * 2));
-            para2[i].data = &(data[i]);
-            para2[i].fqdatachunk = fqdatachunks[i];
-            para2[i].res = counts;
-        }
-        __real_athread_spawn((void *)slave_formatfunc, para2, 1);
-        athread_join();
-        t_format += GetTime() - tt0;
-
-        for(int i = 0; i < fq_size; i++) {
-            //fprintf(stderr, "seq count %lld\n", counts[i]);
-            data[i].resize(counts[i]);
-            ProcessNgsData(proDone, data[i], fqdatachunks[i], &para, fastq_data_pool);
-        }
-        fqdatachunks.clear();
-
-
-        printf("NGSnew tot cost %lf\n", GetTime() - t0);
-        printf("NGSnew format cost %lf\n", t_format);
-        printf("NGSnew resize cost %lf\n", tsum1);
-        printf("NGSnew slave cost %lf\n", tsum2);
-        printf("NGSnew dup cost %lf\n", tsum3);
-        printf("NGSnew write cost %lf (%lf, %lf, %lf, %lf)\n", tsum4, tsum4_1, tsum4_2, tsum4_3, tsum4_4);
-        printf("NGSnew release cost %lf\n", tsum5);
-    }
-    done_thread_number_++;
-    athread_halt();
-    //printf("consumer done\n");
-#ifdef use_swlu
-    swlu_prof_stop();
-    swlu_prof_print();
-#endif	
-
-}
 
 /**
  * @brief a function to write data from out_data queue to file
@@ -1097,21 +886,22 @@ void SeQc::WriteSeFastqTask() {
     long long tot_size = 0;
     bool overWhile = 0;
     CIPair now;
+
     while (true) {
         while (queueNumNow == 0) {
             if (done_thread_number_ == cmd_info_->thread_number_) {
                 overWhile = 1;
-                fprintf(stderr, "rank %d write done\n", my_rank);
+                fprintf(stderr, "writer rank %d writer while break\n", my_rank);
                 break;
             }
             
-            //fprintf(stderr, "rank %d write wait\n", my_rank);
+            //fprintf(stderr, "writer rank %d write wait\n", my_rank);
             usleep(10000);
         }
         if (overWhile) break;
         now = out_queue_[queueP1++];
         queueNumNow--;
-        //fprintf(stderr, "rank %d write get %p\n", my_rank, now.first);
+        //fprintf(stderr, "writer rank %d write get %p\n", my_rank, now.first);
         if (out_is_zip_) {
             if (cmd_info_->use_pigz_) {
                 printf("use pigz TODO...\n");
@@ -1127,7 +917,9 @@ void SeQc::WriteSeFastqTask() {
             tot_size += now.second.first;
             if(now.second.first) {
 #ifdef use_out_mem
-                memcpy(OutMemData + now.second.second, now.first, now.second.first); 
+                //memcpy(OutMemData + now.second.second, now.first, now.second.first); 
+                
+                memcpy(OutMemData, now.first, now.second.first); 
 #else
                 //fprintf(stderr, "rank %d write seek %lld\n", my_rank, now.second.second);
 
@@ -1148,12 +940,13 @@ void SeQc::WriteSeFastqTask() {
                 delete[] now.first;
                 //fprintf(stderr, "rank %d write del done\n", my_rank);
             }
-            //fprintf(stderr, "write%d %d done\n", my_rank, cnt++);
+            //fprintf(stderr, "writer %d %d done\n", my_rank, cnt++);
 
         }
     }
 
-    //fprintf(stderr, "rank%d write donedone\n", my_rank);
+    MPI_Barrier(MPI_COMM_WORLD);
+    fprintf(stderr, "writer rank%d write donedone\n", my_rank);
     if (out_is_zip_) {
         if (cmd_info_->use_pigz_) {
 
@@ -1176,205 +969,13 @@ void SeQc::WriteSeFastqTask() {
 
     }
 #ifdef Verbose
-    cerr << "write" << my_rank << " cost " << GetTime() - t0 << ", tot size " << tot_size << endl;
+    printf("writer %d cost %lf, tot size %lld\n", my_rank, GetTime() - t0, tot_size);
+    printf("writer %d done in func\n", my_rank);
     //printf("write %d cost %.5f --- %lld\n", my_rank, GetTime() - t0, tot_size);
 
 #endif
 }
 
-
-/**
- * @brief do pugz
- */
-
-void SeQc::PugzTask() {
-#ifdef Verbose
-    printf("pugz start\n");
-    auto t0 = GetTime();
-#endif
-    main_pugz(cmd_info_->in_file_name1_, cmd_info_->pugz_threads_, pugzQueue, &producerDone);
-#ifdef Verbose
-    printf("pugz cost %.5f\n", GetTime() - t0);
-#endif
-    pugzDone = 1;
-}
-
-
-void SeQc::PigzTask() {
-    /*
-       argc 9
-       argv ./pigz
-       argv -p
-       argv 16
-       argv -k
-       argv -4
-       argv -f
-       argv -b
-       argv -4096
-       argv p.fq
-       */
-    int cnt = 9;
-
-    char **infos = new char *[9];
-    infos[0] = "./pigz";
-    infos[1] = "-p";
-    int th_num = cmd_info_->pigz_threads_;
-    //    printf("th num is %d\n", th_num);
-    string th_num_s = to_string(th_num);
-    //    printf("th num s is %s\n", th_num_s.c_str());
-    //    printf("th num s len is %d\n", th_num_s.length());
-
-    infos[2] = new char[th_num_s.length() + 1];
-    memcpy(infos[2], th_num_s.c_str(), th_num_s.length());
-    infos[2][th_num_s.length()] = '\0';
-    infos[3] = "-k";
-
-
-    string tmp_level = to_string(cmd_info_->compression_level_);
-    tmp_level = "-" + tmp_level;
-    infos[4] = new char[tmp_level.length() + 1];
-    memcpy(infos[4], tmp_level.c_str(), tmp_level.length());
-    infos[4][tmp_level.length()] = '\0';
-
-
-    infos[5] = "-f";
-    infos[6] = "-b";
-    infos[7] = "4096";
-    string out_name1 = cmd_info_->out_file_name1_;
-    string out_file = out_name1.substr(0, out_name1.find(".gz"));
-    //    printf("th out_file is %s\n", out_file.c_str());
-    //    printf("th out_file len is %d\n", out_file.length());
-    infos[8] = new char[out_file.length() + 1];
-    memcpy(infos[8], out_file.c_str(), out_file.length());
-    infos[8][out_file.length()] = '\0';
-    main_pigz(cnt, infos, pigzQueue, &writerDone, pigzLast, &pigzQueueNumNow);
-#ifdef Verbose
-    printf("pigz done\n");
-#endif
-}
-
-
-void SeQc::NGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool, ThreadInfo **thread_infos){
-    printf("single thread\n");
-    rabbit::fq::FastqFileReader *fqFileReader;
-    rabbit::uint32 tmpSize = 1 << 20;
-    if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
-    fqFileReader = new rabbit::fq::FastqFileReader(file, *fastq_data_pool, "", in_is_zip_, tmpSize);
-    int64_t n_chunks = 0;
-    qc_data para;
-    para.cmd_info_ = cmd_info_;
-    para.thread_info_ = thread_infos;
-    para.bit_len = 0;
-    if(cmd_info_->state_duplicate_) {
-        para.bit_len = duplicate_->key_len_base_;
-    }
-    athread_init();
-    double t0 = GetTime();
-    double tsum1 = 0;
-    double tsum2 = 0;
-    double tsum3 = 0;
-    double tsum4 = 0;
-    double tsum4_1 = 0;
-    double tsum4_2 = 0;
-    char enter_char[1];
-    enter_char[0] = '\n';
-    while (true) {
-        double tt0 = GetTime();
-        rabbit::fq::FastqDataChunk *fqdatachunk;
-        fqdatachunk = fqFileReader->readNextChunk();
-        if (fqdatachunk == NULL) break;
-        n_chunks++;
-        tsum1 += GetTime() - tt0;
-        tt0 = GetTime();
-        vector <neoReference> data;
-        rabbit::fq::chunkFormat(fqdatachunk, data, true);
-        vector <neoReference> pass_data;
-        vector <dupInfo> dups;
-        if(cmd_info_->write_data_) {
-            pass_data.resize(data.size());
-        }
-        if(cmd_info_->state_duplicate_) {
-            dups.resize(data.size());
-        }
-        tsum2 += GetTime() - tt0;
-        tt0 = GetTime();
-        para.data1_ = &data;
-        para.pass_data1_ = &pass_data;
-        para.dups = &dups;
-        //athread_spawn_tupled(slave_ngsfunc, &para);
-        __real_athread_spawn((void *)slave_ngsfunc, &para, 1);
-        athread_join();
-        tsum3 += GetTime() - tt0;
-        tt0 = GetTime(); 
-        if(cmd_info_->state_duplicate_) {
-            for(auto item : dups) {
-                auto key = item.key;
-                auto kmer32 = item.kmer32;
-                auto gc = item.gc;
-                if (duplicate_->counts_[key] == 0) {
-                    duplicate_->counts_[key] = 1;
-                    duplicate_->dups_[key] = kmer32;
-                    duplicate_->gcs_[key] = gc;
-                } else {
-                    if (duplicate_->dups_[key] == kmer32) {
-                        duplicate_->counts_[key]++;
-                        if (duplicate_->gcs_[key] > gc) duplicate_->gcs_[key] = gc;
-                    } else if (duplicate_->dups_[key] > kmer32) {
-                        duplicate_->dups_[key] = kmer32;
-                        duplicate_->counts_[key] = 1;
-                        duplicate_->gcs_[key] = gc;
-                    }
-                }
-            }
-        }
-        if(cmd_info_->write_data_) {
-            int tot_len = 0;
-            double tt00 = GetTime();
-            for(auto item : pass_data){
-                if(item.lname == 0) continue;
-                tot_len += item.lname + item.lseq + item.lstrand + item.lqual + 4;
-            }
-            char *tmp_out = new char[tot_len];
-            char *now_out = tmp_out;
-            for(auto item : pass_data) {
-                if(item.lname == 0) continue;
-                memcpy(now_out, (char *)item.base + item.pname, item.lname);
-                now_out += item.lname;
-                memcpy(now_out, enter_char, 1);
-                now_out++;
-                memcpy(now_out, (char *)item.base + item.pseq, item.lseq);
-                now_out += item.lseq;
-                memcpy(now_out, enter_char, 1);
-                now_out++;
-                memcpy(now_out, (char *)item.base + item.pstrand, item.lstrand);
-                now_out += item.lstrand;
-                memcpy(now_out, enter_char, 1);
-                now_out++;
-                memcpy(now_out, (char *)item.base + item.pqual, item.lqual);
-                now_out += item.lqual;
-                memcpy(now_out, enter_char, 1);
-                now_out++;
-            }
-            tsum4_1 += GetTime() - tt00;
-            tt00 = GetTime();
-            //out_stream_.write(tmp_out, tot_len);
-            fwrite(tmp_out, sizeof(char), tot_len, out_stream_);
-            delete[] tmp_out;
-            tsum4_2 += GetTime() - tt00;
-        }
-        tsum4 += GetTime() - tt0;
-        fastq_data_pool->Release(fqdatachunk);
-    }
-    athread_halt();
-    printf("NGS tot cost %lf\n", GetTime() - t0);
-    printf("NGS producer cost %lf\n", tsum1);
-    printf("NGS format cost %lf\n", tsum2);
-    printf("NGS slave cost %lf\n", tsum3);
-    printf("NGS write cost %lf\n", tsum4);
-    printf("NGS write1 cost %lf\n", tsum4_1);
-    printf("NGS write2 cost %lf\n", tsum4_2);
-    delete fqFileReader;
-}
 
 bool checkStates(State* s1, State* s2) {
     int ok = 1;
@@ -1466,12 +1067,11 @@ bool checkStates(State* s1, State* s2) {
  * @brief do QC for single-end data
  */
 
-//tagg
 void SeQc::ProcessSeFastq() {
     if(my_rank == 0) block_size = 6 * (1 << 20);
     else block_size = 4 * (1 << 20);
-    auto *fastqPool = new rabbit::fq::FastqDataPool(Q_lim, block_size);
-    rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(Q_lim, 1);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(Q_lim * 64, block_size);
+    //rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(Q_lim * 64, 1);
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, false);
@@ -1485,24 +1085,30 @@ void SeQc::ProcessSeFastq() {
     double ttt = GetTime();
 #endif
 
-    thread *write_thread;
-    if (cmd_info_->write_data_) {
-        write_thread = new thread(bind(&SeQc::WriteSeFastqTask, this));
-    }
+    //thread *write_thread;
+    //if (cmd_info_->write_data_) {
+    //    write_thread = new thread(bind(&SeQc::WriteSeFastqTask, this));
+    //}
     //tagg
     //thread producer(bind(&SeQc::ProducerSeFastqTask, this, cmd_info_->in_file_name1_, fastqPool, ref(queue1)));
     thread producer(bind(&SeQc::ProducerSeFastqTask64, this, cmd_info_->in_file_name1_, fastqPool));
     //thread consumer(bind(&SeQc::ConsumerSeFastqTask, this, p_thread_info, fastqPool, ref(queue1)));
     thread consumer(bind(&SeQc::ConsumerSeFastqTask64, this, p_thread_info, fastqPool));
-    producer.join();
-    printf("producer done\n");
+    if (cmd_info_->write_data_) {
+        WriteSeFastqTask();
+        printf("write%d done\n", my_rank);
+    }
+
     consumer.join();
     printf("consumer done\n");
 
-    if (cmd_info_->write_data_) {
-        write_thread->join();
-        writerDone = 1;
-    }
+    producer.join();
+    printf("producer done\n");
+
+    //if (cmd_info_->write_data_) {
+    //    write_thread->join();
+    //    writerDone = 1;
+    //}
     printf("all pro write done1\n");
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -1695,164 +1301,331 @@ void SeQc::ProcessSeFastq() {
 #endif
 }
 
-void SeQc::ProcessSeFastqOneThread() {
-    auto *fastqPool = new rabbit::fq::FastqDataPool(1, 1 << 26);
-    auto **p_thread_info = new ThreadInfo *[slave_num];
-    for (int t = 0; t < slave_num; t++) {
-        p_thread_info[t] = new ThreadInfo(cmd_info_, false);
-    }
 
-    NGSTask(cmd_info_->in_file_name1_, fastqPool, p_thread_info);
-#ifdef Verbose
-    printf("all thrad done\n");
-    printf("now merge thread info\n");
-#endif
-    vector < State * > pre_vec_state;
-    vector < State * > aft_vec_state;
+/**
+ * @brief get fastq data chunk from fastq_data_pool and put it into data queue
+ * @param file : fastq file name, which is also the input file
+ * @param fastq_data_pool : fastq data pool
+ * @param dq : a data queue
+ */
 
-    for (int t = 0; t < slave_num; t++) {
-        pre_vec_state.push_back(p_thread_info[t]->pre_state1_);
-        aft_vec_state.push_back(p_thread_info[t]->aft_state1_);
-    }
-    auto pre_state = State::MergeStates(pre_vec_state);
-    auto aft_state = State::MergeStates(aft_vec_state);
-#ifdef Verbose
-    if (cmd_info_->do_overrepresentation_) {
-        printf("orp cost %lf\n", pre_state->GetOrpCost() + aft_state->GetOrpCost());
-    }
-    printf("merge done\n");
-#endif
-    printf("\nprint read (before filter) info :\n");
-    State::PrintStates(pre_state);
-    printf("\nprint read (after filter) info :\n");
-    State::PrintStates(aft_state);
-    printf("\n");
-    if (cmd_info_->print_what_trimmed_)
-        State::PrintAdapterToFile(aft_state);
-    State::PrintFilterResults(aft_state);
-    printf("\n");
+void SeQc::ProducerSeFastqTask(string file, rabbit::fq::FastqDataPool *fastq_data_pool,
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
 
-    if (cmd_info_->do_overrepresentation_ && cmd_info_->print_ORP_seqs_) {
-        auto hash_graph1 = pre_state->GetHashGraph();
-        int hash_num1 = pre_state->GetHashNum();
-
-        auto hash_graph2 = aft_state->GetHashGraph();
-        int hash_num2 = aft_state->GetHashNum();
-
-        int spg = cmd_info_->overrepresentation_sampling_;
-
-        ofstream ofs;
-        string srr_name = cmd_info_->in_file_name1_;
-        srr_name = PaseFileName(srr_name);
-
-        string out_name = "se_" + srr_name + "_before_ORP_sequences.txt";
-        ofs.open(out_name, ifstream::out);
-        ofs << "sequence count"
-            << "\n";
-        int cnt1 = 0;
-        for (int i = 0; i < hash_num1; i++) {
-            if (!overRepPassed(hash_graph1[i].seq, hash_graph1[i].cnt, spg)) continue;
-            ofs << hash_graph1[i].seq << " " << hash_graph1[i].cnt << "\n";
-            cnt1++;
-        }
-        ofs.close();
-        printf("in %s (before filter) find %d possible overrepresented sequences (store in %s)\n", srr_name.c_str(),
-                cnt1, out_name.c_str());
-
-
-        out_name = "se_" + srr_name + "_after_ORP_sequences.txt";
-        ofs.open(out_name, ifstream::out);
-        ofs << "sequence count"
-            << "\n";
-        int cnt2 = 0;
-        for (int i = 0; i < hash_num2; i++) {
-            if (!overRepPassed(hash_graph2[i].seq, hash_graph2[i].cnt, spg)) continue;
-            ofs << hash_graph2[i].seq << " " << hash_graph2[i].cnt << "\n";
-            cnt2++;
-        }
-        ofs.close();
-        printf("in %s (after filter) find %d possible overrepresented sequences (store in %s)\n", srr_name.c_str(),
-                cnt2, out_name.c_str());
-        printf("\n");
-    }
-
-
-    int *dupHist = NULL;
-    double *dupMeanGC = NULL;
-    double dupRate = 0.0;
-    int histSize = 32;
-    if (cmd_info_->state_duplicate_) {
-        dupHist = new int[histSize];
-        memset(dupHist, 0, sizeof(int) * histSize);
-        dupMeanGC = new double[histSize];
-        memset(dupMeanGC, 0, sizeof(double) * histSize);
-        dupRate = duplicate_->statAll(dupHist, dupMeanGC, histSize);
-        printf("Duplication rate (may be overestimated since this is SE data): %.5f %%\n", dupRate * 100.0);
-        delete[] dupHist;
-        delete[] dupMeanGC;
-    }
-    string srr_name = cmd_info_->in_file_name1_;
-    srr_name = PaseFileName(srr_name);
-    Repoter::ReportHtmlSe(srr_name + "_RabbitQCPlus.html", pre_state, aft_state, cmd_info_->in_file_name1_,
-            dupRate * 100.0);
-
-
-    delete pre_state;
-    delete aft_state;
-
-    delete fastqPool;
-
-
-    for (int t = 0; t < slave_num; t++) {
-        delete p_thread_info[t];
-    }
-
-    delete[] p_thread_info;
-}
-
-
-void SeQc::TGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool, ThreadInfo **thread_infos){
+    double t0 = GetTime();
+    //cerr << "part_sizes ";
+    //for(int i = 0; i < comm_size; i++) cerr << part_sizes[i] << " ";
+    //cerr << endl;
     rabbit::fq::FastqFileReader *fqFileReader;
     rabbit::uint32 tmpSize = 1 << 20;
     if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
     fqFileReader = new rabbit::fq::FastqFileReader(file, *fastq_data_pool, "", in_is_zip_, tmpSize);
     int64_t n_chunks = 0;
+
+    if (cmd_info_->use_pugz_) {
+        pair<char *, int> last_info;
+        last_info.first = new char[1 << 20];
+        last_info.second = 0;
+        while (true) {
+            rabbit::fq::FastqDataChunk *fqdatachunk;
+            fqdatachunk = fqFileReader->readNextChunk(pugzQueue, &pugzDone, last_info);
+            if (fqdatachunk == NULL) break;
+            dq.Push(n_chunks, fqdatachunk);
+            n_chunks++;
+        }
+        delete[] last_info.first;
+    } else {
+        double t_sum1 = 0;
+        double t_sum2 = 0;
+        double t_sum3 = 0;
+        bool is_first = 1;
+        int64_t tot_size = 0;
+        while (true) {
+            double tt0 = GetTime();
+            rabbit::fq::FastqDataChunk *fqdatachunk;
+            int64_t offset;
+            if(is_first) {
+                offset = 0;
+                for(int i = 0; i < my_rank; i++)
+                    offset += part_sizes[i];
+            } else {
+                offset = -1;
+            }
+            is_first = 0;
+            fqdatachunk = fqFileReader->readNextChunk(offset, part_sizes[my_rank]);
+            t_sum1 += GetTime() - tt0;
+            tt0 = GetTime();
+            if (fqdatachunk == NULL) {
+                //printf("null\n");
+                if(cmd_info_->write_data_) {
+                    now_chunks = n_chunks;
+                    producerStop = 1;
+                    while(consumerCommDone == 0) {
+                        usleep(100);
+                    }
+                    //printf("producer%d get val done %lld %lld\n", my_rank, now_chunks, mx_chunks);
+                    int bu_chunks = mx_chunks - now_chunks;
+                    cerr << "bu rank" << my_rank << " : " << bu_chunks << " of (" << now_chunks << ", " << mx_chunks << ")" << endl;
+                    if(bu_chunks) {
+                        for(int i = 0; i < bu_chunks; i++) {
+                            dq.Push(n_chunks, fqdatachunk);
+                            n_chunks++;
+                        }
+                    }
+                } 
+                break;
+            }
+            tot_size += fqdatachunk->size;
+            if(fqdatachunk->size <= 0 || tot_size <= 0) break;
+            //printf("producer%d read %lld\n", my_rank, tot_size);
+            dq.Push(n_chunks, fqdatachunk);
+
+
+            //printf("producer%d %lld done\n", my_rank, n_chunks);
+            n_chunks++;
+            t_sum2 += GetTime() - tt0;
+        }
+        printf("producer sum1 cost %lf\n", t_sum1);
+        printf("producer sum2 cost %lf\n", t_sum2);
+    }
+
+    printf("producer%d cost %lf\n", my_rank, GetTime() - t0);
+    dq.SetCompleted();
+    delete fqFileReader;
+    producerDone = 1;
+}
+
+
+void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataPool *fastq_data_pool,
+        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
+    rabbit::int64 id = 0;
+    rabbit::fq::FastqDataChunk *fqdatachunk;
     qc_data para;
     para.cmd_info_ = cmd_info_;
     para.thread_info_ = thread_infos;
-    athread_init();
-    double t0 = GetTime();
-    double tsum1 = 0;
-    double tsum2 = 0;
-    double tsum3 = 0;
-    while (true) {
-        double tt0 = GetTime();
-        rabbit::fq::FastqDataChunk *fqdatachunk;
-        fqdatachunk = fqFileReader->readNextChunk();
-        if (fqdatachunk == NULL) break;
-        n_chunks++;
-        tsum1 += GetTime() - tt0;
-        tt0 = GetTime();
-        vector <neoReference> data;
-        rabbit::fq::chunkFormat(fqdatachunk, data, true);
-        tsum2 += GetTime() - tt0;
-        printf("format cost %lf\n", GetTime() - tt0);
-        tt0 = GetTime();
-        para.data1_ = &data;
-        //athread_spawn_tupled(slave_tgsfunc, &para);
-        __real_athread_spawn((void *)slave_tgsfunc, &para, 1);
-        athread_join();
-        printf("slave cost %lf\n", GetTime() - tt0);
-        tsum3 += GetTime() - tt0;
-        fastq_data_pool->Release(fqdatachunk);
-        printf("ppp\n");
+    para.bit_len = 0;
+
+    bool proDone = 0;
+    if(cmd_info_->state_duplicate_) {
+        para.bit_len = duplicate_->key_len_base_;
     }
+    athread_init();
+    if (cmd_info_->is_TGS_) {
+        athread_init();
+        double t0 = GetTime();
+        double tsum1 = 0;
+        double tsum2 = 0;
+        double tsum3 = 0;
+        while (dq.Pop(id, fqdatachunk)) {
+            double tt0 = GetTime();
+            tsum1 += GetTime() - tt0;
+            tt0 = GetTime();
+            vector <neoReference> data;
+            rabbit::fq::chunkFormat(fqdatachunk, data, true);
+            tsum2 += GetTime() - tt0;
+            tt0 = GetTime();
+            para.data1_ = &data;
+            __real_athread_spawn((void *)slave_tgsfunc, &para, 1);
+            athread_join();
+            tsum3 += GetTime() - tt0;
+            fastq_data_pool->Release(fqdatachunk);
+        }
+        printf("TGSnew tot cost %lf\n", GetTime() - t0);
+        printf("TGSnew producer cost %lf\n", tsum1);
+        printf("TGSnew format cost %lf\n", tsum2);
+        printf("TGSnew slave cost %lf\n", tsum3);
+    } else {
+        int sum_ = 0;
+        double t0 = GetTime();
+        double tsum1 = 0;
+        double tsum2 = 0;
+        double tsum3 = 0;
+        double tsum4 = 0;
+        double tsum5 = 0;
+        while (dq.Pop(id, fqdatachunk)) {
+            //printf("consumer%d %lld done\n", my_rank, id);
+
+            double tt0 = GetTime();
+            vector <neoReference> data;
+            if(fqdatachunk != NULL) rabbit::fq::chunkFormat(fqdatachunk, data, true);
+            vector <neoReference> pass_data;
+            vector <dupInfo> dups;
+            if(cmd_info_->write_data_) {
+                pass_data.resize(data.size());
+            }
+            if(cmd_info_->state_duplicate_) {
+                dups.resize(data.size());
+            }
+            tsum1 += GetTime() - tt0;
+            tt0 = GetTime();
+            if(fqdatachunk != NULL) {
+                para.data1_ = &data;
+                para.pass_data1_ = &pass_data;
+                para.dups = &dups;
+                __real_athread_spawn((void *)slave_ngsfunc, &para, 1);
+                athread_join(); 
+            }
+            tsum2 += GetTime() - tt0;
+            tt0 = GetTime(); 
+            //printf("pass size %d\n", pass_data.size());
+            if(cmd_info_->state_duplicate_) {
+                for(auto item : dups) {
+                    auto key = item.key;
+                    auto kmer32 = item.kmer32;
+                    auto gc = item.gc;
+                    if (duplicate_->counts_[key] == 0) {
+                        duplicate_->counts_[key] = 1;
+                        duplicate_->dups_[key] = kmer32;
+                        duplicate_->gcs_[key] = gc;
+                    } else {
+                        if (duplicate_->dups_[key] == kmer32) {
+                            duplicate_->counts_[key]++;
+                            if (duplicate_->gcs_[key] > gc) duplicate_->gcs_[key] = gc;
+                        } else if (duplicate_->dups_[key] > kmer32) {
+                            duplicate_->dups_[key] = kmer32;
+                            duplicate_->counts_[key] = 1;
+                            duplicate_->gcs_[key] = gc;
+                        }
+                    }
+                }
+            }
+            tsum3 += GetTime() - tt0;
+            tt0 = GetTime();
+            if (cmd_info_->write_data_) {
+                int out_len = 0;
+                for(auto item : pass_data){
+                    if(item.lname == 0) continue;
+                    out_len += item.lname + item.lseq + item.lstrand + item.lqual + 4;
+                }
+                char *out_data;
+                if(out_len) out_data = new char[out_len];
+                else out_data = (char *)(NULL);
+                int pos = 0;
+                for (auto item: pass_data) {
+                    if(item.lname == 0) continue;
+                    Read2Chars(item, out_data, pos);
+                }
+                ASSERT(pos == out_len);
+
+                int now_size = out_len;
+                char *now_pos = out_data;
+                int now_sizes[comm_size];
+                now_sizes[0] = now_size;
+                MPI_Barrier(MPI_COMM_WORLD);
+                if(my_rank) {
+                    MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+                } else {
+                    for(int ii = 1; ii < comm_size; ii++) {
+                        MPI_Recv(&(now_sizes[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    } 
+                }
+                MPI_Barrier(MPI_COMM_WORLD);
+                if(my_rank == 0) {
+                    for(int ii = 1; ii < comm_size; ii++) {
+                        MPI_Send(now_sizes, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
+                    }
+                } else {
+                    MPI_Recv(now_sizes, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+                MPI_Barrier(MPI_COMM_WORLD);
+                int pre_sizes[comm_size];
+                pre_sizes[0] = 0;
+                for(int ii = 1; ii < comm_size; ii++) {
+                    pre_sizes[ii] = pre_sizes[ii - 1] + now_sizes[ii - 1];
+                }
+
+                //pre_sizes[comm_size - 1] = 0;
+                //for(int ii = comm_size - 2; ii >= 0; ii--) {
+                //    pre_sizes[ii] = pre_sizes[ii + 1] + now_sizes[ii + 1];
+                //}
+                long long now_pos_base = now_pos_ + pre_sizes[my_rank];
+
+                MPI_Barrier(MPI_COMM_WORLD);
+                for(int ii = 0; ii < comm_size; ii++) {
+                    now_pos_ += now_sizes[ii];
+                }
+                if(proDone == 0) {
+                    int proStop = producerStop.load();
+                    int stops[comm_size];
+                    stops[0] = proStop;
+                    MPI_Barrier(MPI_COMM_WORLD);
+                    if(my_rank) {
+                        MPI_Send(&proStop, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+                    } else {
+                        for(int ii = 1; ii < comm_size; ii++) {
+                            MPI_Recv(&(stops[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                        } 
+                    }
+                    MPI_Barrier(MPI_COMM_WORLD);
+                    if(my_rank == 0) {
+                        for(int ii = 1; ii < comm_size; ii++) {
+                            MPI_Send(stops, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
+                        }
+                    } else {
+                        MPI_Recv(stops, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    }
+                    int all_stop = 1;
+                    for(int ii = 0; ii < comm_size; ii++) {
+                        if(stops[ii] == 0) all_stop = 0;
+                    }
+                    //printf("stop%d %d\n", my_rank, all_stop);
+                    //TODO some stop!
+                    if(all_stop) {
+                        int64_t chunk_sizes[comm_size];
+                        chunk_sizes[0] = now_chunks;
+                        MPI_Barrier(MPI_COMM_WORLD);
+                        if(my_rank) {
+                            MPI_Send(&now_chunks, 1, MPI_LONG, 0, 0, MPI_COMM_WORLD);
+                        } else {
+                            for(int ii = 1; ii < comm_size; ii++) {
+                                MPI_Recv(&(chunk_sizes[ii]), 1, MPI_LONG, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                            } 
+                        }
+                        MPI_Barrier(MPI_COMM_WORLD);
+                        if(my_rank == 0) {
+                            for(int ii = 1; ii < comm_size; ii++) {
+                                MPI_Send(chunk_sizes, comm_size, MPI_LONG, ii, 0, MPI_COMM_WORLD);
+                            }
+                        } else {
+                            MPI_Recv(chunk_sizes, comm_size, MPI_LONG, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                        }
+                        for(int ii = 0; ii < comm_size; ii++) {
+                            mx_chunks = max(mx_chunks, chunk_sizes[ii]);
+                        }
+                        consumerCommDone = 1;
+                        proDone = 1;
+                    }
+                }
+
+                mylock.lock();
+                while (queueNumNow >= queueSizeLim) {
+#ifdef Verbose
+                    //printf("waiting to push a chunk to out queue %d\n",out_len);
+#endif
+                    usleep(100);
+                }
+
+                //out_queue_->enqueue(make_pair(out_data, make_pair(out_len, now_pos_base)));
+                out_queue_[queueP2++] = make_pair(out_data, make_pair(out_len, now_pos_base));
+                queueNumNow++;
+                mylock.unlock();
+
+            }
+            tsum4 += GetTime() - tt0;
+            tt0 = GetTime();
+            if(fqdatachunk != NULL) fastq_data_pool->Release(fqdatachunk);
+            tsum5 += GetTime() - tt0;
+        }
+        printf("NGSnew tot cost %lf\n", GetTime() - t0);
+        printf("NGSnew format cost %lf\n", tsum1);
+        printf("NGSnew slave cost %lf\n", tsum2);
+        printf("NGSnew dup cost %lf\n", tsum3);
+        printf("NGSnew write cost %lf\n", tsum4);
+        printf("NGSnew release cost %lf\n", tsum5);
+    }
+    done_thread_number_++;
     athread_halt();
-    printf("TGS tot cost %lf\n", GetTime() - t0);
-    printf("TGS producer cost %lf\n", tsum1);
-    printf("TGS format cost %lf\n", tsum2);
-    printf("TGS slave cost %lf\n", tsum3);
-    delete fqFileReader;
+    //printf("consumer done\n");
 }
 
 
@@ -1901,41 +1674,4 @@ void SeQc::ProcessSeTGS() {
     }
     delete[] p_thread_info;
 }
-void SeQc::ProcessSeTGSOneThread() {
 
-    auto *fastqPool = new rabbit::fq::FastqDataPool(1, 1 << 26);
-    auto **p_thread_info = new ThreadInfo *[slave_num];
-    for (int t = 0; t < slave_num; t++) {
-        p_thread_info[t] = new ThreadInfo(cmd_info_, false);
-    }
-    TGSTask(cmd_info_->in_file_name1_, fastqPool, p_thread_info);
-#ifdef Verbose
-    printf("all thrad done\n");
-    printf("now merge thread info\n");
-#endif
-    vector <TGSStats*> vec_state;
-
-    for (int t = 0; t < slave_num; t++) {
-        vec_state.push_back(p_thread_info[t]->TGS_state_);
-    }
-    auto mer_state = TGSStats::merge(vec_state);
-#ifdef Verbose
-    printf("merge done\n");
-#endif
-    printf("\nprint TGS state info :\n");
-
-    //report3(mer_state);
-    mer_state->CalReadsLens();
-
-    mer_state->print();
-    string srr_name = cmd_info_->in_file_name1_;
-    srr_name = PaseFileName(srr_name);
-    string command = cmd_info_->command_;
-    Repoter::ReportHtmlTGS(srr_name + "_RabbitQCPlus.html", command, mer_state, cmd_info_->in_file_name1_);
-
-    delete fastqPool;
-    for (int t = 0; t < slave_num; t++) {
-        delete p_thread_info[t];
-    }
-    delete[] p_thread_info;
-}

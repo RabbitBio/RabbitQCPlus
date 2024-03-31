@@ -38,11 +38,7 @@ public:
 
     void ProcessSeFastq();
 
-    void ProcessSeFastqOneThread();
-
     void ProcessSeTGS();
-
-    void ProcessSeTGSOneThread();
 
 
 private:
@@ -52,14 +48,9 @@ private:
 
     void Read2Chars(neoReference &ref, char *out_data, int &pos);
 
-    void NGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool, ThreadInfo **thread_infos);
-
-    void TGSTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool, ThreadInfo **thread_infos);
-
     void ProducerSeFastqTask64(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool);
 
     void ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDataPool *fastq_data_pool);
-
 
     void ProducerSeFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
@@ -67,14 +58,10 @@ private:
     void ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataPool *fastq_data_pool,
                              rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
 
+
     void WriteSeFastqTask();
 
-    void PugzTask();
-
-    void PigzTask();
-
     void ProcessNgsData(bool &proDone, std::vector <neoReference> &data, rabbit::fq::FastqDataChunk *fqdatachunk, qc_data *para, rabbit::fq::FastqDataPool *fastq_data_pool);
-
 
 
 private:
