@@ -77,15 +77,15 @@ endif
 
 
 ifneq ($(MAKECMDGOALS),clean)
-ifeq ($(GCC_GTEQ_700)_$(avx512Set),1_1)
-$(info Based on the detected gcc version and cpuflags, it was decided to use the avx512 instruction set to speed up the program)
-InstructSet := -DVec512
-else ifeq ($(GCC_GTEQ_485)_$(avx2Set),1_1)
-$(info Based on the detected gcc version and cpuflags, it was decided to use the avx2 instruction set to speed up the program)
-InstructSet := -DVec256
-else
-$(info Based on the detected gcc version and cpuflags, it was decided to let the compiler do automatic vectorization)
-endif
+#ifeq ($(GCC_GTEQ_700)_$(avx512Set),1_1)
+#$(info Based on the detected gcc version and cpuflags, it was decided to use the avx512 instruction set to speed up the program)
+#InstructSet := -DVec512
+#else ifeq ($(GCC_GTEQ_485)_$(avx2Set),1_1)
+#$(info Based on the detected gcc version and cpuflags, it was decided to use the avx2 instruction set to speed up the program)
+#InstructSet := -DVec256
+#else
+#$(info Based on the detected gcc version and cpuflags, it was decided to let the compiler do automatic vectorization)
+#endif
 endif
 
 #select instruction set according to gcc version and cpuflags
