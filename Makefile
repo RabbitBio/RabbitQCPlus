@@ -77,15 +77,15 @@ endif
 
 
 ifneq ($(MAKECMDGOALS),clean)
-#ifeq ($(GCC_GTEQ_700)_$(avx512Set),1_1)
-#$(info Based on the detected gcc version and cpuflags, it was decided to use the avx512 instruction set to speed up the program)
-#InstructSet := -DVec512
-#else ifeq ($(GCC_GTEQ_485)_$(avx2Set),1_1)
-#$(info Based on the detected gcc version and cpuflags, it was decided to use the avx2 instruction set to speed up the program)
-#InstructSet := -DVec256
-#else
-#$(info Based on the detected gcc version and cpuflags, it was decided to let the compiler do automatic vectorization)
-#endif
+ifeq ($(GCC_GTEQ_700)_$(avx512Set),1_1)
+$(info Based on the detected gcc version and cpuflags, it was decided to use the avx512 instruction set to speed up the program)
+InstructSet := -DVec512
+else ifeq ($(GCC_GTEQ_485)_$(avx2Set),1_1)
+$(info Based on the detected gcc version and cpuflags, it was decided to use the avx2 instruction set to speed up the program)
+InstructSet := -DVec256
+else
+$(info Based on the detected gcc version and cpuflags, it was decided to let the compiler do automatic vectorization)
+endif
 endif
 
 #select instruction set according to gcc version and cpuflags
@@ -132,9 +132,13 @@ THRUST_INCDIR = ./dependencies/thrust-1.17.0
 
 # you can add -DVerbose to print more log information
 
-CXXFLAGS := $(InstructSet)
-CXXFLAGS += -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -fconstexpr-ops-limit=99000100 -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -I./src/include -march=native -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
-#CXXFLAGS += -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -march=native -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
+
+
+ifeq ($(BIOCONDA),1)
+    CXXFLAGS := -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -fconstexpr-ops-limit=99000100 -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -I./src/include -msse4.2 -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
+else
+    CXXFLAGS := $(InstructSet) -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -fconstexpr-ops-limit=99000100 -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -I./src/include -march=native -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
+endif
 
 
 CCFLAGS := -g -O3 -w -Wextra -Wno-unknown-pragmas -Wcast-qual
