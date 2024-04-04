@@ -11,9 +11,25 @@ A modern quality control tool for sequencing data.
 
 - Integrated and optimized the CARE error correction engine, achieving a speedup of 1.3 times.
 
-# Build
+# Installation
 
 RabbitQCPlus can only support 64-bit Linux Systems.
+
+## Bioconda
+
+RabbitQCPlus is available from [Bioconda](https://bioconda.github.io/).
+
+[Setup bioconda](http://bioconda.github.io/#usage)
+
+```bash
+conda create -n rabbitqcplus rabbitqcplus
+
+conda activate rabbitqcplus
+```
+
+It's important to note that the version on Bioconda uses the SSE4.2 instruction set for automatic vectorization to enhance robustness, which may lead to a performance trade-off. For optimal performance, compiling from the source code is recommended.
+
+## From source
 
 ### Dependancy
 

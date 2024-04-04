@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
     }
 
     if (quVersion) {
-        fprintf(stderr, "2.1.0\n");
+        fprintf(stderr, "2.2.9\n");
         return 0;
     }
 
