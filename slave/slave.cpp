@@ -14,6 +14,7 @@ extern "C"
 #include "cmdinfo.h"
 #include "state.h"
 #include "tgsstate.h"
+#include "nthash.hpp"
 #include "threadinfo.h"
 #define gcMax 100
 #define LOCALSIZE 2 * (1 << 10)
@@ -200,6 +201,57 @@ extern "C" void tgsfunc(qc_data *para) {
     dma_putn(thread_info->TGS_state_->mBases51015Num, mBases51015Num, 3);
 }
 
+#define MODB 20
+
+
+inline bool HashQueryAndAdd(State *state, uint64_t now, int offset, int len, int eva_len) {
+    state->over_representation_qcnt_++;
+    int ha_big = now & ((1 << MODB) - 1);
+    bool pass_bf = state->bf_zone_[ha_big >> 6] & (1ll << (ha_big & 0x3f));
+    if (!pass_bf) return 0;
+    else state->over_representation_pcnt_++;
+    int ha = now & ((1 << MODB) - 1);
+    for (int i = state->head_hash_graph_[ha]; i != -1; i = state->hash_graph_[i].pre) {
+        //over_representation_pcnt_++;
+        if (state->hash_graph_[i].v == now && state->hash_graph_[i].seq.length() == len) {
+            //over_representation_pcnt_++;
+            for (int p = offset; p < offset + len && p < eva_len; p++) {
+                state->hash_graph_[i].dist[p]++;
+            }
+            state->hash_graph_[i].cnt++;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+
+void StateORP(State *state, neoReference &ref, CmdInfo *cmd_info_) {
+    int slen = ref.lseq;
+    int eva_len = 0;
+    if (state->is_read2_) eva_len = cmd_info_->eva_len2_;
+    else eva_len = cmd_info_->eva_len_;
+    int steps[5] = {10, 20, 40, 100, min(150, eva_len - 2)};
+    char *seq = reinterpret_cast<char *>(ref.base + ref.pseq);
+    for (int s = 0; s < 5; s++) {
+        if (steps[s] > slen) continue;
+        int k = steps[s] ;
+        uint64_t hVal = NT64(seq, k);
+        int lim = 0;
+        bool res = HashQueryAndAdd(state, hVal, 0, steps[s], eva_len);
+        if (res) lim = k;
+        for (int i = 0; i < slen - k - 1; i++) {
+            hVal = NTF64(hVal, k, seq[i], seq[i + k]);
+            if (lim == 0) {
+                res = HashQueryAndAdd(state, hVal, i + 1, steps[s], eva_len);
+                if (res) lim = k;
+            } else
+                lim--;
+        }
+    }
+}
+
 
 
 void StateInfo(State *state, neoReference &ref, CmdInfo *cmd_info_, int *pos_cnt_, int *pos_qul_, int *len_cnt_, int *gc_cnt_, int *qul_cnt_, int &q20bases_, int &q30bases_, int &tot_bases_, int &gc_bases_, int &real_seq_len_, int &lines_){
@@ -245,12 +297,11 @@ void StateInfo(State *state, neoReference &ref, CmdInfo *cmd_info_, int *pos_cnt
     gc_cnt_[int(1.0 * gcMax * gc_cnt / slen)]++;
     qul_cnt_[int(1.0 * qul_tot / slen)]++;
     // do overrepresentation analysis for 1 of every 20 reads
-    //if (do_over_represent_analyze_) {
-    //    if (lines_ % over_representation_sampling_ == 0) {
-    //        //StateORP(ref);
-    //        //TODO
-    //    }
-    //}
+    if (state->do_over_represent_analyze_) {
+        if (lines_ % state->over_representation_sampling_ == 0) {
+            StateORP(state, ref, cmd_info_);
+        }
+    }
     lines_++;
 }
 

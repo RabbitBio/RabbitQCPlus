@@ -135,8 +135,9 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
     int res_size = fread(tmp_chunk, sizeof(char), 1 << 10, pre_fp);
     MPI_Barrier(MPI_COMM_WORLD);
     //cerr << "res_size" << my_rank << " " << res_size << endl;
-    int64_t right_pos = GetNextFastq(tmp_chunk, 0, res_size);
+    int64_t right_pos;
     if(my_rank == 0) right_pos = 0;
+    else right_pos = GetNextFastq(tmp_chunk, 0, res_size);
     //cerr << "right_pos" << my_rank << " " << right_pos << endl;
     fclose(pre_fp);
 

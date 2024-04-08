@@ -113,11 +113,13 @@ SeQc::SeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
     pre_fp = fopen(cmd_info1->in_file_name1_.c_str(), "rb");
     fseek(pre_fp, start_pos, SEEK_SET);
     char *tmp_chunk = new char[1 << 20];
-    int res_size = fread(tmp_chunk, sizeof(char), 1 << 20, pre_fp);
+    int res_size = 0;
+    res_size = fread(tmp_chunk, sizeof(char), 1 << 20, pre_fp);
     MPI_Barrier(MPI_COMM_WORLD);
     //cerr << "res_size" << my_rank << " " << res_size << endl;
-    int64_t right_pos = GetNextFastq(tmp_chunk, 0, res_size);
+    int64_t right_pos;
     if(my_rank == 0) right_pos = 0;
+    else right_pos = GetNextFastq(tmp_chunk, 0, res_size);
     //cerr << "right_pos" << my_rank << " " << right_pos << endl;
     fclose(pre_fp);
 
