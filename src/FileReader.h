@@ -5,11 +5,8 @@
 #include <cstring>
 #include <iostream>
 #include <string>
+#include <cstdio>
 
-#if defined(USE_IGZIP)
-#include "igzip_lib.h"
-
-#endif
 #include <zlib.h>//support gziped files, functional but inefficient
 
 
@@ -49,11 +46,17 @@
 #define FCLOSE fclose
 #endif
 
-// #if defined(USE_IGZIP)
-// #define GZIP_READ igzip_read
-// #else
-// #define GZIP_READ gzread
-// #endif
+
+extern "C" {
+#include <athread.h>
+#include <pthread.h>
+    void slave_decompressfunc();
+}
+
+#include <fstream>
+#include "globalMutex.h"
+
+
 
 namespace rabbit {
 
@@ -65,36 +68,28 @@ namespace rabbit {
     public:
         FileReader(const std::string &fileName_, bool isZipped) {
             if (ends_with(fileName_, ".gz") || isZipped) {
-                //mZipFile = gzdopen(fd, "r");
-                //// isZipped=true;
-                //if (mZipFile == NULL) {
-                //  throw RioException("Can not open file to read: ");
-                //}
-                //gzrewind(mZipFile);
-#if defined(USE_IGZIP)
-                mFile = fopen(fileName_.c_str(), "rb");
-                if (mFile == NULL) {
-                    throw RioException(
-                            ("Can not open file to read: " + fileName_).c_str());
+#ifdef USE_LIBDEFLATE
+                fprintf(stderr, "use libdeflate_slave\n");
+                std::string index_file_name = fileName_ + ".swidx";
+                fprintf(stderr, "index_file_name %s\n", index_file_name.c_str());
+                iff_idx.open(index_file_name);
+                if(!iff_idx.is_open()) {
+                    fprintf(stderr, "%s do not exits\n", index_file_name.c_str());
+                    exit(0);
                 }
-                mIgInbuf = new unsigned char[IGZIP_IN_BUF_SIZE];
-                isal_gzip_header_init(&mIgzipHeader);
-                isal_inflate_init(&mStream);
-                mStream.crc_flag = ISAL_GZIP_NO_HDR_VER;
-
-                mStream.next_in = mIgInbuf;
-                mStream.avail_in = fread(mStream.next_in, 1, IGZIP_IN_BUF_SIZE, mFile);
-
-                int ret = 0;
-                ret = isal_read_gzip_header(&mStream, &mIgzipHeader);
-                if (ret != ISAL_DECOMP_OK) {
-                    cerr << "error invalid gzip header found: " << fileName_ << endl;
-                    if (mFile != NULL) {
-                        fclose(mFile);
-                    }
-                    exit(-1);
+                for(int i = 0; i < 64; i++) {
+                    in_buffer[i] = new char[BLOCK_SIZE];
+                    out_buffer[i] = new char[BLOCK_SIZE];
                 }
-#else
+                to_read_buffer = new char[(64 + 8) * BLOCK_SIZE];
+                buffer_tot_size = 0;
+                buffer_now_pos = 0;
+                input_file = fopen(fileName_.c_str(), "rb");
+                if (input_file == NULL) {
+                    perror("Failed to open input file");
+                    exit(0);
+                }
+#else 
                 mZipFile = gzopen(fileName_.c_str(), "r");
                 gzrewind(mZipFile);
 #endif
@@ -111,11 +106,13 @@ namespace rabbit {
                             ("Can not open file to read: " + fileName_).c_str());
                 }
             }
+            fprintf(stderr, "filereader init done\n");
         }
 
         FileReader(int fd, bool isZipped = false) {
             if (isZipped) {
-
+                fprintf(stderr, "FileReader fd is todo ...\n");
+                exit(0);
             } else {
                 mFile = FDOPEN(fd, "rb");
                 if (fd != -1) {
@@ -129,79 +126,89 @@ namespace rabbit {
             }
         }
 
-#if defined(USE_IGZIP)
-        int64 igzip_read(FILE *zipFile, byte *memory_, size_t size_) {
-            uint64_t offset = 0;
-            int ret = 0;
-            do {
-                if (mStream.avail_in == 0) {
-                    mStream.next_in = mIgInbuf;
-                    mStream.avail_in = fread(mStream.next_in, 1, IGZIP_IN_BUF_SIZE, zipFile);
-                }
-                mStream.next_out = memory_ + offset;
-                mStream.avail_out = size_ - offset;
-                //printf("before inflate, avin: %d, avout: %d\n", mStream.avail_in, mStream.avail_out);
-                if (isal_inflate(&mStream) != ISAL_DECOMP_OK) {
-                    cerr << "decompress error" << endl;
-                    return -1;
-                }
-                //printf("after inflate, avin: %d, avout: %d\n", mStream.avail_in, mStream.avail_out);
-                //cerr << "state block finish: " << (mStream.block_state == ISAL_BLOCK_FINISH) << endl;
-                offset = (mStream.next_out - memory_);
+        void DecompressMore() {
+            size_t length_to_copy = buffer_tot_size - buffer_now_pos;
+            if(length_to_copy > buffer_now_pos) {
+                fprintf(stderr, "warning: memmove may GG\n");
+            }
+            std::memmove(to_read_buffer, to_read_buffer + buffer_now_pos, length_to_copy);
+            buffer_tot_size = length_to_copy;
+            buffer_now_pos = 0;
+        
+            int ok = 1;
+            Para paras[64];
+            size_t to_read = 0;
+            size_t in_size = 0;
+            size_t out_size[64] = {0};
+            for(int i = 0; i < 64; i++) {
+                iff_idx >> to_read;
+                if(iff_idx.eof()) ok = 0;
+                in_size = fread(in_buffer[i], 1, to_read, input_file);
+                if (in_size == 0) ok = 0;
+                //fprintf(stderr, "-- %d %d\n", to_read, in_size);
+                paras[i].in_buffer = in_buffer[i];
+                paras[i].out_buffer = out_buffer[i];
+                paras[i].in_size = in_size;
+                paras[i].out_size = &(out_size[i]);
+            }
+            //if(ok == 0) fprintf(stderr, "%d %d\n", iff_idx.eof(), feof(input_file));
 
-                if (mStream.block_state == ISAL_BLOCK_FINISH) {
-                    //cerr << "a new block" << endl;
-                    if (feof(mFile) && mStream.avail_in == 0) {
-                        return offset;
-                    }
-                    // a new block begins
-                    if (mStream.avail_in == 0) {
-                        isal_inflate_reset(&mStream);
-                        mStream.next_in = mIgInbuf;
-                        mStream.avail_in = fread(mStream.next_in, 1, IGZIP_IN_BUF_SIZE, mFile);
-                        //mGzipInputUsedBytes += mStream.avail_in;
-                    } else if (mStream.avail_in >= GZIP_HEADER_BYTES_REQ) {
-                        unsigned char *old_next_in = mStream.next_in;
-                        size_t old_avail_in = mStream.avail_in;
-                        isal_inflate_reset(&mStream);
-                        mStream.avail_in = old_avail_in;
-                        mStream.next_in = old_next_in;
-                    } else {
-                        size_t old_avail_in = mStream.avail_in;
-                        memmove(mIgInbuf, mStream.next_in, mStream.avail_in);
-                        size_t readed = 0;
-                        if (!feof(mFile)) {
-                            readed = fread(mIgInbuf + mStream.avail_in, 1, IGZIP_IN_BUF_SIZE - mStream.avail_in, mFile);
-                        }
-                        isal_inflate_reset(&mStream);
-                        mStream.next_in = mIgInbuf;
-                        mStream.avail_in = old_avail_in + readed;
-                        ;
-                    }
-                    ret = isal_read_gzip_header(&mStream, &mIgzipHeader);
-                    if (ret != ISAL_DECOMP_OK) {
-                        cerr << "igzip: invalid gzip header found: " << mStream.avail_in << " : " << mStream.avail_out << endl;
-                        exit(-1);
-                    }
+            {
+                std::lock_guard<std::mutex> guard(globalMutex);
+                __real_athread_spawn((void *)slave_decompressfunc, paras, 1);
+                athread_join();
+            }
+
+            //for(int i = 0; i < 64; i++) {
+            //    if(in_size == 0) continue;
+            //    size_t out_size_tmp = -1;
+            //    libdeflate_decompressor* decompressor = libdeflate_alloc_decompressor();
+            //    libdeflate_result result = libdeflate_gzip_decompress(decompressor, paras[i].in_buffer, paras[i].in_size, paras[i].out_buffer, BLOCK_SIZE, &out_size_tmp);
+            //    if (result != LIBDEFLATE_SUCCESS) {
+            //        fprintf(stderr, "Decompression failed\n");
+            //    }
+            //    *(paras[i].out_size) = out_size_tmp;
+            //    libdeflate_free_decompressor(decompressor);
+            //}
+            for(int i = 0; i < 64; i++) {
+                if (out_size[i] <= 0) continue;
+                //fprintf(stderr, "====111 %d %d\n", out_size[i], buffer_tot_size);
+                memcpy(to_read_buffer + buffer_tot_size, paras[i].out_buffer, out_size[i]);
+                //fprintf(stderr, "====222 %d\n", out_size[i]);
+                buffer_tot_size += out_size[i];
+                if(buffer_tot_size > (64 + 8) * BLOCK_SIZE) {
+                    fprintf(stderr, "buffer_tot_size is out of size\n");
+                    exit(0);
                 }
-            } while (mStream.avail_out > 0);
-            assert(offset <= size_);
-            return offset;
+            }
         }
-#endif
+
 
         int64 Read(byte *memory_, uint64 size_) {
             if (isZipped) {
-                //int64 n = gzread(mZipFile, memory_, size_);
-                //cerr << "reading " << size_ << " byes" << endl;
-                //int64 n = igzip_read(mFile, memory_, size_);
-#if defined(USE_IGZIP)
-                int64 n = igzip_read(mFile, memory_, size_);
+#ifdef USE_LIBDEFLATE
+                if (buffer_now_pos + size_ > buffer_tot_size) {
+                    DecompressMore();
+                    //fprintf(stderr, "decom more %lld %lld\n", buffer_now_pos, buffer_tot_size);
+                    if(buffer_now_pos + size_ > buffer_tot_size) {
+                        fprintf(stderr, "after decom still not big enough, read done\n");
+                        size_ = buffer_tot_size - buffer_now_pos;
+                    }
+                }
+                memcpy(memory_, to_read_buffer + buffer_now_pos, size_);
+                buffer_now_pos += size_;
+                return size_;
 #else
                 int64 n = gzread(mZipFile, memory_, size_);
-#endif
-                if (n == -1) std::cerr << "Error to read gzip file" << std::endl;
+                if (n == -1) {
+                    int errNum;
+                    const char* errorMsg = gzerror(mZipFile, &errNum);
+                    if (errNum) {
+                        std::cerr << "Error to read gzip file: " << errorMsg << std::endl;
+                    }
+                }
                 return n;
+#endif
             } else {
                 int64 n = fread(memory_, 1, size_, mFile);
                 return n;
@@ -211,20 +218,14 @@ namespace rabbit {
 
         int64 ReadSeek(byte *memory_, uint64 size_, uint64 pos_) {
             if (isZipped) {
-                //pritnf("TODO seek read of compressed file...\n");
-                exit(0);
-                //TODO
-//                //int64 n = gzread(mZipFile, memory_, size_);
-//                //cerr << "reading " << size_ << " byes" << endl;
-//                //int64 n = igzip_read(mFile, memory_, size_);
-//#if defined(USE_IGZIP)
-//                int64 n = igzip_read(mFile, memory_, size_);
-//#else
-//                int64 n = gzread(mZipFile, memory_, size_);
-//#endif
-//                if (n == -1) std::cerr << "Error to read gzip file" << std::endl;
-//                return n;
-            } else {
+                if(pos_ == 0) {
+                    return Read(memory_, size_);
+                } else {
+                    //TODO
+                    fprintf(stderr, "TODO seek read of compressed file...\n");
+                    exit(0);
+                }
+           } else {
                 fseek(mFile, pos_, SEEK_SET);
                 int64 n = fread(memory_, 1, size_, mFile);
                 return n;
@@ -311,8 +312,12 @@ namespace rabbit {
         /// True means no need to call Read() function
         bool FinishRead() {
             if (isZipped) {
-#if defined(USE_IGZIP)
-                return feof(mFile) && (mStream.avail_in == 0);
+#ifdef USE_LIBDEFLATE
+                //if(iff_idx.eof() != feof(input_file)) {
+                //    fprintf(stderr, "iff_idx.eof() != feof(input_file)\n");
+                //    exit(0);
+                //}
+                return iff_idx.eof() || feof(input_file);
 #else
                 return gzeof(mZipFile);
 #endif
@@ -340,19 +345,40 @@ namespace rabbit {
             if (mZipFile != NULL) {
                 gzclose(mZipFile);
             }
+#ifdef USE_LIBDEFLATE
+            if(isZipped) {
+                if (input_file != NULL) {
+                    fclose(input_file);
+                    input_file = NULL;
+                }
+                if (iff_idx.is_open()) {
+                    iff_idx.close();
+                }
+                for(int i = 0; i < 64; i++) {
+                    delete[] in_buffer[i];
+                    delete[] out_buffer[i];
+                }
+                delete[] to_read_buffer;
+            }
+#endif
         }
 
     private:
+        char* in_buffer[64];
+        char* out_buffer[64];
+        char* to_read_buffer;
+        size_t buffer_tot_size;
+        size_t buffer_now_pos;
+        FILE *input_file;
+
+
         FILE *mFile = NULL;
         gzFile mZipFile = NULL;
         //igzip usage
         unsigned char *mIgInbuf = NULL;
-#if defined(USE_IGZIP)
-        isal_gzip_header mIgzipHeader;
-        inflate_state mStream;
-#endif
         bool isZipped = false;
         bool eof = false;
+        std::ifstream iff_idx;
     };
 
 }//namespace rabbit

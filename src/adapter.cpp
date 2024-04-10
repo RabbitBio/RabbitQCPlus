@@ -466,8 +466,11 @@ string Adapter::AutoDetect(string file_name, int trim_tail) {
         }
         string adapter = getAdapterWithSeed(key, loadedReads, records, keylen, trim_tail);
         if (!adapter.empty()) {
+            for (auto item: chunks)
+                fastq_data_pool->Release(item);
+            delete fastq_data_pool;
+            delete fqFileReader;
             delete[] counts;
-            return adapter;
             return adapter;
         }
     }

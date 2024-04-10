@@ -942,6 +942,7 @@ namespace rabbit {
         }
 
         FastqDataPairChunk *FastqFileReader::readNextPairChunk(int64 offset, int64 lim_size) {
+            if(isZipped) lim_size = 1ll << 60;
             //qwer
 
             //printf("offset limsize : %lld %lld\n", offset, lim_size);
@@ -1420,6 +1421,7 @@ namespace rabbit {
 
  
         bool FastqFileReader::ReadNextChunk_(FastqDataChunk *chunk_, int64 offset, int64 lim_size) {
+            if(isZipped) lim_size = 1ll << 60;
             
             static int64 now_size = 0;
             if ((mFqReader->FinishRead() || now_size == lim_size) && bufferSize == 0) {
@@ -1443,7 +1445,6 @@ namespace rabbit {
             if(now_size + toRead > lim_size) {
                 toRead = lim_size - now_size;
             }
-            //printf("read %lld %lld %lld\n", toRead, offset, lim_size);
             int64 r = 0;
             if(offset == -1 || offset == -2) r = mFqReader->Read(data + chunk_->size, toRead);
             else {

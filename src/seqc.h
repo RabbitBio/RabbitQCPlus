@@ -78,8 +78,10 @@ private:
     Duplicate *duplicate_;
     Umier *umier_;
     long long now_pos_;
+    long long zip_now_pos_;
 
     gzFile zip_out_stream;
+    std::ofstream off_idx;
     bool in_is_zip_;
     bool out_is_zip_;
 

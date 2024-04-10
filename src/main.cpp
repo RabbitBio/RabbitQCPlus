@@ -8,6 +8,10 @@
 #include <fstream>
 #include "mpi.h"
 
+#include "globalMutex.h"
+
+std::mutex globalMutex;
+
 using namespace std;
 
 inline bool exists_file(const std::string &name) {
@@ -431,7 +435,7 @@ int main(int argc, char **argv) {
         suffix_name1 = cmd_info.out_file_name1_.substr(real_begin1, cmd_info.out_file_name1_.length() - real_begin1);
         //printf("prefix_name1 %s\n", prefix_name1.c_str());
         //printf("suffix_name1 %s\n", suffix_name1.c_str());
-        cmd_info.out_file_name1_ = prefix_name1 + "tmp_" + to_string(rand()) + suffix_name1;
+        //cmd_info.out_file_name1_ = prefix_name1 + "tmp_" + to_string(rand()) + suffix_name1;
         if (cmd_info.out_file_name2_.length() > 0) {
             int real_begin2 = 0;
             for (int i = cmd_info.out_file_name2_.length() - 1; i >= 0; i--) {
@@ -445,7 +449,7 @@ int main(int argc, char **argv) {
                     cmd_info.out_file_name2_.length() - real_begin2);
             //printf("prefix_name2 %s\n", prefix_name2.c_str());
             //printf("suffix_name2 %s\n", suffix_name2.c_str());
-            cmd_info.out_file_name2_ = prefix_name2 + "tmp_" + to_string(rand()) + suffix_name2;
+            //cmd_info.out_file_name2_ = prefix_name2 + "tmp_" + to_string(rand()) + suffix_name2;
         }
         //printf("===out1 is %s\n", cmd_info.out_file_name1_.c_str());
         if (cmd_info.out_file_name2_.length() > 0) {
@@ -690,22 +694,22 @@ int main(int argc, char **argv) {
         }
         delete se_qc;
     }
-    if (out_gz) {
-        string out_name1 = cmd_info.out_file_name1_;
-        out_name1 = out_name1.substr(0, out_name1.find(".gz"));
-        remove(out_name1.c_str());
-        if (cmd_info.out_file_name2_.length() > 0) {
-            string out_name2 = cmd_info.out_file_name2_;
-            out_name2 = out_name2.substr(0, out_name2.find(".gz"));
-            remove(out_name2.c_str());
-        }
-        string init_name1 = prefix_name1 + suffix_name1;
-        rename(cmd_info.out_file_name1_.c_str(), init_name1.c_str());
-        if (cmd_info.out_file_name2_.length() > 0) {
-            string init_name2 = prefix_name2 + suffix_name2;
-            rename(cmd_info.out_file_name2_.c_str(), init_name2.c_str());
-        }
-    }
+    //if (out_gz) {
+    //    string out_name1 = cmd_info.out_file_name1_;
+    //    out_name1 = out_name1.substr(0, out_name1.find(".gz"));
+    //    remove(out_name1.c_str());
+    //    if (cmd_info.out_file_name2_.length() > 0) {
+    //        string out_name2 = cmd_info.out_file_name2_;
+    //        out_name2 = out_name2.substr(0, out_name2.find(".gz"));
+    //        remove(out_name2.c_str());
+    //    }
+    //    string init_name1 = prefix_name1 + suffix_name1;
+    //    rename(cmd_info.out_file_name1_.c_str(), init_name1.c_str());
+    //    if (cmd_info.out_file_name2_.length() > 0) {
+    //        string init_name2 = prefix_name2 + suffix_name2;
+    //        rename(cmd_info.out_file_name2_.c_str(), init_name2.c_str());
+    //    }
+    //}
     printf("cmd is %s\n", command.c_str());
     printf("total cost %.5fs\n", GetTime() - t_start);
 

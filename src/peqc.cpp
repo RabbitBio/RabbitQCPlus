@@ -1,23 +1,25 @@
-// O
+// 
 // Created by ylf9811 on 2021/7/6.
-//
 //
 
 #include "peqc.h"
+#include "globalMutex.h"
+
 using namespace std;
 
-int block_size;
+//int block_size;
 
 extern "C" {
 #include <athread.h>
 #include <pthread.h>
     void slave_ngspefunc();
     void slave_formatpefunc();
+    void slave_compressfunc();
 }
 
 
 
-int Q_lim = 4;
+int Q_lim = 8;
 
 void PrintRef(neoReference &ref) {
     printf("%.*s\n", ref.lname, (char *) ref.base + ref.pname);
@@ -60,7 +62,7 @@ int64_t GetNextFastq(char *data_, int64_t pos_, const int64_t size_) {
     //-----[haoz:] is the following code necessary??-------------//
     SkipToLineEnd(data_, pos_, size_);
     ++pos_;
-    if (data_[pos_] != '+') std::cout << "core dump is pos: " << pos_ << " char: " << data_[pos_] << std::endl;
+    if (data_[pos_] != '+') cout << "core dump is pos: " << pos_ << " char: " << data_[pos_] << endl;
     ASSERT(data_[pos_] == '+');// pos0 was the start of tag
     return pos0;
 }
@@ -89,6 +91,8 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
     part_sizes = new int64_t[comm_size];
     now_pos1_ = 0;
     now_pos2_ = 0;
+    zip_now_pos1_ = 0;
+    zip_now_pos2_ = 0;
     cmd_info_ = cmd_info1;
     filter_ = new Filter(cmd_info1);
     done_thread_number_ = 0;
@@ -112,8 +116,9 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
     long long real_file_size2 = gFile.tellg();
     gFile.close();
 
-    if(real_file_size != real_file_size2) {
+    if(!in_is_zip_ && real_file_size != real_file_size2 && comm_size > 1) {
         fprintf(stderr, "PE in files size error %lld %lld\n", real_file_size, real_file_size2);
+        exit(0);
     }
 
     int64_t pre_size = ceil(1.0 * real_file_size / (2 * comm_size + 1));
@@ -131,8 +136,8 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
     FILE *pre_fp;
     pre_fp = fopen(cmd_info1->in_file_name1_.c_str(), "rb");
     fseek(pre_fp, start_pos, SEEK_SET);
-    char *tmp_chunk = new char[1 << 10];
-    int res_size = fread(tmp_chunk, sizeof(char), 1 << 10, pre_fp);
+    char *tmp_chunk = new char[1 << 20];
+    int res_size = fread(tmp_chunk, sizeof(char), 1 << 20, pre_fp);
     MPI_Barrier(MPI_COMM_WORLD);
     //cerr << "res_size" << my_rank << " " << res_size << endl;
     int64_t right_pos;
@@ -181,7 +186,7 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
         queueP1 = 0;
         queueP2 = 0;
         queueNumNow = 0;
-        queueSizeLim = Q_lim;
+        queueSizeLim = Q_lim * 64;
 
         //out_queue1_ = new CIPair[1 << 20];
         //queue1P1 = 0;
@@ -197,44 +202,78 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
         }
         if (out_is_zip_) {
             if (cmd_info1->use_pigz_) {
-                pigzQueueNumNow1 = 0;
-                pigzQueueSizeLim1 = 1 << 5;
-                string out_name1 = cmd_info1->out_file_name1_;
-                out_name1 = out_name1.substr(0, out_name1.find(".gz"));
-                if((out_stream1_ = fopen(out_name1.c_str(),"w")) == NULL) {
-                    printf("File cannot be opened\n");
-                }
-                fclose(out_stream1_);
-
-                //out_stream1_.open(out_name1);
-                //out_stream1_.close();
-
-                pigzQueueNumNow2 = 0;
-                pigzQueueSizeLim2 = 1 << 5;
-                string out_name2 = cmd_info1->out_file_name2_;
-                out_name2 = out_name2.substr(0, out_name2.find(".gz"));
-                if((out_stream2_ = fopen(out_name2.c_str(),"w")) == NULL) {
-                    printf("File cannot be opened\n");
-                }
-                fclose(out_stream2_);
-
-                //out_stream2_.open(out_name2);
-                //out_stream2_.close();
-#ifdef Verbose
-                printf("now use pigz to compress output data\n");
-#endif
-
+                fprintf(stderr, "use pigz TODO...\n");
+                exit(0);
             } else {
 #ifdef Verbose
                 printf("open gzip stream1 %s\n", cmd_info1->out_file_name1_.c_str());
                 printf("open gzip stream2 %s\n", cmd_info1->out_file_name2_.c_str());
 #endif
+
+#ifdef USE_LIBDEFLATE
+                string idx_name = cmd_info1->out_file_name1_ + ".swidx";
+                fprintf(stderr, "idx_name %s\n", idx_name.c_str());
+                off_idx1.open(idx_name);
+
+                ofstream file1(cmd_info1->out_file_name1_.c_str());
+
+                if (file1.is_open()) {
+                    file1 << "Hello, file1!" << endl;
+                    file1.close();
+                } else {
+                    cerr << "Failed to open file1: " << cmd_info1->out_file_name1_ << endl;
+                }
+
+                int err1 = MPI_File_open(MPI_COMM_WORLD, cmd_info1->out_file_name1_.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh1);
+
+                if (err1 != MPI_SUCCESS) {
+                    char error_string[BUFSIZ];
+                    int length_of_error_string, error_class;
+
+                    MPI_Error_class(err1, &error_class);
+                    MPI_Error_string(error_class, error_string, &length_of_error_string);
+
+                    fprintf(stderr, "%3d: Couldn't open file1, MPI Error: %s\n", my_rank, error_string);
+
+                    MPI_Abort(MPI_COMM_WORLD, err1);
+                    exit(0);
+                }
+
+                string idx_name2 = cmd_info1->out_file_name2_ + ".swidx";
+                fprintf(stderr, "idx_name2 %s\n", idx_name2.c_str());
+                off_idx2.open(idx_name2);
+
+                ofstream file2(cmd_info1->out_file_name2_.c_str());
+
+                if (file2.is_open()) {
+                    file2 << "Hello, file2!" << endl;
+                    file2.close();
+                } else {
+                    cerr << "Failed to open file2: " << cmd_info1->out_file_name2_ << endl;
+                }
+
+                int err2 = MPI_File_open(MPI_COMM_WORLD, cmd_info1->out_file_name2_.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh2);
+
+                if (err2 != MPI_SUCCESS) {
+                    char error_string[BUFSIZ];
+                    int length_of_error_string, error_class;
+
+                    MPI_Error_class(err2, &error_class);
+                    MPI_Error_string(error_class, error_string, &length_of_error_string);
+
+                    fprintf(stderr, "%3d: Couldn't open file, MPI Error: %s\n", my_rank, error_string);
+
+                    MPI_Abort(MPI_COMM_WORLD, err2);
+                    exit(0);
+                }
+#else
                 zip_out_stream1 = gzopen(cmd_info1->out_file_name1_.c_str(), "w");
                 gzsetparams(zip_out_stream1, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
                 gzbuffer(zip_out_stream1, 1024 * 1024);
                 zip_out_stream2 = gzopen(cmd_info1->out_file_name2_.c_str(), "w");
                 gzsetparams(zip_out_stream2, cmd_info1->compression_level_, Z_DEFAULT_STRATEGY);
                 gzbuffer(zip_out_stream2, 1024 * 1024);
+#endif
             }
         } else {
 #ifdef Verbose
@@ -253,13 +292,13 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
 
 #ifdef use_mpi_file
 
-            std::ofstream file1(cmd_info1->out_file_name1_.c_str());
+            ofstream file1(cmd_info1->out_file_name1_.c_str());
 
             if (file1.is_open()) {
-                file1 << "Hello, file!" << std::endl;
+                file1 << "Hello, file!" << endl;
                 file1.close();
             } else {
-                std::cerr << "Failed to open file1: " << cmd_info1->out_file_name1_ << std::endl;
+                cerr << "Failed to open file1: " << cmd_info1->out_file_name1_ << endl;
             }
 
             int err1 = MPI_File_open(MPI_COMM_WORLD, cmd_info1->out_file_name1_.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh1);
@@ -279,13 +318,13 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
 
             if (cmd_info_->interleaved_out_ == 0) {
 
-                std::ofstream file2(cmd_info1->out_file_name2_.c_str());
+                ofstream file2(cmd_info1->out_file_name2_.c_str());
 
                 if (file2.is_open()) {
-                    file2 << "Hello, file!" << std::endl;
+                    file2 << "Hello, file2!" << endl;
                     file2.close();
                 } else {
-                    std::cerr << "Failed to open file1: " << cmd_info1->out_file_name2_ << std::endl;
+                    cerr << "Failed to open file2: " << cmd_info1->out_file_name2_ << endl;
                 }
 
                 int err2 = MPI_File_open(MPI_COMM_WORLD, cmd_info1->out_file_name2_.c_str(), MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh2);
@@ -299,7 +338,7 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
 
                     fprintf(stderr, "%3d: Couldn't open file, MPI Error: %s\n", my_rank, error_string);
 
-                    MPI_Abort(MPI_COMM_WORLD, err1);
+                    MPI_Abort(MPI_COMM_WORLD, err2);
                     exit(0);
                 }               
             }
@@ -370,16 +409,13 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
         umier_ = new Umier(cmd_info1);
     }
     if (cmd_info1->use_pugz_) {
-        pugzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 10);
-        pugzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>(1 << 10);
+        fprintf(stderr, "use pugz TODO...\n");
+        exit(0);
+ 
     }
     if (cmd_info1->use_pigz_) {
-        pigzQueue1 = new moodycamel::ReaderWriterQueue<pair<char *, int>>;
-        pigzLast1.first = new char[1 << 24];
-        pigzLast1.second = 0;
-        pigzQueue2 = new moodycamel::ReaderWriterQueue<pair<char *, int>>;
-        pigzLast2.first = new char[1 << 24];
-        pigzLast2.second = 0;
+        fprintf(stderr, "use pigz TODO...\n");
+        exit(0);
     }
 
     pugzDone1 = 0;
@@ -607,22 +643,10 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
 
 
     if (cmd_info_->use_pugz_) {
-        pair<char *, int> last1;
-        pair<char *, int> last2;
-        last1.first = new char[1 << 20];
-        last1.second = 0;
-        last2.first = new char[1 << 20];
-        last2.second = 0;
-        while (true) {
-            rabbit::fq::FastqDataPairChunk *fqdatachunk;
-            fqdatachunk = fqFileReader->readNextPairChunkParallel(pugzQueue1, pugzQueue2, &pugzDone1, &pugzDone2, last1,
-                    last2);
-            if (fqdatachunk == NULL) break;
-            n_chunks++;
-            dq.Push(n_chunks, fqdatachunk);
-        }
-        delete[] last1.first;
-        delete[] last2.first;
+        fprintf(stderr, "use pugz TODO...\n");
+        exit(0);
+ 
+
     } else {
         bool is_first = 1;
         int64_t tot_size = 0;
@@ -705,8 +729,19 @@ double tsum4_4 = 0;
 double tsum5 = 0;
 
 
+struct ConsumerWriteInfoPE{
+    char* buffer;
+    char* buffer2;
+    int buffer_len;
+    int buffer_len2;
+    long long file_offset;
+    long long file_offset2;
+};
 
-void PeQc::ProcessNgsData(bool &proDone, std::vector <neoReference> &data1, std::vector <neoReference> &data2, rabbit::fq::FastqDataPairChunk *fqdatachunk, qc_data *para, rabbit::fq::FastqDataPool *fastqPool) {
+vector<ConsumerWriteInfoPE> writeInfosPE;
+
+
+void PeQc::ProcessNgsData(bool &proDone, vector <neoReference> &data1, vector <neoReference> &data2, rabbit::fq::FastqDataPairChunk *fqdatachunk, qc_data *para, rabbit::fq::FastqDataPool *fastqPool) {
 
     //fprintf(stderr, "consumer %d data size %d %d\n", my_rank, data1.size(), data2.size());
     double tt0 = GetTime();
@@ -729,8 +764,11 @@ void PeQc::ProcessNgsData(bool &proDone, std::vector <neoReference> &data1, std:
         para->pass_data1_ = &pass_data1;
         para->pass_data2_ = &pass_data2;
         para->dups = &dups;
-        __real_athread_spawn((void *)slave_ngspefunc, para, 1);
-        athread_join();
+        {
+            lock_guard<mutex> guard(globalMutex);
+            __real_athread_spawn((void *)slave_ngspefunc, para, 1);
+            athread_join();
+        }
     }
     tsum2 += GetTime() - tt0;
     //fprintf(stderr, "consumer %d data_pass size %d %d\n", my_rank, pass_data1.size(), pass_data2.size());
@@ -1058,16 +1096,17 @@ void PeQc::ProcessNgsData(bool &proDone, std::vector <neoReference> &data1, std:
 
 
             tt1 = GetTime();
+            writeInfosPE.push_back({out_data1, out_data2, out_len1, out_len2, now_pos_base1, now_pos_base2});
 
             //mylock.lock();
-            while (queueNumNow >= queueSizeLim) {
-#ifdef Verbose
-                //printf("waiting to push a chunk to out queue1\n");
-#endif
-                usleep(1000);
-            }
-            out_queue_[queueP2++] = make_pair(make_pair(out_data1, make_pair(out_len1, now_pos_base1)), make_pair(out_data2, make_pair(out_len2, now_pos_base2)));
-            queueNumNow++;
+//            while (queueNumNow >= queueSizeLim) {
+//#ifdef Verbose
+//                //printf("waiting to push a chunk to out queue1\n");
+//#endif
+//                usleep(1000);
+//            }
+//            out_queue_[queueP2++] = make_pair(make_pair(out_data1, make_pair(out_len1, now_pos_base1)), make_pair(out_data2, make_pair(out_len2, now_pos_base2)));
+//            queueNumNow++;
             //fprintf(stderr, "consumer %d push to queue\n", my_rank);
          
 
@@ -1114,6 +1153,8 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
 
     double t0 = GetTime();
     double t_format = 0;
+    double t_slave_gz = 0;
+    double t_push_q = 0;
     bool p_overWhile = 0;
     vector<rabbit::fq::FastqDataPairChunk *> fqdatachunks;
     while(true) {
@@ -1170,9 +1211,14 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
             para2[i].fqSize = fq_size;
         }
 
-        __real_athread_spawn((void *)slave_formatpefunc, para2, 1);
-        athread_join();
+        {
+            lock_guard<mutex> guard(globalMutex);
+            __real_athread_spawn((void *)slave_formatpefunc, para2, 1);
+            athread_join();
+        }
         t_format += GetTime() - tt0;
+
+        writeInfosPE.clear();
 
         for(int i = 0; i < fq_size; i++) {
             //fprintf(stderr, "consumer rank%d count %d\n", my_rank, counts[i]);
@@ -1181,6 +1227,149 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
             ProcessNgsData(allProDone, data1[i], data2[i], fqdatachunks[i], &para, fastqPool);
         }
         fqdatachunks.clear();
+
+
+        //fprintf(stderr, "rank%d pending write size %d\n", my_rank, writeInfosPE.size());
+#ifdef USE_LIBDEFLATE
+        tt0 = GetTime();
+        if (cmd_info_->write_data_ && out_is_zip_) {
+            Para paras[64];
+            size_t out_size[64] = {0};
+            for(int i = 0; i < writeInfosPE.size(); i++) {
+                paras[i].in_buffer = writeInfosPE[i].buffer;
+                paras[i].out_buffer = new char[BLOCK_SIZE];
+                paras[i].in_size = writeInfosPE[i].buffer_len;
+                paras[i].out_size = &(out_size[i]);
+                paras[i].level = 1;
+            }
+            for(int i = writeInfosPE.size(); i < 64; i++) {
+                paras[i].in_size = 0;
+            }
+            {
+                std::lock_guard<std::mutex> guard(globalMutex);
+                __real_athread_spawn((void *)slave_compressfunc, paras, 1);
+                athread_join();
+            }
+            for(int i = 0; i < 64; i++) {
+                off_idx1 << out_size[i] << endl;
+            }
+            for(int i = 0; i < writeInfosPE.size(); i++) {
+                delete[] writeInfosPE[i].buffer;
+                writeInfosPE[i].buffer = paras[i].out_buffer;
+                writeInfosPE[i].buffer_len = out_size[i];
+
+                int now_size = writeInfosPE[i].buffer_len;
+                int now_sizes[comm_size];
+                now_sizes[0] = now_size;
+                MPI_Barrier(MPI_COMM_WORLD);
+                if(my_rank) {
+                    MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+                } else {
+                    for(int ii = 1; ii < comm_size; ii++) {
+                        MPI_Recv(&(now_sizes[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    } 
+                }
+                MPI_Barrier(MPI_COMM_WORLD);
+                if(my_rank == 0) {
+                    for(int ii = 1; ii < comm_size; ii++) {
+                        MPI_Send(now_sizes, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
+                    }
+                } else {
+                    MPI_Recv(now_sizes, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+                MPI_Barrier(MPI_COMM_WORLD);
+                int pre_sizes[comm_size];
+                pre_sizes[0] = 0;
+                for(int ii = 1; ii < comm_size; ii++) {
+                    pre_sizes[ii] = pre_sizes[ii - 1] + now_sizes[ii - 1];
+                }
+                long long now_pos_base = zip_now_pos1_ + pre_sizes[my_rank];
+                MPI_Barrier(MPI_COMM_WORLD);
+                for(int ii = 0; ii < comm_size; ii++) {
+                    zip_now_pos1_ += now_sizes[ii];
+                }
+                writeInfosPE[i].file_offset = now_pos_base;
+            }
+
+            Para paras2[64];
+            size_t out_size2[64] = {0};
+            for(int i = 0; i < writeInfosPE.size(); i++) {
+                paras2[i].in_buffer = writeInfosPE[i].buffer2;
+                paras2[i].out_buffer = new char[BLOCK_SIZE];
+                paras2[i].in_size = writeInfosPE[i].buffer_len2;
+                paras2[i].out_size = &(out_size2[i]);
+                paras2[i].level = 1;
+            }
+            for(int i = writeInfosPE.size(); i < 64; i++) {
+                paras2[i].in_size = 0;
+            }
+            {
+                std::lock_guard<std::mutex> guard(globalMutex);
+                __real_athread_spawn((void *)slave_compressfunc, paras2, 1);
+                athread_join();
+            }
+            for(int i = 0; i < 64; i++) {
+                off_idx2 << out_size2[i] << endl;
+            }
+            for(int i = 0; i < writeInfosPE.size(); i++) {
+                delete[] writeInfosPE[i].buffer2;
+                writeInfosPE[i].buffer2 = paras2[i].out_buffer;
+                writeInfosPE[i].buffer_len2 = out_size2[i];
+
+                int now_size = writeInfosPE[i].buffer_len2;
+                int now_sizes[comm_size];
+                now_sizes[0] = now_size;
+                MPI_Barrier(MPI_COMM_WORLD);
+                if(my_rank) {
+                    MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+                } else {
+                    for(int ii = 1; ii < comm_size; ii++) {
+                        MPI_Recv(&(now_sizes[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    } 
+                }
+                MPI_Barrier(MPI_COMM_WORLD);
+                if(my_rank == 0) {
+                    for(int ii = 1; ii < comm_size; ii++) {
+                        MPI_Send(now_sizes, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
+                    }
+                } else {
+                    MPI_Recv(now_sizes, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+                MPI_Barrier(MPI_COMM_WORLD);
+                int pre_sizes[comm_size];
+                pre_sizes[0] = 0;
+                for(int ii = 1; ii < comm_size; ii++) {
+                    pre_sizes[ii] = pre_sizes[ii - 1] + now_sizes[ii - 1];
+                }
+                long long now_pos_base = zip_now_pos2_ + pre_sizes[my_rank];
+                MPI_Barrier(MPI_COMM_WORLD);
+                for(int ii = 0; ii < comm_size; ii++) {
+                    zip_now_pos2_ += now_sizes[ii];
+                }
+                writeInfosPE[i].file_offset2 = now_pos_base;
+            }
+        }
+        
+        t_slave_gz += GetTime() - tt0;
+#endif
+
+        if (cmd_info_->write_data_) {
+            tt0 = GetTime();
+            for(int i = 0; i < writeInfosPE.size(); i++) {
+                //mylock.lock();
+                while (queueNumNow >= queueSizeLim) {
+#ifdef Verbose
+                    //printf("waiting to push a chunk to out queue1\n");
+#endif
+                    usleep(1000);
+                }
+                out_queue_[queueP2++] = make_pair(make_pair(writeInfosPE[i].buffer, make_pair(writeInfosPE[i].buffer_len, writeInfosPE[i].file_offset)), make_pair(writeInfosPE[i].buffer2, make_pair(writeInfosPE[i].buffer_len2, writeInfosPE[i].file_offset2)));
+                queueNumNow++;
+                //mylock.unlock();
+            }
+            t_push_q += GetTime() - tt0;
+        }
+
     }
     printf("NGSnew tot cost %lf\n", GetTime() - t0);
     printf("NGSnew format cost %lf\n", t_format);
@@ -1189,6 +1378,8 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     printf("NGSnew dup cost %lf\n", tsum3);
     printf("NGSnew write cost %lf (%lf [%lf %lf %lf], %lf, %lf, %lf)\n", tsum4, tsum4_1, tsum4_1_1, tsum4_1_2, tsum4_1_3, tsum4_2, tsum4_3, tsum4_4);
     printf("NGSnew release cost %lf\n", tsum5);
+    printf("consumer NGSnew gz slave cost %lf\n", t_slave_gz);
+    printf("consumer NGSnew push to queue cost %lf\n", t_push_q);
     done_thread_number_++;
     athread_halt();
     fprintf(stderr, "consumer %d in func done\n", my_rank);
@@ -1244,8 +1435,11 @@ void PeQc::ConsumerPeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
             para.pass_data1_ = &pass_data1;
             para.pass_data2_ = &pass_data2;
             para.dups = &dups;
-            __real_athread_spawn((void *)slave_ngspefunc, &para, 1);
-            athread_join();
+            {
+                lock_guard<mutex> guard(globalMutex);
+                __real_athread_spawn((void *)slave_ngspefunc, &para, 1);
+                athread_join();
+            }
         }
         //printf("pass size1 %d\n", pass_data1.size());
         //printf("pass size2 %d\n", pass_data2.size());
@@ -1551,7 +1745,13 @@ void PeQc::WriteSeFastqTask12() {
     pair<CIPair, CIPair> now0;
     CIPair now1;
     CIPair now2;
+    double t_wait = 0;
+    double t_write = 0;
+    double t_del = 0;
+    double t_free = 0;
+
     while (true) {
+        double tt0 = GetTime();
         while (queueNumNow == 0) {
             if (done_thread_number_ == cmd_info_->thread_number_) {
                 overWhile = 1;
@@ -1567,10 +1767,35 @@ void PeQc::WriteSeFastqTask12() {
         now1 = now0.first;
         now2 = now0.second;
         queueNumNow--;
+        t_wait += GetTime() - tt0;
+        //fprintf(stderr, "writer rank %d write get %p\n", my_rank, now1.first);
         if (out_is_zip_) {
             if (cmd_info_->use_pigz_) {
-                printf("use pigz TODO...\n");
+                fprintf(stderr, "use pigz TODO...\n");
+                exit(0);
             } else {
+
+                tt0 = GetTime();
+#ifdef USE_LIBDEFLATE
+
+#ifdef use_mpi_file
+
+                MPI_File_seek(fh1, now1.second.second, MPI_SEEK_SET);
+                MPI_File_write(fh1, now1.first, now1.second.first, MPI_CHAR, &status1);
+
+                MPI_File_seek(fh2, now2.second.second, MPI_SEEK_SET);
+                MPI_File_write(fh2, now2.first, now2.second.first, MPI_CHAR, &status2);
+#else
+
+                fseek(out_stream1_, now1.second.second, SEEK_SET);
+                fwrite(now1.first, sizeof(char), now1.second.first, out_stream1_);
+
+                fseek(out_stream2_, now2.second.second, SEEK_SET);
+                fwrite(now2.first, sizeof(char), now2.second.first, out_stream2_);
+#endif
+
+
+#else
                 int written1 = gzwrite(zip_out_stream1, now1.first, now1.second.first);
                 if (written1 != now1.second.first) {
                     printf("gzwrite error\n");
@@ -1583,7 +1808,12 @@ void PeQc::WriteSeFastqTask12() {
                     printf("gzwrite error\n");
                     exit(0);
                 }
+#endif
+                t_write += GetTime() - tt0;
+
+                tt0 = GetTime();
                 delete[] now2.first;
+                t_del += GetTime() - tt0;
             }
         } else {
 
@@ -1646,8 +1876,28 @@ void PeQc::WriteSeFastqTask12() {
     //fprintf(stderr, "writer rank%d write donedone\n", my_rank);
     if (out_is_zip_) {
         if (cmd_info_->use_pigz_) {
+            fprintf(stderr, "use pigz TODO...\n");
+            exit(0);
 
         } else {
+#ifdef USE_LIBDEFLATE
+#ifdef use_mpi_file
+            MPI_File_close(&fh1);
+            MPI_File_close(&fh2);
+#else
+            fclose(out_stream1_);
+            if(my_rank == 0) {
+                truncate(cmd_info_->out_file_name1_.c_str(), sizeof(char) * zip_now_pos1_);
+            }
+            fclose(out_stream2_);
+            if(my_rank == 0) {
+                truncate(cmd_info_->out_file_name2_.c_str(), sizeof(char) * zip_now_pos2_);
+            }
+#endif
+            off_idx1.close();
+            off_idx2.close();
+
+#else
             if (zip_out_stream1) {
                 gzflush(zip_out_stream1, Z_FINISH);
                 gzclose(zip_out_stream1);
@@ -1658,6 +1908,7 @@ void PeQc::WriteSeFastqTask12() {
                 gzclose(zip_out_stream2);
                 zip_out_stream2 = NULL;
             }
+#endif
         }
 
     } else {
@@ -1678,7 +1929,11 @@ void PeQc::WriteSeFastqTask12() {
 #endif
     }
 #ifdef Verbose
-    printf("writer%d cost %lf, tot size %lld %lld\n", my_rank, GetTime() - t0, tot_size1, tot_size2);
+    printf("writer wait queue cost %.4f\n", t_wait);
+    printf("writer write cost %.4f\n", t_write);
+    printf("writer del cost %.4f\n", t_del);
+    printf("writer free cost %.4f\n", t_free);
+    printf("writer %d cost %lf, tot size %lld %lld\n", my_rank, GetTime() - t0, tot_size1, tot_size2);
     fprintf(stderr, "writer %d in func done\n", my_rank);
     //printf("write %d cost %.5f --- %lld\n", my_rank, GetTime() - t0, tot_size);
     //
@@ -1715,7 +1970,8 @@ void PeQc::WriteSeFastqTask1() {
         //fprintf(stderr, "rank %d write get %p\n", my_rank, now.first);
         if (out_is_zip_) {
             if (cmd_info_->use_pigz_) {
-                printf("use pigz TODO...\n");
+                fprintf(stderr, "use pigz TODO...\n");
+                exit(0);
             } else {
                 int written = gzwrite(zip_out_stream1, now.first, now.second.first);
                 if (written != now.second.first) {
@@ -1751,7 +2007,8 @@ void PeQc::WriteSeFastqTask1() {
     //fprintf(stderr, "111111 rank%d donedone2\n", my_rank);
     if (out_is_zip_) {
         if (cmd_info_->use_pigz_) {
-
+            fprintf(stderr, "use pigz TODO...\n");
+            exit(0);
         } else {
             if (zip_out_stream1) {
                 gzflush(zip_out_stream1, Z_FINISH);
@@ -1807,7 +2064,8 @@ void PeQc::WriteSeFastqTask2() {
         //fprintf(stderr, "rank %d write get %p\n", my_rank, now.first);
         if (out_is_zip_) {
             if (cmd_info_->use_pigz_) {
-                printf("use pigz TODO...\n");
+                fprintf(stderr, "use pigz TODO...\n");
+                exit(0);
             } else {
                 int written = gzwrite(zip_out_stream2, now.first, now.second.first);
                 if (written != now.second.first) {
@@ -1843,7 +2101,8 @@ void PeQc::WriteSeFastqTask2() {
     //fprintf(stderr, "222222 rank%d donedone2\n", my_rank);
     if (out_is_zip_) {
         if (cmd_info_->use_pigz_) {
-
+            fprintf(stderr, "use pigz TODO...\n");
+            exit(0);
         } else {
             if (zip_out_stream2) {
                 gzflush(zip_out_stream2, Z_FINISH);
@@ -1959,9 +2218,9 @@ bool checkStates(State* s1, State* s2) {
 
 
 void PeQc::ProcessPeFastq() {
-    if(my_rank == 0) block_size = 6 * (1 << 20);
-    else block_size = 4 * (1 << 20);
-    auto *fastqPool = new rabbit::fq::FastqDataPool(Q_lim * 64 * 2, block_size);
+    //if(my_rank == 0) block_size = 6 * (1 << 20);
+    //else block_size = 4 * (1 << 20);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(Q_lim * 64 * 2, BLOCK_SIZE);
     //rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(Q_lim, 1);
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {

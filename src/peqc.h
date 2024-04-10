@@ -98,9 +98,14 @@ private:
     Umier *umier_;
     long long now_pos1_;
     long long now_pos2_;
+    long long zip_now_pos1_;
+    long long zip_now_pos2_;
+
 
     gzFile zip_out_stream1;
     gzFile zip_out_stream2;
+    std::ofstream off_idx1;
+    std::ofstream off_idx2;
     bool in_is_zip_;
     bool out_is_zip_;
 
