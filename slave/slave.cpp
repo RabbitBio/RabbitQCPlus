@@ -1746,8 +1746,8 @@ extern "C" void ngspefunc(qc_data *para){
 
 
 #include "libdeflate.h"
+#define BLOCK_SIZE (1 << 22) 
 
-#define BLOCK_SIZE (4 << 20) 
 struct Para {
     char* in_buffer;
     char* out_buffer;

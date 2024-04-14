@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 #include <cstdio>
+#include <vector>
 
 #include <zlib.h>//support gziped files, functional but inefficient
 
@@ -66,16 +67,25 @@ namespace rabbit {
         static const uint32 GZIP_HEADER_BYTES_REQ = 1 << 16;
 
     public:
-        FileReader(const std::string &fileName_, bool isZipped) {
+        FileReader(const std::string &fileName_, bool isZipped, int start_line = 0, int end_line = 0) {
             if (ends_with(fileName_, ".gz") || isZipped) {
 #ifdef USE_LIBDEFLATE
-                fprintf(stderr, "use libdeflate_slave\n");
+                tot_read_size = 0;
+                //fprintf(stderr, "----- [%d, %d]\n", start_line, end_line);
+                now_block = start_line;
+                //fprintf(stderr, "use libdeflate_slave\n");
                 std::string index_file_name = fileName_ + ".swidx";
-                fprintf(stderr, "index_file_name %s\n", index_file_name.c_str());
+                //fprintf(stderr, "index_file_name %s\n", index_file_name.c_str());
+                iff_idx_end = 0;
                 iff_idx.open(index_file_name);
                 if(!iff_idx.is_open()) {
                     fprintf(stderr, "%s do not exits\n", index_file_name.c_str());
                     exit(0);
+                }
+                int block_size;
+                while(iff_idx >> block_size) {
+                    block_sizes.push_back(block_size);
+                    if(block_sizes.size() == end_line) break;
                 }
                 for(int i = 0; i < 64; i++) {
                     in_buffer[i] = new char[BLOCK_SIZE];
@@ -89,6 +99,13 @@ namespace rabbit {
                     perror("Failed to open input file");
                     exit(0);
                 }
+                long long file_offset = 0;
+                for(int i = 0; i < start_line; i++) {
+                    file_offset += block_sizes[i];
+                }
+                fseek(input_file, file_offset, SEEK_SET);
+                //fprintf(stderr, "file_offset %lld\n", file_offset);
+
 #else 
                 mZipFile = gzopen(fileName_.c_str(), "r");
                 gzrewind(mZipFile);
@@ -106,7 +123,7 @@ namespace rabbit {
                             ("Can not open file to read: " + fileName_).c_str());
                 }
             }
-            fprintf(stderr, "filereader init done\n");
+            //fprintf(stderr, "filereader init done\n");
         }
 
         FileReader(int fd, bool isZipped = false) {
@@ -141,11 +158,17 @@ namespace rabbit {
             size_t in_size = 0;
             size_t out_size[64] = {0};
             for(int i = 0; i < 64; i++) {
-                iff_idx >> to_read;
-                if(iff_idx.eof()) ok = 0;
+//                iff_idx >> to_read;
+//                if(iff_idx.eof()) ok = 0;
+                if(now_block == block_sizes.size()) {
+                    to_read = 0;
+                    iff_idx_end = 1;
+                } else {
+                    to_read = block_sizes[now_block++];
+                }
                 in_size = fread(in_buffer[i], 1, to_read, input_file);
                 if (in_size == 0) ok = 0;
-                //fprintf(stderr, "-- %d %d\n", to_read, in_size);
+                //fprintf(stderr, "-- %d %d %d %d\n", to_read, in_size, now_block, block_sizes.size());
                 paras[i].in_buffer = in_buffer[i];
                 paras[i].out_buffer = out_buffer[i];
                 paras[i].in_size = in_size;
@@ -173,6 +196,13 @@ namespace rabbit {
             for(int i = 0; i < 64; i++) {
                 if (out_size[i] <= 0) continue;
                 //fprintf(stderr, "====111 %d %d\n", out_size[i], buffer_tot_size);
+                //if(out_size[i]) {
+                //    if (strncmp(paras[i].out_buffer, "@SRR2496709", 11) != 0) {
+                //        fprintf(stderr, "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG\n");
+                //        exit(0);
+                //    }
+                //}
+                tot_read_size += out_size[i];
                 memcpy(to_read_buffer + buffer_tot_size, paras[i].out_buffer, out_size[i]);
                 //fprintf(stderr, "====222 %d\n", out_size[i]);
                 buffer_tot_size += out_size[i];
@@ -189,9 +219,9 @@ namespace rabbit {
 #ifdef USE_LIBDEFLATE
                 if (buffer_now_pos + size_ > buffer_tot_size) {
                     DecompressMore();
-                    //fprintf(stderr, "decom more %lld %lld\n", buffer_now_pos, buffer_tot_size);
+                    //fprintf(stderr, "decom more %lld %lld -- %d\n", buffer_now_pos, buffer_tot_size, iff_idx_end);
                     if(buffer_now_pos + size_ > buffer_tot_size) {
-                        fprintf(stderr, "after decom still not big enough, read done\n");
+                        fprintf(stderr, "after decom still not big enough, read done, -- %d\n", iff_idx_end);
                         size_ = buffer_tot_size - buffer_now_pos;
                     }
                 }
@@ -317,7 +347,7 @@ namespace rabbit {
                 //    fprintf(stderr, "iff_idx.eof() != feof(input_file)\n");
                 //    exit(0);
                 //}
-                return iff_idx.eof() || feof(input_file);
+                return (iff_idx_end || feof(input_file)) && (buffer_now_pos == buffer_tot_size);
 #else
                 return gzeof(mZipFile);
 #endif
@@ -337,6 +367,8 @@ namespace rabbit {
         }
 
         ~FileReader() {
+            //fprintf(stderr, "tot_read_size %lld\n", tot_read_size);
+            //fprintf(stderr, "lastinfo %lld %lld\n", buffer_now_pos, buffer_tot_size);
             if (mIgInbuf != NULL) delete mIgInbuf;
             if (mFile != NULL) {
                 fclose(mFile);
@@ -367,9 +399,11 @@ namespace rabbit {
         char* in_buffer[64];
         char* out_buffer[64];
         char* to_read_buffer;
+        std::vector<int> block_sizes;
         size_t buffer_tot_size;
         size_t buffer_now_pos;
         FILE *input_file;
+        int now_block;
 
 
         FILE *mFile = NULL;
@@ -379,6 +413,8 @@ namespace rabbit {
         bool isZipped = false;
         bool eof = false;
         std::ifstream iff_idx;
+        bool iff_idx_end;
+        long long tot_read_size;
     };
 
 }//namespace rabbit

@@ -24,6 +24,10 @@
 #include "threadinfo.h"
 #include "umier.h"
 #include "qcdata.h"
+
+#include "globalMutex.h"
+
+
 #define CIPair std::pair<char *, std::pair<int, long long>>
 #define CRPair std::pair<int64_t, std::vector<rabbit::fq::FastqDataChunk *>>
 
@@ -70,6 +74,7 @@ private:
 
     Filter *filter_;
     CIPair *out_queue_;
+    //QChunkItem *out_queue_;
     std::vector<rabbit::fq::FastqDataChunk *> *p_out_queue_;
     std::atomic_int done_thread_number_;
     FILE *out_stream_;
@@ -84,6 +89,8 @@ private:
     std::ofstream off_idx;
     bool in_is_zip_;
     bool out_is_zip_;
+    int start_line_;
+    int end_line_;
 
     moodycamel::ReaderWriterQueue<std::pair<char *, int>> *
             pugzQueue;

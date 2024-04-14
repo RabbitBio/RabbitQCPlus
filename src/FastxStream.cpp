@@ -1455,7 +1455,8 @@ namespace rabbit {
                 //std::cerr << std::endl;
             }
             if(offset != -2) now_size += r;
-            //printf("=== res %lld, %lld\n", r, now_size);
+            tot_read_size2 += r;
+//            printf("=== res %lld, %lld\n", r, now_size);
             if (!mFqReader->FinishRead() && now_size < lim_size) {
                 cbufSize = r + chunk_->size;
                 uint64 chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize : GetNxtBuffSize);

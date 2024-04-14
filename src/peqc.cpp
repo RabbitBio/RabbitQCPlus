@@ -3,11 +3,9 @@
 //
 
 #include "peqc.h"
-#include "globalMutex.h"
 
 using namespace std;
 
-//int block_size;
 
 extern "C" {
 #include <athread.h>
@@ -19,7 +17,6 @@ extern "C" {
 
 
 
-int Q_lim = 8;
 
 void PrintRef(neoReference &ref) {
     printf("%.*s\n", ref.lname, (char *) ref.base + ref.pname);
@@ -105,6 +102,15 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
     in_is_zip_ = cmd_info1->in_file_name1_.find(".gz") != string::npos;
     out_is_zip_ = cmd_info1->out_file_name1_.find(".gz") != string::npos;
 
+    if(in_is_zip_ && comm_size > 1) {
+#ifdef USE_LIBDEFLATE
+#else
+        if(my_rank == 0) fprintf(stderr, "compress file input for multi-process is not support, please use -DUSE_LIBDEFLATE in makefile.\n");
+        exit(0);
+#endif
+    }
+
+
     ifstream gFile;
     gFile.open(cmd_info1->in_file_name1_.c_str());
     gFile.seekg(0, ios_base::end);
@@ -121,30 +127,64 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
         exit(0);
     }
 
-    int64_t pre_size = ceil(1.0 * real_file_size / (2 * comm_size + 1));
-    int64_t start_pos, end_pos;
-    if(my_rank == 0) {
-        start_pos = 0;
-        end_pos = start_pos + pre_size * 3;
-    } else {
-        start_pos = pre_size * (my_rank * 2 + 1);
-        end_pos = start_pos + pre_size * 2;
-    }
-    if(end_pos > real_file_size) end_pos = real_file_size;
 
-    //cerr << "startpos" << my_rank << " " << start_pos << "-" << end_pos << endl;
-    FILE *pre_fp;
-    pre_fp = fopen(cmd_info1->in_file_name1_.c_str(), "rb");
-    fseek(pre_fp, start_pos, SEEK_SET);
-    char *tmp_chunk = new char[1 << 20];
-    int res_size = fread(tmp_chunk, sizeof(char), 1 << 20, pre_fp);
-    MPI_Barrier(MPI_COMM_WORLD);
-    //cerr << "res_size" << my_rank << " " << res_size << endl;
+    int64_t start_pos, end_pos;
+    if(in_is_zip_ && comm_size > 1) {
+        ifstream iff_idx;
+        iff_idx.open(cmd_info1->in_file_name1_ + ".swidx");
+        size_t block_size = 0;
+        vector<size_t> block_sizes;
+        while (iff_idx >> block_size) {
+            block_sizes.push_back(block_size);
+        }
+        iff_idx.close();
+        if (block_sizes.empty()) {
+            // Handle error or empty file scenario
+            cerr << "Error: No data read from index file." << endl;
+            exit(0);
+        }
+        int pre_size = ceil(1.0 * block_sizes.size() / comm_size);
+        int start_line = pre_size * my_rank;
+        int end_line = min(start_line + pre_size, (int) block_sizes.size());
+
+        for (int i = 1; i < block_sizes.size(); i++) {
+            block_sizes[i] += block_sizes[i - 1];
+        }
+        start_pos = (start_line == 0) ? 0 : block_sizes[start_line - 1];
+        end_pos = (end_line == block_sizes.size()) ? real_file_size : block_sizes[end_line - 1];
+        assert(block_sizes.back() == real_file_size);
+        start_line_ = start_line;
+        end_line_ = end_line;
+    } else {
+        int64_t pre_size = ceil(1.0 * real_file_size / comm_size);
+        start_pos = pre_size * my_rank;
+        end_pos = start_pos + pre_size;
+        if(end_pos > real_file_size) end_pos = real_file_size;
+    }
+
+
+    fprintf(stderr, "rank%d byte: [%lld %lld]\n", my_rank, start_pos, end_pos);
+    if(in_is_zip_) {
+        fprintf(stderr, "rank%d line: [%d %d]\n", my_rank, start_line_, end_line_);
+    }
+
+
     int64_t right_pos;
-    if(my_rank == 0) right_pos = 0;
-    else right_pos = GetNextFastq(tmp_chunk, 0, res_size);
-    //cerr << "right_pos" << my_rank << " " << right_pos << endl;
-    fclose(pre_fp);
+    if(in_is_zip_) {
+        right_pos = 0;
+    } else {
+        FILE *pre_fp;
+        pre_fp = fopen(cmd_info1->in_file_name1_.c_str(), "rb");
+        fseek(pre_fp, start_pos, SEEK_SET);
+        char *tmp_chunk = new char[1 << 20];
+        int res_size = fread(tmp_chunk, sizeof(char), 1 << 20, pre_fp);
+        MPI_Barrier(MPI_COMM_WORLD);
+        //cerr << "res_size" << my_rank << " " << res_size << endl;
+        if(my_rank == 0) right_pos = 0;
+        else right_pos = GetNextFastq(tmp_chunk, 0, res_size);
+        //cerr << "right_pos" << my_rank << " " << right_pos << endl;
+        fclose(pre_fp);
+    }
 
     MPI_Barrier(MPI_COMM_WORLD);
     long long now_pos = right_pos + start_pos;
@@ -177,28 +217,30 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
     p_queueP1 = 0;
     p_queueP2 = 0;
     p_queueNumNow = 0;
-    p_queueSizeLim = Q_lim;
+    p_queueSizeLim = Q_lim_pe;
 
  
     if (cmd_info1->write_data_) {
 
         out_queue_ = new pair<CIPair, CIPair>[1 << 20];
+//        out_queue_ = new pair<QChunkItem, QChunkItem>[1 << 20];
         queueP1 = 0;
         queueP2 = 0;
         queueNumNow = 0;
-        queueSizeLim = Q_lim * 64;
+        queueSizeLim = Q_lim_pe * 64;
+        //queueSizeLim = Q_lim_pe;
 
         //out_queue1_ = new CIPair[1 << 20];
         //queue1P1 = 0;
         //queue1P2 = 0;
         //queueNumNow1 = 0;
-        //queueSizeLim1 = Q_lim;
+        //queueSizeLim1 = Q_lim_pe;
         if (cmd_info_->interleaved_out_ == 0) {
             //out_queue2_ = new CIPair[1 << 20];
             //queue2P1 = 0;
             //queue2P2 = 0;
             //queueNumNow2 = 0;
-            //queueSizeLim2 = Q_lim;
+            //queueSizeLim2 = Q_lim_pe;
         }
         if (out_is_zip_) {
             if (cmd_info1->use_pigz_) {
@@ -478,8 +520,8 @@ void PeQc::ProducerPeInterFastqTask(string file, rabbit::fq::FastqDataPool *fast
     double t0 = GetTime();
 #endif
     rabbit::fq::FastqFileReader *fqFileReader;
-    rabbit::uint32 tmpSize = 1 << 20;
-    if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
+    rabbit::uint32 tmpSize = SWAP1_SIZE;
+    if (cmd_info_->seq_len_ <= 200) tmpSize = SWAP2_SIZE;
     fqFileReader = new rabbit::fq::FastqFileReader(file, *fastq_data_pool, "", in_is_zip_);
     int64_t n_chunks = 0;
     while (true) {
@@ -498,12 +540,12 @@ void PeQc::ProducerPeInterFastqTask(string file, rabbit::fq::FastqDataPool *fast
 #endif
 }
 
-rabbit::fq::FastqFileReader *fqFileReader;
+static rabbit::fq::FastqFileReader *fqFileReader;
 
 void PeQc::ProducerPeFastqTask64(string file, string file2, rabbit::fq::FastqDataPool *fastqPool) {
     double t0 = GetTime();
-    rabbit::uint32 tmpSize = 1 << 20;
-    if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
+    rabbit::uint32 tmpSize = SWAP1_SIZE;
+    if (cmd_info_->seq_len_ <= 200) tmpSize = SWAP2_SIZE;
     int64_t n_chunks = 0;
 
     double t_sum1 = 0;
@@ -526,7 +568,11 @@ void PeQc::ProducerPeFastqTask64(string file, string file2, rabbit::fq::FastqDat
 #ifdef use_in_mem
         fqdatachunk = fqFileReader->readNextPairChunkFromMem(offset, part_sizes[my_rank]);
 #else 
-        fqdatachunk = fqFileReader->readNextPairChunk(offset, part_sizes[my_rank]);
+        if(in_is_zip_ && comm_size > 1) {
+            fqdatachunk = fqFileReader->readNextPairChunk(-1, part_sizes[my_rank]);
+        } else {
+            fqdatachunk = fqFileReader->readNextPairChunk(offset, part_sizes[my_rank]);
+        }
 #endif
         t_sum1 += GetTime() - tt0;
 
@@ -637,8 +683,8 @@ void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataP
     double t0 = GetTime();
 #endif
     
-    rabbit::uint32 tmpSize = 1 << 20;
-    if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
+    rabbit::uint32 tmpSize = SWAP1_SIZE;
+    if (cmd_info_->seq_len_ <= 200) tmpSize = SWAP2_SIZE;
     int64_t n_chunks = 0;
 
 
@@ -1230,7 +1276,7 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
 
 
         //fprintf(stderr, "rank%d pending write size %d\n", my_rank, writeInfosPE.size());
-#ifdef USE_LIBDEFLATE
+#ifdef CONSUMER_USE_LIBDEFLATE
         tt0 = GetTime();
         if (cmd_info_->write_data_ && out_is_zip_) {
             Para paras[64];
@@ -1267,7 +1313,7 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
                 } else {
                     for(int ii = 1; ii < comm_size; ii++) {
                         MPI_Recv(&(now_sizes[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                    } 
+                    }
                 }
                 MPI_Barrier(MPI_COMM_WORLD);
                 if(my_rank == 0) {
@@ -1355,7 +1401,17 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
 
         if (cmd_info_->write_data_) {
             tt0 = GetTime();
-            for(int i = 0; i < writeInfosPE.size(); i++) {
+            assert(writeInfosPE.size() == 64);
+            //QChunkItem Qitem1, Qitem2;
+            //for(int i = 0; i < writeInfosPE.size(); i++) {
+            //    Qitem1.buffer[i] = writeInfosPE[i].buffer;
+            //    Qitem1.buffer_len[i] = writeInfosPE[i].buffer_len;
+            //    Qitem1.file_offset[i] = writeInfosPE[i].file_offset;
+            //    Qitem2.buffer[i] = writeInfosPE[i].buffer2;
+            //    Qitem2.buffer_len[i] = writeInfosPE[i].buffer_len2;
+            //    Qitem2.file_offset[i] = writeInfosPE[i].file_offset2;
+            //}
+            for(int i = 0; i < 64; i++) {
                 //mylock.lock();
                 while (queueNumNow >= queueSizeLim) {
 #ifdef Verbose
@@ -1364,9 +1420,11 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
                     usleep(1000);
                 }
                 out_queue_[queueP2++] = make_pair(make_pair(writeInfosPE[i].buffer, make_pair(writeInfosPE[i].buffer_len, writeInfosPE[i].file_offset)), make_pair(writeInfosPE[i].buffer2, make_pair(writeInfosPE[i].buffer_len2, writeInfosPE[i].file_offset2)));
+                //out_queue_[queueP2++] = make_pair(Qitem1, Qitem2);
                 queueNumNow++;
                 //mylock.unlock();
             }
+
             t_push_q += GetTime() - tt0;
         }
 
@@ -1387,351 +1445,6 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
 
 
 /**
- * @brief get fastq data chunks from the data queue and do QC for them
- * @param thread_info : thread information
- * @param fastq_data_pool :a fastq data pool, it will be used to release data chunk
- * @param dq : data queue
- */
-void PeQc::ConsumerPeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataPool *fastqPool,
-        rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
-    rabbit::int64 id = 0;
-    rabbit::fq::FastqDataPairChunk *fqdatachunk;
-    qc_data para;
-    para.cmd_info_ = cmd_info_;
-    para.thread_info_ = thread_infos;
-    para.bit_len = 0;
-    bool proDone = 0;
-    if(cmd_info_->state_duplicate_) {
-        para.bit_len = duplicate_->key_len_base_;
-    }
-    athread_init();
-    double t0 = GetTime();
-    double tsum1 = 0;
-    double tsum2 = 0;
-    double tsum3 = 0;
-    double tsum4 = 0;
-    double tsum4_1 = 0;
-    double tsum4_2 = 0;
-    while (dq.Pop(id, fqdatachunk)) {
-        double tt0 = GetTime();
-        tsum1 += GetTime() - tt0;
-        tt0 = GetTime();
-        vector <neoReference> data1;
-        vector <neoReference> data2;
-        if(fqdatachunk != NULL) rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->left_part), data1, true);
-        if(fqdatachunk != NULL) rabbit::fq::chunkFormat((rabbit::fq::FastqDataChunk *) (fqdatachunk->right_part), data2, true);
-        if(data1.size() != data2.size()) printf("GG size pe\n");
-        vector <neoReference> pass_data1(data1);
-        vector <neoReference> pass_data2(data2);
-        vector <dupInfo> dups;
-        if(cmd_info_->state_duplicate_) {
-            dups.resize(data1.size());
-        }
-        tsum2 += GetTime() - tt0;
-        tt0 = GetTime();
-        if(fqdatachunk != NULL) {
-            para.data1_ = &data1;
-            para.data2_ = &data2;
-            para.pass_data1_ = &pass_data1;
-            para.pass_data2_ = &pass_data2;
-            para.dups = &dups;
-            {
-                lock_guard<mutex> guard(globalMutex);
-                __real_athread_spawn((void *)slave_ngspefunc, &para, 1);
-                athread_join();
-            }
-        }
-        //printf("pass size1 %d\n", pass_data1.size());
-        //printf("pass size2 %d\n", pass_data2.size());
-        tsum3 += GetTime() - tt0;
-        tt0 = GetTime(); 
-        if(cmd_info_->state_duplicate_) {
-            for(auto item : dups) {
-                auto key = item.key;
-                auto kmer32 = item.kmer32;
-                auto gc = item.gc;
-                if (duplicate_->counts_[key] == 0) {
-                    duplicate_->counts_[key] = 1;
-                    duplicate_->dups_[key] = kmer32;
-                    duplicate_->gcs_[key] = gc;
-                } else {
-                    if (duplicate_->dups_[key] == kmer32) {
-                        duplicate_->counts_[key]++;
-                        if (duplicate_->gcs_[key] > gc) duplicate_->gcs_[key] = gc;
-                    } else if (duplicate_->dups_[key] > kmer32) {
-                        duplicate_->dups_[key] = kmer32;
-                        duplicate_->counts_[key] = 1;
-                        duplicate_->gcs_[key] = gc;
-                    }
-                }
-            }
-        }
-        if (cmd_info_->write_data_) {
-            int out_len1 = 0;
-            for(auto item : pass_data1){
-                if(item.lname == 0) continue;
-                out_len1 += item.lname + item.lseq + item.lstrand + item.lqual + 4;
-            }
-            int out_len2 = 0;
-            for(auto item : pass_data2){
-                if(item.lname == 0) continue;
-                out_len2 += item.lname + item.lseq + item.lstrand + item.lqual + 4;
-            }
-            if (cmd_info_->interleaved_out_) {
-                printf("interleaved out TODO...\n");
-            } else {
-                char *out_data1;
-                if(out_len1) out_data1 = new char[out_len1];
-                else out_data1 = (char *)(NULL);
-                int pos = 0;
-                for (auto item: pass_data1) {
-                    if(item.lname == 0) continue;
-                    Read2Chars(item, out_data1, pos);
-                }
-                ASSERT(pos == out_len1);
-
-                char *out_data2;
-                if(out_len2) out_data2 = new char[out_len2];
-                else out_data2 = (char *)(NULL);
-                pos = 0;
-                for (auto item: pass_data2) {
-                    if(item.lname == 0) continue;
-                    Read2Chars(item, out_data2, pos);
-                }
-                ASSERT(pos == out_len2);
-
-                int now_size1 = out_len1;
-                char *now_pos1 = out_data1;
-                int now_sizes1[comm_size];
-                now_sizes1[0] = now_size1;
-                MPI_Barrier(MPI_COMM_WORLD);
-                if(my_rank) {
-                    MPI_Send(&now_size1, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-                } else {
-                    for(int ii = 1; ii < comm_size; ii++) {
-                        MPI_Recv(&(now_sizes1[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                    } 
-                }
-                MPI_Barrier(MPI_COMM_WORLD);
-                if(my_rank == 0) {
-                    for(int ii = 1; ii < comm_size; ii++) {
-                        MPI_Send(now_sizes1, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
-                    }
-                } else {
-                    MPI_Recv(now_sizes1, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                }
-                MPI_Barrier(MPI_COMM_WORLD);
-                int pre_sizes1[comm_size];
-                pre_sizes1[0] = 0;
-                for(int ii = 1; ii < comm_size; ii++) {
-                    pre_sizes1[ii] = pre_sizes1[ii - 1] + now_sizes1[ii - 1];
-                }
-
-                long long now_pos_base1 = now_pos1_ + pre_sizes1[my_rank];
-
-                for(int ii = 0; ii < comm_size; ii++) {
-                    now_pos1_ += now_sizes1[ii];
-                }
-
-
-
-                int now_size2 = out_len2;
-                char *now_pos2 = out_data2;
-                int now_sizes2[comm_size];
-                now_sizes2[0] = now_size2;
-                MPI_Barrier(MPI_COMM_WORLD);
-                if(my_rank) {
-                    MPI_Send(&now_size2, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-                } else {
-                    for(int ii = 1; ii < comm_size; ii++) {
-                        MPI_Recv(&(now_sizes2[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                    } 
-                }
-                MPI_Barrier(MPI_COMM_WORLD);
-                if(my_rank == 0) {
-                    for(int ii = 1; ii < comm_size; ii++) {
-                        MPI_Send(now_sizes2, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
-                    }
-                } else {
-                    MPI_Recv(now_sizes2, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                }
-                MPI_Barrier(MPI_COMM_WORLD);
-                int pre_sizes2[comm_size];
-                pre_sizes2[0] = 0;
-                for(int ii = 1; ii < comm_size; ii++) {
-                    pre_sizes2[ii] = pre_sizes2[ii - 1] + now_sizes2[ii - 1];
-                }
-
-                long long now_pos_base2 = now_pos2_ + pre_sizes2[my_rank];
-
-                for(int ii = 0; ii < comm_size; ii++) {
-                    now_pos2_ += now_sizes2[ii];
-                }
-
-
-                if(proDone == 0) {
-                    int proStop = producerStop.load();
-                    int stops[comm_size];
-                    stops[0] = proStop;
-                    MPI_Barrier(MPI_COMM_WORLD);
-                    if(my_rank) {
-                        MPI_Send(&proStop, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-                    } else {
-                        for(int ii = 1; ii < comm_size; ii++) {
-                            MPI_Recv(&(stops[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                        } 
-                    }
-                    MPI_Barrier(MPI_COMM_WORLD);
-                    if(my_rank == 0) {
-                        for(int ii = 1; ii < comm_size; ii++) {
-                            MPI_Send(stops, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
-                        }
-                    } else {
-                        MPI_Recv(stops, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                    }
-                    int all_stop = 1;
-                    int some_stop = 0;
-                    for(int ii = 0; ii < comm_size; ii++) {
-                        if(stops[ii] == 0) all_stop = 0;
-                        if(stops[ii] == 1) some_stop = 1;
-                    }
-                    if(all_stop) {
-                        int64_t chunk_sizes[comm_size];
-                        chunk_sizes[0] = now_chunks;
-                        MPI_Barrier(MPI_COMM_WORLD);
-                        if(my_rank) {
-                            MPI_Send(&now_chunks, 1, MPI_LONG, 0, 0, MPI_COMM_WORLD);
-                        } else {
-                            for(int ii = 1; ii < comm_size; ii++) {
-                                MPI_Recv(&(chunk_sizes[ii]), 1, MPI_LONG, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                            } 
-                        }
-                        MPI_Barrier(MPI_COMM_WORLD);
-                        if(my_rank == 0) {
-                            for(int ii = 1; ii < comm_size; ii++) {
-                                MPI_Send(chunk_sizes, comm_size, MPI_LONG, ii, 0, MPI_COMM_WORLD);
-                            }
-                        } else {
-                            MPI_Recv(chunk_sizes, comm_size, MPI_LONG, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                        }
-                        for(int ii = 0; ii < comm_size; ii++) {
-                            mx_chunks = max(mx_chunks, chunk_sizes[ii]);
-                        }
-                        consumerCommDone = 1;
-                        proDone = 1;
-                    } else if(some_stop){
-                        int goonn = 1;
-                        while(goonn) {
-                            usleep(1000);
-                            int proStop = producerStop.load();
-                            int stops[comm_size];
-                            stops[0] = proStop;
-                            MPI_Barrier(MPI_COMM_WORLD);
-                            if(my_rank) {
-                                MPI_Send(&proStop, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-                            } else {
-                                for(int ii = 1; ii < comm_size; ii++) {
-                                    MPI_Recv(&(stops[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                                } 
-                            }
-                            MPI_Barrier(MPI_COMM_WORLD);
-                            if(my_rank == 0) {
-                                for(int ii = 1; ii < comm_size; ii++) {
-                                    MPI_Send(stops, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
-                                }
-                            } else {
-                                MPI_Recv(stops, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                            }
-                            int all_stop = 1;
-                            int some_stop = 0;
-                            for(int ii = 0; ii < comm_size; ii++) {
-                                if(stops[ii] == 0) all_stop = 0;
-                                if(stops[ii] == 1) some_stop = 1;
-                            }
-                            //cerr << "===waiting stop" << my_rank << " " << proStop << endl;
-                            //printf("waiting stop%d %d\n", my_rank, all_stop);
-                            if(all_stop) {
-                                int64_t chunk_sizes[comm_size];
-                                chunk_sizes[0] = now_chunks;
-                                MPI_Barrier(MPI_COMM_WORLD);
-                                if(my_rank) {
-                                    MPI_Send(&now_chunks, 1, MPI_LONG, 0, 0, MPI_COMM_WORLD);
-                                } else {
-                                    for(int ii = 1; ii < comm_size; ii++) {
-                                        MPI_Recv(&(chunk_sizes[ii]), 1, MPI_LONG, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                                    } 
-                                }
-                                MPI_Barrier(MPI_COMM_WORLD);
-                                if(my_rank == 0) {
-                                    for(int ii = 1; ii < comm_size; ii++) {
-                                        MPI_Send(chunk_sizes, comm_size, MPI_LONG, ii, 0, MPI_COMM_WORLD);
-                                    }
-                                } else {
-                                    MPI_Recv(chunk_sizes, comm_size, MPI_LONG, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                                }
-                                for(int ii = 0; ii < comm_size; ii++) {
-                                    mx_chunks = max(mx_chunks, chunk_sizes[ii]);
-                                }
-                                consumerCommDone = 1;
-                                proDone = 1;
-                                goonn = 0;
-                            }
-
-                        }
-                    }
-                }
-
-
-                //mylock.lock();
-                while (queueNumNow >= queueSizeLim) {
-#ifdef Verbose
-                    //printf("waiting to push a chunk to out queue1\n");
-#endif
-                    usleep(1000);
-                }
-                out_queue_[queueP2++] = make_pair(make_pair(out_data1, make_pair(out_len1, now_pos_base1)), make_pair(out_data2, make_pair(out_len2, now_pos_base2)));
-                queueNumNow++;
-         
-//                //mylock.lock();
-//                while (queueNumNow1 >= queueSizeLim1 || queueNumNow2 >= queueSizeLim2) {
-//#ifdef Verbose
-//                    //printf("waiting to push a chunk to out queue1\n");
-//#endif
-//                    usleep(1000);
-//                }
-//                out_queue1_[queue1P2++] = make_pair(out_data1, make_pair(out_len1, now_pos_base1));
-//                queueNumNow1++;
-//                out_queue2_[queue2P2++] = make_pair(out_data2, make_pair(out_len2, now_pos_base2));
-//                queueNumNow2++;
-                //printf("push chunk %lld === %d %lld, %d %lld\n", id, out_len1, now_pos_base1, out_len2, now_pos_base2);
-                //mylock.unlock();
-            }
-        }
-        if(fqdatachunk != NULL) {
-            fastqPool->Release(fqdatachunk->left_part);
-            fastqPool->Release(fqdatachunk->right_part);
-        }
-    }
-    printf("NGSnew tot cost %lf\n", GetTime() - t0);
-    printf("NGSnew producer cost %lf\n", tsum1);
-    printf("NGSnew format cost %lf\n", tsum2);
-    printf("NGSnew slave cost %lf\n", tsum3);
-    printf("NGSnew write cost %lf\n", tsum4);
-    printf("NGSnew write1 cost %lf\n", tsum4_1);
-    printf("NGSnew write2 cost %lf\n", tsum4_2);
-    done_thread_number_++;
-    athread_halt();
-    //fprintf(stderr, "rank%d 11111111111111\n", my_rank);
-}
-
-
-void PeQc::ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
-        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
-    printf("interleaved mode TODO...\n");
-}
-
-
-/**
  * @brief a function to write pe data from out_data1 queue to file1
  */
 void PeQc::WriteSeFastqTask12() {
@@ -1742,10 +1455,14 @@ void PeQc::WriteSeFastqTask12() {
     long long tot_size1 = 0;
     long long tot_size2 = 0;
     bool overWhile = 0;
+    //pair<QChunkItem, QChunkItem> QitemPair;
+    //QChunkItem Qitem1;
+    //QChunkItem Qitem2;
     pair<CIPair, CIPair> now0;
     CIPair now1;
     CIPair now2;
     double t_wait = 0;
+    double t_gz_slave = 0;
     double t_write = 0;
     double t_del = 0;
     double t_free = 0;
@@ -1763,12 +1480,138 @@ void PeQc::WriteSeFastqTask12() {
             usleep(1000);
         }
         if (overWhile) break;
+        //QitemPair = out_queue_[queueP1++];
+        //Qitem1 = QitemPair.first;
+        //Qitem2 = QitemPair.second;
         now0 = out_queue_[queueP1++];
         now1 = now0.first;
         now2 = now0.second;
         queueNumNow--;
         t_wait += GetTime() - tt0;
-        //fprintf(stderr, "writer rank %d write get %p\n", my_rank, now1.first);
+
+
+//#ifdef WRITER_USE_LIBDEFLATE
+//
+//        tt0 = GetTime();
+//        if (out_is_zip_) {
+//            Para paras[64];
+//            size_t out_size[64] = {0};
+//            for(int i = 0; i < 64; i++) {
+//                paras[i].in_buffer = Qitem1.buffer[i];
+//                paras[i].out_buffer = new char[BLOCK_SIZE];
+//                paras[i].in_size = Qitem1.buffer_len[i];
+//                paras[i].out_size = &(out_size[i]);
+//                paras[i].level = 1;
+//            }
+//            {
+//                std::lock_guard<std::mutex> guard(globalMutex);
+//                __real_athread_spawn((void *)slave_compressfunc, paras, 1);
+//                athread_join();
+//            }
+//            for(int i = 0; i < 64; i++) {
+//                off_idx1 << out_size[i] << endl;
+//            }
+//            for(int i = 0; i < 64; i++) {
+//                delete[] Qitem1.buffer[i];
+//                Qitem1.buffer[i] = paras[i].out_buffer;
+//                Qitem1.buffer_len[i] = out_size[i];
+//
+//                int now_size = Qitem1.buffer_len[i];
+//                int now_sizes[comm_size];
+//                now_sizes[0] = now_size;
+//                MPI_Barrier(MPI_COMM_WORLD);
+//                if(my_rank) {
+//                    MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+//                } else {
+//                    for(int ii = 1; ii < comm_size; ii++) {
+//                        MPI_Recv(&(now_sizes[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+//                    }
+//                }
+//                MPI_Barrier(MPI_COMM_WORLD);
+//                if(my_rank == 0) {
+//                    for(int ii = 1; ii < comm_size; ii++) {
+//                        MPI_Send(now_sizes, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
+//                    }
+//                } else {
+//                    MPI_Recv(now_sizes, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+//                }
+//                MPI_Barrier(MPI_COMM_WORLD);
+//                int pre_sizes[comm_size];
+//                pre_sizes[0] = 0;
+//                for(int ii = 1; ii < comm_size; ii++) {
+//                    pre_sizes[ii] = pre_sizes[ii - 1] + now_sizes[ii - 1];
+//                }
+//                long long now_pos_base = zip_now_pos1_ + pre_sizes[my_rank];
+//                MPI_Barrier(MPI_COMM_WORLD);
+//                for(int ii = 0; ii < comm_size; ii++) {
+//                    zip_now_pos1_ += now_sizes[ii];
+//                }
+//                Qitem1.file_offset[i] = now_pos_base;
+//
+//            }
+//
+//
+//            Para paras2[64];
+//            size_t out_size2[64] = {0};
+//            for(int i = 0; i < 64; i++) {
+//                paras2[i].in_buffer = Qitem2.buffer[i];
+//                paras2[i].out_buffer = new char[BLOCK_SIZE];
+//                paras2[i].in_size = Qitem2.buffer_len[i];
+//                paras2[i].out_size = &(out_size2[i]);
+//                paras2[i].level = 1;
+//            }
+//            {
+//                std::lock_guard<std::mutex> guard(globalMutex);
+//                __real_athread_spawn((void *)slave_compressfunc, paras2, 1);
+//                athread_join();
+//            }
+//            for(int i = 0; i < 64; i++) {
+//                off_idx2 << out_size2[i] << endl;
+//            }
+//            for(int i = 0; i < 64; i++) {
+//                delete[] Qitem2.buffer[i];
+//                Qitem2.buffer[i] = paras2[i].out_buffer;
+//                Qitem2.buffer_len[i] = out_size2[i];
+//
+//                int now_size = Qitem2.buffer_len[i];
+//                int now_sizes[comm_size];
+//                now_sizes[0] = now_size;
+//                MPI_Barrier(MPI_COMM_WORLD);
+//                if(my_rank) {
+//                    MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+//                } else {
+//                    for(int ii = 1; ii < comm_size; ii++) {
+//                        MPI_Recv(&(now_sizes[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+//                    }
+//                }
+//                MPI_Barrier(MPI_COMM_WORLD);
+//                if(my_rank == 0) {
+//                    for(int ii = 1; ii < comm_size; ii++) {
+//                        MPI_Send(now_sizes, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
+//                    }
+//                } else {
+//                    MPI_Recv(now_sizes, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+//                }
+//                MPI_Barrier(MPI_COMM_WORLD);
+//                int pre_sizes[comm_size];
+//                pre_sizes[0] = 0;
+//                for(int ii = 1; ii < comm_size; ii++) {
+//                    pre_sizes[ii] = pre_sizes[ii - 1] + now_sizes[ii - 1];
+//                }
+//                long long now_pos_base = zip_now_pos2_ + pre_sizes[my_rank];
+//                MPI_Barrier(MPI_COMM_WORLD);
+//                for(int ii = 0; ii < comm_size; ii++) {
+//                    zip_now_pos2_ += now_sizes[ii];
+//                }
+//                Qitem2.file_offset[i] = now_pos_base;
+//
+//            }
+//        }
+//        t_gz_slave += GetTime() - tt0;
+//
+//#endif
+
+
         if (out_is_zip_) {
             if (cmd_info_->use_pigz_) {
                 fprintf(stderr, "use pigz TODO...\n");
@@ -1801,7 +1644,6 @@ void PeQc::WriteSeFastqTask12() {
                     printf("gzwrite error\n");
                     exit(0);
                 }
-                delete[] now1.first;
 
                 int written2 = gzwrite(zip_out_stream2, now2.first, now2.second.first);
                 if (written2 != now2.second.first) {
@@ -1812,6 +1654,7 @@ void PeQc::WriteSeFastqTask12() {
                 t_write += GetTime() - tt0;
 
                 tt0 = GetTime();
+                delete[] now1.first;
                 delete[] now2.first;
                 t_del += GetTime() - tt0;
             }
@@ -1820,8 +1663,9 @@ void PeQc::WriteSeFastqTask12() {
             tot_size1 += now1.second.first;
             if(now1.second.first) {
 #ifdef use_out_mem
-                //memcpy(OutMemData1 + now1.second.second, now1.first, now1.second.first); 
-                memcpy(OutMemData1, now1.first, now1.second.first); 
+                //memcpy(OutMemData1 + now1.second.second, now1.first, now1.second.first);
+                
+                memcpy(OutMemData1, now1.first, now1.second.first);
 #else
 
 #ifdef use_mpi_file
@@ -1847,8 +1691,9 @@ void PeQc::WriteSeFastqTask12() {
             if(now2.second.first) {
 
 #ifdef use_out_mem
-                //memcpy(OutMemData2 + now2.second.second, now2.first, now2.second.first); 
-                memcpy(OutMemData2, now2.first, now2.second.first); 
+                //memcpy(OutMemData2 + now2.second.second, now2.first, now2.second.first);
+                
+                memcpy(OutMemData2, now2.first, now2.second.first);
 #else
 
 #ifdef use_mpi_file
@@ -1913,10 +1758,8 @@ void PeQc::WriteSeFastqTask12() {
 
     } else {
 #ifdef use_mpi_file
-        //fprintf(stderr, "writer%d close file 1\n", my_rank);
         MPI_File_close(&fh1);
         MPI_File_close(&fh2);
-        //fprintf(stderr, "writer%d close file 2\n", my_rank);
 #else
         fclose(out_stream1_);
         if(my_rank == 0) {
@@ -1930,6 +1773,7 @@ void PeQc::WriteSeFastqTask12() {
     }
 #ifdef Verbose
     printf("writer wait queue cost %.4f\n", t_wait);
+    printf("writer gz slave cost %.4f\n", t_gz_slave);
     printf("writer write cost %.4f\n", t_write);
     printf("writer del cost %.4f\n", t_del);
     printf("writer free cost %.4f\n", t_free);
@@ -2220,16 +2064,20 @@ bool checkStates(State* s1, State* s2) {
 void PeQc::ProcessPeFastq() {
     //if(my_rank == 0) block_size = 6 * (1 << 20);
     //else block_size = 4 * (1 << 20);
-    auto *fastqPool = new rabbit::fq::FastqDataPool(Q_lim * 64 * 2, BLOCK_SIZE);
-    //rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(Q_lim, 1);
+    auto *fastqPool = new rabbit::fq::FastqDataPool(Q_lim_pe * 64 * 2, BLOCK_SIZE);
+    //rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> queue1(Q_lim_pe, 1);
     auto **p_thread_info = new ThreadInfo *[slave_num];
     for (int t = 0; t < slave_num; t++) {
         p_thread_info[t] = new ThreadInfo(cmd_info_, true);
     }
-    rabbit::uint32 tmpSize = 1 << 20;
-    if (cmd_info_->seq_len_ <= 200) tmpSize = 1 << 14;
+    rabbit::uint32 tmpSize = SWAP1_SIZE;
+    if (cmd_info_->seq_len_ <= 200) tmpSize = SWAP2_SIZE;
     
-    fqFileReader = new rabbit::fq::FastqFileReader(cmd_info_->in_file_name1_, *fastqPool, cmd_info_->in_file_name2_, in_is_zip_, tmpSize);
+    if(in_is_zip_ && comm_size > 1) {
+        fqFileReader = new rabbit::fq::FastqFileReader(cmd_info_->in_file_name1_, *fastqPool, cmd_info_->in_file_name2_, in_is_zip_, tmpSize, start_line_, end_line_);
+    } else {
+        fqFileReader = new rabbit::fq::FastqFileReader(cmd_info_->in_file_name1_, *fastqPool, cmd_info_->in_file_name2_, in_is_zip_, tmpSize);
+    }
 #ifdef use_in_mem
     fqFileReader->MemDataReader();
     fqFileReader->MemDataReader2();
@@ -2239,19 +2087,7 @@ void PeQc::ProcessPeFastq() {
 
     //tagg
 
-    //thread *write_thread12;
-    //thread *write_thread1;
-    //thread *write_thread2;
-    //if (cmd_info_->write_data_) {
-    //    write_thread12 = new thread(bind(&PeQc::WriteSeFastqTask12, this));
-    //    //write_thread1 = new thread(bind(&PeQc::WriteSeFastqTask1, this));
-    //    //if (cmd_info_->interleaved_out_ == 0)
-    //    //    write_thread2 = new thread(bind(&PeQc::WriteSeFastqTask2, this));
-    //}
-
-    //thread producer(bind(&PeQc::ProducerPeFastqTask, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_, fastqPool, ref(queue1)));
     thread producer(bind(&PeQc::ProducerPeFastqTask64, this, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_, fastqPool));
-    //thread consumer(bind(&PeQc::ConsumerPeFastqTask, this, p_thread_info, fastqPool, ref(queue1)));
     thread consumer(bind(&PeQc::ConsumerPeFastqTask64, this, p_thread_info, fastqPool));
 
     if (cmd_info_->write_data_) {
@@ -2259,45 +2095,6 @@ void PeQc::ProcessPeFastq() {
         printf("write%d done\n", my_rank);
     }
 
-    //bool writeThreadJoined = false;
-    //bool consumerThreadJoined = false;
-    //bool producerThreadJoined = false;
-    //if(cmd_info_->write_data_ == 0) writeThreadJoined = 1;
-
-    //while (!writeThreadJoined || !consumerThreadJoined || !producerThreadJoined) {
-    //    if (cmd_info_->write_data_ && !writeThreadJoined && write_thread12->joinable()) {
-    //        write_thread12->join();
-    //        printf("write%d done\n", my_rank);
-    //        writerDone1 = 1;
-    //        writeThreadJoined = true;
-    //    }
-
-    //    if (!consumerThreadJoined && consumer.joinable()) {
-    //        consumer.join();
-    //        printf("consumer%d done\n", my_rank);
-    //        consumerThreadJoined = true;
-    //    }
-
-    //    if (!producerThreadJoined && producer.joinable()) {
-    //        producer.join();
-    //        printf("producer%d done\n", my_rank);
-    //        producerThreadJoined = true;
-    //    }
-    //    printf("waiting %d %d %d\n", producerThreadJoined, consumerThreadJoined, writeThreadJoined);
-    //    usleep(1000);
-    //}
-
-    //if (cmd_info_->write_data_) {
-    //    //write_thread1->join();
-    //    write_thread12->join();
-    //    printf("write%d done\n", my_rank);
-    //    writerDone1 = 1;
-    //    //if (cmd_info_->interleaved_out_ == 0) {
-    //    //    write_thread2->join();
-    //    //    printf("write%d done2\n", my_rank);
-    //    //    writerDone2 = 1;
-    //    //}
-    //}
 
     consumer.join();
     printf("consumer%d done\n", my_rank);
@@ -2435,6 +2232,7 @@ void PeQc::ProcessPeFastq() {
             delete p_thread_info[t];
         }
         delete[] p_thread_info;
+        delete fqFileReader;
         return;
     }
 
