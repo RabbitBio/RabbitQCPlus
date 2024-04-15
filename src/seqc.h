@@ -81,6 +81,7 @@ private:
     MPI_File fh;
     MPI_Status status;
     Duplicate *duplicate_;
+    //Duplicate *duplicate_[64];
     Umier *umier_;
     long long now_pos_;
     long long zip_now_pos_;

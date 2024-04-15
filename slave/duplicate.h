@@ -2,16 +2,12 @@
 // Created by ylf9811 on 2021/7/13.
 //
 
-#ifndef RERABBITQC_DUPLICATE_H
-#define RERABBITQC_DUPLICATE_H
+#ifndef SLAVE_RERABBITQC_DUPLICATE_H
+#define SLAVE_RERABBITQC_DUPLICATE_H
 
 
-#include <cmath>
-#include <cstring>
-#include <iostream>
-#include <mutex>
 
-#include "Globals.h"
+//#include "Globals.h"
 #include "Reference.h"
 #include "cmdinfo.h"
 
@@ -44,4 +40,4 @@ public:
 };
 
 
-#endif//RERABBITQC_DUPLICATE_H
+#endif//SLAVE_RERABBITQC_DUPLICATE_H

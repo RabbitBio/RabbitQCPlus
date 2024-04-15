@@ -793,14 +793,14 @@ void PeQc::ProcessNgsData(bool &proDone, vector <neoReference> &data1, vector <n
     double tt0 = GetTime();
     vector <neoReference> pass_data1(data1);
     vector <neoReference> pass_data2(data2);
-    vector <dupInfo> dups;
+    //vector <dupInfo> dups;
     //if(cmd_info_->write_data_) {
     //    pass_data1.resize(data1.size());
     //    pass_data2.resize(data2.size());
     //}
-    if(cmd_info_->state_duplicate_) {
-        dups.resize(data1.size());
-    }
+    //if(cmd_info_->state_duplicate_) {
+    //    dups.resize(data1.size());
+    //}
     tsum1 += GetTime() - tt0;
 
     tt0 = GetTime();
@@ -809,7 +809,7 @@ void PeQc::ProcessNgsData(bool &proDone, vector <neoReference> &data1, vector <n
         para->data2_ = &data2;
         para->pass_data1_ = &pass_data1;
         para->pass_data2_ = &pass_data2;
-        para->dups = &dups;
+        //para->dups = &dups;
         {
             lock_guard<mutex> guard(globalMutex);
             __real_athread_spawn((void *)slave_ngspefunc, para, 1);
@@ -820,27 +820,27 @@ void PeQc::ProcessNgsData(bool &proDone, vector <neoReference> &data1, vector <n
     //fprintf(stderr, "consumer %d data_pass size %d %d\n", my_rank, pass_data1.size(), pass_data2.size());
 
     tt0 = GetTime(); 
-    if(cmd_info_->state_duplicate_) {
-        for(auto item : dups) {
-            auto key = item.key;
-            auto kmer32 = item.kmer32;
-            auto gc = item.gc;
-            if (duplicate_->counts_[key] == 0) {
-                duplicate_->counts_[key] = 1;
-                duplicate_->dups_[key] = kmer32;
-                duplicate_->gcs_[key] = gc;
-            } else {
-                if (duplicate_->dups_[key] == kmer32) {
-                    duplicate_->counts_[key]++;
-                    if (duplicate_->gcs_[key] > gc) duplicate_->gcs_[key] = gc;
-                } else if (duplicate_->dups_[key] > kmer32) {
-                    duplicate_->dups_[key] = kmer32;
-                    duplicate_->counts_[key] = 1;
-                    duplicate_->gcs_[key] = gc;
-                }
-            }
-        }
-    }
+    //if(cmd_info_->state_duplicate_) {
+    //    for(auto item : dups) {
+    //        auto key = item.key;
+    //        auto kmer32 = item.kmer32;
+    //        auto gc = item.gc;
+    //        if (duplicate_->counts_[key] == 0) {
+    //            duplicate_->counts_[key] = 1;
+    //            duplicate_->dups_[key] = kmer32;
+    //            duplicate_->gcs_[key] = gc;
+    //        } else {
+    //            if (duplicate_->dups_[key] == kmer32) {
+    //                duplicate_->counts_[key]++;
+    //                if (duplicate_->gcs_[key] > gc) duplicate_->gcs_[key] = gc;
+    //            } else if (duplicate_->dups_[key] > kmer32) {
+    //                duplicate_->dups_[key] = kmer32;
+    //                duplicate_->counts_[key] = 1;
+    //                duplicate_->gcs_[key] = gc;
+    //            }
+    //        }
+    //    }
+    //}
     tsum3 += GetTime() - tt0;
 
     tt0 = GetTime();
@@ -1190,6 +1190,7 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     para.cmd_info_ = cmd_info_;
     para.thread_info_ = thread_infos;
     para.bit_len = 0;
+    para.duplicate_ = duplicate_;
 
     bool allProDone = 0;
     if(cmd_info_->state_duplicate_) {

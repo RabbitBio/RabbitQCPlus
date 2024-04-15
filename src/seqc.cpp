@@ -320,8 +320,14 @@ SeQc::SeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
         }
     }
 
+    //for(int i = 0; i < 64; i++) {
+    //    duplicate_[i] = NULL;
+    //}
     duplicate_ = NULL;
     if (cmd_info1->state_duplicate_) {
+        //for(int i = 0; i < 64; i++) {
+        //    duplicate_[i] = new Duplicate(cmd_info1);
+        //}
         duplicate_ = new Duplicate(cmd_info1);
     }
     umier_ = NULL;
@@ -354,6 +360,9 @@ SeQc::~SeQc() {
     }
 
     if (cmd_info_->state_duplicate_) {
+        //for(int i = 0; i <64; i++) {
+        //    delete duplicate_[i];
+        //}
         delete duplicate_;
     }
     if (cmd_info_->add_umi_) {
@@ -563,20 +572,20 @@ void SeQc::ProcessNgsData(bool &proDone, vector <neoReference> &data, rabbit::fq
     //fprintf(stderr, "rank%d data size %d\n", my_rank, data.size());
     double tt0 = GetTime();
     vector <neoReference> pass_data;
-    vector <dupInfo> dups;
+    //vector <dupInfo> dups;
     if(cmd_info_->write_data_) {
         pass_data.resize(data.size());
     }
-    if(cmd_info_->state_duplicate_) {
-        dups.resize(data.size());
-    }
+    //if(cmd_info_->state_duplicate_) {
+    //    dups.resize(data.size());
+    //}
     tsum1 += GetTime() - tt0;
 
     tt0 = GetTime();
     if(fqdatachunk != NULL) {
         para->data1_ = &data;
         para->pass_data1_ = &pass_data;
-        para->dups = &dups;
+        //para->dups = &dups;
         {
             lock_guard<mutex> guard(globalMutex);
             __real_athread_spawn((void *)slave_ngsfunc, para, 1);
@@ -586,27 +595,27 @@ void SeQc::ProcessNgsData(bool &proDone, vector <neoReference> &data, rabbit::fq
     tsum2 += GetTime() - tt0;
 
     tt0 = GetTime(); 
-    if(cmd_info_->state_duplicate_) {
-        for(auto item : dups) {
-            auto key = item.key;
-            auto kmer32 = item.kmer32;
-            auto gc = item.gc;
-            if (duplicate_->counts_[key] == 0) {
-                duplicate_->counts_[key] = 1;
-                duplicate_->dups_[key] = kmer32;
-                duplicate_->gcs_[key] = gc;
-            } else {
-                if (duplicate_->dups_[key] == kmer32) {
-                    duplicate_->counts_[key]++;
-                    if (duplicate_->gcs_[key] > gc) duplicate_->gcs_[key] = gc;
-                } else if (duplicate_->dups_[key] > kmer32) {
-                    duplicate_->dups_[key] = kmer32;
-                    duplicate_->counts_[key] = 1;
-                    duplicate_->gcs_[key] = gc;
-                }
-            }
-        }
-    }
+    //if(cmd_info_->state_duplicate_) {
+    //    for(auto item : dups) {
+    //        auto key = item.key;
+    //        auto kmer32 = item.kmer32;
+    //        auto gc = item.gc;
+    //        if (duplicate_->counts_[key] == 0) {
+    //            duplicate_->counts_[key] = 1;
+    //            duplicate_->dups_[key] = kmer32;
+    //            duplicate_->gcs_[key] = gc;
+    //        } else {
+    //            if (duplicate_->dups_[key] == kmer32) {
+    //                duplicate_->counts_[key]++;
+    //                if (duplicate_->gcs_[key] > gc) duplicate_->gcs_[key] = gc;
+    //            } else if (duplicate_->dups_[key] > kmer32) {
+    //                duplicate_->dups_[key] = kmer32;
+    //                duplicate_->counts_[key] = 1;
+    //                duplicate_->gcs_[key] = gc;
+    //            }
+    //        }
+    //    }
+    //}
     tsum3 += GetTime() - tt0;
 
     tt0 = GetTime();
@@ -867,6 +876,7 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     para.cmd_info_ = cmd_info_;
     para.thread_info_ = thread_infos;
     para.bit_len = 0;
+    para.duplicate_ = duplicate_;
 
     bool allProDone = 0;
     if(cmd_info_->state_duplicate_) {
@@ -877,6 +887,7 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     double t0 = GetTime();
     double t_format = 0;
     double t_slave_gz = 0;
+    double t_slave_gz2 = 0;
     double t_push_q = 0;
     bool p_overWhile = 0;
     vector<rabbit::fq::FastqDataChunk *> fqdatachunks;
@@ -964,8 +975,10 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
             }
             {
                 std::lock_guard<std::mutex> guard(globalMutex);
+                double tt00 = GetTime();
                 __real_athread_spawn((void *)slave_compressfunc, paras, 1);
                 athread_join();
+                t_slave_gz2 += GetTime() - tt00;
             }
             for(int i = 0; i < 64; i++) {
                 off_idx << out_size[i] << endl;
@@ -1050,6 +1063,7 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     printf("consumer NGSnew write cost %lf (%lf [%lf %lf %lf], %lf, %lf, %lf)\n", tsum4, tsum4_1, tsum4_1_1, tsum4_1_2, tsum4_1_3, tsum4_2, tsum4_3, tsum4_4);
     printf("consumer NGSnew release cost %lf\n", tsum5);
     printf("consumer NGSnew gz slave cost %lf\n", t_slave_gz);
+    printf("consumer NGSnew gz slave2 cost %lf\n", t_slave_gz2);
     printf("consumer NGSnew push to queue cost %lf\n", t_push_q);
     done_thread_number_++;
     athread_halt();

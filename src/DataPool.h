@@ -82,8 +82,10 @@ namespace rabbit {
             void Acquire(DataType *&part_) {
                 th::unique_lock<th::mutex> lock(mutex);
 
-                while (partNum >= maxPartNum) partsAvailableCondition.wait(lock);
-
+                while (partNum >= maxPartNum) {
+                    partsAvailableCondition.wait(lock);
+                    usleep(1000000);
+                }
                 ASSERT(availablePartsPool.size() > 0);
 
                 DataType *&pp = availablePartsPool.back();

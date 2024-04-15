@@ -721,6 +721,6 @@ int main(int argc, char **argv) {
 
     MPI_Finalize();
     printf("MPI_Finalize done\n");
-    exit(0);
+    //exit(0);
     return 0;
 }

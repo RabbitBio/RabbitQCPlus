@@ -5,6 +5,7 @@
 #include "cmdinfo.h"
 #include "threadinfo.h"
 #include "Globals.h"
+#include "duplicate.h"
 
 struct dupInfo{
     uint32_t key;
@@ -16,7 +17,8 @@ struct dupInfo{
 struct qc_data {
     ThreadInfo **thread_info_;
     CmdInfo *cmd_info_;
-    std::vector<dupInfo> *dups;
+    Duplicate *duplicate_;
+    //std::vector<dupInfo> *dups;
     std::vector<neoReference> *data1_;
     std::vector<neoReference> *data2_;
     std::vector<neoReference> *pass_data1_;

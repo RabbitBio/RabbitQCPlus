@@ -16,6 +16,7 @@ extern "C"
 #include "tgsstate.h"
 #include "nthash.hpp"
 #include "threadinfo.h"
+#include "duplicate.h"
 #define gcMax 100
 #define LOCALSIZE 2 * (1 << 10)
 #define BATCH_SIZE 2
@@ -40,7 +41,8 @@ struct dupInfo{
 struct qc_data {
     ThreadInfo **thread_info_;
     CmdInfo *cmd_info_;
-    std::vector <dupInfo> *dups;
+    //std::vector <dupInfo> *dups;
+    Duplicate *duplicate_;
     std::vector <neoReference> *data1_;
     std::vector <neoReference> *data2_;
     std::vector <neoReference> *pass_data1_;
@@ -50,7 +52,7 @@ struct qc_data {
 };
 
 
-__thread_local dupInfo local_dup_info[BATCH_SIZE];
+//__thread_local dupInfo local_dup_info[BATCH_SIZE];
 
 __thread_local int valAGCT[8]  = {-1, 0, -1, 2, 1, -1, -1, 3};
 
@@ -649,7 +651,7 @@ uint seq2int(const char *data, int start, int key_len, bool &valid) {
     return ret;
 }
 
-void StateDup(neoReference &ref, int ids, int bit_len) {
+void StateDup(Duplicate *duplicate_, neoReference &ref, int ids, int bit_len) {
     if (ref.lseq < 32)
         return;
     int start1 = 0;
@@ -676,9 +678,77 @@ void StateDup(neoReference &ref, int ids, int bit_len) {
             gc++;
     }
     gc = int(255.0 * gc / ref.lseq + 0.5);
-    local_dup_info[ids & (BATCH_SIZE - 1)].key = key;
-    local_dup_info[ids & (BATCH_SIZE - 1)].kmer32 = kmer32;
-    local_dup_info[ids & (BATCH_SIZE - 1)].gc = (uint8_t)gc;
+
+    if (duplicate_->counts_[key] == 0) {
+        duplicate_->counts_[key] = 1;
+        duplicate_->dups_[key] = kmer32;
+        duplicate_->gcs_[key] = gc;
+    } else {
+        if (duplicate_->dups_[key] == kmer32) {
+            duplicate_->counts_[key]++;
+            if (duplicate_->gcs_[key] > gc) duplicate_->gcs_[key] = gc;
+        } else if (duplicate_->dups_[key] > kmer32) {
+            duplicate_->dups_[key] = kmer32;
+            duplicate_->counts_[key] = 1;
+            duplicate_->gcs_[key] = gc;
+        }
+    }
+    //local_dup_info[ids & (BATCH_SIZE - 1)].key = key;
+    //local_dup_info[ids & (BATCH_SIZE - 1)].kmer32 = kmer32;
+    //local_dup_info[ids & (BATCH_SIZE - 1)].gc = (uint8_t)gc;
+}
+
+
+void StateDupPE(Duplicate *duplicate_, neoReference &r1, neoReference &r2, int ids, int bit_len) {
+
+    if (r1.lseq < 32 || r2.lseq < 32)
+        return;
+
+    const char *data1 = reinterpret_cast<const char *>(r1.base + r1.pseq);
+    const char *data2 = reinterpret_cast<const char *>(r2.base + r2.pseq);
+    bool valid = true;
+
+    uint64_t ret = seq2int(data1, 0, bit_len, valid);
+    uint32_t key = (uint32_t) ret;
+    if (!valid)
+        return;
+
+    uint64_t kmer32 = seq2int(data2, 0, 32, valid);
+    if (!valid)
+        return;
+
+    int gc = 0;
+
+    if (duplicate_->counts_[key] == 0) {
+        for (int i = 0; i < r1.lseq; i++) {
+            if (data1[i] == 'G' || data1[i] == 'C')
+                gc++;
+        }
+        for (int i = 0; i < r2.lseq; i++) {
+            if (data2[i] == 'G' || data2[i] == 'C')
+                gc++;
+        }
+    }
+
+    gc = int(255.0 * (double) gc / (double) (r1.lseq + r2.lseq) + 0.5);
+
+    if (duplicate_->counts_[key] == 0) {
+        duplicate_->counts_[key] = 1;
+        duplicate_->dups_[key] = kmer32;
+        duplicate_->gcs_[key] = gc;
+    } else {
+        if (duplicate_->dups_[key] == kmer32) {
+            duplicate_->counts_[key]++;
+            if (duplicate_->gcs_[key] > gc) duplicate_->gcs_[key] = gc;
+        } else if (duplicate_->dups_[key] > kmer32) {
+            duplicate_->dups_[key] = kmer32;
+            duplicate_->counts_[key] = 1;
+            duplicate_->gcs_[key] = gc;
+        }
+    }
+    //local_dup_info[ids & (BATCH_SIZE - 1)].key = key;
+    //local_dup_info[ids & (BATCH_SIZE - 1)].kmer32 = kmer32;
+    //local_dup_info[ids & (BATCH_SIZE - 1)].gc = (uint8_t)gc;
 }
 
 
@@ -983,7 +1053,7 @@ extern "C" void ngsfunc(qc_data *para){
 
             rtc_(&start_t);
             if (cmd_info_->state_duplicate_) {
-                StateDup(item, ids, bit_len);
+                StateDup(para->duplicate_, item, ids, bit_len);
             }
             if (cmd_info_->add_umi_) {
                 //umier_->ProcessSe(item);
@@ -1093,9 +1163,9 @@ extern "C" void ngsfunc(qc_data *para){
 
         }
         rtc_(&start_t);
-        if(cmd_info_->state_duplicate_) {
-            dma_putn(&((*(para->dups))[start_pos]), local_dup_info, BATCH_SIZE);
-        }
+        //if(cmd_info_->state_duplicate_) {
+        //    dma_putn(&((*(para->dups))[start_pos]), local_dup_info, BATCH_SIZE);
+        //}
         rtc_(&end_t);
         c_dma_dup += end_t - start_t;
     }
@@ -1447,7 +1517,7 @@ extern "C" void ngspefunc(qc_data *para){
 
             rtc_(&start_t);
             if (cmd_info_->state_duplicate_) {
-                //TODO
+                StateDupPE(para->duplicate_, item1, item2, ids, bit_len);
             }
             if (cmd_info_->add_umi_) {
                 //TODO
@@ -1629,9 +1699,9 @@ extern "C" void ngspefunc(qc_data *para){
 
         }
         rtc_(&start_t);
-        if(cmd_info_->state_duplicate_) {
-            dma_putn(&((*(para->dups))[start_pos]), local_dup_info, BATCH_SIZE);
-        }
+        //if(cmd_info_->state_duplicate_) {
+        //    dma_putn(&((*(para->dups))[start_pos]), local_dup_info, BATCH_SIZE);
+        //}
         rtc_(&end_t);
         c_dma_dup += end_t - start_t;
     }
