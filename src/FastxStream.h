@@ -322,7 +322,7 @@ namespace rabbit {
              * @param isZippedNew if true, it will use gzopen to read fileName_ and fileName2_
              */
             FastqFileReader(const std::string &fileName_, FastqDataPool &pool_,
-                            std::string fileName2_ = "", bool isZippedNew = false, uint32 mxLen_ = 1 << 20, int start_line = 0, int end_line = 0)
+                            std::string fileName2_ = "", bool isZippedNew = false, uint32 mxLen_ = 1 << 20, int start_line = 0, int end_line = 0, bool in_mem = 0)
                 : swapBuffer(SwapBufferSize),
                   swapBuffer2(SwapBufferSize),
                   bufferSize(0),
@@ -334,9 +334,9 @@ namespace rabbit {
                   recordsPool(pool_) {
                 GetNxtBuffSize = mxLen_;
                 tot_read_size2 = 0;
-                mFqReader = new FileReader(fileName_, isZipped, start_line, end_line);
+                mFqReader = new FileReader(fileName_, isZipped, start_line, end_line, in_mem);
                 if (fileName2_ != "") {
-                    mFqReader2 = new FileReader(fileName2_, isZipped, start_line, end_line);
+                    mFqReader2 = new FileReader(fileName2_, isZipped, start_line, end_line, in_mem);
                 }
             }
 

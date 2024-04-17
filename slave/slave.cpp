@@ -32,21 +32,29 @@ struct OverlapRes {
 };
 
 
-struct dupInfo{
-    uint32_t key;
-    uint kmer32;
-    uint8_t gc;
+//struct dupInfo{
+//    uint32_t key;
+//    uint kmer32;
+//    uint8_t gc;
+//};
+
+struct qc_data_tgs {
+    ThreadInfo **thread_info_;
+    CmdInfo *cmd_info_;
+    std::vector<neoReference> *data1_;
+    int *cnt;
+    int bit_len;
 };
 
 struct qc_data {
     ThreadInfo **thread_info_;
     CmdInfo *cmd_info_;
-    //std::vector <dupInfo> *dups;
     Duplicate *duplicate_;
-    std::vector <neoReference> *data1_;
-    std::vector <neoReference> *data2_;
-    std::vector <neoReference> *pass_data1_;
-    std::vector <neoReference> *pass_data2_;
+    //std::vector<dupInfo> *dups;
+    std::vector<neoReference> *data1_[64];
+    std::vector<neoReference> *data2_[64];
+    std::vector<neoReference> *pass_data1_[64];
+    std::vector<neoReference> *pass_data2_[64];
     int *cnt;
     int bit_len;
 };
@@ -105,7 +113,7 @@ void updateTop5(int rlen, double avgQual, TGSStats *tgs_state) {
     }
 }
 
-extern "C" void tgsfunc(qc_data *para) {
+extern "C" void tgsfunc(qc_data_tgs *para) {
     std::vector <neoReference> *data = para->data1_;
     ThreadInfo *thread_info = para->thread_info_[_PEN];
     CmdInfo *cmd_info_ = para->cmd_info_;
@@ -944,12 +952,13 @@ extern "C" void ngsfunc(qc_data *para){
     unsigned long start_t, end_t;
     unsigned long start_tt, end_tt;
     rtc_(&start_tt);
-    std::vector <neoReference> *data = para->data1_;
-    std::vector <neoReference> *pass_data = para->pass_data1_;
+    std::vector <neoReference> *data = para->data1_[_PEN];
+    std::vector <neoReference> *pass_data = para->pass_data1_[_PEN];
     ThreadInfo *thread_info = para->thread_info_[_PEN];
     CmdInfo *cmd_info_ = para->cmd_info_;
     int bit_len = para->bit_len;
     int data_num = data->size();
+    if(data_num == 0) return;
 
     int pre_pos_seq_len = thread_info->pre_state1_->malloc_seq_len_ * 4;
     int *pre_pos_cnt_ = (int*)ldm_malloc(pre_pos_seq_len * sizeof(int));
@@ -1004,7 +1013,8 @@ extern "C" void ngsfunc(qc_data *para){
     int aft_gc_bases_ = 0;
     int aft_real_seq_len_ = 0;
     int aft_lines_ = 0;
-    for(int id = _PEN * BATCH_SIZE; id < data_num; id += 64 * BATCH_SIZE) {
+//    for(int id = _PEN * BATCH_SIZE; id < data_num; id += 64 * BATCH_SIZE) {
+    for(int id = 0; id < data_num; id += BATCH_SIZE) {
 
 
         rtc_(&start_t);
@@ -1329,16 +1339,17 @@ extern "C" void ngspefunc(qc_data *para){
     unsigned long start_t, end_t;
     unsigned long start_tt, end_tt;
     rtc_(&start_tt);
-    std::vector <neoReference> *data1 = para->data1_;
-    std::vector <neoReference> *data2 = para->data2_;
-    std::vector <neoReference> *pass_data1 = para->pass_data2_;
-    std::vector <neoReference> *pass_data2 = para->pass_data1_;
+    std::vector <neoReference> *data1 = para->data1_[_PEN];
+    std::vector <neoReference> *data2 = para->data2_[_PEN];
+    std::vector <neoReference> *pass_data1 = para->pass_data2_[_PEN];
+    std::vector <neoReference> *pass_data2 = para->pass_data1_[_PEN];
     ThreadInfo *thread_info = para->thread_info_[_PEN];
     CmdInfo *cmd_info_ = para->cmd_info_;
     int bit_len = para->bit_len;
 
     int data_num1 = data1->size();
     int data_num2 = data2->size();
+    if(data_num1 == 0) return;
 
 
     int pre_pos_seq_len1 = thread_info->pre_state1_->malloc_seq_len_ * 4;
@@ -1457,7 +1468,8 @@ extern "C" void ngspefunc(qc_data *para){
 
 
 
-    for(int id = _PEN * BATCH_SIZE; id < data_num1; id += 64 * BATCH_SIZE) {
+//    for(int id = _PEN * BATCH_SIZE; id < data_num1; id += 64 * BATCH_SIZE) {
+    for(int id = 0; id < data_num1; id += BATCH_SIZE) {
 
 
         rtc_(&start_t);

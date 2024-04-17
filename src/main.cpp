@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
             "correcting low quality bases using information from overlap, default is off");
 
     app.add_option("-w,--threadNum", cmd_info.thread_number_,
-            "number of thread used to do QC, including (de)compression for compressed data, default is 8");
+            "number of thread used to do QC, including (de)compression for compressed data, default is 1");
 
     //filter
     app.add_flag("-5,--trim5End", cmd_info.trim_5end_,
@@ -186,13 +186,33 @@ int main(int argc, char **argv) {
         ifstream iff;
         printf("now pre read %s\n", cmd_info.in_file_name1_.c_str());
         iff.open(cmd_info.in_file_name1_);
-        string s1, s2, s3, s4;
-        int t_line = 0;
-        while(iff >> s1 >> s2 >> s3 >> s4) {
-            t_line++;
+        const size_t chunkSize = 4 * 1024 * 1024;
+        char* tmp_chunk = new char[chunkSize];
+        streamsize tot_size = 0;
+        while (!iff.eof()) {
+            iff.read(tmp_chunk, chunkSize);
+            streamsize bytesRead = iff.gcount();
+            tot_size += bytesRead;
+            if (bytesRead < chunkSize) {
+                break;
+            }
         }
-        printf("lines is %d\n", t_line);
+        cout << "Total bytes read: " << tot_size << endl;
         iff.close();
+        if(cmd_info.in_file_name2_.length()) {
+            printf("now pre read %s\n", cmd_info.in_file_name1_.c_str());
+            iff.open(cmd_info.in_file_name1_);
+            streamsize tot_size2 = 0;
+            while (!iff.eof()) {
+                iff.read(tmp_chunk, chunkSize);
+                streamsize bytesRead = iff.gcount();
+                tot_size2 += bytesRead;
+                if (bytesRead < chunkSize) {
+                    break;
+                }
+            }
+            cout << "Total bytes read2: " << tot_size2 << endl;
+        }
         printf("cost %lf\n", GetTime() - t_t0);
     }
 

@@ -72,7 +72,7 @@ private:
 
     void WriteSeFastqTask2();
 
-    void ProcessNgsData(bool &proDone, std::vector <neoReference> &data1, std::vector <neoReference> &data2, rabbit::fq::FastqDataPairChunk *fqdatachunk, qc_data *para, rabbit::fq::FastqDataPool *fastqPool);
+    void ProcessNgsData(bool &allProDone, std::vector <neoReference> data1[64], std::vector <neoReference> data2[64], std::vector <rabbit::fq::FastqDataPairChunk *> fqdatachunks, qc_data *para, rabbit::fq::FastqDataPool *fastqPool);
 
 
 
@@ -155,7 +155,7 @@ private:
     std::atomic_int queueSizeLim2;
     std::atomic_int pigzQueueNumNow2;
     std::atomic_int pigzQueueSizeLim2;
-    int64_t now_chunks;
+    std::atomic_int now_chunks;
     int64_t mx_chunks;
     std::atomic_int consumerCommDone;
     std::atomic_int producerStop;

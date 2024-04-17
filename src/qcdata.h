@@ -14,15 +14,23 @@ struct dupInfo{
 };
 
 
+struct qc_data_tgs {
+    ThreadInfo **thread_info_;
+    CmdInfo *cmd_info_;
+    std::vector<neoReference> *data1_;
+    int *cnt;
+    int bit_len;
+};
+
 struct qc_data {
     ThreadInfo **thread_info_;
     CmdInfo *cmd_info_;
     Duplicate *duplicate_;
     //std::vector<dupInfo> *dups;
-    std::vector<neoReference> *data1_;
-    std::vector<neoReference> *data2_;
-    std::vector<neoReference> *pass_data1_;
-    std::vector<neoReference> *pass_data2_;
+    std::vector<neoReference> *data1_[64];
+    std::vector<neoReference> *data2_[64];
+    std::vector<neoReference> *pass_data1_[64];
+    std::vector<neoReference> *pass_data2_[64];
     int *cnt;
     int bit_len;
 };

@@ -65,9 +65,16 @@ namespace rabbit {
     private:
         static const uint32 IGZIP_IN_BUF_SIZE = 1 << 22;// 4M gziped file onece fetch
         static const uint32 GZIP_HEADER_BYTES_REQ = 1 << 16;
+        byte* MemData = NULL;
+        int64 MemDataTotSize = 0;
+        int64 MemDataNowPos = 0;
+        bool MemDataReadFinish = 0;
+        bool read_in_mem = 0;
+
 
     public:
-        FileReader(const std::string &fileName_, bool isZipped, int start_line = 0, int end_line = 0) {
+        FileReader(const std::string &fileName_, bool isZipped, int start_line = 0, int end_line = 0, bool in_mem = 0) {
+            read_in_mem = in_mem;
             if (ends_with(fileName_, ".gz") || isZipped) {
 #ifdef USE_LIBDEFLATE
                 tot_read_size = 0;
@@ -113,34 +120,31 @@ namespace rabbit {
                 this->isZipped = true;
             } else {
                 mFile = FOPEN(fileName_.c_str(), "rb");
-                if (fileName_ != "") {
-                    mFile = FOPEN(fileName_.c_str(), "rb");
-                    if (mFile == NULL)
-                        throw RioException("Can not open file to read: ");
-                }
                 if (mFile == NULL) {
-                    throw RioException(
-                            ("Can not open file to read: " + fileName_).c_str());
+                    throw RioException(("Can not open file to read: " + fileName_).c_str());
+                }
+                if(read_in_mem) {
+                    fprintf(stderr, "read_in_mem %s\n", fileName_.c_str());
+                    std::ifstream gFile;
+                    gFile.open(fileName_.c_str());
+                    gFile.seekg(0, std::ios_base::end);
+                    MemDataTotSize = gFile.tellg();
+                    gFile.close();
+                    MemData = new byte[MemDataTotSize];
+                    int64 n = fread(MemData, 1, MemDataTotSize, mFile);
+                    fprintf(stderr, "read %lld bytes\n", n);
+                    if(n != MemDataTotSize) {
+                        fprintf(stderr, "n != MemDataTotSize\n");
+                        exit(0);
+                    }
                 }
             }
             //fprintf(stderr, "filereader init done\n");
         }
 
         FileReader(int fd, bool isZipped = false) {
-            if (isZipped) {
-                fprintf(stderr, "FileReader fd is todo ...\n");
-                exit(0);
-            } else {
-                mFile = FDOPEN(fd, "rb");
-                if (fd != -1) {
-                    mFile = FDOPEN(fd, "rb");
-                    if (mFile == NULL)
-                        throw RioException("Can not open file to read: ");
-                }
-                if (mFile == NULL) {
-                    throw RioException("Can not open file to read: ");
-                }
-            }
+            fprintf(stderr, "FileReader fd is todo ...\n");
+            exit(0);
         }
 
         void DecompressMore() {
@@ -158,8 +162,6 @@ namespace rabbit {
             size_t in_size = 0;
             size_t out_size[64] = {0};
             for(int i = 0; i < 64; i++) {
-//                iff_idx >> to_read;
-//                if(iff_idx.eof()) ok = 0;
                 if(now_block == block_sizes.size()) {
                     to_read = 0;
                     iff_idx_end = 1;
@@ -168,13 +170,11 @@ namespace rabbit {
                 }
                 in_size = fread(in_buffer[i], 1, to_read, input_file);
                 if (in_size == 0) ok = 0;
-                //fprintf(stderr, "-- %d %d %d %d\n", to_read, in_size, now_block, block_sizes.size());
                 paras[i].in_buffer = in_buffer[i];
                 paras[i].out_buffer = out_buffer[i];
                 paras[i].in_size = in_size;
                 paras[i].out_size = &(out_size[i]);
             }
-            //if(ok == 0) fprintf(stderr, "%d %d\n", iff_idx.eof(), feof(input_file));
 
             {
                 std::lock_guard<std::mutex> guard(globalMutex);
@@ -182,29 +182,10 @@ namespace rabbit {
                 athread_join();
             }
 
-            //for(int i = 0; i < 64; i++) {
-            //    if(in_size == 0) continue;
-            //    size_t out_size_tmp = -1;
-            //    libdeflate_decompressor* decompressor = libdeflate_alloc_decompressor();
-            //    libdeflate_result result = libdeflate_gzip_decompress(decompressor, paras[i].in_buffer, paras[i].in_size, paras[i].out_buffer, BLOCK_SIZE, &out_size_tmp);
-            //    if (result != LIBDEFLATE_SUCCESS) {
-            //        fprintf(stderr, "Decompression failed\n");
-            //    }
-            //    *(paras[i].out_size) = out_size_tmp;
-            //    libdeflate_free_decompressor(decompressor);
-            //}
             for(int i = 0; i < 64; i++) {
                 if (out_size[i] <= 0) continue;
-                //fprintf(stderr, "====111 %d %d\n", out_size[i], buffer_tot_size);
-                //if(out_size[i]) {
-                //    if (strncmp(paras[i].out_buffer, "@SRR2496709", 11) != 0) {
-                //        fprintf(stderr, "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG\n");
-                //        exit(0);
-                //    }
-                //}
                 tot_read_size += out_size[i];
                 memcpy(to_read_buffer + buffer_tot_size, paras[i].out_buffer, out_size[i]);
-                //fprintf(stderr, "====222 %d\n", out_size[i]);
                 buffer_tot_size += out_size[i];
                 if(buffer_tot_size > (64 + 8) * BLOCK_SIZE) {
                     fprintf(stderr, "buffer_tot_size is out of size\n");
@@ -219,7 +200,6 @@ namespace rabbit {
 #ifdef USE_LIBDEFLATE
                 if (buffer_now_pos + size_ > buffer_tot_size) {
                     DecompressMore();
-                    //fprintf(stderr, "decom more %lld %lld -- %d\n", buffer_now_pos, buffer_tot_size, iff_idx_end);
                     if(buffer_now_pos + size_ > buffer_tot_size) {
                         fprintf(stderr, "after decom still not big enough, read done, -- %d\n", iff_idx_end);
                         size_ = buffer_tot_size - buffer_now_pos;
@@ -240,8 +220,23 @@ namespace rabbit {
                 return n;
 #endif
             } else {
-                int64 n = fread(memory_, 1, size_, mFile);
-                return n;
+                if(read_in_mem) {
+//                    fprintf(stderr, " --1 size:%lld [%lld === %lld]\n", size_, MemDataNowPos, MemDataTotSize);
+                    int64 lastDataSize = MemDataTotSize - MemDataNowPos;
+                    if(size_ > lastDataSize) {
+                        memcpy(memory_, MemData + MemDataNowPos, lastDataSize);
+                        MemDataNowPos += lastDataSize;
+                        MemDataReadFinish = 1;
+                        return lastDataSize;
+                    } else {
+                        memcpy(memory_, MemData + MemDataNowPos, size_);
+                        MemDataNowPos += size_;
+                        return size_;
+                    }
+                } else {
+                    int64 n = fread(memory_, 1, size_, mFile);
+                    return n;
+                }
             }
         }
 
@@ -256,9 +251,25 @@ namespace rabbit {
                     exit(0);
                 }
            } else {
-                fseek(mFile, pos_, SEEK_SET);
-                int64 n = fread(memory_, 1, size_, mFile);
-                return n;
+                if(read_in_mem) {
+                    MemDataNowPos = pos_;
+//                    fprintf(stderr, " --2 size:%lld pos:%lld [%lld === %lld]\n", size_, pos_, MemDataNowPos, MemDataTotSize);
+                    int64 lastDataSize = MemDataTotSize - MemDataNowPos;
+                    if(size_ > lastDataSize) {
+                        memcpy(memory_, MemData + MemDataNowPos, lastDataSize);
+                        MemDataNowPos += lastDataSize;
+                        MemDataReadFinish = 1;
+                        return lastDataSize;
+                    } else {
+                        memcpy(memory_, MemData + MemDataNowPos, size_);
+                        MemDataNowPos += size_;
+                        return size_;
+                    }
+                } else {
+                    fseek(mFile, pos_, SEEK_SET);
+                    int64 n = fread(memory_, 1, size_, mFile);
+                    return n;
+                }
             }
         }
 
@@ -352,7 +363,9 @@ namespace rabbit {
                 return gzeof(mZipFile);
 #endif
             } else {
-                return feof(mFile);
+//                fprintf(stderr, "MemDataReadFinish %d\n", MemDataReadFinish);
+                if(read_in_mem) return MemDataReadFinish;
+                else return feof(mFile);
             }
         }
 
@@ -370,6 +383,7 @@ namespace rabbit {
             //fprintf(stderr, "tot_read_size %lld\n", tot_read_size);
             //fprintf(stderr, "lastinfo %lld %lld\n", buffer_now_pos, buffer_tot_size);
             if (mIgInbuf != NULL) delete mIgInbuf;
+            if (read_in_mem) delete[] MemData;
             if (mFile != NULL) {
                 fclose(mFile);
                 mFile = NULL;

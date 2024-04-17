@@ -83,8 +83,8 @@ namespace rabbit {
                 th::unique_lock<th::mutex> lock(mutex);
 
                 while (partNum >= maxPartNum) {
-                    partsAvailableCondition.wait(lock);
                     usleep(1000000);
+                    partsAvailableCondition.wait(lock);
                 }
                 ASSERT(availablePartsPool.size() > 0);
 

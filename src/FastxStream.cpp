@@ -1070,33 +1070,33 @@ namespace rabbit {
             //--------------read right chunk end---------------------//
             if (eof1 && eof2) eof = true;
             if (!eof) {
-                left_line_count = count_line(data, chunkEnd);
-                right_line_count = count_line(data_right, chunkEnd_right);
-                int64 difference = left_line_count - right_line_count;
-                if(difference) printf("difference.......\n");
-                if (difference > 0) {
-                    while (chunkEnd >= 0) {
-                        if (data[chunkEnd] == '\n') {
-                            difference--;
-                            if (difference == -1) {
-                                chunkEnd++;
-                                break;
-                            }
-                        }
-                        chunkEnd--;
-                    }
-                } else if (difference < 0) {
-                    while (chunkEnd_right >= 0) {
-                        if (data_right[chunkEnd_right] == '\n') {
-                            difference++;
-                            if (difference == 1) {
-                                chunkEnd_right++;
-                                break;
-                            }
-                        }
-                        chunkEnd_right--;
-                    }
-                }
+//                left_line_count = count_line(data, chunkEnd);
+//                right_line_count = count_line(data_right, chunkEnd_right);
+//                int64 difference = left_line_count - right_line_count;
+//                if(difference) printf("difference.......\n");
+//                if (difference > 0) {
+//                    while (chunkEnd >= 0) {
+//                        if (data[chunkEnd] == '\n') {
+//                            difference--;
+//                            if (difference == -1) {
+//                                chunkEnd++;
+//                                break;
+//                            }
+//                        }
+//                        chunkEnd--;
+//                    }
+//                } else if (difference < 0) {
+//                    while (chunkEnd_right >= 0) {
+//                        if (data_right[chunkEnd_right] == '\n') {
+//                            difference++;
+//                            if (difference == 1) {
+//                                chunkEnd_right++;
+//                                break;
+//                            }
+//                        }
+//                        chunkEnd_right--;
+//                    }
+//                }
                 leftPart->size = chunkEnd - 1;
                 if (usesCrlf) leftPart->size -= 1;
                 std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
