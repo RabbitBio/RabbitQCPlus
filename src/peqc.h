@@ -51,26 +51,26 @@ private:
     void ProducerPeFastqTask64(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool);
 
 
-    void ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
-                             rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
-
-    void ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
-                                  rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
+//    void ProducerPeFastqTask(std::string file, std::string file2, rabbit::fq::FastqDataPool *fastqPool,
+//                             rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
+//
+//    void ProducerPeInterFastqTask(std::string file, rabbit::fq::FastqDataPool *fastq_data_pool,
+//                                  rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
 
     void ConsumerPeFastqTask64(ThreadInfo **thread_info, rabbit::fq::FastqDataPool *fastqPool);
 
 
-    void ConsumerPeFastqTask(ThreadInfo **thread_info, rabbit::fq::FastqDataPool *fastqPool,
-                             rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
-
-    void ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
-                                  rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
+//    void ConsumerPeFastqTask(ThreadInfo **thread_info, rabbit::fq::FastqDataPool *fastqPool,
+//                             rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq);
+//
+//    void ConsumerPeInterFastqTask(ThreadInfo *thread_info, rabbit::fq::FastqDataPool *fastqPool,
+//                                  rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq);
 
     void WriteSeFastqTask12();
-
-    void WriteSeFastqTask1();
-
-    void WriteSeFastqTask2();
+//
+//    void WriteSeFastqTask1();
+//
+//    void WriteSeFastqTask2();
 
     void ProcessNgsData(bool &allProDone, std::vector <neoReference> data1[64], std::vector <neoReference> data2[64], std::vector <rabbit::fq::FastqDataPairChunk *> fqdatachunks, qc_data *para, rabbit::fq::FastqDataPool *fastqPool);
 
@@ -111,7 +111,8 @@ private:
     bool out_is_zip_;
     int start_line_;
     int end_line_;
-
+    int64_t start_pos_;
+    int64_t end_pos_;
 
     moodycamel::ReaderWriterQueue<std::pair<char *, int>> *
             pugzQueue1;

@@ -93,6 +93,8 @@ private:
     bool out_is_zip_;
     int start_line_;
     int end_line_;
+    int64_t start_pos_;
+    int64_t end_pos_;
 
     moodycamel::ReaderWriterQueue<std::pair<char *, int>> *
             pugzQueue;

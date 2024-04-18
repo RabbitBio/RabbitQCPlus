@@ -322,7 +322,7 @@ namespace rabbit {
              * @param isZippedNew if true, it will use gzopen to read fileName_ and fileName2_
              */
             FastqFileReader(const std::string &fileName_, FastqDataPool &pool_,
-                            std::string fileName2_ = "", bool isZippedNew = false, uint32 mxLen_ = 1 << 20, int start_line = 0, int end_line = 0, bool in_mem = 0)
+                            std::string fileName2_ = "", bool isZippedNew = false, uint32 mxLen_ = 1 << 20, int64_t startPos = 0, int64_t endPos = 0, bool inMem = 0)
                 : swapBuffer(SwapBufferSize),
                   swapBuffer2(SwapBufferSize),
                   bufferSize(0),
@@ -334,9 +334,9 @@ namespace rabbit {
                   recordsPool(pool_) {
                 GetNxtBuffSize = mxLen_;
                 tot_read_size2 = 0;
-                mFqReader = new FileReader(fileName_, isZipped, start_line, end_line, in_mem);
+                mFqReader = new FileReader(fileName_, isZipped, startPos, endPos, inMem);
                 if (fileName2_ != "") {
-                    mFqReader2 = new FileReader(fileName2_, isZipped, start_line, end_line, in_mem);
+                    mFqReader2 = new FileReader(fileName2_, isZipped, startPos, endPos, inMem);
                 }
             }
 
@@ -393,40 +393,26 @@ namespace rabbit {
             bool FinishReadFromMem2();
 
             // added from fastxIO.h
-            FastqDataChunk *readNextChunk(int64 offset = -1, int64 lim_size = 1e9);
+            FastqDataChunk *readNextChunk();
 
             FastqDataChunk *readNextChunkFromMem(int64 offset = -1, int64 lim_size = 1e9);
 
             FastqDataChunk *readNextInterChunk();
 
-            FastqDataChunk *readNextChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, std::atomic_int *d, std::pair<char *, int> &l);
-
             void readChunk();
 
-            bool ReadNextChunk_(FastqDataChunk *chunk_, int64 offset = -1, int64 lim_size = 1e9);
+            bool ReadNextChunk_(FastqDataChunk *chunk_);
 
             bool ReadNextChunkFromMem_(FastqDataChunk *chunk_, int64 offset = -1, int64 lim_size = 1e9);
             
             bool ReadNextInterChunk_(FastqDataChunk *chunk_);
 
-            bool ReadNextChunk_(FastqDataChunk *chunk_, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q, std::atomic_int *d, std::pair<char *, int> &l);
-
-            FastqDataPairChunk *readNextPairChunk(int64 offset = -1, int64 lim_size = 1e9);
+            FastqDataPairChunk *readNextPairChunk();
 
             FastqDataPairChunk *readNextPairChunkFromMem(int64 offset = -1, int64 lim_size = 1e9);
 
             FastqDataPairChunk *readNextPairChunkParallel();
 
-            FastqDataPairChunk *readNextPairChunkParallel(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q1,
-                                                          moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q2,
-                                                          std::atomic_int *d1, std::atomic_int *d2,
-                                                          std::pair<char *, int> &last1, std::pair<char *, int> &last2);
-
-
-            FastqDataPairChunk *readNextPairChunk(moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q1,
-                                                  moodycamel::ReaderWriterQueue<std::pair<char *, int>> *q2,
-                                                  std::atomic_int *d1, std::atomic_int *d2,
-                                                  std::pair<char *, int> &last1, std::pair<char *, int> &last2);
 
             FastqDataChunk *readNextPairChunkInterleaved();
 
