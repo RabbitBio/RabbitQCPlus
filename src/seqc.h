@@ -66,7 +66,7 @@ private:
     void WriteSeFastqTask();
 
 //    void ProcessNgsData(bool &proDone, std::vector <neoReference> &data, rabbit::fq::FastqDataChunk *fqdatachunk, qc_data *para, rabbit::fq::FastqDataPool *fastq_data_pool);
-    void ProcessNgsData(bool &proDone, std::vector <neoReference> data[64], std::vector <rabbit::fq::FastqDataChunk *> fqdatachunks, qc_data *para, rabbit::fq::FastqDataPool *fastq_data_pool);
+    void ProcessNgsData(bool &allIsNull, std::vector <neoReference> data[64], std::vector <rabbit::fq::FastqDataChunk *> fqdatachunks, qc_data *para, rabbit::fq::FastqDataPool *fastq_data_pool);
 
 
 private:

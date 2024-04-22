@@ -205,14 +205,14 @@ namespace rabbit {
 
     int64 FileReader::Read(byte *memory_, uint64 size_) {
         read_times++;
-        if(read_in_mem) {
-            if(isZipped) {
-                if(read_times > 64) usleep(6000);
-            }
-            else {
-                if(read_times > 64) usleep(10000);
-            }
-        }
+//        if(read_in_mem) {
+//            if(isZipped) {
+//                if(read_times > 64) usleep(6000);
+//            }
+//            else {
+//                if(read_times > 64) usleep(10000);
+//            }
+//        }
 
         if (isZipped) {
 #ifdef USE_LIBDEFLATE

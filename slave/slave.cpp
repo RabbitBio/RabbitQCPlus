@@ -216,10 +216,10 @@ extern "C" void tgsfunc(qc_data_tgs *para) {
 
 inline bool HashQueryAndAdd(State *state, uint64_t now, int offset, int len, int eva_len) {
     state->over_representation_qcnt_++;
-    int ha_big = now & ((1 << MODB) - 1);
-    bool pass_bf = state->bf_zone_[ha_big >> 6] & (1ll << (ha_big & 0x3f));
-    if (!pass_bf) return 0;
-    else state->over_representation_pcnt_++;
+    //int ha_big = now & ((1 << MODB) - 1);
+    //bool pass_bf = state->bf_zone_[ha_big >> 6] & (1ll << (ha_big & 0x3f));
+    //if (!pass_bf) return 0;
+    //else state->over_representation_pcnt_++;
     int ha = now & ((1 << MODB) - 1);
     for (int i = state->head_hash_graph_[ha]; i != -1; i = state->hash_graph_[i].pre) {
         //over_representation_pcnt_++;
