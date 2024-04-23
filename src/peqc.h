@@ -164,6 +164,8 @@ private:
     std::mutex p_mylock;
 
     int64_t *part_sizes;
+    std::vector<std::pair<int, size_t>> out_gz_block_sizes1;
+    std::vector<std::pair<int, size_t>> out_gz_block_sizes2;
 };
 
 

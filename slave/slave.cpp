@@ -1122,6 +1122,7 @@ extern "C" void ngsfunc(qc_data *para){
             rtc_(&end_t);
             c_filter += end_t - start_t;
             if (filter_res == 0) {
+            //if (1) {
                 rtc_(&start_t);
                 StateInfo(thread_info->aft_state1_, item, cmd_info_, aft_pos_cnt_, aft_pos_qul_, aft_len_cnt_, aft_gc_cnt_, aft_qul_cnt_, aft_q20bases_, aft_q30bases_, aft_tot_bases_, aft_gc_bases_, aft_real_seq_len_, aft_lines_); 
                 rtc_(&end_t);

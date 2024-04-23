@@ -17,22 +17,43 @@ namespace rabbit {
 #ifdef USE_LIBDEFLATE
             start_line = startPos;
             end_line = endPos;
-            std::string index_file_name = fileName_ + ".swidx";
-            int block_size;
-            iff_idx.open(index_file_name);
+            std::ifstream iff_idx;
+            iff_idx.open(fileName_, std::ios::binary | std::ios::ate);
             if (!iff_idx.is_open()) {
-                fprintf(stderr, "%s do not exits\n", index_file_name.c_str());
+                std::cerr << "Failed to open file!" << std::endl;
                 exit(0);
             }
-            while (iff_idx >> block_size) {
+            size_t file_size = iff_idx.tellg();
+            size_t blocknum = 0;
+            iff_idx.seekg(-static_cast<int>(sizeof(size_t)), std::ios::end);
+            iff_idx.read(reinterpret_cast<char*>(&blocknum), sizeof(size_t));
+
+            block_sizes.reserve(blocknum);
+            iff_idx.seekg(-static_cast<int>((blocknum + 1) * sizeof(size_t)), std::ios::end);
+
+            size_t block_size = 0;
+            for (size_t i = 0; i < blocknum; ++i) {
+                iff_idx.read(reinterpret_cast<char*>(&block_size), sizeof(size_t));
                 block_sizes.push_back(block_size);
             }
+            iff_idx.close();
+
+            //std::string index_file_name = fileName_ + ".swidx";
+            //int block_size;
+            //iff_idx.open(index_file_name);
+            //if (!iff_idx.is_open()) {
+            //    fprintf(stderr, "%s do not exits\n", index_file_name.c_str());
+            //    exit(0);
+            //}
+            //while (iff_idx >> block_size) {
+            //    block_sizes.push_back(block_size);
+            //}
             if(start_line == end_line) {
                 end_line = block_sizes.size();
             }
             for(int i = 0; i < start_line; i++) start_pos += block_sizes[i];
             for(int i = 0; i < end_line; i++) end_pos += block_sizes[i];
-            fprintf(stderr, "FileReader zip [%lld %lld] [%d %d]\n", start_pos, end_pos, start_line, end_line);
+           // fprintf(stderr, "FileReader zip [%lld %lld] [%d %d]\n", start_pos, end_pos, start_line, end_line);
             now_block = start_line;
             block_sizes.resize(end_line);
             iff_idx_end = 0;
@@ -84,7 +105,7 @@ namespace rabbit {
                 end_pos = gFile.tellg();
                 gFile.close();
             }
-            fprintf(stderr, "FileReader [%lld %lld]\n", start_pos, end_pos);
+            //fprintf(stderr, "FileReader [%lld %lld]\n", start_pos, end_pos);
             has_read = 0;
             total_read = end_pos - start_pos;
             mFile = FOPEN(fileName_.c_str(), "rb");
@@ -129,9 +150,9 @@ namespace rabbit {
                 fclose(input_file);
                 input_file = NULL;
             }
-            if (iff_idx.is_open()) {
-                iff_idx.close();
-            }
+            //if (iff_idx.is_open()) {
+            //    iff_idx.close();
+            //}
             for (int i = 0; i < 64; i++) {
                 delete[] in_buffer[i];
                 delete[] out_buffer[i];

@@ -67,6 +67,8 @@ int64_t GetNextFastq(char *data_, int64_t pos_, const int64_t size_) {
 static bool use_in_mem = 1;
 static bool use_out_mem = 0;
 
+static bool use_swidx_file = 0;
+
 #define use_mpi_file
 
 char* OutMemData1;
@@ -127,14 +129,39 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
 
     int64_t start_pos, end_pos;
     if(in_is_zip_) {
-        ifstream iff_idx;
-        iff_idx.open(cmd_info1->in_file_name1_ + ".swidx");
-        size_t block_size = 0;
         vector<size_t> block_sizes;
-        while (iff_idx >> block_size) {
-            block_sizes.push_back(block_size);
+        if(use_swidx_file) {
+            ifstream iff_idx;
+            iff_idx.open(cmd_info1->in_file_name1_ + ".swidx");
+            size_t block_size = 0;
+            while (iff_idx >> block_size) {
+                block_sizes.push_back(block_size);
+            }
+            iff_idx.close();
+        } else {
+            ifstream iff_idx;
+            iff_idx.open(cmd_info1->in_file_name1_, ios::binary | ios::ate);
+            if (!iff_idx.is_open()) {
+                cerr << "Failed to open file!" << endl;
+                exit(0);
+            }
+            size_t file_size = iff_idx.tellg();
+            size_t blocknum = 0;
+            iff_idx.seekg(-static_cast<int>(sizeof(size_t)), ios::end);
+            iff_idx.read(reinterpret_cast<char*>(&blocknum), sizeof(size_t));
+
+            real_file_size -= (blocknum + 1) * sizeof(size_t);
+            block_sizes.reserve(blocknum);
+            iff_idx.seekg(-static_cast<int>((blocknum + 1) * sizeof(size_t)), ios::end);
+
+            size_t block_size = 0;
+            for (size_t i = 0; i < blocknum; ++i) {
+                iff_idx.read(reinterpret_cast<char*>(&block_size), sizeof(size_t));
+                block_sizes.push_back(block_size);
+            }
+            iff_idx.close();
         }
-        iff_idx.close();
+
         if (block_sizes.empty()) {
             // Handle error or empty file scenario
             cerr << "Error: No data read from index file." << endl;
@@ -259,7 +286,6 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
 
 #ifdef USE_LIBDEFLATE
                 string idx_name = cmd_info1->out_file_name1_ + ".swidx";
-                fprintf(stderr, "idx_name %s\n", idx_name.c_str());
                 off_idx1.open(idx_name);
 
                 ofstream file1(cmd_info1->out_file_name1_.c_str());
@@ -287,7 +313,6 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
                 }
 
                 string idx_name2 = cmd_info1->out_file_name2_ + ".swidx";
-                fprintf(stderr, "idx_name2 %s\n", idx_name2.c_str());
                 off_idx2.open(idx_name2);
 
                 ofstream file2(cmd_info1->out_file_name2_.c_str());
@@ -584,14 +609,14 @@ void PeQc::ProducerPeFastqTask64(string file, string file2, rabbit::fq::FastqDat
             }
 //            producerStop = 1;
             //fprintf(stderr, "producer %d stop, tot chunk size %d\n", my_rank, n_chunks);
-            if(cmd_info_->write_data_) {
-                tmp_chunks.clear();
-                while (p_queueNumNow >= p_queueSizeLim) {
-                    usleep(100);
-                }
-                p_out_queue_[p_queueP2++] = tmp_chunks;
-                p_queueNumNow++;
+            //if(cmd_info_->write_data_) {
+            tmp_chunks.clear();
+            while (p_queueNumNow >= p_queueSizeLim) {
+                usleep(100);
             }
+            p_out_queue_[p_queueP2++] = tmp_chunks;
+            p_queueNumNow++;
+            //}
             break;
         }
         tot_size += fqdatachunk->left_part->size;
@@ -769,7 +794,6 @@ void PeQc::ProcessNgsData(bool &allIsNull, vector <neoReference> data1[64], vect
         para->pass_data1_[i] = &pass_data1[i];
         para->pass_data2_[i] = &pass_data2[i];
     }
-    fprintf(stderr, "consumer%d isNull %d\n", my_rank, isNull);
     tsum1 += GetTime() - tt0;
 
     tt0 = GetTime();
@@ -1085,6 +1109,118 @@ void PeQc::ProcessNgsData(bool &allIsNull, vector <neoReference> data1[64], vect
     tsum6 += GetTime() - tt0;
 }
 
+inline void gather_and_sort_vectors_pe(int rank, int comm_size, int out_round, std::vector<std::pair<int, size_t>>& local_vec, int root) {
+    int local_size = local_vec.size();
+    std::vector<int> send_data(local_size * 2);
+    for (int i = 0; i < local_size; ++i) {
+        send_data[2 * i] = local_vec[i].first;
+        send_data[2 * i + 1] = static_cast<int>(local_vec[i].second);  // Assuming size_t can be safely cast to int
+    }
+
+    // Root process initializes a vector to hold all received data
+    std::vector<int> recv_data;
+    if (rank == root) {
+        recv_data.reserve(local_size * 2 * comm_size);  // Reserve enough space
+    }
+
+    // Root process receives data from all other processes
+    if (rank == root) {
+        std::vector<int> buffer(local_size * 2);
+        for (int i = 0; i < comm_size; ++i) {
+            if (i == root) {
+                // Include the root's own data
+                recv_data.insert(recv_data.end(), send_data.begin(), send_data.end());
+            } else {
+                MPI_Recv(buffer.data(), local_size * 2, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                recv_data.insert(recv_data.end(), buffer.begin(), buffer.end());
+            }
+        }
+    } else {
+        // Other processes send their data to the root
+        MPI_Send(send_data.data(), local_size * 2, MPI_INT, root, 0, MPI_COMM_WORLD);
+    }
+
+    // Root process sorts all received data
+    if (rank == root) {
+        std::vector<std::pair<int, size_t>> all_data;
+        for (int i = 0; i < recv_data.size() / 2; ++i) {
+            all_data.emplace_back(recv_data[2 * i], static_cast<size_t>(recv_data[2 * i + 1]));
+        }
+        std::sort(all_data.begin(), all_data.end());
+
+        //// Print sorted data for verification
+        //for (const auto& p : all_data) {
+        //    std::cout << "(" << p.first << ", " << p.second << ") ";
+        //}
+        //std::cout << std::endl;
+
+        // Optionally clear and repopulate local_vec
+        local_vec.clear();
+        for (const auto& item : all_data) {
+            local_vec.push_back(item);
+        }
+    }
+}
+
+
+
+inline void gather_and_sort_vectors_pe2(int rank, int comm_size, int out_round, vector<pair<int, size_t>>& local_vec, int root, MPI_Comm comm) {
+
+    // Assuming each vector is of the same size, find the size
+    int local_size = local_vec.size();
+    //int expected_size = out_round * comm_size * 64; 
+
+    //// Check if local vector size matches expected size
+    //if (local_size != expected_size) {
+    //    if (rank == root) {
+    //        cerr << "Error: Vector sizes do not match the expected size on rank " << rank << endl;
+    //    }
+    //    MPI_Abort(comm, 1);  // Abort if sizes do not match
+    //}
+
+    // Each process sends its vector size to the root
+    vector<int> sizes(comm_size, 0);
+    MPI_Gather(&local_size, 1, MPI_INT, sizes.data(), 1, MPI_INT, root, comm);
+
+    // Calculate displacements for receiving the data
+    vector<int> displs(comm_size, 0);
+    for (int i = 1; i < comm_size; ++i) {
+        displs[i] = displs[i - 1] + sizes[i - 1];
+    }
+
+    // Flatten the vector for sending
+    vector<int> send_data(local_size * 2);
+    for (int i = 0; i < local_size; ++i) {
+        send_data[2 * i] = local_vec[i].first;
+        send_data[2 * i + 1] = local_vec[i].second;
+    }
+
+    // Root process prepares to receive flattened data
+    vector<int> recv_data;
+    if (rank == root) {
+        recv_data.resize(2 * displs[comm_size - 1] + 2 * sizes[comm_size - 1]);
+    }
+
+    // Gather the flattened data at the root
+    MPI_Gatherv(send_data.data(), 2 * local_size, MPI_INT,
+                recv_data.data(), sizes.data(), displs.data(), MPI_INT, root, comm);
+
+    // Root process unflattens and sorts the data
+    if (rank == root) {
+        vector<pair<int, size_t>> all_data;
+        for (int i = 0; i < recv_data.size() / 2; ++i) {
+            all_data.emplace_back(recv_data[2 * i], recv_data[2 * i + 1]);
+        }
+
+        // Sort the data
+        sort(all_data.begin(), all_data.end());
+        local_vec.clear();
+        for(auto item : all_data) local_vec.push_back(item);
+
+    }
+} 
+
+
 void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDataPool *fastqPool) {
     rabbit::int64 id = 0;
     rabbit::fq::FastqDataPairChunk *fqdatachunk;
@@ -1108,6 +1244,7 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     double t_slave_gz = 0;
     double t_slave_gz2 = 0;
     double t_push_q = 0;
+    int out_round = 0;
     vector<rabbit::fq::FastqDataPairChunk *> fqdatachunks;
     while(true) {
         double tt0 = GetTime();
@@ -1192,6 +1329,10 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
                 athread_join();
             }
             t_slave_gz2 += GetTime() - tt00;
+            for(int i = 0; i < 64; i++) {
+                out_gz_block_sizes1.push_back(make_pair(out_round * comm_size * 64 + my_rank * 64 + i, out_size[i]));
+            }
+
             //TODO
 //            for(int i = 0; i < 64; i++) {
 //                off_idx1 << out_size[i] << endl;
@@ -1258,6 +1399,12 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
                 athread_join();
             }
             t_slave_gz2 += GetTime() - tt00;
+            for(int i = 0; i < 64; i++) {
+                out_gz_block_sizes2.push_back(make_pair(out_round * comm_size * 64 + my_rank * 64 + i, out_size2[i]));
+            }
+            out_round++;
+
+
             //TODO
 //            for(int i = 0; i < 64; i++) {
 //                off_idx2 << out_size2[i] << endl;
@@ -1340,6 +1487,14 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
         }
 
     }
+
+    double tt0 = GetTime();
+    gather_and_sort_vectors_pe(my_rank, comm_size, out_round, out_gz_block_sizes1, 0);
+    gather_and_sort_vectors_pe(my_rank, comm_size, out_round, out_gz_block_sizes2, 0);
+
+    printf("comm gz block size cost %lf\n", GetTime() - tt0);
+
+
     fprintf(stderr, "consumer%d NGSnew tot cost %lf\n", my_rank, GetTime() - t0);
     fprintf(stderr, "consumer%d NGSnew wait producer cost %lf\n", my_rank, t_wait_producer);
     fprintf(stderr, "consumer%d NGSnew format cost %lf\n", my_rank, t_format);
@@ -1695,6 +1850,27 @@ void PeQc::WriteSeFastqTask12() {
         }
 #endif
     }
+
+    if(my_rank == 0) {
+        double tt0 = GetTime();
+        ofstream ofs(cmd_info_->out_file_name1_, ios::binary | ios::app);
+        for (const auto& pair : out_gz_block_sizes1) {
+            ofs.write(reinterpret_cast<const char*>(&pair.second), sizeof(size_t));
+        }
+        size_t vector_size = out_gz_block_sizes1.size();
+        ofs.write(reinterpret_cast<const char*>(&vector_size), sizeof(size_t));
+        ofs.close();
+
+        ofstream ofs2(cmd_info_->out_file_name2_, ios::binary | ios::app);
+        for (const auto& pair : out_gz_block_sizes2) {
+            ofs2.write(reinterpret_cast<const char*>(&pair.second), sizeof(size_t));
+        }
+        size_t vector_size2 = out_gz_block_sizes2.size();
+        ofs2.write(reinterpret_cast<const char*>(&vector_size2), sizeof(size_t));
+        ofs2.close();
+        printf("writer final cost %lf\n", GetTime() - tt0);
+    }
+
 #ifdef Verbose
     printf("writer wait queue cost %.4f\n", t_wait);
     printf("writer gz slave cost %.4f\n", t_gz_slave);
@@ -2149,8 +2325,11 @@ void PeQc::ProcessPeFastq() {
         MPI_Send(aft_state_is.c_str(), now_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
     }
     MPI_Barrier(MPI_COMM_WORLD);
+
+    printf("mpi comm cost %lf\n", GetTime() - tt00);
     printf("aft merge done\n");
 
+    tt00 = GetTime();
     if(my_rank) {
         delete pre_state_tmp1;
         delete pre_state_tmp2;
