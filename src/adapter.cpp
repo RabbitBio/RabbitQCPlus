@@ -16,6 +16,14 @@
 
 using namespace std;
 
+extern "C" {
+#include <athread.h>
+#include <pthread.h>
+    void slave_preOverfunc();
+}
+
+
+
 struct AdapterSeedInfo {
     int recordsID;
     int pos;
@@ -123,6 +131,12 @@ string Adapter::matchKnownAdapter(string seq) {
     return "";
 }
 
+struct preOverData{
+    vector<pair<string, int>> *hot_s;
+    vector<int> *hot_seqs_id[64];
+    int *sizes;
+};
+
 void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &eva_len) {
 
 #ifdef Verbose
@@ -166,6 +180,8 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
         }
     }
 #ifdef Verbose
+    printf("pre orp read data cost %lf\n", GetTime() - t0);
+
     t0 = GetTime();
 #endif
 
@@ -223,6 +239,8 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
         }
     }
 #ifdef Verbose
+    printf("pre orp 222 cost %lf\n", GetTime() - t0);
+
     t0 = GetTime();
 #endif
 
@@ -251,34 +269,67 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
             }
         }
     }
-
 #ifdef Verbose
+    printf("pre orp 333 cost %lf\n", GetTime() - t0);
+
     t0 = GetTime();
 #endif
-    // remove substrings
-    for (int i = 0; i < hot_s.size(); i++) {
-        auto item = hot_s[i];
-        auto seq = item.first;
-        auto count = item.second;
-        bool isSubString = false;
-        for (auto item: hot_s) {
-            auto seq2 = item.first;
-            auto count2 = item.second;
-            if (seq != seq2 && seq2.find(seq) != string::npos && count / count2 < 10) {
-                isSubString = true;
-                break;
+
+    athread_init();
+    bool use_slave = 1;
+    if(use_slave) {
+        vector<int> hot_seqs_id[64];
+        printf("1111\n");
+        int size_outs[64] = {0};
+        preOverData para;
+        para.hot_s = &hot_s;
+        for(int i = 0; i < 64; i++) {
+            hot_seqs_id[i].resize(hot_s.size() / 64);
+            para.hot_seqs_id[i] = &hot_seqs_id[i];
+        }
+        para.sizes = size_outs;
+        __real_athread_spawn((void *)slave_preOverfunc, &para, 1);
+        athread_join();
+        printf("2222\n");
+        for(int i = 0; i < 64; i++) {
+            printf("%d ", size_outs[i]);
+        }
+        printf("\n");
+        for(int i = 0; i < 64; i++) {
+            for(int j = 0; j < size_outs[i]; j++) {
+                hot_seqs.push_back(hot_s[hot_seqs_id[i][j]].first); 
             }
         }
-        if (!isSubString) {
-            {
-                hot_seqs.push_back(seq);
+        //for(int i = 0; i < size_out; i++) {
+        //    hot_seqs.push_back(hot_s[hot_seqs_id[i]].first); 
+        //}
+    } else {
+        // remove substrings
+        for (int i = 0; i < hot_s.size(); i++) {
+            auto item = hot_s[i];
+            auto seq = item.first;
+            auto count = item.second;
+            bool isSubString = false;
+            for (auto item: hot_s) {
+                auto seq2 = item.first;
+                auto count2 = item.second;
+                if (seq != seq2 && seq2.find(seq) != string::npos && count / count2 < 10) {
+                    isSubString = true;
+                    break;
+                }
+            }
+            if (!isSubString) {
+                {
+                    hot_seqs.push_back(seq);
+                }
             }
         }
     }
+
+    athread_halt();
 #ifdef Verbose
-    t0 = GetTime();
-#endif
-#ifdef Verbose
+    printf("pre orp 444 cost %lf\n", GetTime() - t0);
+
     t0 = GetTime();
 #endif
     for (auto item: chunks)
@@ -290,6 +341,11 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
     delete[] v;
     delete[] cnt;
     delete[] seqs;
+#ifdef Verbose
+    printf("pre orp del cost %lf\n", GetTime() - t0);
+#endif
+
+
 }
 
 

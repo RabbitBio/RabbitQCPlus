@@ -285,8 +285,8 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
 #endif
 
 #ifdef USE_LIBDEFLATE
-                string idx_name = cmd_info1->out_file_name1_ + ".swidx";
-                off_idx1.open(idx_name);
+                //string idx_name = cmd_info1->out_file_name1_ + ".swidx";
+                //off_idx1.open(idx_name);
 
                 ofstream file1(cmd_info1->out_file_name1_.c_str());
 
@@ -312,8 +312,8 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
                     exit(0);
                 }
 
-                string idx_name2 = cmd_info1->out_file_name2_ + ".swidx";
-                off_idx2.open(idx_name2);
+                //string idx_name2 = cmd_info1->out_file_name2_ + ".swidx";
+                //off_idx2.open(idx_name2);
 
                 ofstream file2(cmd_info1->out_file_name2_.c_str());
 
@@ -1560,127 +1560,6 @@ void PeQc::WriteSeFastqTask12() {
         t_wait += GetTime() - tt0;
 
 
-//#ifdef WRITER_USE_LIBDEFLATE
-//
-//        tt0 = GetTime();
-//        if (out_is_zip_) {
-//            Para paras[64];
-//            size_t out_size[64] = {0};
-//            for(int i = 0; i < 64; i++) {
-//                paras[i].in_buffer = Qitem1.buffer[i];
-//                paras[i].out_buffer = new char[BLOCK_SIZE];
-//                paras[i].in_size = Qitem1.buffer_len[i];
-//                paras[i].out_size = &(out_size[i]);
-//                paras[i].level = 1;
-//            }
-//            {
-//                lock_guard<mutex> guard(globalMutex);
-//                __real_athread_spawn((void *)slave_compressfunc, paras, 1);
-//                athread_join();
-//            }
-//            for(int i = 0; i < 64; i++) {
-//                off_idx1 << out_size[i] << endl;
-//            }
-//            for(int i = 0; i < 64; i++) {
-//                delete[] Qitem1.buffer[i];
-//                Qitem1.buffer[i] = paras[i].out_buffer;
-//                Qitem1.buffer_len[i] = out_size[i];
-//
-//                int now_size = Qitem1.buffer_len[i];
-//                int now_sizes[comm_size];
-//                now_sizes[0] = now_size;
-//                MPI_Barrier(MPI_COMM_WORLD);
-//                if(my_rank) {
-//                    MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-//                } else {
-//                    for(int ii = 1; ii < comm_size; ii++) {
-//                        MPI_Recv(&(now_sizes[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-//                    }
-//                }
-//                MPI_Barrier(MPI_COMM_WORLD);
-//                if(my_rank == 0) {
-//                    for(int ii = 1; ii < comm_size; ii++) {
-//                        MPI_Send(now_sizes, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
-//                    }
-//                } else {
-//                    MPI_Recv(now_sizes, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-//                }
-//                MPI_Barrier(MPI_COMM_WORLD);
-//                int pre_sizes[comm_size];
-//                pre_sizes[0] = 0;
-//                for(int ii = 1; ii < comm_size; ii++) {
-//                    pre_sizes[ii] = pre_sizes[ii - 1] + now_sizes[ii - 1];
-//                }
-//                long long now_pos_base = zip_now_pos1_ + pre_sizes[my_rank];
-//                MPI_Barrier(MPI_COMM_WORLD);
-//                for(int ii = 0; ii < comm_size; ii++) {
-//                    zip_now_pos1_ += now_sizes[ii];
-//                }
-//                Qitem1.file_offset[i] = now_pos_base;
-//
-//            }
-//
-//
-//            Para paras2[64];
-//            size_t out_size2[64] = {0};
-//            for(int i = 0; i < 64; i++) {
-//                paras2[i].in_buffer = Qitem2.buffer[i];
-//                paras2[i].out_buffer = new char[BLOCK_SIZE];
-//                paras2[i].in_size = Qitem2.buffer_len[i];
-//                paras2[i].out_size = &(out_size2[i]);
-//                paras2[i].level = 1;
-//            }
-//            {
-//                lock_guard<mutex> guard(globalMutex);
-//                __real_athread_spawn((void *)slave_compressfunc, paras2, 1);
-//                athread_join();
-//            }
-//            for(int i = 0; i < 64; i++) {
-//                off_idx2 << out_size2[i] << endl;
-//            }
-//            for(int i = 0; i < 64; i++) {
-//                delete[] Qitem2.buffer[i];
-//                Qitem2.buffer[i] = paras2[i].out_buffer;
-//                Qitem2.buffer_len[i] = out_size2[i];
-//
-//                int now_size = Qitem2.buffer_len[i];
-//                int now_sizes[comm_size];
-//                now_sizes[0] = now_size;
-//                MPI_Barrier(MPI_COMM_WORLD);
-//                if(my_rank) {
-//                    MPI_Send(&now_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-//                } else {
-//                    for(int ii = 1; ii < comm_size; ii++) {
-//                        MPI_Recv(&(now_sizes[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-//                    }
-//                }
-//                MPI_Barrier(MPI_COMM_WORLD);
-//                if(my_rank == 0) {
-//                    for(int ii = 1; ii < comm_size; ii++) {
-//                        MPI_Send(now_sizes, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
-//                    }
-//                } else {
-//                    MPI_Recv(now_sizes, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-//                }
-//                MPI_Barrier(MPI_COMM_WORLD);
-//                int pre_sizes[comm_size];
-//                pre_sizes[0] = 0;
-//                for(int ii = 1; ii < comm_size; ii++) {
-//                    pre_sizes[ii] = pre_sizes[ii - 1] + now_sizes[ii - 1];
-//                }
-//                long long now_pos_base = zip_now_pos2_ + pre_sizes[my_rank];
-//                MPI_Barrier(MPI_COMM_WORLD);
-//                for(int ii = 0; ii < comm_size; ii++) {
-//                    zip_now_pos2_ += now_sizes[ii];
-//                }
-//                Qitem2.file_offset[i] = now_pos_base;
-//
-//            }
-//        }
-//        t_gz_slave += GetTime() - tt0;
-//
-//#endif
-
 
         if (out_is_zip_) {
             if (cmd_info_->use_pigz_) {
@@ -1818,8 +1697,8 @@ void PeQc::WriteSeFastqTask12() {
                 truncate(cmd_info_->out_file_name2_.c_str(), sizeof(char) * zip_now_pos2_);
             }
 #endif
-            off_idx1.close();
-            off_idx2.close();
+            //off_idx1.close();
+            //off_idx2.close();
 
 #else
             if (zip_out_stream1) {
@@ -1851,7 +1730,7 @@ void PeQc::WriteSeFastqTask12() {
 #endif
     }
 
-    if(my_rank == 0) {
+    if(my_rank == 0 && out_is_zip_) {
         double tt0 = GetTime();
         ofstream ofs(cmd_info_->out_file_name1_, ios::binary | ios::app);
         for (const auto& pair : out_gz_block_sizes1) {
@@ -2226,10 +2105,23 @@ void PeQc::ProcessPeFastq() {
         aft_vec_state1.push_back(p_thread_info[t]->aft_state1_);
         aft_vec_state2.push_back(p_thread_info[t]->aft_state2_);
     }
-    auto pre_state_tmp1 = State::MergeStates(pre_vec_state1);
-    auto pre_state_tmp2 = State::MergeStates(pre_vec_state2);
-    auto aft_state_tmp1 = State::MergeStates(aft_vec_state1);
-    auto aft_state_tmp2 = State::MergeStates(aft_vec_state2);
+    State* pre_state_tmp1;
+    State* pre_state_tmp2;
+    State* aft_state_tmp1;
+    State* aft_state_tmp2;
+    
+    if(cmd_info_->do_overrepresentation_) {
+    //if(0) {
+        pre_state_tmp1 = State::MergeStatesSlave(pre_vec_state1);
+        pre_state_tmp2 = State::MergeStatesSlave(pre_vec_state2);
+        aft_state_tmp1 = State::MergeStatesSlave(aft_vec_state1);
+        aft_state_tmp2 = State::MergeStatesSlave(aft_vec_state2);
+    } else {
+        pre_state_tmp1 = State::MergeStates(pre_vec_state1);
+        pre_state_tmp2 = State::MergeStates(pre_vec_state2);
+        aft_state_tmp1 = State::MergeStates(aft_vec_state1);
+        aft_state_tmp2 = State::MergeStates(aft_vec_state2);
+    }
     printf("merge1 done\n");
     printf("merge cost %lf\n", GetTime() - tt00);
 
@@ -2243,6 +2135,7 @@ void PeQc::ProcessPeFastq() {
     vector<State *> aft_state_mpis2;
     aft_state_mpis2.push_back(aft_state_tmp2);
     printf("merge2 done\n");
+   
 
 
     MPI_Barrier(MPI_COMM_WORLD);

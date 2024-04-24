@@ -44,6 +44,8 @@ public:
 
     static State *MergeStates(const std::vector<State *> &states);
 
+    static State *MergeStatesSlave(const std::vector<State *> &states);
+
     static void PrintStates(const State *state);
 
     static void PrintFilterResults(const State *state);

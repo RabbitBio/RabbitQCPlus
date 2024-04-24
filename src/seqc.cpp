@@ -247,9 +247,9 @@ SeQc::SeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
 #endif
 
 #ifdef USE_LIBDEFLATE
-                string idx_name = cmd_info1->out_file_name1_ + ".swidx";
+                //string idx_name = cmd_info1->out_file_name1_ + ".swidx";
                 //fprintf(stderr, "idx_name %s\n", idx_name.c_str());
-                off_idx.open(idx_name);
+                //off_idx.open(idx_name);
 
                 ofstream file(cmd_info1->out_file_name1_.c_str());
 
@@ -939,7 +939,6 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     if(cmd_info_->state_duplicate_) {
         para.bit_len = duplicate_->key_len_base_;
     }
-    athread_init();
 
     double t0 = GetTime();
     double t_wait_producer = 0;
@@ -1160,7 +1159,7 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     fprintf(stderr, "consumer%d NGSnew gz slave sub cost [%lf %lf %lf %lf %lf %lf %lf]\n", my_rank, t_slave_gz1, t_slave_gz2, t_slave_gz3_1, t_slave_gz3_2, t_slave_gz3_3, t_slave_gz4, t_slave_gz5);
     fprintf(stderr, "consumer%d NGSnew push to queue cost %lf\n", my_rank, t_push_q);
     done_thread_number_++;
-    athread_halt();
+    //athread_halt();
     fprintf(stderr, "consumer %d done in func\n", my_rank);
 }
 
@@ -1290,7 +1289,7 @@ void SeQc::WriteSeFastqTask() {
                 truncate(cmd_info_->out_file_name1_.c_str(), sizeof(char) * zip_now_pos_);
             }
 #endif
-            off_idx.close();
+            //off_idx.close();
 
 #else
             if (zip_out_stream) {
@@ -1313,7 +1312,7 @@ void SeQc::WriteSeFastqTask() {
     }
     t_free += GetTime() - tt0;
 
-    if(my_rank == 0) {
+    if(my_rank == 0 && out_is_zip_) {
         tt0 = GetTime();
         ofstream ofs(cmd_info_->out_file_name1_, ios::binary | ios::app);
         for (const auto& pair : out_gz_block_sizes) {
@@ -1432,6 +1431,8 @@ bool checkStates(State* s1, State* s2) {
  */
 
 void SeQc::ProcessSeFastq() {
+
+    athread_init();
     //TODO
     //if(my_rank == 0) block_size = 6 * (1 << 20);
     //else block_size = 4 * (1 << 20);
@@ -1454,6 +1455,8 @@ void SeQc::ProcessSeFastq() {
     }
 
     double ttt = GetTime();
+
+    
 
     //thread *write_thread;
     //if (cmd_info_->write_data_) {
@@ -1497,10 +1500,21 @@ void SeQc::ProcessSeFastq() {
         pre_vec_state.push_back(p_thread_info[t]->pre_state1_);
         aft_vec_state.push_back(p_thread_info[t]->aft_state1_);
     }
-    auto pre_state_tmp = State::MergeStates(pre_vec_state);
-    auto aft_state_tmp = State::MergeStates(aft_vec_state);
+
+    State* pre_state_tmp;
+    State* aft_state_tmp;
+    if(cmd_info_->do_overrepresentation_) {
+    //if(0) {
+        pre_state_tmp = State::MergeStatesSlave(pre_vec_state);
+        aft_state_tmp = State::MergeStatesSlave(aft_vec_state);
+    } else {
+         pre_state_tmp = State::MergeStates(pre_vec_state);
+         aft_state_tmp = State::MergeStates(aft_vec_state);
+    }
     printf("merge1 done\n");
     printf("merge cost %lf\n", GetTime() - tt00);
+
+    athread_halt();
 
     tt00 = GetTime();
     vector<State *> pre_state_mpis;
@@ -1666,6 +1680,9 @@ void SeQc::ProcessSeFastq() {
     }
 
     printf("report cost %lf\n", GetTime() - tt00);
+    if(use_in_mem) {
+        fprintf(stderr, "TOT TIME %lf\n", GetTime() - ttt);
+    }
 
     tt00 = GetTime();
     delete pre_state_tmp;
@@ -1683,9 +1700,6 @@ void SeQc::ProcessSeFastq() {
 
     delete[] p_thread_info;
     printf("delete cost %lf\n", GetTime() - tt00);
-    if(use_in_mem) {
-        fprintf(stderr, "TOT TIME %lf\n", GetTime() - ttt);
-    }
     delete fqFileReader;
     if(use_out_mem) {
         delete[] OutMemData;
@@ -1795,9 +1809,9 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
     if(cmd_info_->state_duplicate_) {
         para.bit_len = duplicate_->key_len_base_;
     }
-    athread_init();
+    //athread_init();
     if (cmd_info_->is_TGS_) {
-        athread_init();
+        //athread_init();
         double t0 = GetTime();
         double tsum1 = 0;
         double tsum2 = 0;
@@ -1827,13 +1841,14 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
         
     }
     done_thread_number_++;
-    athread_halt();
+    //athread_halt();
     //printf("consumer done\n");
 }
 
 
 void SeQc::ProcessSeTGS() {
 
+    athread_init();
     auto *fastqPool = new rabbit::fq::FastqDataPool(256, BLOCK_SIZE);
     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(256, 1);
     auto **p_thread_info = new ThreadInfo *[slave_num];
@@ -1857,6 +1872,9 @@ void SeQc::ProcessSeTGS() {
         vec_state.push_back(p_thread_info[t]->TGS_state_);
     }
     auto mer_state = TGSStats::merge(vec_state);
+
+    athread_halt();
+
 #ifdef Verbose
     printf("merge done\n");
 #endif

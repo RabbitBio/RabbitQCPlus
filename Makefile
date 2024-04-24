@@ -50,7 +50,7 @@ CXX2 = mpicc
 
 CXXFLAGS2 := -g -O3 -w
 
-LIBS := -lz -lpthread -lrt
+LIBS := -static -lz -lpthread -lrt
 
 
 LD_FLAGS := $(foreach librarydir,$(LIBRARY_DIRS),-L$(librarydir)) $(LIBS)
@@ -62,7 +62,7 @@ ${BIN_TARGET}:${OBJ}
 		$(CXX) -mhybrid $^ -o $@ $(LD_FLAGS)
 
 ${BIN_TARGET_MPI}: ${OBJ}
-		$(CXX) -mdynamic $^ -o $@ $(LD_FLAGS)
+		$(CXX) -mhybrid $^ -o $@ $(LD_FLAGS)
 
 ${DIR_OBJ}/%.o:${DIR_SRC}/%.cpp
 		$(CXX) -mhost -c $< -o $@ $(CXXFLAGS)

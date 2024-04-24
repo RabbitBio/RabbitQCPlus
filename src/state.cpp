@@ -3,6 +3,7 @@
 //
 
 #include "state.h"
+#include "globalMutex.h" 
 
 #ifdef Vec512
 
@@ -19,6 +20,11 @@
 #define gcMax 100
 using namespace std;
 
+extern "C" {
+#include <athread.h>
+#include <pthread.h>
+    void slave_statemergefunc();
+}
 
 State::State(CmdInfo *cmd_info, int seq_len, int qul_range, bool is_read2) {
     is_read2_ = is_read2;
@@ -548,7 +554,100 @@ string State::ParseString() {
     return res;
 }
 
+struct state_data {
+    State *states[64];
+    int eva_len;
+};
 
+
+
+State *State::MergeStatesSlave(const vector<State *> &states) {
+    assert(states.size() == 64);
+    int now_seq_len = 0;
+    for (auto item: states) {
+        item->Summarize();
+        now_seq_len = max(now_seq_len, item->real_seq_len_);
+    }
+    auto *res_state = new State(states[0]->cmd_info_, now_seq_len, states[0]->qul_range_, states[0]->is_read2_);
+    res_state->real_seq_len_ = now_seq_len;
+
+    int eva_len = 0;
+    if (states[0]->is_read2_) eva_len = states[0]->cmd_info_->eva_len2_;
+    else eva_len = states[0]->cmd_info_->eva_len_;
+
+    for (auto item: states) {
+    
+        //res_state->orpCost = max(res_state->orpCost, item->orpCost);
+        res_state->q20bases_ += item->q20bases_;
+        res_state->q30bases_ += item->q30bases_;
+        res_state->lines_ += item->lines_;
+        res_state->tot_bases_ += item->tot_bases_;
+        res_state->gc_bases_ += item->gc_bases_;
+        res_state->pass_reads_ += item->pass_reads_;
+        res_state->fail_short_ += item->fail_short_;
+        res_state->fail_long_ += item->fail_long_;
+        res_state->fail_N_ += item->fail_N_;
+        res_state->fail_lowq_ += item->fail_lowq_;
+        res_state->trim_adapter_ += item->trim_adapter_;
+        res_state->trim_adapter_bases_ += item->trim_adapter_bases_;
+
+        for (int i = 0; i < item->real_seq_len_; i++) {
+            for (int j = 0; j < 4; j++) {
+                res_state->pos_cnt_[i * 4 + j] += item->pos_cnt_[i * 4 + j];
+            }
+            res_state->pos_qul_[i] += item->pos_qul_[i];
+            res_state->len_cnt_[i] += item->len_cnt_[i];
+        }
+
+        for (int i = 0; i < res_state->qul_range_; i++) {
+            res_state->qul_cnt_[i] += item->qul_cnt_[i];
+        }
+        //TODO find a better method to get smoother line
+        int gcPart = gcMax / 100;
+        for (int i = 0; i < 100; i++) {
+            double sum = 0;
+            for (int j = i * gcPart; j < (i + 1) * gcPart; j++) {
+                sum = max(sum, 1.0 * item->gc_cnt_[j]);
+            }
+            //res_state->gc_cnt_[i] += sum / gcPart;
+            res_state->gc_cnt_[i] += sum;
+        }
+        //for (int i = 0; i < res_state->kmer_buf_len_; i++) {
+        //    res_state->kmer_[i] += item->kmer_[i];
+        //}
+    }
+    assert(res_state->do_over_represent_analyze_);
+
+    state_data para;
+    para.eva_len = eva_len;
+    for(int id = 0; id < 64; id++) {
+        para.states[id] = states[id];
+    }
+    {
+        lock_guard<mutex> guard(globalMutex); 
+        __real_athread_spawn((void *)slave_statemergefunc, &para, 1);
+        athread_join();
+    }
+    for(int id = 0; id < 4; id++) {
+        State *item = states[id * 16];
+        if (res_state->do_over_represent_analyze_) {
+            // merge over rep seq
+            int hash_num = res_state->hash_num_;
+            res_state->over_representation_qcnt_ += item->over_representation_qcnt_;
+            res_state->over_representation_pcnt_ += item->over_representation_pcnt_;
+            for (int i = 0; i < hash_num; i++) {
+                res_state->hash_graph_[i].cnt += item->hash_graph_[i].cnt;
+                for (int j = 0; j < eva_len; j++) {
+                    res_state->hash_graph_[i].dist[j] += item->hash_graph_[i].dist[j];
+                }
+            }
+        }
+    }
+    if(res_state->lines_ == 0) res_state->avg_len = 0;
+    else res_state->avg_len = 1.0 * res_state->tot_bases_ / res_state->lines_;
+    res_state->Summarize();
+    return res_state;
+}
 
 /**
  * @brief Merge some states to one state
@@ -561,19 +660,15 @@ State *State::MergeStates(const vector<State *> &states) {
         item->Summarize();
         now_seq_len = max(now_seq_len, item->real_seq_len_);
     }
-    //printf("111\n");
     auto *res_state = new State(states[0]->cmd_info_, now_seq_len, states[0]->qul_range_, states[0]->is_read2_);
     res_state->real_seq_len_ = now_seq_len;
 
-    //printf("111\n");
     int eva_len = 0;
     if (states[0]->is_read2_) eva_len = states[0]->cmd_info_->eva_len2_;
     else eva_len = states[0]->cmd_info_->eva_len_;
 
-    //printf("111\n");
     for (auto item: states) {
     
-        //printf("000\n");
         //res_state->orpCost = max(res_state->orpCost, item->orpCost);
         res_state->q20bases_ += item->q20bases_;
         res_state->q30bases_ += item->q30bases_;
@@ -599,7 +694,6 @@ State *State::MergeStates(const vector<State *> &states) {
         //    }
         //}
 
-        //printf("222\n");
 
         for (int i = 0; i < item->real_seq_len_; i++) {
             for (int j = 0; j < 4; j++) {
@@ -609,11 +703,9 @@ State *State::MergeStates(const vector<State *> &states) {
             res_state->len_cnt_[i] += item->len_cnt_[i];
         }
 
-        //printf("333\n");
         for (int i = 0; i < res_state->qul_range_; i++) {
             res_state->qul_cnt_[i] += item->qul_cnt_[i];
         }
-        //printf("444\n");
         //TODO find a better method to get smoother line
         int gcPart = gcMax / 100;
         for (int i = 0; i < 100; i++) {
@@ -624,7 +716,6 @@ State *State::MergeStates(const vector<State *> &states) {
             //res_state->gc_cnt_[i] += sum / gcPart;
             res_state->gc_cnt_[i] += sum;
         }
-        //printf("555\n");
         //for (int i = 0; i < res_state->kmer_buf_len_; i++) {
         //    res_state->kmer_[i] += item->kmer_[i];
         //}
@@ -641,10 +732,8 @@ State *State::MergeStates(const vector<State *> &states) {
                 }
             }
         }
-        //printf("666\n");
     }
 
-    //printf("111\n");
     if(res_state->lines_ == 0) res_state->avg_len = 0;
     else res_state->avg_len = 1.0 * res_state->tot_bases_ / res_state->lines_;
     res_state->Summarize();
@@ -706,10 +795,10 @@ void State::PrintStates(const State *state) {
     printf("average read length %.3f\n", state->avg_len);
     //printf("kmer max is %lld\n", state->kmer_max_);
     //printf("kmer min is %lld\n", state->kmer_min_);
-    //if(state->do_over_represent_analyze_){
-    //	printf("orp qcnt %lld\n",state->over_representation_qcnt_);
-    //	printf("orp pcnt %lld\n",state->over_representation_pcnt_);
-    //}
+    if(state->do_over_represent_analyze_){
+    	printf("orp qcnt %lld\n",state->over_representation_qcnt_);
+    	printf("orp pcnt %lld\n",state->over_representation_pcnt_);
+    }
     //    int now_seq_len = state->real_seq_len_;
     //    printf("position--quality :\n");
     //    for (int i = 0; i < now_seq_len; i++) {

@@ -17,11 +17,18 @@ extern "C"
 #include "nthash.hpp"
 #include "threadinfo.h"
 #include "duplicate.h"
+#define MODB 20
 #define gcMax 100
 #define LOCALSIZE 2 * (1 << 10)
 #define BATCH_SIZE 2
 __thread_local unsigned char local_data1[LOCALSIZE];
 __thread_local unsigned char local_data2[LOCALSIZE];
+__thread_local static int call_times = 0;
+#define tot_orp_bf_size ((1 << MODB) / 64) // 2^14
+#define pre_orp_bf_size (tot_orp_bf_size / 64) // 2^8
+#define orp_shift (8)
+__thread_local_fix int64_t slave_bf_zone[pre_orp_bf_size] __attribute__ ((aligned(4))); // 256 * 8B = 2KB
+
 
 
 struct OverlapRes {
@@ -215,11 +222,27 @@ extern "C" void tgsfunc(qc_data_tgs *para) {
 
 
 inline bool HashQueryAndAdd(State *state, uint64_t now, int offset, int len, int eva_len) {
+    if(call_times == 0) {
+        //dma_getn(state->bf_zone_ + _PEN * pre_orp_bf_size, slave_bf_zone, pre_orp_bf_size);
+        athread_dma_get(slave_bf_zone, state->bf_zone_ + _PEN * pre_orp_bf_size, pre_orp_bf_size * sizeof(int64_t));
+        athread_ssync_array();
+    }
+    call_times++;
     state->over_representation_qcnt_++;
-    //int ha_big = now & ((1 << MODB) - 1);
+    int ha_big = now & ((1 << MODB) - 1);
+    long cpeid = (ha_big >> 6) >> orp_shift;
+    assert(cpeid < 64);
+    int idx = (ha_big >> 6) & (pre_orp_bf_size - 1);
+    int64_t target_data = ((int64_t*)((long)slave_bf_zone | (cpeid << 20) | (1l << 45)))[idx];
+
     //bool pass_bf = state->bf_zone_[ha_big >> 6] & (1ll << (ha_big & 0x3f));
-    //if (!pass_bf) return 0;
-    //else state->over_representation_pcnt_++;
+    bool pass_bf = target_data & (1ll << (ha_big & 0x3f));
+    //if(target_data != state->bf_zone_[ha_big >> 6]) {
+    //    fprintf(stderr, "ggg %lld %lld\n", target_data, state->bf_zone_[ha_big >> 6]);
+    //    exit(0);
+    //}
+    if (!pass_bf) return 0;
+    else state->over_representation_pcnt_++;
     int ha = now & ((1 << MODB) - 1);
     for (int i = state->head_hash_graph_[ha]; i != -1; i = state->hash_graph_[i].pre) {
         //over_representation_pcnt_++;
@@ -931,6 +954,48 @@ extern "C" void formatpefunc(formatpe_data paras[64]) {
     //athread_ssync_array();
     para->res[_PEN] = seq_count1;
     //dma_putn(&(para->res[_PEN]), &seq_count, sizeof(uint64_t));
+}
+
+struct state_data {
+    State *states[64];
+    int eva_len;
+};
+
+extern "C" void statemergefunc(state_data *para){
+    if(_PEN % 4) return;
+    int pid = _PEN;
+    State *res_state = para->states[pid];
+    int eva_len = para->eva_len;
+    for(int id = pid + 1; id < pid + 4; id++) {
+        State *item = para->states[id];
+        // merge over rep seq
+        int hash_num = res_state->hash_num_;
+        res_state->over_representation_qcnt_ += item->over_representation_qcnt_;
+        res_state->over_representation_pcnt_ += item->over_representation_pcnt_;
+        for (int i = 0; i < hash_num; i++) {
+            res_state->hash_graph_[i].cnt += item->hash_graph_[i].cnt;
+            for (int j = 0; j < eva_len; j++) {
+                res_state->hash_graph_[i].dist[j] += item->hash_graph_[i].dist[j];
+            }
+        }
+    }
+
+    if(_PEN % 16) return;
+    res_state = para->states[pid];
+    for(int id = pid + 4; id < pid + 16; id += 4) {
+        State *item = para->states[id];
+        // merge over rep seq
+        int hash_num = res_state->hash_num_;
+        res_state->over_representation_qcnt_ += item->over_representation_qcnt_;
+        res_state->over_representation_pcnt_ += item->over_representation_pcnt_;
+        for (int i = 0; i < hash_num; i++) {
+            res_state->hash_graph_[i].cnt += item->hash_graph_[i].cnt;
+            for (int j = 0; j < eva_len; j++) {
+                res_state->hash_graph_[i].dist[j] += item->hash_graph_[i].dist[j];
+            }
+        }
+    }
+
 }
 
 extern "C" void ngsfunc(qc_data *para){
@@ -1870,4 +1935,42 @@ extern "C" void decompressfunc(Para paras[64]) {
     *(para->out_size) = out_size;
     libdeflate_free_decompressor(decompressor);
 
+}
+
+
+struct preOverData{
+    std::vector<std::pair<std::string, int>> *hot_s;
+    std::vector<int> *hot_seqs_id[64];
+    int *sizes;
+};
+
+extern "C" void preOverfunc(preOverData *para) {
+
+    int size_out = 0;
+    for (int i = _PEN; i < para->hot_s->size(); i += 64) {
+    //for (int i = 0; i < para->hot_s->size(); i++) {
+        auto &item = (*para->hot_s)[i];
+        const char* seq = item.first.c_str();
+        //auto &seq = item.first;
+        auto count = item.second;
+        bool isSubString = false;
+        for (auto &item2: *(para->hot_s)) {
+            //auto &seq2 = item2.first;
+            const char* seq2 = item2.first.c_str();
+            auto count2 = item2.second;
+            if (strcmp(seq, seq2) != 0 && strstr(seq2, seq) != nullptr && count / count2 < 10) {
+                isSubString = true;
+                break;
+            }
+        }
+        if (!isSubString) {
+            {
+                //athread_lock(&lock_s);
+                (*para->hot_seqs_id[_PEN])[size_out++] = i;
+                //para->hot_seqs_id->push_back(i);
+                //athread_unlock(&lock_s);
+            }
+        }
+    }
+    para->sizes[_PEN] = size_out;
 }
