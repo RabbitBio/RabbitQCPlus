@@ -126,6 +126,10 @@ private:
 
     int64_t *part_sizes;
     std::vector<std::pair<int, size_t>> out_gz_block_sizes;
+#ifdef USE_CC_GZ
+    char* cc_gz_in_buffer[64];
+#endif
+
 };
 
 

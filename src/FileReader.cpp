@@ -225,18 +225,41 @@ namespace rabbit {
 
 
     int64 FileReader::Read(byte *memory_, uint64 size_) {
-        read_times++;
-//        if(read_in_mem) {
-//            if(isZipped) {
-//                if(read_times > 64) usleep(6000);
-//            }
-//            else {
-//                if(read_times > 64) usleep(10000);
-//            }
-//        }
-
         if (isZipped) {
 #ifdef USE_LIBDEFLATE
+#ifdef USE_CC_GZ
+            size_t to_read = 0;
+            if (now_block == end_line) {
+                to_read = 0;
+                iff_idx_end = 1;
+            } else {
+                to_read = block_sizes[now_block++];
+            }
+            if(read_in_mem) {
+                int64 lastDataSize = MemDataTotSize - MemDataNowPos;
+                int64 in_size;
+                if (to_read > lastDataSize) {
+                    memcpy(memory_, MemData + MemDataNowPos, lastDataSize);
+                    MemDataNowPos += lastDataSize;
+                    MemDataReadFinish = 1;
+                    in_size = lastDataSize;
+                } else {
+                    memcpy(memory_, MemData + MemDataNowPos, to_read);
+                    MemDataNowPos += to_read;
+                    in_size = to_read;
+                }
+                assert(to_read == in_size);
+                return to_read;
+                //fprintf(stderr, "use consumer slave gz in in_mem module is TODO!\n");
+                //exit(0);
+            } else {
+                int64 n = fread(memory_, 1, to_read, input_file);
+                assert(n == to_read);
+                //fprintf(stderr, "nn %lld\n", n);
+                return n;
+            }
+            
+#else
             if (buffer_now_pos + size_ > buffer_tot_size) {
                 DecompressMore();
                 if (buffer_now_pos + size_ > buffer_tot_size) {
@@ -247,6 +270,7 @@ namespace rabbit {
             memcpy(memory_, to_read_buffer + buffer_now_pos, size_);
             buffer_now_pos += size_;
             return size_;
+#endif
 #else
             if(read_in_mem) {
                 fprintf(stderr, "zlib not support read in mem\n");
@@ -287,6 +311,7 @@ namespace rabbit {
 
     bool FileReader::FinishRead() {
         if (isZipped) {
+            //fprintf(stderr, " finish ? %d--%lld %lld\n", iff_idx_end, buffer_now_pos, buffer_tot_size);
 #ifdef USE_LIBDEFLATE
             if(read_in_mem) return (iff_idx_end || MemDataReadFinish) && (buffer_now_pos == buffer_tot_size);
             else return (iff_idx_end || feof(input_file)) && (buffer_now_pos == buffer_tot_size);

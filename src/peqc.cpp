@@ -12,6 +12,7 @@ extern "C" {
 #include <pthread.h>
     void slave_ngspefunc();
     void slave_formatpefunc();
+    void slave_decompressfunc();
     void slave_compressfunc();
 }
 
@@ -129,6 +130,11 @@ PeQc::PeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
 
     int64_t start_pos, end_pos;
     if(in_is_zip_) {
+#ifdef USE_CC_GZ
+        for(int i = 0; i < 64; i++) {
+            cc_gz_in_buffer[i] = new char[BLOCK_SIZE];
+        }
+#endif
         vector<size_t> block_sizes;
         if(use_swidx_file) {
             ifstream iff_idx;
@@ -506,6 +512,13 @@ PeQc::~PeQc() {
         //if (cmd_info_->interleaved_out_ == 0)
         //    delete out_queue2_;
     }
+    if(in_is_zip_) {
+#ifdef USE_CC_GZ
+        for(int i = 0; i < 64; i++) {
+            delete []cc_gz_in_buffer[i];
+        }
+#endif
+    }
     if (cmd_info_->state_duplicate_) {
         delete duplicate_;
     }
@@ -538,31 +551,6 @@ void PeQc::Read2Chars(neoReference &ref, char *out_data, int &pos) {
     out_data[pos++] = '\n';
 }
 
-//void PeQc::ProducerPeInterFastqTask(string file, rabbit::fq::FastqDataPool *fastq_data_pool,
-//        rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> &dq) {
-//#ifdef Verbose
-//    double t0 = GetTime();
-//#endif
-//    rabbit::fq::FastqFileReader *fqFileReader;
-//    rabbit::uint32 tmpSize = SWAP1_SIZE;
-//    if (cmd_info_->seq_len_ <= 200) tmpSize = SWAP2_SIZE;
-//    fqFileReader = new rabbit::fq::FastqFileReader(file, *fastq_data_pool, "", in_is_zip_);
-//    int64_t n_chunks = 0;
-//    while (true) {
-//        rabbit::fq::FastqDataChunk *fqdatachunk;
-//        fqdatachunk = fqFileReader->readNextInterChunk();
-//        if (fqdatachunk == NULL) break;
-//        n_chunks++;
-//        dq.Push(n_chunks, fqdatachunk);
-//    }
-//
-//    dq.SetCompleted();
-//    delete fqFileReader;
-//#ifdef Verbose
-//    cout << "file " << file << " has " << n_chunks << " chunks" << endl;
-//    printf("producer cost %.3f\n", GetTime() - t0);
-//#endif
-//}
 
 static rabbit::fq::FastqFileReader *fqFileReader;
 
@@ -593,9 +581,9 @@ void PeQc::ProducerPeFastqTask64(string file, string file2, rabbit::fq::FastqDat
         t_sum1 += GetTime() - tt0;
 
         tt0 = GetTime();
-        if (fqdatachunk == NULL) {
+        if ((fqdatachunk == NULL) || (fqdatachunk != NULL && fqdatachunk->left_part->size == 1ll << 32)) {
             if(tmp_chunks.size()) {
-                //fprintf(stderr, "producer %d put last %d\n", my_rank, tmp_chunks.size());
+//                fprintf(stderr, "producer %d put last %d\n", my_rank, tmp_chunks.size());
                 //p_mylock.lock();
                 while (p_queueNumNow >= p_queueSizeLim) {
                     usleep(1000);
@@ -608,7 +596,7 @@ void PeQc::ProducerPeFastqTask64(string file, string file2, rabbit::fq::FastqDat
                 n_chunks++;
             }
 //            producerStop = 1;
-            //fprintf(stderr, "producer %d stop, tot chunk size %d\n", my_rank, n_chunks);
+//            fprintf(stderr, "producer %d stop, tot chunk size %d\n", my_rank, n_chunks);
             //if(cmd_info_->write_data_) {
             tmp_chunks.clear();
             while (p_queueNumNow >= p_queueSizeLim) {
@@ -620,25 +608,25 @@ void PeQc::ProducerPeFastqTask64(string file, string file2, rabbit::fq::FastqDat
             break;
         }
         tot_size += fqdatachunk->left_part->size;
-        if(fqdatachunk->left_part->size <= 0 || tot_size <= 0) {
-            if(tmp_chunks.size()) {
-                //p_mylock.lock();
-                while (p_queueNumNow >= p_queueSizeLim) {
-                    usleep(1000);
-                    //fprintf(stderr, "producer %d waiting0\n", my_rank);
-                }
-                p_out_queue_[p_queueP2++] = tmp_chunks;
-                p_queueNumNow++;
-                //p_mylock.unlock();
-                tmp_chunks.clear();
-                n_chunks++;
-            }
-            break;
-        }
+//        if(fqdatachunk->left_part->size <= 0 || tot_size <= 0) {
+//            if(tmp_chunks.size()) {
+//                //p_mylock.lock();
+//                while (p_queueNumNow >= p_queueSizeLim) {
+//                    usleep(1000);
+//                    //fprintf(stderr, "producer %d waiting0\n", my_rank);
+//                }
+//                p_out_queue_[p_queueP2++] = tmp_chunks;
+//                p_queueNumNow++;
+//                //p_mylock.unlock();
+//                tmp_chunks.clear();
+//                n_chunks++;
+//            }
+//            break;
+//        }
         tmp_chunks.push_back(fqdatachunk); 
-        //fprintf(stderr, "producer %d read a chunk\n", my_rank);
+//        fprintf(stderr, "producer %d read a chunk\n", my_rank);
         if(tmp_chunks.size() == 64) {
-            //fprintf(stderr, "producer %d put 64\n", my_rank);
+//            fprintf(stderr, "producer %d put 64\n", my_rank);
             //p_mylock.lock();
             while (p_queueNumNow >= p_queueSizeLim) {
                 usleep(1000);
@@ -663,81 +651,6 @@ void PeQc::ProducerPeFastqTask64(string file, string file2, rabbit::fq::FastqDat
 }
 
 
-
-//void PeQc::ProducerPeFastqTask(string file, string file2, rabbit::fq::FastqDataPool *fastqPool,
-//        rabbit::core::TDataQueue<rabbit::fq::FastqDataPairChunk> &dq) {
-//#ifdef Verbose
-//    double t0 = GetTime();
-//#endif
-//
-//    rabbit::uint32 tmpSize = SWAP1_SIZE;
-//    if (cmd_info_->seq_len_ <= 200) tmpSize = SWAP2_SIZE;
-//    int64_t n_chunks = 0;
-//
-//
-//    if (cmd_info_->use_pugz_) {
-//        fprintf(stderr, "use pugz TODO...\n");
-//        exit(0);
-//
-//
-//    } else {
-//        bool is_first = 1;
-//        int64_t tot_size = 0;
-//        while (true) {
-//            rabbit::fq::FastqDataPairChunk *fqdatachunk;
-//            int64_t offset;
-//            if(is_first) {
-//                offset = 0;
-//                for(int i = 0; i < my_rank; i++)
-//                    offset += part_sizes[i];
-//            } else {
-//                offset = -1;
-//            }
-//            is_first = 0;
-//
-//#ifdef use_in_mem
-//            fqdatachunk = fqFileReader->readNextPairChunk(offset, part_sizes[my_rank]);
-////            fqdatachunk = fqFileReader->readNextPairChunkFromMem(offset, part_sizes[my_rank]);
-//#else
-//            fqdatachunk = fqFileReader->readNextPairChunk(offset, part_sizes[my_rank]);
-//#endif
-//            if (fqdatachunk == NULL) {
-//
-//                //printf("null\n");
-//                if(cmd_info_->write_data_) {
-//                //if(0) {
-//                    //printf("producer%d stop\n", my_rank);
-//                    //cerr << "producer" << my_rank << "stop" << endl;
-//                    now_chunks = n_chunks;
-//                    producerStop = 1;
-//                    while(consumerCommDone == 0) {
-//                        usleep(1000);
-//                    }
-//                    //printf("producer%d get val done %lld %lld\n", my_rank, now_chunks, mx_chunks);
-//                    int bu_chunks = mx_chunks - now_chunks;
-//                    //cerr << "bu rank" << my_rank << " : " << bu_chunks << " of (" << now_chunks << ", " << mx_chunks << ")" << endl;
-//                    if(bu_chunks) {
-//                        for(int i = 0; i < bu_chunks; i++) {
-//                            dq.Push(n_chunks, fqdatachunk);
-//                            n_chunks++;
-//                        }
-//                    }
-//                }
-//                //fprintf(stderr, "rank%d producer done === %lld\n", my_rank, n_chunks);
-//                break;
-//            }
-//            tot_size += fqdatachunk->left_part->size;
-//            if(fqdatachunk->left_part->size <= 0 || tot_size <= 0) break;
-//            n_chunks++;
-//            dq.Push(n_chunks, fqdatachunk);
-//            //printf("producer push chunk %lld\n", n_chunks);
-//            //cerr << "producer" << my_rank << " push chunk " << n_chunks << endl;
-//        }
-//    }
-//    dq.SetCompleted();
-//    producerDone = 1;
-//    printf("rank%d producer baba cost %lf\n", my_rank, GetTime() - t0);
-//}
 
 struct formatpe_data {
     vector <neoReference> *data1;
@@ -1246,6 +1159,12 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     double t_push_q = 0;
     int out_round = 0;
     vector<rabbit::fq::FastqDataPairChunk *> fqdatachunks;
+//    cerr << "--p_queueP1 :" << p_queueP1 << endl;
+
+//    ofstream off2;
+//    string tmp_fq_sw_name2 = "tmp_fq.sw";
+//    off2.open(tmp_fq_sw_name2, std::ios::binary);
+
     while(true) {
         double tt0 = GetTime();
         while (p_queueNumNow == 0) {
@@ -1255,22 +1174,112 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
 
 
         tt0 = GetTime();
-        //fprintf(stderr, "consumer %d pushNull: %d\n", my_rank, pushNull);
+//        cerr << "p_queueP1 :" << p_queueP1 << endl;
+//        fprintf(stderr, "consumer %d pushNull: %d\n", my_rank, pushNull);
         fqdatachunks = p_out_queue_[p_queueP1++];
         p_queueNumNow--;
         vector<neoReference> data1[64];
         vector<neoReference> data2[64];
-        formatpe_data para2[64];
-        uint64_t counts[64] = {0};
         for(int i = fqdatachunks.size(); i < 64; i++) {
             fqdatachunks.push_back(NULL);
         }
+
+#ifdef USE_CC_GZ
+#ifdef USE_LIBDEFLATE
+        if(in_is_zip_) {
+
+            //left chunk
+            {
+                Para degz_paras[64];
+                size_t out_size[64] = {0};
+                for (int i = 0; i < 64; i++) {
+                    if(fqdatachunks[i] == NULL) {
+                        degz_paras[i].in_buffer = NULL;
+                        degz_paras[i].in_size = 0;
+                        continue;
+                    }
+                    memcpy(cc_gz_in_buffer[i], fqdatachunks[i]->left_part->data.Pointer(), fqdatachunks[i]->left_part->size);
+                    degz_paras[i].in_buffer = cc_gz_in_buffer[i];
+                    degz_paras[i].out_buffer = (char*)fqdatachunks[i]->left_part->data.Pointer();
+                    degz_paras[i].in_size = fqdatachunks[i]->left_part->size;
+                    degz_paras[i].out_size = &(out_size[i]);
+//                    fprintf(stderr, "in size %d\n", degz_paras[i].in_size);
+//                    off2.write((char*)fqdatachunks[i]->left_part->data.Pointer(), fqdatachunks[i]->left_part->size);
+
+                }
+
+//                fprintf(stderr, "aaa0\n");
+
+                {
+                    std::lock_guard <std::mutex> guard(globalMutex);
+                    __real_athread_spawn((void *) slave_decompressfunc, degz_paras, 1);
+                    athread_join();
+                }
+//                fprintf(stderr, "aaa1\n");
+
+
+                for (int i = 0; i < 64; i++) {
+                    if(fqdatachunks[i] == NULL) {
+                    } else {
+                        if(out_size[i]) fqdatachunks[i]->left_part->size = out_size[i] - 1;
+                        else fqdatachunks[i]->left_part->size = out_size[i];
+                    }
+                }
+//                fprintf(stderr, "aaa2\n");
+
+            }
+
+            //right chunk
+            {
+                Para degz_paras[64];
+                size_t out_size[64] = {0};
+                for (int i = 0; i < 64; i++) {
+                    if(fqdatachunks[i] == NULL) {
+                        degz_paras[i].in_buffer = NULL;
+                        degz_paras[i].in_size = 0;
+                        continue;
+                    }
+                    memcpy(cc_gz_in_buffer[i], fqdatachunks[i]->right_part->data.Pointer(), fqdatachunks[i]->right_part->size);
+                    degz_paras[i].in_buffer = cc_gz_in_buffer[i];
+                    degz_paras[i].out_buffer = (char*)fqdatachunks[i]->right_part->data.Pointer();
+                    degz_paras[i].in_size = fqdatachunks[i]->right_part->size;
+                    degz_paras[i].out_size = &(out_size[i]);
+                    //fprintf(stderr, "in size %d\n", degz_paras[i].in_size);
+                }
+//                fprintf(stderr, "bbb0\n");
+
+
+                {
+                    std::lock_guard <std::mutex> guard(globalMutex);
+                    __real_athread_spawn((void *) slave_decompressfunc, degz_paras, 1);
+                    athread_join();
+                }
+//                fprintf(stderr, "bbb1\n");
+
+
+                for (int i = 0; i < 64; i++) {
+                    if(fqdatachunks[i] == NULL) {
+                    } else {
+                        if(out_size[i]) fqdatachunks[i]->right_part->size = out_size[i] - 1;
+                        else fqdatachunks[i]->right_part->size = out_size[i];
+                    }
+                }
+//                fprintf(stderr, "bbb2\n");
+
+            }
+
+        }
+#endif
+#endif
+        formatpe_data para2[64];
+        uint64_t counts[64] = {0};
+
         int fq_size = fqdatachunks.size();
         for(int i = 0; i < 64; i++) {
             para2[i].fqSize = fq_size;
             para2[i].my_rank = my_rank;
         }
-        //fprintf(stderr, "consumer %d fq_size %d\n", my_rank, fq_size);
+//        fprintf(stderr, "consumer %d fq_size %d\n", my_rank, fq_size);
         for(int i = 0; i < fq_size; i++) {
             //if(fqdatachunks[i] != NULL) fprintf(stderr, "rank%d %p %p - %d %d\n", my_rank, fqdatachunks[i]->left_part, fqdatachunks[i]->right_part, fqdatachunks[i]->left_part->size, fqdatachunks[i]->right_part->size); 
             if(fqdatachunks[i] != NULL) data1[i].resize(fqdatachunks[i]->left_part->size / (cmd_info_->seq_len_ * 2));
@@ -1487,6 +1496,9 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
         }
 
     }
+
+//    off2.close();
+
 
     double tt0 = GetTime();
     gather_and_sort_vectors_pe(my_rank, comm_size, out_round, out_gz_block_sizes1, 0);

@@ -823,25 +823,40 @@ namespace rabbit {
 
             int64 r;
             r = mFqReader->Read(data + leftPart->size, toRead);
-            if (r > 0) {
-                if (r == toRead) {
+//            fprintf(stderr, "read1 %d %d\n", r, leftPart->size);
+            if (!mFqReader->FinishRead()) {
+                if(isZipped) {
+#ifdef USE_CC_GZ
+                    cbufSize = r + leftPart->size;
+                    chunkEnd = r;
+#else
                     chunkEnd = cbufSize - GetNxtBuffSize;
                     chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
+#endif
                 } else {
-                    // chunkEnd = r;
+                    chunkEnd = cbufSize - GetNxtBuffSize;
+                    chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
+                }
+            } else {
+#ifdef USE_CC_GZ
+                if(isZipped) {
+                    assert(r == 0);
+                    leftPart->size = 1ll << 32;
+                    eof1 = true;
+                } else {
                     leftPart->size += r - 1;
                     if (usesCrlf) leftPart->size -= 1;
                     eof1 = true;
                     chunkEnd = leftPart->size + 1;
                     cbufSize = leftPart->size + 1;
                 }
-            } else {
+#else
+                leftPart->size += r - 1;
+                if (usesCrlf) leftPart->size -= 1;
                 eof1 = true;
                 chunkEnd = leftPart->size + 1;
                 cbufSize = leftPart->size + 1;
-                if (leftPart->size == 0) {
-                    return NULL;
-                }
+#endif
             }
             //------read left chunk end------//
 
@@ -856,26 +871,40 @@ namespace rabbit {
                 bufferSize2 = 0;
             }
             r = mFqReader2->Read(data_right + rightPart->size, toRead);
-
-            if (r > 0) {
-                if (r == toRead) {
+//            fprintf(stderr, "read2 %d %d\n", r, rightPart->size);
+            if (!mFqReader2->FinishRead()) {
+                if(isZipped) {
+#ifdef USE_CC_GZ
+                    cbufSize_right = r + rightPart->size;
+                    chunkEnd_right = r;
+#else
                     chunkEnd_right = cbufSize_right - GetNxtBuffSize;
                     chunkEnd_right = GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
+#endif
                 } else {
-                    // chunkEnd_right += r;
+                    chunkEnd_right = cbufSize_right - GetNxtBuffSize;
+                    chunkEnd_right = GetNextRecordPos_(data_right, chunkEnd_right, cbufSize_right);
+                }
+            } else {
+#ifdef USE_CC_GZ
+                if(isZipped) {
+                    assert(r == 0);
+                    rightPart->size = 1ll << 32;
+                    eof2 = true;
+                } else {
                     rightPart->size += r - 1;
                     if (usesCrlf) rightPart->size -= 1;
                     eof2 = true;
                     chunkEnd_right = rightPart->size + 1;
                     cbufSize_right = rightPart->size + 1;
                 }
-            } else {
+#else
+                rightPart->size += r - 1;
+                if (usesCrlf) rightPart->size -= 1;
                 eof2 = true;
                 chunkEnd_right = rightPart->size + 1;
                 cbufSize_right = rightPart->size + 1;
-                if (rightPart->size == 0) {
-                    return NULL;
-                }
+#endif
             }
             //--------------read right chunk end---------------------//
             if (eof1 && eof2) eof = true;
@@ -908,11 +937,21 @@ namespace rabbit {
 //                        chunkEnd_right--;
 //                    }
 //                }
+#ifdef USE_CC_GZ
+                if(isZipped) {
+                    leftPart->size = chunkEnd;
+                    rightPart->size = chunkEnd_right;
+                } else {
+                    leftPart->size = chunkEnd - 1;
+                    rightPart->size = chunkEnd_right - 1;
+                }
+#else
                 leftPart->size = chunkEnd - 1;
+                rightPart->size = chunkEnd_right - 1;
+#endif
                 if (usesCrlf) leftPart->size -= 1;
                 std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
                 bufferSize = cbufSize - chunkEnd;
-                rightPart->size = chunkEnd_right - 1;
                 if (usesCrlf) rightPart->size -= 1;
                 std::copy(data_right + chunkEnd_right, data_right + cbufSize_right, swapBuffer2.Pointer());
                 bufferSize2 = cbufSize_right - chunkEnd_right;
@@ -1098,7 +1137,6 @@ namespace rabbit {
  
         bool FastqFileReader::ReadNextChunk_(FastqDataChunk *chunk_) {
 
-            //fprintf(stderr, "111111111\n");
             if (mFqReader->FinishRead() && bufferSize == 0) {
                 chunk_->size = 0;
                 return false;
@@ -1120,14 +1158,35 @@ namespace rabbit {
             //fprintf(stderr, "fxs read %lld\n", r);
             if (!mFqReader->FinishRead()) {
                 cbufSize = r + chunk_->size;
-                uint64 chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize : GetNxtBuffSize);
-                chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
-                chunk_->size = chunkEnd - 1;
+                uint64 chunkEnd = cbufSize;
+                if(isZipped) {
+#ifdef USE_CC_GZ
+                    chunk_->size = chunkEnd;
+#else
+                    chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize : GetNxtBuffSize);
+                    chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
+                    chunk_->size = chunkEnd - 1;
+#endif
+                } else {
+                    chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize : GetNxtBuffSize);
+                    chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);
+                    chunk_->size = chunkEnd - 1;
+                }
                 if (usesCrlf) chunk_->size -= 1;
                 std::copy(data + chunkEnd, data + cbufSize, swapBuffer.Pointer());
                 bufferSize = cbufSize - chunkEnd;
             } else {                  // at the end of file
+
+#ifdef USE_CC_GZ
+                if(isZipped) {
+                    assert(r == 0);
+                    chunk_->size = 1ll << 32;
+                } else {
+                    chunk_->size += r - 1;// skip the last EOF symbol
+                }
+#else
                 chunk_->size += r - 1;// skip the last EOF symbol
+#endif
                 if (usesCrlf) chunk_->size -= 1;
                 mFqReader->setEof();
             }

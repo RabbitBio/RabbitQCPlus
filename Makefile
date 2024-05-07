@@ -26,7 +26,7 @@ OBJ += $(patsubst %.cpp,${DIR_OBJ}/%.o,$(notdir ${SRC3}))
 
 
 SRC4 := $(wildcard ${SLAVE_DIR_SRC}/lib/*.c)
-OBJ += $(patsubst %.c,${DIR_OBJ}/%.o,$(notdir ${SRC4}))
+OBJ += $(patsubst %.c,${DIR_OBJ}/slave_%.o,$(notdir ${SRC4}))
 
 
 
@@ -70,7 +70,7 @@ ${DIR_OBJ}/%.o:${SLAVE_DIR_SRC}/%.cpp
 		$(CXX) -mslave -msimd -c $< -o $@ $(CXXFLAGS)
 ${DIR_OBJ}/%.o:${DIR_SRC}/%.c
 		$(CXX2) -mhost -c $< -o $@ $(CXXFLAGS2) 
-${DIR_OBJ}/%.o:${SLAVE_DIR_SRC}/lib/%.c
+$(DIR_OBJ)/slave_%.o: ${SLAVE_DIR_SRC}/lib/%.c
 		$(CXX2) -mslave -msimd -c $< -o $@ $(CXXFLAGS2) 
 
 

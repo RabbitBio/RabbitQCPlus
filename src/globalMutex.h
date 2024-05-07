@@ -12,6 +12,7 @@
 #define BLOCK_SIZE (1 << 20)
 #define SWAP1_SIZE (1 << 18)
 #define SWAP2_SIZE (1 << 14)
+#define USE_CC_GZ
 extern std::mutex globalMutex;
 struct Para {
     char* in_buffer;

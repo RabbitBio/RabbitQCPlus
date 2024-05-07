@@ -137,6 +137,8 @@ struct preOverData{
     int *sizes;
 };
 
+#include "../slave/libdeflate.h"
+
 void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &eva_len) {
 
 #ifdef Verbose
@@ -145,6 +147,7 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(4, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
             file_name.find(".gz") != string::npos);
+    bool isZipped = file_name.find(".gz") != string::npos;
     int64_t n_chunks = 0;
     const long BASE_LIMIT = 151 * 10000;
     long records = 0;
@@ -166,11 +169,32 @@ void Adapter::PreOverAnalyze(string file_name, vector<string> &hot_seqs, int &ev
     while (bases < BASE_LIMIT) {
         rabbit::fq::FastqDataChunk *fqdatachunk;
         fqdatachunk = fqFileReader->readNextChunk();
-        if (fqdatachunk == NULL) break;
+        if ((fqdatachunk == NULL) || (fqdatachunk != NULL && fqdatachunk->size == 1ll << 32)) break;
+        if(isZipped) {
+#ifdef USE_CC_GZ
+            char* in_buffer = new char[BLOCK_SIZE];
+            size_t in_size = fqdatachunk->size;
+            size_t out_size = -1;
+            memcpy(in_buffer, (char*)fqdatachunk->data.Pointer(), in_size);
+            char* out_buffer = (char*)fqdatachunk->data.Pointer();
+            libdeflate_decompressor* decompressor = libdeflate_alloc_decompressor();
+            libdeflate_result result = libdeflate_gzip_decompress(decompressor, in_buffer, in_size, out_buffer, BLOCK_SIZE, &out_size);
+            if (result != LIBDEFLATE_SUCCESS) {
+                fprintf(stderr, "Decompression failed\n");
+            }
+            libdeflate_free_decompressor(decompressor);
+            delete[] in_buffer;
+            fprintf(stderr, "pre orp in_size %d, out_size %d\n", in_size, out_size);
+            if(out_size) fqdatachunk->size = out_size - 1;
+            else fqdatachunk->size = out_size;
+#endif
+        }
         n_chunks++;
         vector<neoReference> data;
         rabbit::fq::chunkFormat(fqdatachunk, data, true);
         chunks.push_back(fqdatachunk);
+        fprintf(stderr, "pre orp chunk size %d\n", data.size());
+
         for (auto item: data) {
             bases += item.lseq;
             loadedReads.push_back(item);
@@ -365,6 +389,7 @@ int Adapter::EvalMaxLen(string file_name) {
     auto *fastq_data_pool = new rabbit::fq::FastqDataPool(4, 1 << 22);
     auto fqFileReader = new rabbit::fq::FastqFileReader(file_name, *fastq_data_pool, "",
             file_name.find(".gz") != string::npos);
+    bool isZipped = file_name.find(".gz") != string::npos;
     int64_t n_chunks = 0;
     // stat up to 256K reads
     const long READ_LIMIT = 4 * 1024;
@@ -377,7 +402,26 @@ int Adapter::EvalMaxLen(string file_name) {
     while (records < READ_LIMIT && bases < BASE_LIMIT) {
         rabbit::fq::FastqDataChunk *fqdatachunk;
         fqdatachunk = fqFileReader->readNextChunk();
-        if (fqdatachunk == NULL) break;
+        if ((fqdatachunk == NULL) || (fqdatachunk != NULL && fqdatachunk->size == 1ll << 32)) break;
+        if(isZipped) {
+#ifdef USE_CC_GZ
+            char* in_buffer = new char[BLOCK_SIZE];
+            size_t in_size = fqdatachunk->size;
+            size_t out_size = -1;
+            memcpy(in_buffer, (char*)fqdatachunk->data.Pointer(), in_size);
+            char* out_buffer = (char*)fqdatachunk->data.Pointer();
+            libdeflate_decompressor* decompressor = libdeflate_alloc_decompressor();
+            libdeflate_result result = libdeflate_gzip_decompress(decompressor, in_buffer, in_size, out_buffer, BLOCK_SIZE, &out_size);
+            if (result != LIBDEFLATE_SUCCESS) {
+                fprintf(stderr, "Decompression failed\n");
+            }
+            libdeflate_free_decompressor(decompressor);
+            delete[] in_buffer;
+            fprintf(stderr, "pre orp in_size %d, out_size %d\n", in_size, out_size);
+            if(out_size) fqdatachunk->size = out_size - 1;
+            else fqdatachunk->size = out_size;
+#endif
+        }
         n_chunks++;
         vector<neoReference> data;
         rabbit::fq::chunkFormat(fqdatachunk, data, true);

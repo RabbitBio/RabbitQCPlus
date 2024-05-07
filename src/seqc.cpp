@@ -13,6 +13,7 @@ extern "C" {
     void slave_tgsfunc();
     void slave_ngsfunc();
     void slave_formatfunc();
+    void slave_decompressfunc();
     void slave_compressfunc();
 }
 
@@ -106,7 +107,11 @@ SeQc::SeQc(CmdInfo *cmd_info1, int my_rank_, int comm_size_) {
     gFile.close();
     int64_t start_pos, end_pos;
     if(in_is_zip_) {
-         
+#ifdef USE_CC_GZ
+        for(int i = 0; i < 64; i++) {
+            cc_gz_in_buffer[i] = new char[BLOCK_SIZE];
+        }
+#endif
         vector<size_t> block_sizes;
         if(use_swidx_file) {
             ifstream iff_idx;
@@ -389,6 +394,13 @@ SeQc::~SeQc() {
     if (cmd_info_->write_data_) {
         delete[] out_queue_;
     }
+    if(in_is_zip_) {
+#ifdef USE_CC_GZ
+        for(int i = 0; i < 64; i++) {
+            delete []cc_gz_in_buffer[i];
+        }
+#endif
+    }
 
     if (cmd_info_->state_duplicate_) {
         //for(int i = 0; i <64; i++) {
@@ -445,10 +457,14 @@ void SeQc::ProducerSeFastqTask64(string file, rabbit::fq::FastqDataPool *fastq_d
         t_sum1 += GetTime() - tt0;
 
         tt0 = GetTime();
-        if (fqdatachunk == NULL) {
+        //if(fqdatachunk != NULL) {
+        //    fprintf(stderr, "ppp chunk is not null\n");
+        //    fprintf(stderr, "ppp chunk size %llu\n", fqdatachunk->size);
+        //}
+        if ((fqdatachunk == NULL) || (fqdatachunk != NULL && fqdatachunk->size == 1ll << 32)) {
             double tt1 = GetTime();
             if(tmp_chunks.size()) {
-                //fprintf(stderr, "put last %d\n", tmp_chunks.size());
+                //fprintf(stderr, "ppp put last %d\n", tmp_chunks.size());
                 //p_mylock.lock();
                 while (p_queueNumNow >= p_queueSizeLim) {
                     usleep(100);
@@ -461,7 +477,7 @@ void SeQc::ProducerSeFastqTask64(string file, rabbit::fq::FastqDataPool *fastq_d
             }
             t_sum2_1 += GetTime() - tt1;
 //            producerStop = 1;
-            fprintf(stderr, "producer rank%d stop, tot chunk size %d\n", my_rank, n_chunks);
+            //fprintf(stderr, "ppp producer rank%d stop, tot chunk size %d\n", my_rank, n_chunks);
             //if(cmd_info_->write_data_) {
             tmp_chunks.clear();
             while (p_queueNumNow >= p_queueSizeLim) {
@@ -476,23 +492,23 @@ void SeQc::ProducerSeFastqTask64(string file, rabbit::fq::FastqDataPool *fastq_d
 
         tt0 = GetTime();
         tot_size += fqdatachunk->size;
-        if(fqdatachunk->size <= 0 || tot_size <= 0) {
-            if(tmp_chunks.size()) {
-                //p_mylock.lock();
-                while (p_queueNumNow >= p_queueSizeLim) {
-                    usleep(100);
-                }
-                p_out_queue_[p_queueP2++] = tmp_chunks;
-                p_queueNumNow++;
-                //p_mylock.unlock();
-                tmp_chunks.clear();
-                n_chunks++;
-            }
-            break;
-        }
+        //if(fqdatachunk->size <= 0 || tot_size <= 0) {
+        //    if(tmp_chunks.size()) {
+        //        //p_mylock.lock();
+        //        while (p_queueNumNow >= p_queueSizeLim) {
+        //            usleep(100);
+        //        }
+        //        p_out_queue_[p_queueP2++] = tmp_chunks;
+        //        p_queueNumNow++;
+        //        //p_mylock.unlock();
+        //        tmp_chunks.clear();
+        //        n_chunks++;
+        //    }
+        //    break;
+        //}
         tmp_chunks.push_back(fqdatachunk); 
         if(tmp_chunks.size() == 64) {
-            //fprintf(stderr, "put 64\n");
+            //fprintf(stderr, "ppp put 64\n");
             //p_mylock.lock();
             while (p_queueNumNow >= p_queueSizeLim) {
                 usleep(100);
@@ -939,6 +955,7 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     if(cmd_info_->state_duplicate_) {
         para.bit_len = duplicate_->key_len_base_;
     }
+    athread_init();
 
     double t0 = GetTime();
     double t_wait_producer = 0;
@@ -956,6 +973,12 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     double t_push_q = 0;
     vector<rabbit::fq::FastqDataChunk *> fqdatachunks;
     int out_round = 0;
+    //ofstream off;
+    //off.open("tmp_fq.sw.gz", std::ios::binary);
+    //int off2_cnt = 0;
+    //int off3_cnt = 0;
+    //int check_cnt = 0;
+    
     while(true) {
         double tt0 = GetTime();
         while (p_queueNumNow == 0) {
@@ -965,13 +988,76 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
 
         tt0 = GetTime();
         fqdatachunks = p_out_queue_[p_queueP1++];
+        //fprintf(stderr, "ccc fqc size %d\n", fqdatachunks.size());
         p_queueNumNow--;
         vector<neoReference> data[64];
-        format_data para2[64];
-        uint64_t counts[64] = {0};
         for(int i = fqdatachunks.size(); i < 64; i++) {
             fqdatachunks.push_back(NULL);
         }
+#ifdef USE_CC_GZ
+#ifdef USE_LIBDEFLATE
+        if(in_is_zip_) {
+            Para degz_paras[64];
+            size_t out_size[64] = {0};
+            for (int i = 0; i < 64; i++) {
+                if(fqdatachunks[i] == NULL) {
+                    degz_paras[i].in_buffer = NULL;
+                    degz_paras[i].in_size = 0;
+                    //fprintf(stderr, "in size %d\n", degz_paras[i].in_size);
+                    continue;
+                }
+                //off.write((char*)fqdatachunks[i]->data.Pointer(), fqdatachunks[i]->size);
+                memcpy(cc_gz_in_buffer[i], fqdatachunks[i]->data.Pointer(), fqdatachunks[i]->size);
+                degz_paras[i].in_buffer = cc_gz_in_buffer[i];
+                degz_paras[i].out_buffer = (char*)fqdatachunks[i]->data.Pointer();
+                degz_paras[i].in_size = fqdatachunks[i]->size;
+                degz_paras[i].out_size = &(out_size[i]);
+                //fprintf(stderr, "in size %d\n", degz_paras[i].in_size);
+            }
+
+            {
+                std::lock_guard <std::mutex> guard(globalMutex);
+                __real_athread_spawn((void *) slave_decompressfunc, degz_paras, 1);
+                athread_join();
+            }
+
+            for (int i = 0; i < 64; i++) {
+                if(fqdatachunks[i] == NULL) {
+                } else {
+                    if(out_size[i]) fqdatachunks[i]->size = out_size[i] - 1;
+                    else fqdatachunks[i]->size = out_size[i];
+                    //ofstream off2;
+                    //string tmp_fq_sw_name = "tmp_fq.sw";
+                    //tmp_fq_sw_name += to_string(off2_cnt++);
+                    //off2.open(tmp_fq_sw_name, std::ios::binary);
+                    //off2.write((char*)fqdatachunks[i]->data.Pointer(), fqdatachunks[i]->size);
+                    //off2.close();
+                    if(fqdatachunks[i]->size > 0) {
+                        //assert(fqdatachunks[i]->data.Pointer()[0] == '@');
+                        //fprintf(stderr, "ccc %d\n", (int)fqdatachunks[i]->data.Pointer()[out_size[i] - 1]);
+                        //assert(fqdatachunks[i]->data.Pointer()[out_size[i] - 1] == '\n');
+                        //fprintf(stderr, "ccc ");
+                        //for(int j = 0; j < min(30, (int)fqdatachunks[i]->size); j++) fprintf(stderr, "%c", fqdatachunks[i]->data.Pointer()[j]);
+                        //fprintf(stderr, "\n");
+                        //
+                        //fprintf(stderr, "ccc ");
+                        //int start_index = (fqdatachunks[i]->size > 30) ? (fqdatachunks[i]->size - 30) : 0;
+                        //for (size_t j = start_index; j < fqdatachunks[i]->size; j++) {
+                        //    fprintf(stderr, "%c", fqdatachunks[i]->data.Pointer()[j]);
+                        //}
+                        //fprintf(stderr, "\n");
+
+                    }
+                }
+                //fprintf(stderr, "ccc decom size %d\n", out_size[i]);
+            }
+
+        }
+#endif
+#endif
+        format_data para2[64];
+        uint64_t counts[64] = {0};
+        
         int fq_size = fqdatachunks.size();
         for(int i = 0; i < 64; i++) {
             para2[i].fqSize = fq_size;
@@ -998,8 +1084,33 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
         for(int i = 0; i < fq_size; i++) {
             //fprintf(stderr, "rank%d count %d\n", my_rank, counts[i]);
             data[i].resize(counts[i]);
-//            ProcessNgsData(allProDone, data[i], fqdatachunks[i], &para, fastq_data_pool);
+            //int chunk_size = 0;
+            //for(auto item : data[i]) {
+            //    chunk_size += item.lname + item.lseq + item.lstrand + item.lqual + 4;
+            //}
+            //if(fqdatachunks[i] != NULL && chunk_size && chunk_size != fqdatachunks[i]->size + 1) {
+            //    fprintf(stderr, "GG %d size %d %d\n", check_cnt, chunk_size, fqdatachunks[i]->size + 1);
+
+            //    ofstream off2;
+            //    string tmp_fq_sw_name2 = "tmp_fq.sw";
+            //    tmp_fq_sw_name2 += to_string(check_cnt);
+            //    off2.open(tmp_fq_sw_name2, std::ios::binary);
+            //    off2.write((char*)fqdatachunks[i]->data.Pointer(), fqdatachunks[i]->size);
+            //    off2.close();
+
+            //    ofstream off3;
+            //    string tmp_fq_sw_name3 = "after_tmp_fq.sw";
+            //    tmp_fq_sw_name3 += to_string(check_cnt);
+            //    off3.open(tmp_fq_sw_name3, std::ios::binary);
+            //    for(auto item : data[i]) {
+            //        off3 << Read2String(item);
+            //    }
+            //    off3.close();
+
+            //}
+            //check_cnt++;
         }
+        //fprintf(stderr, "\n\n");
         t_resize += GetTime() - tt0;
 
         tt0 = GetTime();
@@ -1136,6 +1247,7 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
             t_push_q += GetTime() - tt0;
         }
     }
+    //off.close();
 
     double tt0 = GetTime();
     gather_and_sort_vectors_se(my_rank, comm_size, out_round, out_gz_block_sizes, 0);
@@ -1159,7 +1271,7 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     fprintf(stderr, "consumer%d NGSnew gz slave sub cost [%lf %lf %lf %lf %lf %lf %lf]\n", my_rank, t_slave_gz1, t_slave_gz2, t_slave_gz3_1, t_slave_gz3_2, t_slave_gz3_3, t_slave_gz4, t_slave_gz5);
     fprintf(stderr, "consumer%d NGSnew push to queue cost %lf\n", my_rank, t_push_q);
     done_thread_number_++;
-    //athread_halt();
+    athread_halt();
     fprintf(stderr, "consumer %d done in func\n", my_rank);
 }
 
@@ -1432,7 +1544,6 @@ bool checkStates(State* s1, State* s2) {
 
 void SeQc::ProcessSeFastq() {
 
-    athread_init();
     //TODO
     //if(my_rank == 0) block_size = 6 * (1 << 20);
     //else block_size = 4 * (1 << 20);
@@ -1514,7 +1625,6 @@ void SeQc::ProcessSeFastq() {
     printf("merge1 done\n");
     printf("merge cost %lf\n", GetTime() - tt00);
 
-    athread_halt();
 
     tt00 = GetTime();
     vector<State *> pre_state_mpis;
@@ -1809,9 +1919,8 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
     if(cmd_info_->state_duplicate_) {
         para.bit_len = duplicate_->key_len_base_;
     }
-    //athread_init();
+    athread_init();
     if (cmd_info_->is_TGS_) {
-        //athread_init();
         double t0 = GetTime();
         double tsum1 = 0;
         double tsum2 = 0;
@@ -1841,14 +1950,13 @@ void SeQc::ConsumerSeFastqTask(ThreadInfo **thread_infos, rabbit::fq::FastqDataP
         
     }
     done_thread_number_++;
-    //athread_halt();
+    athread_halt();
     //printf("consumer done\n");
 }
 
 
 void SeQc::ProcessSeTGS() {
 
-    athread_init();
     auto *fastqPool = new rabbit::fq::FastqDataPool(256, BLOCK_SIZE);
     rabbit::core::TDataQueue<rabbit::fq::FastqDataChunk> queue1(256, 1);
     auto **p_thread_info = new ThreadInfo *[slave_num];
@@ -1873,7 +1981,6 @@ void SeQc::ProcessSeTGS() {
     }
     auto mer_state = TGSStats::merge(vec_state);
 
-    athread_halt();
 
 #ifdef Verbose
     printf("merge done\n");
