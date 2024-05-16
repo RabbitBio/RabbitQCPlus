@@ -27,6 +27,10 @@ struct qc_data {
     CmdInfo *cmd_info_;
     Duplicate *duplicate_;
     //std::vector<dupInfo> *dups;
+    int data1_size[64];
+    int data2_size[64];
+    int pass_data1_size[64];
+    int pass_data2_size[64];
     std::vector<neoReference> *data1_[64];
     std::vector<neoReference> *data2_[64];
     std::vector<neoReference> *pass_data1_[64];

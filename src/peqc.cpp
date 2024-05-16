@@ -12,6 +12,7 @@ extern "C" {
 #include <pthread.h>
     void slave_ngspefunc();
     void slave_formatpefunc();
+    void slave_peallfunc();
     void slave_decompressfunc();
     void slave_compressfunc();
 }
@@ -65,7 +66,7 @@ int64_t GetNextFastq(char *data_, int64_t pos_, const int64_t size_) {
     return pos0;
 }
 
-static bool use_in_mem = 1;
+static bool use_in_mem = 0;
 static bool use_out_mem = 0;
 
 static bool use_swidx_file = 0;
@@ -608,21 +609,6 @@ void PeQc::ProducerPeFastqTask64(string file, string file2, rabbit::fq::FastqDat
             break;
         }
         tot_size += fqdatachunk->left_part->size;
-//        if(fqdatachunk->left_part->size <= 0 || tot_size <= 0) {
-//            if(tmp_chunks.size()) {
-//                //p_mylock.lock();
-//                while (p_queueNumNow >= p_queueSizeLim) {
-//                    usleep(1000);
-//                    //fprintf(stderr, "producer %d waiting0\n", my_rank);
-//                }
-//                p_out_queue_[p_queueP2++] = tmp_chunks;
-//                p_queueNumNow++;
-//                //p_mylock.unlock();
-//                tmp_chunks.clear();
-//                n_chunks++;
-//            }
-//            break;
-//        }
         tmp_chunks.push_back(fqdatachunk); 
 //        fprintf(stderr, "producer %d read a chunk\n", my_rank);
         if(tmp_chunks.size() == 64) {
@@ -661,6 +647,24 @@ struct formatpe_data {
     int my_rank;
 };
 
+struct PeMerge_data {
+    char* out_data1[64];
+    char* out_data2[64];
+    int out_lens1[64] = {0};
+    int out_lens2[64] = {0};
+    std::vector <neoReference> *pass_data1[64];
+    std::vector <neoReference> *pass_data2[64];
+};
+
+struct PeAll_data{
+    formatpe_data para1[64];
+    qc_data *para2;
+    PeMerge_data *para3;
+    int out_len_slave1[64];
+    int out_len_slave2[64];
+    bool write_data;
+};
+
 
 double tsum1 = 0;
 double tsum2 = 0;
@@ -675,6 +679,15 @@ double tsum4_3 = 0;
 double tsum4_4 = 0;
 double tsum5 = 0;
 double tsum6 = 0;
+double tsum7 = 0;
+double t_wait_producer = 0;
+double t_format = 0;
+double t_resize = 0;
+double t_decom = 0;
+double t_ngsfunc = 0;
+double t_slave_gz = 0;
+double t_slave_gz2 = 0;
+double t_push_q = 0;
 
 
 struct ConsumerWriteInfoPE{
@@ -688,20 +701,47 @@ struct ConsumerWriteInfoPE{
 
 vector<ConsumerWriteInfoPE> writeInfosPE;
 
+static int pe_pre_out_len_slave1[64];
+static int pe_pre_out_len_slave2[64];
 
-void PeQc::ProcessNgsData(bool &allIsNull, vector <neoReference> data1[64], vector <neoReference> data2[64], vector<rabbit::fq::FastqDataPairChunk *>fqdatachunks, qc_data *para, rabbit::fq::FastqDataPool *fastqPool) {
-
-    //fprintf(stderr, "consumer %d data size %d %d\n", my_rank, data1.size(), data2.size());
+void PeQc::ProcessFormatQCWrite(bool &allIsNull, vector <neoReference> *data1, vector <neoReference> *data2,
+                          vector <neoReference> *pass_data1, vector <neoReference> *pass_data2,
+                          vector <neoReference> *pre_pass_data1, vector <neoReference> *pre_pass_data2,
+                          vector <rabbit::fq::FastqDataPairChunk *> fqdatachunks, vector <rabbit::fq::FastqDataPairChunk *> pre_fqdatachunks,
+                          qc_data *para, rabbit::fq::FastqDataPool *fastq_data_pool) {
     double tt0 = GetTime();
-    vector <neoReference> pass_data1[64];
-    vector <neoReference> pass_data2[64];
-    int isNull = 1;
+    formatpe_data para2[64];
+    uint64_t counts[64] = {0};
+    int fq_size = fqdatachunks.size();
     for(int i = 0; i < 64; i++) {
-        if (cmd_info_->write_data_) {
-            pass_data1[i] = data1[i];
-            pass_data2[i] = data2[i];
+        data1[i].clear();
+        data2[i].clear();
+        para2[i].fqSize = fq_size;
+        para2[i].my_rank = my_rank;
+    }
+    for(int i = 0; i < fq_size; i++) {
+        if(fqdatachunks[i] != NULL) {
+            data1[i].resize(fqdatachunks[i]->left_part->size / (cmd_info_->seq_len_ * 2));
+            data2[i].resize(fqdatachunks[i]->right_part->size / (cmd_info_->seq_len_ * 2));
+            if(cmd_info_->write_data_) {
+                pass_data1[i].resize(data1[i].size());
+                pass_data2[i].resize(data2[i].size());
+            }
+        } else {
+            data1[i].resize(0);
+            data2[i].resize(0);
+            if(cmd_info_->write_data_) {
+                pass_data1[i].resize(0);
+                pass_data2[i].resize(0);
+            }
         }
-        if(data1[i].size()) isNull = 0;
+        para2[i].data1 = &(data1[i]);
+        para2[i].data2 = &(data2[i]);
+        para2[i].fqdatachunk = fqdatachunks[i];
+        para2[i].res = counts;
+        para2[i].fqSize = fq_size;
+    }
+    for(int i = 0; i < 64; i++) {
         para->data1_[i] = &data1[i];
         para->data2_[i] = &data2[i];
         para->pass_data1_[i] = &pass_data1[i];
@@ -710,297 +750,184 @@ void PeQc::ProcessNgsData(bool &allIsNull, vector <neoReference> data1[64], vect
     tsum1 += GetTime() - tt0;
 
     tt0 = GetTime();
-    {
-        lock_guard<mutex> guard(globalMutex);
-        __real_athread_spawn((void *)slave_ngspefunc, para, 1);
-        athread_join();
+    PeMerge_data pe_merge_data;
+    PeAll_data pe_all_data;
+    pe_all_data.write_data = cmd_info_->write_data_;
+    int out_lens1[64] = {0};
+    int out_lens2[64] = {0};
+    char *out_data1[64];
+    char *out_data2[64];
+    for(int i = 0; i < 64; i++) {
+        pe_all_data.para1[i] = para2[i];
+        pe_all_data.out_len_slave1[i] = 0;
+        pe_all_data.out_len_slave2[i] = 0;
+        if(cmd_info_->write_data_) {
+            out_lens1[i] = pe_pre_out_len_slave1[i];
+            if(out_lens1[i]) out_data1[i] = new char[out_lens1[i]];
+            else out_data1[i] = (char *)(NULL);
+            out_lens2[i] = pe_pre_out_len_slave2[i];
+            if(out_lens2[i]) out_data2[i] = new char[out_lens2[i]];
+            else out_data2[i] = (char *)(NULL);
+        }
     }
+    for(int i = 0; i < 64; i++) {
+        pe_merge_data.out_data1[i] = out_data1[i];
+        pe_merge_data.out_lens1[i] = out_lens1[i];
+        pe_merge_data.pass_data1[i] = &(pre_pass_data1[i]);
+        pe_merge_data.out_data2[i] = out_data2[i];
+        pe_merge_data.out_lens2[i] = out_lens2[i];
+        pe_merge_data.pass_data2[i] = &(pre_pass_data2[i]);
+    }
+    pe_all_data.para2 = para;
+    pe_all_data.para3 = &pe_merge_data;
     tsum2 += GetTime() - tt0;
-    //fprintf(stderr, "consumer %d data_pass size %d %d\n", my_rank, pass_data1.size(), pass_data2.size());
 
     tt0 = GetTime();
-    int isNulls[comm_size];
-    isNulls[0] = isNull;
-    MPI_Barrier(MPI_COMM_WORLD);
-    if(my_rank) {
-        MPI_Send(&isNull, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-    } else {
-        for(int ii = 1; ii < comm_size; ii++) {
-            MPI_Recv(&(isNulls[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        }
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-    if(my_rank == 0) {
-        for(int ii = 1; ii < comm_size; ii++) {
-            MPI_Send(isNulls, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
-        }
-    } else {
-        MPI_Recv(isNulls, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    }
-    int all_stop = 1;
-    for(int ii = 0; ii < comm_size; ii++) {
-        if(isNulls[ii] == 0) all_stop = 0;
-    }
+    __real_athread_spawn((void *)slave_peallfunc, &pe_all_data, 1);
+    athread_join();
     tsum3 += GetTime() - tt0;
 
-    if(all_stop) {
-        allIsNull = 1;
-        return;
-    }
 
     tt0 = GetTime();
     if (cmd_info_->write_data_) {
-        double tt1 = GetTime();
-        double tt2 = GetTime();
-        int out_lens1[64] = {0};
-        for(int i = 0; i < 64; i++) {
-            for(auto item : pass_data1[i]){
-                if(item.lname == 0) continue;
-                out_lens1[i] += item.lname + item.lseq + item.lstrand + item.lqual + 4;
-            }
-        }
-        int out_lens2[64] = {0};
-        for(int i = 0; i < 64; i++) {
-            for(auto item : pass_data2[i]){
-                if(item.lname == 0) continue;
-                out_lens2[i] += item.lname + item.lseq + item.lstrand + item.lqual + 4;
-            }
-        }
-        tsum4_1_1 += GetTime() - tt2;
-
-        if (cmd_info_->interleaved_out_) {
-            printf("interleaved out TODO...\n");
-        } else {
-            tt2 = GetTime();
-            char *out_data1[64];
-            for(int i = 0; i < 64; i++) {
-                if(out_lens1[i]) out_data1[i] = new char[out_lens1[i]];
-                else out_data1[i] = (char *)(NULL);
-//                if(out_lens1[i]) memset(out_data1[i], 0, sizeof(char) * out_lens1[i]);
-            }
-            char *out_data2[64];
-            for(int i = 0; i < 64; i++) {
-                if(out_lens2[i]) out_data2[i] = new char[out_lens2[i]];
-                else out_data2[i] = (char *)(NULL);
-//                if(out_lens2[i]) memset(out_data2[i], 0, sizeof(char) * out_lens2[i]);
-            }
-            tsum4_1_2 += GetTime() - tt2;
-
-            //fprintf(stderr, "consumer %d out_len %d %d\n", my_rank, out_lens1, out_lens2);
-
-            tt2 = GetTime();
-            //OPT: reduce memcpy times, merge contiguous datas.
-
-            for(int ii = 0; ii < 64; ii++) {
-                int tmp_len = 0;
-                int pos = 0;
-                char* start_pos = NULL;
-                for(int i = 0; i < pass_data1[ii].size(); i++) {
-                    if(pass_data1[ii][i].lname == 0 || pass_data1[ii][i].pname + pass_data1[ii][i].lname + pass_data1[ii][i].lseq + pass_data1[ii][i].lstrand + 3 != pass_data1[ii][i].pqual) { 
-                        //this record has been trimmed
-                        if(tmp_len) memcpy(out_data1[ii] + pos, start_pos, tmp_len);
-                        pos += tmp_len;
-                        if(pass_data1[ii][i].lname) Read2Chars(pass_data1[ii][i], out_data1[ii], pos);
-                        tmp_len = 0;
-                        if(i < pass_data1[ii].size() - 1) {
-                            start_pos = (char*)pass_data1[ii][i + 1].base + pass_data1[ii][i + 1].pname;
-                        }
-                        continue;
-                    }
-                    if((char*)pass_data1[ii][i].base + pass_data1[ii][i].pname != start_pos + tmp_len) {
-                        //record is complete, but can extend to last record
-                        if(tmp_len) memcpy(out_data1[ii] + pos, start_pos, tmp_len);
-                        pos += tmp_len;
-                        tmp_len = 0;
-                        start_pos = (char*)pass_data1[ii][i].base + pass_data1[ii][i].pname;
-                    } 
-                    tmp_len += pass_data1[ii][i].lname + pass_data1[ii][i].lseq + pass_data1[ii][i].lstrand + pass_data1[ii][i].lqual + 4;
-                }
-                if(tmp_len) {
-                    memcpy(out_data1[ii] + pos, start_pos, tmp_len);
-                    pos += tmp_len;
-                    tmp_len = 0;
-                }
-
-                ASSERT(pos == out_lens1[ii]);
-
-            }
-            
-            //int pos = 0;
-            //for (auto item: pass_data1) {
-            //    if(item.lname == 0) continue;
-            //    Read2Chars(item, out_data1, pos);
-            //}
-
-            //OPT: reduce memcpy times, merge contiguous datas.
-            
-            for(int ii = 0; ii < 64; ii++) {
-                int tmp_len = 0;
-                int pos = 0;
-                char* start_pos = NULL;
-                for(int i = 0; i < pass_data2[ii].size(); i++) {
-                    if(pass_data2[ii][i].lname == 0 || pass_data2[ii][i].pname + pass_data2[ii][i].lname + pass_data2[ii][i].lseq + pass_data2[ii][i].lstrand + 3 != pass_data2[ii][i].pqual) { 
-                        //this record has been trimmed
-                        if(tmp_len) memcpy(out_data2[ii] + pos, start_pos, tmp_len);
-                        pos += tmp_len;
-                        if(pass_data2[ii][i].lname) Read2Chars(pass_data2[ii][i], out_data2[ii], pos);
-                        tmp_len = 0;
-                        if(i < pass_data2[ii].size() - 1) {
-                            start_pos = (char*)pass_data2[ii][i + 1].base + pass_data2[ii][i + 1].pname;
-                        }
-                        continue;
-                    }
-                    if((char*)pass_data2[ii][i].base + pass_data2[ii][i].pname != start_pos + tmp_len) {
-                        //record is complete, but can extend to last record
-                        if(tmp_len) memcpy(out_data2[ii] + pos, start_pos, tmp_len);
-                        pos += tmp_len;
-                        tmp_len = 0;
-                        start_pos = (char*)pass_data2[ii][i].base + pass_data2[ii][i].pname;
-                    } 
-                    tmp_len += pass_data2[ii][i].lname + pass_data2[ii][i].lseq + pass_data2[ii][i].lstrand + pass_data2[ii][i].lqual + 4;
-                }
-                if(tmp_len) {
-                    memcpy(out_data2[ii] + pos, start_pos, tmp_len);
-                    pos += tmp_len;
-                }
-
-                ASSERT(pos == out_lens2[ii]);
-            
-            }
-            
-            //pos = 0;
-            //for (auto item: pass_data2) {
-            //    if(item.lname == 0) continue;
-            //    Read2Chars(item, out_data2, pos);
-            //}
-            tsum4_1_3 += GetTime() - tt2;
-
-            tsum4_1 += GetTime() - tt1;
-        
-            long long now_pos_base1 = 0;
-            long long now_pos_base2 = 0;
-            bool use_consumer_libdeflate = 0;
+        long long now_pos_base1 = 0;
+        long long now_pos_base2 = 0;
+        bool use_consumer_libdeflate = 0;
 
 #ifdef CONSUMER_USE_LIBDEFLATE
-            use_consumer_libdeflate = 1;
+        use_consumer_libdeflate = 1;
 #endif
-            if(!out_is_zip_ || use_consumer_libdeflate == 0) {
-                tt1 = GetTime();
-                int out_len1 = 0;
-                for(int i = 0; i < 64; i++) {
-                    out_len1 += out_lens1[i];
-                }
-     
-                int now_size1 = out_len1;
-                int now_sizes1[comm_size];
-                now_sizes1[0] = now_size1;
-                MPI_Barrier(MPI_COMM_WORLD);
-                if(my_rank) {
-                    MPI_Send(&now_size1, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-                } else {
-                    for(int ii = 1; ii < comm_size; ii++) {
-                        MPI_Recv(&(now_sizes1[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                    } 
-                }
-                MPI_Barrier(MPI_COMM_WORLD);
-                if(my_rank == 0) {
-                    for(int ii = 1; ii < comm_size; ii++) {
-                        MPI_Send(now_sizes1, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
-                    }
-                } else {
-                    MPI_Recv(now_sizes1, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                }
-                MPI_Barrier(MPI_COMM_WORLD);
-                int pre_sizes1[comm_size];
-                pre_sizes1[0] = 0;
-                for(int ii = 1; ii < comm_size; ii++) {
-                    pre_sizes1[ii] = pre_sizes1[ii - 1] + now_sizes1[ii - 1];
-                }
-
-                now_pos_base1 = now_pos1_ + pre_sizes1[my_rank];
-
-                for(int ii = 0; ii < comm_size; ii++) {
-                    now_pos1_ += now_sizes1[ii];
-                }
-
-
-                int out_len2 = 0;
-                for(int i = 0; i < 64; i++) {
-                    out_len2 += out_lens2[i];
-                }
-
-                int now_size2 = out_len2;
-                int now_sizes2[comm_size];
-                now_sizes2[0] = now_size2;
-                MPI_Barrier(MPI_COMM_WORLD);
-                if(my_rank) {
-                    MPI_Send(&now_size2, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-                } else {
-                    for(int ii = 1; ii < comm_size; ii++) {
-                        MPI_Recv(&(now_sizes2[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                    } 
-                }
-                MPI_Barrier(MPI_COMM_WORLD);
-                if(my_rank == 0) {
-                    for(int ii = 1; ii < comm_size; ii++) {
-                        MPI_Send(now_sizes2, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
-                    }
-                } else {
-                    MPI_Recv(now_sizes2, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                }
-                MPI_Barrier(MPI_COMM_WORLD);
-                int pre_sizes2[comm_size];
-                pre_sizes2[0] = 0;
-                for(int ii = 1; ii < comm_size; ii++) {
-                    pre_sizes2[ii] = pre_sizes2[ii - 1] + now_sizes2[ii - 1];
-                }
-
-                now_pos_base2 = now_pos2_ + pre_sizes2[my_rank];
-
-                for(int ii = 0; ii < comm_size; ii++) {
-                    now_pos2_ += now_sizes2[ii];
-                }
-                tsum4_2 += GetTime() - tt1;
-            }
-
-
-
-            tt1 = GetTime();
+        if(!out_is_zip_ || use_consumer_libdeflate == 0) {
+            int out_len1 = 0;
             for(int i = 0; i < 64; i++) {
-                writeInfosPE.push_back({out_data1[i], out_data2[i], out_lens1[i], out_lens2[i], now_pos_base1, now_pos_base2});
+                out_len1 += out_lens1[i];
             }
 
-            //mylock.lock();
-//            while (queueNumNow >= queueSizeLim) {
-//#ifdef Verbose
-//                //printf("waiting to push a chunk to out queue1\n");
-//#endif
-//                usleep(1000);
-//            }
-//            out_queue_[queueP2++] = make_pair(make_pair(out_data1, make_pair(out_len1, now_pos_base1)), make_pair(out_data2, make_pair(out_len2, now_pos_base2)));
-//            queueNumNow++;
-            //fprintf(stderr, "consumer %d push to queue\n", my_rank);
-         
+            int now_size1 = out_len1;
+            int now_sizes1[comm_size];
+            now_sizes1[0] = now_size1;
+            MPI_Barrier(MPI_COMM_WORLD);
+            if(my_rank) {
+                MPI_Send(&now_size1, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+            } else {
+                for(int ii = 1; ii < comm_size; ii++) {
+                    MPI_Recv(&(now_sizes1[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+            }
+            MPI_Barrier(MPI_COMM_WORLD);
+            if(my_rank == 0) {
+                for(int ii = 1; ii < comm_size; ii++) {
+                    MPI_Send(now_sizes1, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
+                }
+            } else {
+                MPI_Recv(now_sizes1, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            }
+            MPI_Barrier(MPI_COMM_WORLD);
+            int pre_sizes1[comm_size];
+            pre_sizes1[0] = 0;
+            for(int ii = 1; ii < comm_size; ii++) {
+                pre_sizes1[ii] = pre_sizes1[ii - 1] + now_sizes1[ii - 1];
+            }
 
-//            //mylock.lock();
-//            while (queueNumNow1 >= queueSizeLim1 || queueNumNow2 >= queueSizeLim2) {
-//#ifdef Verbose
-//                //printf("waiting to push a chunk to out queue1\n");
-//#endif
-//                usleep(10000);
-//            }
-//            out_queue1_[queue1P2++] = make_pair(out_data1, make_pair(out_len1, now_pos_base1));
-//            queueNumNow1++;
-//            out_queue2_[queue2P2++] = make_pair(out_data2, make_pair(out_len2, now_pos_base2));
-//            queueNumNow2++;
-//            //mylock.unlock();
-            tsum4_4 += GetTime() - tt1;
+            now_pos_base1 = now_pos1_ + pre_sizes1[my_rank];
+
+            for(int ii = 0; ii < comm_size; ii++) {
+                now_pos1_ += now_sizes1[ii];
+            }
+
+
+            int out_len2 = 0;
+            for(int i = 0; i < 64; i++) {
+                out_len2 += out_lens2[i];
+            }
+
+            int now_size2 = out_len2;
+            int now_sizes2[comm_size];
+            now_sizes2[0] = now_size2;
+            MPI_Barrier(MPI_COMM_WORLD);
+            if(my_rank) {
+                MPI_Send(&now_size2, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+            } else {
+                for(int ii = 1; ii < comm_size; ii++) {
+                    MPI_Recv(&(now_sizes2[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+            }
+            MPI_Barrier(MPI_COMM_WORLD);
+            if(my_rank == 0) {
+                for(int ii = 1; ii < comm_size; ii++) {
+                    MPI_Send(now_sizes2, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
+                }
+            } else {
+                MPI_Recv(now_sizes2, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            }
+            MPI_Barrier(MPI_COMM_WORLD);
+            int pre_sizes2[comm_size];
+            pre_sizes2[0] = 0;
+            for(int ii = 1; ii < comm_size; ii++) {
+                pre_sizes2[ii] = pre_sizes2[ii - 1] + now_sizes2[ii - 1];
+            }
+
+            now_pos_base2 = now_pos2_ + pre_sizes2[my_rank];
+
+            for(int ii = 0; ii < comm_size; ii++) {
+                now_pos2_ += now_sizes2[ii];
+            }
         }
+        writeInfosPE.clear();
+        for(int i = 0; i < 64; i++) {
+            writeInfosPE.push_back({out_data1[i], out_data2[i], out_lens1[i], out_lens2[i], now_pos_base1, now_pos_base2});
+        }
+    }
+    for(int i = 0; i < 64; i++) {
+        pe_pre_out_len_slave1[i] = pe_all_data.out_len_slave1[i];
+        pe_pre_out_len_slave2[i] = pe_all_data.out_len_slave2[i];
     }
     tsum4 += GetTime() - tt0;
 
     tt0 = GetTime();
-    if(isNull) {
+    int isNull = 1;
+    int all_stop = 1;
+    {
+        for(int i = 0; i < 64; i++) {
+            data1[i].resize(counts[i]);
+            data2[i].resize(counts[i]);
+            if(cmd_info_->write_data_) {
+                pass_data1[i].resize(data1[i].size());
+                pass_data2[i].resize(data2[i].size());
+            }
+            if(data1[i].size()) isNull = 0;
+        }
+
+        int isNulls[comm_size];
+        isNulls[0] = isNull;
+        MPI_Barrier(MPI_COMM_WORLD);
+        if(my_rank) {
+            MPI_Send(&isNull, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        } else {
+            for(int ii = 1; ii < comm_size; ii++) {
+                MPI_Recv(&(isNulls[ii]), 1, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            }
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+        if(my_rank == 0) {
+            for(int ii = 1; ii < comm_size; ii++) {
+                MPI_Send(isNulls, comm_size, MPI_INT, ii, 0, MPI_COMM_WORLD);
+            }
+        } else {
+            MPI_Recv(isNulls, comm_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        }
+        for(int ii = 0; ii < comm_size; ii++) {
+            if(isNulls[ii] == 0) all_stop = 0;
+        }
+        if(all_stop) allIsNull = 1;
+    }
+    tsum5 += GetTime() - tt0;
+
+
+
+
+    tt0 = GetTime();
+    if(!all_stop && isNull) {
         fprintf(stderr, "consumer%d push null\n", my_rank);
         vector<rabbit::fq::FastqDataPairChunk *> tmp_chunks;
         tmp_chunks.clear();
@@ -1010,35 +937,35 @@ void PeQc::ProcessNgsData(bool &allIsNull, vector <neoReference> data1[64], vect
         p_out_queue_[p_queueP2++] = tmp_chunks;
         p_queueNumNow++;
     }
-    tsum5 += GetTime() - tt0;
+    tsum6 += GetTime() - tt0;
 
     tt0 = GetTime();
     for(int i = 0; i < 64; i++) {
-        if(fqdatachunks[i] != NULL) {
-            fastqPool->Release(fqdatachunks[i]->left_part);
-            fastqPool->Release(fqdatachunks[i]->right_part);
+        if(pre_fqdatachunks[i] != NULL) {
+            fastq_data_pool->Release(pre_fqdatachunks[i]->left_part);
+            fastq_data_pool->Release(pre_fqdatachunks[i]->right_part);
         }
     }
-    tsum6 += GetTime() - tt0;
+    tsum7 += GetTime() - tt0;
 }
 
-inline void gather_and_sort_vectors_pe(int rank, int comm_size, int out_round, std::vector<std::pair<int, size_t>>& local_vec, int root) {
+inline void gather_and_sort_vectors_pe(int rank, int comm_size, int out_round, vector<pair<int, size_t>>& local_vec, int root) {
     int local_size = local_vec.size();
-    std::vector<int> send_data(local_size * 2);
+    vector<int> send_data(local_size * 2);
     for (int i = 0; i < local_size; ++i) {
         send_data[2 * i] = local_vec[i].first;
         send_data[2 * i + 1] = static_cast<int>(local_vec[i].second);  // Assuming size_t can be safely cast to int
     }
 
     // Root process initializes a vector to hold all received data
-    std::vector<int> recv_data;
+    vector<int> recv_data;
     if (rank == root) {
         recv_data.reserve(local_size * 2 * comm_size);  // Reserve enough space
     }
 
     // Root process receives data from all other processes
     if (rank == root) {
-        std::vector<int> buffer(local_size * 2);
+        vector<int> buffer(local_size * 2);
         for (int i = 0; i < comm_size; ++i) {
             if (i == root) {
                 // Include the root's own data
@@ -1055,17 +982,17 @@ inline void gather_and_sort_vectors_pe(int rank, int comm_size, int out_round, s
 
     // Root process sorts all received data
     if (rank == root) {
-        std::vector<std::pair<int, size_t>> all_data;
+        vector<pair<int, size_t>> all_data;
         for (int i = 0; i < recv_data.size() / 2; ++i) {
             all_data.emplace_back(recv_data[2 * i], static_cast<size_t>(recv_data[2 * i + 1]));
         }
-        std::sort(all_data.begin(), all_data.end());
+        sort(all_data.begin(), all_data.end());
 
         //// Print sorted data for verification
         //for (const auto& p : all_data) {
-        //    std::cout << "(" << p.first << ", " << p.second << ") ";
+        //    cout << "(" << p.first << ", " << p.second << ") ";
         //}
-        //std::cout << std::endl;
+        //cout << endl;
 
         // Optionally clear and repopulate local_vec
         local_vec.clear();
@@ -1150,21 +1077,25 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     athread_init();
 
     double t0 = GetTime();
-    double t_wait_producer = 0;
-    double t_format = 0;
-    double t_resize = 0;
-    double t_ngsfunc = 0;
-    double t_slave_gz = 0;
-    double t_slave_gz2 = 0;
-    double t_push_q = 0;
-    int out_round = 0;
+
     vector<rabbit::fq::FastqDataPairChunk *> fqdatachunks;
-//    cerr << "--p_queueP1 :" << p_queueP1 << endl;
-
-//    ofstream off2;
-//    string tmp_fq_sw_name2 = "tmp_fq.sw";
-//    off2.open(tmp_fq_sw_name2, std::ios::binary);
-
+    vector<rabbit::fq::FastqDataPairChunk *> pre_fqdatachunks;
+    int out_round = 0;
+    vector<neoReference> data1[64];
+    vector<neoReference> data2[64];
+    vector<neoReference> pass_data1[64];
+    vector<neoReference> pass_data2[64];
+    vector<neoReference> pre_pass_data1[64];
+    vector<neoReference> pre_pass_data2[64];
+    for(int i = 0; i < 64; i++) {
+        data1[i].clear();
+        data2[i].clear();
+        pass_data1[i].clear();
+        pass_data2[i].clear();
+        pre_pass_data1[i].clear();
+        pre_pass_data2[i].clear();
+        pre_fqdatachunks.push_back(NULL);
+    }
     while(true) {
         double tt0 = GetTime();
         while (p_queueNumNow == 0) {
@@ -1174,12 +1105,9 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
 
 
         tt0 = GetTime();
-//        cerr << "p_queueP1 :" << p_queueP1 << endl;
-//        fprintf(stderr, "consumer %d pushNull: %d\n", my_rank, pushNull);
         fqdatachunks = p_out_queue_[p_queueP1++];
         p_queueNumNow--;
-        vector<neoReference> data1[64];
-        vector<neoReference> data2[64];
+
         for(int i = fqdatachunks.size(); i < 64; i++) {
             fqdatachunks.push_back(NULL);
         }
@@ -1203,19 +1131,14 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
                     degz_paras[i].out_buffer = (char*)fqdatachunks[i]->left_part->data.Pointer();
                     degz_paras[i].in_size = fqdatachunks[i]->left_part->size;
                     degz_paras[i].out_size = &(out_size[i]);
-//                    fprintf(stderr, "in size %d\n", degz_paras[i].in_size);
-//                    off2.write((char*)fqdatachunks[i]->left_part->data.Pointer(), fqdatachunks[i]->left_part->size);
-
                 }
 
-//                fprintf(stderr, "aaa0\n");
 
                 {
-                    std::lock_guard <std::mutex> guard(globalMutex);
+                    lock_guard <mutex> guard(globalMutex);
                     __real_athread_spawn((void *) slave_decompressfunc, degz_paras, 1);
                     athread_join();
                 }
-//                fprintf(stderr, "aaa1\n");
 
 
                 for (int i = 0; i < 64; i++) {
@@ -1225,7 +1148,6 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
                         else fqdatachunks[i]->left_part->size = out_size[i];
                     }
                 }
-//                fprintf(stderr, "aaa2\n");
 
             }
 
@@ -1244,17 +1166,14 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
                     degz_paras[i].out_buffer = (char*)fqdatachunks[i]->right_part->data.Pointer();
                     degz_paras[i].in_size = fqdatachunks[i]->right_part->size;
                     degz_paras[i].out_size = &(out_size[i]);
-                    //fprintf(stderr, "in size %d\n", degz_paras[i].in_size);
                 }
-//                fprintf(stderr, "bbb0\n");
 
 
                 {
-                    std::lock_guard <std::mutex> guard(globalMutex);
+                    lock_guard <mutex> guard(globalMutex);
                     __real_athread_spawn((void *) slave_decompressfunc, degz_paras, 1);
                     athread_join();
                 }
-//                fprintf(stderr, "bbb1\n");
 
 
                 for (int i = 0; i < 64; i++) {
@@ -1264,56 +1183,18 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
                         else fqdatachunks[i]->right_part->size = out_size[i];
                     }
                 }
-//                fprintf(stderr, "bbb2\n");
 
             }
 
         }
 #endif
 #endif
-        formatpe_data para2[64];
-        uint64_t counts[64] = {0};
 
-        int fq_size = fqdatachunks.size();
-        for(int i = 0; i < 64; i++) {
-            para2[i].fqSize = fq_size;
-            para2[i].my_rank = my_rank;
-        }
-//        fprintf(stderr, "consumer %d fq_size %d\n", my_rank, fq_size);
-        for(int i = 0; i < fq_size; i++) {
-            //if(fqdatachunks[i] != NULL) fprintf(stderr, "rank%d %p %p - %d %d\n", my_rank, fqdatachunks[i]->left_part, fqdatachunks[i]->right_part, fqdatachunks[i]->left_part->size, fqdatachunks[i]->right_part->size); 
-            if(fqdatachunks[i] != NULL) data1[i].resize(fqdatachunks[i]->left_part->size / (cmd_info_->seq_len_ * 2));
-            if(fqdatachunks[i] != NULL) data2[i].resize(fqdatachunks[i]->right_part->size / (cmd_info_->seq_len_ * 2));
-            para2[i].data1 = &(data1[i]);
-            para2[i].data2 = &(data2[i]);
-            para2[i].fqdatachunk = fqdatachunks[i];
-            para2[i].res = counts;
-            para2[i].fqSize = fq_size;
-        }
-
-        {
-            lock_guard<mutex> guard(globalMutex);
-            __real_athread_spawn((void *)slave_formatpefunc, para2, 1);
-            athread_join();
-        }
-        t_format += GetTime() - tt0;
+        t_decom += GetTime() - tt0;
 
         tt0 = GetTime();
-        writeInfosPE.clear();
-        for(int i = 0; i < fq_size; i++) {
-            //fprintf(stderr, "consumer rank%d count %d\n", my_rank, counts[i]);
-            data1[i].resize(counts[i]);
-            data2[i].resize(counts[i]);
-            //ProcessNgsData(allProDone, data1[i], data2[i], fqdatachunks[i], &para, fastqPool);
-        }
-        t_resize += GetTime() - tt0;
-
-        tt0 = GetTime();
-        ProcessNgsData(allIsNull, data1, data2, fqdatachunks, &para, fastqPool);
-        fqdatachunks.clear();
+        ProcessFormatQCWrite(allIsNull, data1, data2, pass_data1, pass_data2, pre_pass_data1, pre_pass_data2, fqdatachunks, pre_fqdatachunks, &para, fastqPool);
         t_ngsfunc += GetTime() - tt0;
-
-        if(allIsNull) break;
 
         //fprintf(stderr, "rank%d pending write size %d\n", my_rank, writeInfosPE.size());
 #ifdef CONSUMER_USE_LIBDEFLATE
@@ -1465,15 +1346,6 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
         if (cmd_info_->write_data_) {
             tt0 = GetTime();
             assert(writeInfosPE.size() == 64);
-            //QChunkItem Qitem1, Qitem2;
-            //for(int i = 0; i < writeInfosPE.size(); i++) {
-            //    Qitem1.buffer[i] = writeInfosPE[i].buffer;
-            //    Qitem1.buffer_len[i] = writeInfosPE[i].buffer_len;
-            //    Qitem1.file_offset[i] = writeInfosPE[i].file_offset;
-            //    Qitem2.buffer[i] = writeInfosPE[i].buffer2;
-            //    Qitem2.buffer_len[i] = writeInfosPE[i].buffer_len2;
-            //    Qitem2.file_offset[i] = writeInfosPE[i].file_offset2;
-            //}
             long long real_pre_chunk_pos1 = writeInfosPE[0].file_offset;
             long long real_pre_chunk_pos2 = writeInfosPE[0].file_offset2;
             for(int i = 0; i < 64; i++) {
@@ -1485,6 +1357,7 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
                     usleep(1000);
                 }
                 out_queue_[queueP2++] = make_pair(make_pair(writeInfosPE[i].buffer, make_pair(writeInfosPE[i].buffer_len, real_pre_chunk_pos1)), make_pair(writeInfosPE[i].buffer2, make_pair(writeInfosPE[i].buffer_len2, real_pre_chunk_pos2)));
+                //fprintf(stderr, "out info : %d %d\n", writeInfosPE[i].buffer_len, real_pre_chunk_pos1);
                 //out_queue_[queueP2++] = make_pair(Qitem1, Qitem2);
                 queueNumNow++;
                 real_pre_chunk_pos1 += writeInfosPE[i].buffer_len;
@@ -1495,9 +1368,17 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
             t_push_q += GetTime() - tt0;
         }
 
-    }
+        pre_fqdatachunks.clear();
+        for(int i = 0; i < 64; i++) {
+            pre_pass_data1[i].clear();
+            pre_pass_data2[i].clear();
+            pre_pass_data1[i] = pass_data1[i];
+            pre_pass_data2[i] = pass_data2[i];
+            pre_fqdatachunks.push_back(fqdatachunks[i]);
+        }
+        if(allIsNull) break;
 
-//    off2.close();
+    }
 
 
     double tt0 = GetTime();
@@ -1512,11 +1393,13 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     fprintf(stderr, "consumer%d NGSnew format cost %lf\n", my_rank, t_format);
     fprintf(stderr, "consumer%d NGSnew resize cost %lf\n", my_rank, t_resize);
     fprintf(stderr, "consumer%d NGSnew ngsfunc cost %lf\n", my_rank, t_ngsfunc);
-    fprintf(stderr, "consumer%d NGSnew resize cost %lf\n", my_rank, tsum1);
-    fprintf(stderr, "consumer%d NGSnew slave cost %lf\n", my_rank, tsum2);
-    fprintf(stderr, "consumer%d NGSnew isnull comm cost %lf\n", my_rank, tsum3);
-    fprintf(stderr, "consumer%d NGSnew write cost %lf (%lf [%lf %lf %lf], %lf, %lf, %lf)\n", my_rank, tsum4, tsum4_1, tsum4_1_1, tsum4_1_2, tsum4_1_3, tsum4_2, tsum4_3, tsum4_4);
-    fprintf(stderr, "consumer%d NGSnew release cost %lf\n", my_rank, tsum5);
+    fprintf(stderr, "consumer%d NGSnew      pre_qc1 cost %lf\n", my_rank, tsum1);
+    fprintf(stderr, "consumer%d NGSnew      pre_qc1 cost %lf\n", my_rank, tsum2);
+    fprintf(stderr, "consumer%d NGSnew      slave cost %lf\n", my_rank, tsum3);
+    fprintf(stderr, "consumer%d NGSnew      write cost %lf (%lf [%lf %lf %lf], %lf, %lf, %lf)\n", my_rank, tsum4, tsum4_1, tsum4_1_1, tsum4_1_2, tsum4_1_3, tsum4_2, tsum4_3, tsum4_4);
+    fprintf(stderr, "consumer%d NGSnew      isnull comm cost %lf\n", my_rank, tsum5);
+    fprintf(stderr, "consumer%d NGSnew      push null comm cost %lf\n", my_rank, tsum6);
+    fprintf(stderr, "consumer%d NGSnew      release cost %lf\n", my_rank, tsum7);
     fprintf(stderr, "consumer%d NGSnew gz slave cost %lf\n", my_rank, t_slave_gz);
     fprintf(stderr, "consumer%d NGSnew gz slave2 cost %lf\n", my_rank, t_slave_gz2);
     fprintf(stderr, "consumer%d NGSnew push to queue cost %lf\n", my_rank, t_push_q);

@@ -72,7 +72,13 @@ private:
 //
 //    void WriteSeFastqTask2();
 
-    void ProcessNgsData(bool &allIsNull, std::vector <neoReference> data1[64], std::vector <neoReference> data2[64], std::vector <rabbit::fq::FastqDataPairChunk *> fqdatachunks, qc_data *para, rabbit::fq::FastqDataPool *fastqPool);
+//    void ProcessNgsData(bool &allIsNull, std::vector <neoReference> data1[64], std::vector <neoReference> data2[64], std::vector <rabbit::fq::FastqDataPairChunk *> fqdatachunks, qc_data *para, rabbit::fq::FastqDataPool *fastqPool);
+
+    void ProcessFormatQCWrite(bool &allIsNull, std::vector <neoReference> *data1, std::vector <neoReference> *data2,
+                              std::vector <neoReference> *pass_data1, std::vector <neoReference> *pass_data2,
+                              std::vector <neoReference> *pre_pass_data1, std::vector <neoReference> *pre_pass_data2,
+                              std::vector <rabbit::fq::FastqDataPairChunk *> fqdatachunks, std::vector <rabbit::fq::FastqDataPairChunk *> pre_fqdatachunks,
+                              qc_data *para, rabbit::fq::FastqDataPool *fastq_data_pool);
 
 
 

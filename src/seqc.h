@@ -9,6 +9,7 @@
 #include <cstring>
 #include <fstream>
 #include <functional>
+#include <future>
 
 #include "Formater.h"
 #include "Globals.h"
@@ -65,8 +66,9 @@ private:
 
     void WriteSeFastqTask();
 
-//    void ProcessNgsData(bool &proDone, std::vector <neoReference> &data, rabbit::fq::FastqDataChunk *fqdatachunk, qc_data *para, rabbit::fq::FastqDataPool *fastq_data_pool);
-    void ProcessNgsData(bool &allIsNull, std::vector <neoReference> data[64], std::vector <rabbit::fq::FastqDataChunk *> fqdatachunks, qc_data *para, rabbit::fq::FastqDataPool *fastq_data_pool);
+    void ProcessFormatQCWrite(bool &allIsNull, std::vector <neoReference> *data, std::vector <neoReference> *pass_data, std::vector <neoReference> *pre_pass_data,
+                              std::vector <rabbit::fq::FastqDataChunk *> fqdatachunks, std::vector <rabbit::fq::FastqDataChunk *> pre_fqdatachunks,
+                              qc_data *para, rabbit::fq::FastqDataPool *fastq_data_pool);
 
 
 private:
