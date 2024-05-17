@@ -654,6 +654,8 @@ struct PeMerge_data {
     int out_lens2[64] = {0};
     std::vector <neoReference> *pass_data1[64];
     std::vector <neoReference> *pass_data2[64];
+    int pass_data_size1[64];
+    int pass_data_size2[64];
 };
 
 struct PeAll_data{
@@ -688,6 +690,7 @@ double t_ngsfunc = 0;
 double t_slave_gz = 0;
 double t_slave_gz2 = 0;
 double t_push_q = 0;
+double t_copy_data = 0;
 
 
 struct ConsumerWriteInfoPE{
@@ -704,6 +707,9 @@ vector<ConsumerWriteInfoPE> writeInfosPE;
 static int pe_pre_out_len_slave1[64];
 static int pe_pre_out_len_slave2[64];
 
+static int pe_pre_pass_data_size1[64];
+static int pe_pre_pass_data_size2[64];
+
 void PeQc::ProcessFormatQCWrite(bool &allIsNull, vector <neoReference> *data1, vector <neoReference> *data2,
                           vector <neoReference> *pass_data1, vector <neoReference> *pass_data2,
                           vector <neoReference> *pre_pass_data1, vector <neoReference> *pre_pass_data2,
@@ -714,27 +720,27 @@ void PeQc::ProcessFormatQCWrite(bool &allIsNull, vector <neoReference> *data1, v
     uint64_t counts[64] = {0};
     int fq_size = fqdatachunks.size();
     for(int i = 0; i < 64; i++) {
-        data1[i].clear();
-        data2[i].clear();
+        //data1[i].clear();
+        //data2[i].clear();
         para2[i].fqSize = fq_size;
         para2[i].my_rank = my_rank;
     }
     for(int i = 0; i < fq_size; i++) {
-        if(fqdatachunks[i] != NULL) {
-            data1[i].resize(fqdatachunks[i]->left_part->size / (cmd_info_->seq_len_ * 2));
-            data2[i].resize(fqdatachunks[i]->right_part->size / (cmd_info_->seq_len_ * 2));
-            if(cmd_info_->write_data_) {
-                pass_data1[i].resize(data1[i].size());
-                pass_data2[i].resize(data2[i].size());
-            }
-        } else {
-            data1[i].resize(0);
-            data2[i].resize(0);
-            if(cmd_info_->write_data_) {
-                pass_data1[i].resize(0);
-                pass_data2[i].resize(0);
-            }
-        }
+        //if(fqdatachunks[i] != NULL) {
+        //    data1[i].resize(fqdatachunks[i]->left_part->size / (cmd_info_->seq_len_ * 2));
+        //    data2[i].resize(fqdatachunks[i]->right_part->size / (cmd_info_->seq_len_ * 2));
+        //    if(cmd_info_->write_data_) {
+        //        pass_data1[i].resize(data1[i].size());
+        //        pass_data2[i].resize(data2[i].size());
+        //    }
+        //} else {
+        //    data1[i].resize(0);
+        //    data2[i].resize(0);
+        //    if(cmd_info_->write_data_) {
+        //        pass_data1[i].resize(0);
+        //        pass_data2[i].resize(0);
+        //    }
+        //}
         para2[i].data1 = &(data1[i]);
         para2[i].data2 = &(data2[i]);
         para2[i].fqdatachunk = fqdatachunks[i];
@@ -774,9 +780,12 @@ void PeQc::ProcessFormatQCWrite(bool &allIsNull, vector <neoReference> *data1, v
         pe_merge_data.out_data1[i] = out_data1[i];
         pe_merge_data.out_lens1[i] = out_lens1[i];
         pe_merge_data.pass_data1[i] = &(pre_pass_data1[i]);
+        pe_merge_data.pass_data_size1[i] = pe_pre_pass_data_size1[i];
+
         pe_merge_data.out_data2[i] = out_data2[i];
         pe_merge_data.out_lens2[i] = out_lens2[i];
         pe_merge_data.pass_data2[i] = &(pre_pass_data2[i]);
+        pe_merge_data.pass_data_size2[i] = pe_pre_pass_data_size2[i];
     }
     pe_all_data.para2 = para;
     pe_all_data.para3 = &pe_merge_data;
@@ -881,6 +890,8 @@ void PeQc::ProcessFormatQCWrite(bool &allIsNull, vector <neoReference> *data1, v
     for(int i = 0; i < 64; i++) {
         pe_pre_out_len_slave1[i] = pe_all_data.out_len_slave1[i];
         pe_pre_out_len_slave2[i] = pe_all_data.out_len_slave2[i];
+        pe_pre_pass_data_size1[i] = pe_merge_data.pass_data_size1[i]; 
+        pe_pre_pass_data_size2[i] = pe_merge_data.pass_data_size2[i]; 
     }
     tsum4 += GetTime() - tt0;
 
@@ -889,13 +900,14 @@ void PeQc::ProcessFormatQCWrite(bool &allIsNull, vector <neoReference> *data1, v
     int all_stop = 1;
     {
         for(int i = 0; i < 64; i++) {
-            data1[i].resize(counts[i]);
-            data2[i].resize(counts[i]);
-            if(cmd_info_->write_data_) {
-                pass_data1[i].resize(data1[i].size());
-                pass_data2[i].resize(data2[i].size());
-            }
-            if(data1[i].size()) isNull = 0;
+            //data1[i].resize(counts[i]);
+            //data2[i].resize(counts[i]);
+            //if(cmd_info_->write_data_) {
+            //    pass_data1[i].resize(data1[i].size());
+            //    pass_data2[i].resize(data2[i].size());
+            //}
+            //if(data1[i].size()) isNull = 0;
+            if(counts[i]) isNull = 0;
         }
 
         int isNulls[comm_size];
@@ -1087,6 +1099,7 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     vector<neoReference> pass_data2[64];
     vector<neoReference> pre_pass_data1[64];
     vector<neoReference> pre_pass_data2[64];
+    int max_data_size = BLOCK_SIZE / (cmd_info_->seq_len_ * 2);
     for(int i = 0; i < 64; i++) {
         data1[i].clear();
         data2[i].clear();
@@ -1095,6 +1108,14 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
         pre_pass_data1[i].clear();
         pre_pass_data2[i].clear();
         pre_fqdatachunks.push_back(NULL);
+        data1[i].resize(max_data_size);
+        data2[i].resize(max_data_size);
+        if(cmd_info_->write_data_) {
+            pass_data1[i].resize(max_data_size);
+            pass_data2[i].resize(max_data_size);
+            pre_pass_data1[i].resize(max_data_size);
+            pre_pass_data2[i].resize(max_data_size);
+        }
     }
     while(true) {
         double tt0 = GetTime();
@@ -1368,14 +1389,16 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
             t_push_q += GetTime() - tt0;
         }
 
+        tt0 = GetTime();
         pre_fqdatachunks.clear();
         for(int i = 0; i < 64; i++) {
-            pre_pass_data1[i].clear();
-            pre_pass_data2[i].clear();
-            pre_pass_data1[i] = pass_data1[i];
-            pre_pass_data2[i] = pass_data2[i];
+            if(cmd_info_->write_data_) {
+                pass_data1[i].swap(pre_pass_data1[i]);
+                pass_data2[i].swap(pre_pass_data2[i]);
+            }
             pre_fqdatachunks.push_back(fqdatachunks[i]);
         }
+        t_copy_data += GetTime() - tt0;
         if(allIsNull) break;
 
     }
@@ -1403,6 +1426,7 @@ void PeQc::ConsumerPeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     fprintf(stderr, "consumer%d NGSnew gz slave cost %lf\n", my_rank, t_slave_gz);
     fprintf(stderr, "consumer%d NGSnew gz slave2 cost %lf\n", my_rank, t_slave_gz2);
     fprintf(stderr, "consumer%d NGSnew push to queue cost %lf\n", my_rank, t_push_q);
+    fprintf(stderr, "consumer%d NGSnew copy data cost %lf\n", my_rank, t_copy_data);
     done_thread_number_++;
     athread_halt();
     fprintf(stderr, "consumer %d in func done\n", my_rank);

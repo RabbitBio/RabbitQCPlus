@@ -1007,6 +1007,7 @@ struct SeMerge_data {
     char* out_data[64];
     int out_lens[64] = {0};
     std::vector <neoReference> *pass_data[64];
+    int pass_data_size[64];
 };
 
 
@@ -1017,6 +1018,8 @@ struct PeMerge_data {
     int out_lens2[64] = {0};
     std::vector <neoReference> *pass_data1[64];
     std::vector <neoReference> *pass_data2[64];
+    int pass_data_size1[64];
+    int pass_data_size2[64];
 };
 
 void SlaveRead2Chars(neoReference &ref, char *out_data, int &pos) {
@@ -1035,19 +1038,18 @@ void SlaveRead2Chars(neoReference &ref, char *out_data, int &pos) {
 }
 
 extern "C" void semergefunc(SeMerge_data *se_merge_data) {
-//    if(_PEN % 8 == 0) return;
     auto vecs = *(se_merge_data->pass_data[_PEN]);
     int tmp_len = 0;
     int pos = 0;
     char* start_pos = NULL;
-    for(int i = 0; i < vecs.size(); i++) {
+    for(int i = 0; i < se_merge_data->pass_data_size[_PEN]; i++) {
         if(vecs[i].lname == 0 || vecs[i].pname + vecs[i].lname + vecs[i].lseq + vecs[i].lstrand + 3 != vecs[i].pqual) {
             //this record has been trimmed
             if(tmp_len) memcpy(se_merge_data->out_data[_PEN] + pos, start_pos, tmp_len);
             pos += tmp_len;
             if(vecs[i].lname) SlaveRead2Chars(vecs[i], se_merge_data->out_data[_PEN], pos);
             tmp_len = 0;
-            if(i < vecs.size() - 1) {
+            if(i < se_merge_data->pass_data_size[_PEN] - 1) {
                 start_pos = (char*)vecs[i + 1].base + vecs[i + 1].pname;
             }
             continue;
@@ -1097,14 +1099,14 @@ extern "C" void pemergefunc(PeMerge_data *pe_merge_data) {
     int tmp_len = 0;
     int pos = 0;
     char* start_pos = NULL;
-    for(int i = 0; i < vecs.size(); i++) {
+    for(int i = 0; i < pe_merge_data->pass_data_size1[_PEN]; i++) {
         if(vecs[i].lname == 0 || vecs[i].pname + vecs[i].lname + vecs[i].lseq + vecs[i].lstrand + 3 != vecs[i].pqual) {
             //this record has been trimmed
             if(tmp_len) memcpy(pe_merge_data->out_data1[_PEN] + pos, start_pos, tmp_len);
             pos += tmp_len;
             if(vecs[i].lname) SlaveRead2Chars(vecs[i], pe_merge_data->out_data1[_PEN], pos);
             tmp_len = 0;
-            if(i < vecs.size() - 1) {
+            if(i < pe_merge_data->pass_data_size1[_PEN] - 1) {
                 start_pos = (char*)vecs[i + 1].base + vecs[i + 1].pname;
             }
             continue;
@@ -1129,14 +1131,14 @@ extern "C" void pemergefunc(PeMerge_data *pe_merge_data) {
     tmp_len = 0;
     pos = 0;
     start_pos = NULL;
-    for(int i = 0; i < vecs.size(); i++) {
+    for(int i = 0; i < pe_merge_data->pass_data_size2[_PEN]; i++) {
         if(vecs[i].lname == 0 || vecs[i].pname + vecs[i].lname + vecs[i].lseq + vecs[i].lstrand + 3 != vecs[i].pqual) {
             //this record has been trimmed
             if(tmp_len) memcpy(pe_merge_data->out_data2[_PEN] + pos, start_pos, tmp_len);
             pos += tmp_len;
             if(vecs[i].lname) SlaveRead2Chars(vecs[i], pe_merge_data->out_data2[_PEN], pos);
             tmp_len = 0;
-            if(i < vecs.size() - 1) {
+            if(i < pe_merge_data->pass_data_size2[_PEN] - 1) {
                 start_pos = (char*)vecs[i + 1].base + vecs[i + 1].pname;
             }
             continue;
@@ -2075,6 +2077,7 @@ extern "C" void ngspefunc(qc_data *para){
     }
 }
 
+
 struct SeAll_data{
     format_data para1[64];
     qc_data *para2;
@@ -2090,6 +2093,7 @@ extern "C" void seallfunc(SeAll_data *se_all_data) {
     se_all_data->out_len_slave[_PEN] = se_out_len_slave[_PEN];
     if(se_all_data->write_data) {
         semergefunc(se_all_data->para3);
+        se_all_data->para3->pass_data_size[_PEN] = se_all_data->para2->data1_size[_PEN];
     }
 }
 
@@ -2112,6 +2116,8 @@ extern "C" void peallfunc(PeAll_data *pe_all_data) {
     pe_all_data->out_len_slave2[_PEN] = pe_out_len_slave2[_PEN];
     if(pe_all_data->write_data) {
         pemergefunc(pe_all_data->para3);
+        pe_all_data->para3->pass_data_size1[_PEN] = pe_all_data->para2->data1_size[_PEN];
+        pe_all_data->para3->pass_data_size2[_PEN] = pe_all_data->para2->data2_size[_PEN];
     }
 }
 

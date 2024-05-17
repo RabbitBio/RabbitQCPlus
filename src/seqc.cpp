@@ -555,6 +555,7 @@ struct SeMerge_data {
     char* out_data[64];
     int out_lens[64] = {0};
     vector <neoReference> *pass_data[64];
+    int pass_data_size[64];
 };
 
 struct SeAll_data{
@@ -603,6 +604,7 @@ double t_slave_gz3_3 = 0;
 double t_slave_gz4 = 0;
 double t_slave_gz5 = 0;
 double t_push_q = 0;
+double t_copy_data = 0;
 
 void PrintRef(neoReference &ref) {
     printf("%.*s\n", ref.lname, (char *) ref.base + ref.pname);
@@ -620,6 +622,7 @@ struct ConsumerWriteInfo{
 vector<ConsumerWriteInfo> writeInfos;
 
 static int se_pre_out_len_slave[64];
+static int se_pre_pass_data_size[64];
 
 void SeQc::ProcessFormatQCWrite(bool &allIsNull, vector <neoReference> *data, vector <neoReference> *pass_data, vector <neoReference> *pre_pass_data,
                            vector <rabbit::fq::FastqDataChunk *> fqdatachunks, vector <rabbit::fq::FastqDataChunk *> pre_fqdatachunks, qc_data *para,
@@ -630,22 +633,22 @@ void SeQc::ProcessFormatQCWrite(bool &allIsNull, vector <neoReference> *data, ve
     uint64_t counts[64] = {0};
     int fq_size = fqdatachunks.size();
     for(int i = 0; i < 64; i++) {
-        data[i].clear();
+        //data[i].clear();
         para2[i].fqSize = fq_size;
         para2[i].my_rank = my_rank;
     }
     for(int i = 0; i < fq_size; i++) {
-        if(fqdatachunks[i] != NULL) {
-            data[i].resize(fqdatachunks[i]->size / (cmd_info_->seq_len_ * 2));
-            if(cmd_info_->write_data_) {
-                pass_data[i].resize(data[i].size());
-            }
-        } else {
-            data[i].resize(0);
-            if(cmd_info_->write_data_) {
-                pass_data[i].resize(0);
-            }
-        }
+        //if(fqdatachunks[i] != NULL) {
+        //    data[i].resize(fqdatachunks[i]->size / (cmd_info_->seq_len_ * 2));
+        //    if(cmd_info_->write_data_) {
+        //        pass_data[i].resize(data[i].size());
+        //    }
+        //} else {
+        //    data[i].resize(0);
+        //    if(cmd_info_->write_data_) {
+        //        pass_data[i].resize(0);
+        //    }
+        //}
         para2[i].data = &(data[i]);
         para2[i].fqdatachunk = fqdatachunks[i];
         para2[i].res = counts;
@@ -677,6 +680,7 @@ void SeQc::ProcessFormatQCWrite(bool &allIsNull, vector <neoReference> *data, ve
         se_merge_data.out_data[i] = out_data[i];
         se_merge_data.out_lens[i] = out_lens[i];
         se_merge_data.pass_data[i] = &(pre_pass_data[i]);
+        se_merge_data.pass_data_size[i] = se_pre_pass_data_size[i];
     }
     se_all_data.para2 = para;
     se_all_data.para3 = &se_merge_data;
@@ -745,6 +749,7 @@ void SeQc::ProcessFormatQCWrite(bool &allIsNull, vector <neoReference> *data, ve
     }
     for(int i = 0; i < 64; i++) {
         se_pre_out_len_slave[i] = se_all_data.out_len_slave[i];
+        se_pre_pass_data_size[i] = se_merge_data.pass_data_size[i];
     }
     tsum4 += GetTime() - tt0;
 
@@ -754,11 +759,12 @@ void SeQc::ProcessFormatQCWrite(bool &allIsNull, vector <neoReference> *data, ve
     int all_stop = 1;
     {
         for(int i = 0; i < 64; i++) {
-            data[i].resize(counts[i]);
-            if(cmd_info_->write_data_) {
-                pass_data[i].resize(data[i].size());
-            }
-            if(data[i].size()) isNull = 0;
+            //data[i].resize(counts[i]);
+            //if(cmd_info_->write_data_) {
+            //    pass_data[i].resize(data[i].size());
+            //}
+            //if(data[i].size()) isNull = 0;
+            if(counts[i]) isNull = 0;
         }
         int isNulls[comm_size];
         isNulls[0] = isNull;
@@ -931,11 +937,17 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     vector<neoReference> data[64];
     vector<neoReference> pass_data[64];
     vector<neoReference> pre_pass_data[64];
+    int max_data_size = BLOCK_SIZE / (cmd_info_->seq_len_ * 2);
     for(int i = 0; i < 64; i++) {
         data[i].clear();
         pass_data[i].clear();
         pre_pass_data[i].clear();
         pre_fqdatachunks.push_back(NULL);
+        data[i].resize(max_data_size);
+        if(cmd_info_->write_data_) {
+            pass_data[i].resize(max_data_size);
+            pre_pass_data[i].resize(max_data_size);
+        }
     }
     while(true) {
         double tt0 = GetTime();
@@ -946,9 +958,7 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
 
         tt0 = GetTime();
         fqdatachunks = p_out_queue_[p_queueP1++];
-        //fprintf(stderr, "ccc fqc size %d\n", fqdatachunks.size());
         p_queueNumNow--;
-
         for(int i = fqdatachunks.size(); i < 64; i++) {
             fqdatachunks.push_back(NULL);
         }
@@ -1112,12 +1122,15 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
             t_push_q += GetTime() - tt0;
         }
 
+        tt0 = GetTime();
         pre_fqdatachunks.clear();
         for(int i = 0; i < 64; i++) {
-            pre_pass_data[i].clear();
-            pre_pass_data[i] = pass_data[i];
+            if(cmd_info_->write_data_) {
+                pass_data[i].swap(pre_pass_data[i]);
+            }
             pre_fqdatachunks.push_back(fqdatachunks[i]);
         }
+        t_copy_data += GetTime() - tt0;
         if(allIsNull) break;
 
     }
@@ -1144,6 +1157,7 @@ void SeQc::ConsumerSeFastqTask64(ThreadInfo **thread_infos, rabbit::fq::FastqDat
     fprintf(stderr, "consumer%d NGSnew gz slave cost %lf\n", my_rank, t_slave_gz);
     fprintf(stderr, "consumer%d NGSnew gz slave sub cost [%lf %lf %lf %lf %lf %lf %lf]\n", my_rank, t_slave_gz1, t_slave_gz2, t_slave_gz3_1, t_slave_gz3_2, t_slave_gz3_3, t_slave_gz4, t_slave_gz5);
     fprintf(stderr, "consumer%d NGSnew push to queue cost %lf\n", my_rank, t_push_q);
+    fprintf(stderr, "consumer%d NGSnew copy data cost %lf\n", my_rank, t_copy_data);
     done_thread_number_++;
     athread_halt();
     fprintf(stderr, "consumer %d done in func\n", my_rank);
