@@ -1,3 +1,15 @@
+[![install with conda](
+https://anaconda.org/bioconda/rabbitqcplus/badges/version.svg)](https://anaconda.org/bioconda/rabbitqcplus)
+[![install with conda](
+https://anaconda.org/bioconda/rabbitqcplus/badges/latest_release_date.svg)](https://anaconda.org/bioconda/rabbitqcplus)
+[![install with conda](
+https://anaconda.org/bioconda/rabbitqcplus/badges/platforms.svg)](https://anaconda.org/bioconda/rabbitqcplus)
+[![install with conda](
+https://anaconda.org/bioconda/rabbitqcplus/badges/license.svg)](https://anaconda.org/bioconda/rabbitqcplus)
+[![install with conda](
+https://anaconda.org/bioconda/rabbitqcplus/badges/downloads.svg)](https://anaconda.org/bioconda/rabbitqcplus)
+
+
 ## ![logo](./pics/RabbitQCPlus.png)
 
 # RabbitQCPlus 2.0 Features
