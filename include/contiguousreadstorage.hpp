@@ -473,9 +473,9 @@ namespace cpu{
 
         void printAmbig(){
             for(auto x : readIdsOfReadsWithUndeterminedBase){
-                std::cerr << x << " ";
+                std::cout << x << " ";
             }
-            std::cerr << "\n";
+            std::cout << "\n";
         }
 
         
@@ -862,19 +862,19 @@ public:
             stream.read(reinterpret_cast<char*>(&h_sequence_data[0]), loaded_sequence_data_bytes);
 
             if(canUseQualityScores() && loaded_hasQualityScores){
-                //std::cerr << "load qualities\n";
+                //std::cout << "load qualities\n";
 
                 stream.read(reinterpret_cast<char*>(&loaded_quality_data_bytes), sizeof(std::size_t));            
                 stream.read(reinterpret_cast<char*>(&h_quality_data[0]), loaded_quality_data_bytes);
             }else if(canUseQualityScores() && !loaded_hasQualityScores){
-                    //std::cerr << "no q in bin file\n";
+                    //std::cout << "no q in bin file\n";
                     throw std::runtime_error("Quality scores expected in preprocessed reads file to load, but none are present. Abort.");
             }else if(!canUseQualityScores() && loaded_hasQualityScores){
-                    //std::cerr << "skip qualities\n";
+                    //std::cout << "skip qualities\n";
                     stream.ignore(qualitiesBytes);
             }else{
                 //!canUseQualityScores() && !loaded_hasQualityScores
-                //std::cerr << "no q in file, and no q required. Ok\n";
+                //std::cout << "no q in file, and no q required. Ok\n";
                 stream.ignore(qualitiesBytes);
             }
             

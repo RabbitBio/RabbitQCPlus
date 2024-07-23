@@ -234,7 +234,7 @@ namespace fakegpusinglehashminhasherkernels{
                     throw std::runtime_error("Not enough memory available for hash tables. Abort!");
                 }
                 std::size_t maxMemoryForTables = getAvailableMemoryInKB() * 1024;
-                // std::cerr << "available: " << maxMemoryForTables 
+                // std::cout << "available: " << maxMemoryForTables 
                 //         << ",memoryForHashtables: " << programOptions.memoryForHashtables
                 //         << ", memoryTotalLimit: " << programOptions.memoryTotalLimit
                 //         << ", rsHostUsage: " << memoryUsageOfReadStorage.host << "\n";
@@ -378,7 +378,7 @@ namespace fakegpusinglehashminhasherkernels{
 
                 kvtable->secondPassDone();
 
-                std::cerr << "numKeys = " << numKeys << "\n";
+                std::cout << "numKeys = " << numKeys << "\n";
 
                 setThreadPool(nullptr); 
                 
@@ -526,7 +526,7 @@ namespace fakegpusinglehashminhasherkernels{
 
             assert(queryData->previousStage == QueryData::Stage::NumValues);
 
-            //std::cerr << "totalNumValues: " << totalNumValues << "\n";
+            //std::cout << "totalNumValues: " << totalNumValues << "\n";
 
             if(totalNumValues == 0){
                 cudaMemsetAsync(d_numValuesPerSequence, 0, sizeof(int) * numSequences, stream);

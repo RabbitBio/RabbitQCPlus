@@ -33,7 +33,7 @@ std::size_t getSizeOfFileBytes(const std::string& filename){
 __inline__
 void renameFileSameMount(const std::string& filename, const std::string& newFilename){
 #ifdef FILE_HELPERS_DEBUG        
-    std::cerr << "Rename " << filename << " to " << newFilename << "\n";
+    std::cout << "Rename " << filename << " to " << newFilename << "\n";
 #endif    
     int res = std::rename(filename.c_str(), newFilename.c_str());
     if(res != 0){
@@ -45,7 +45,7 @@ void renameFileSameMount(const std::string& filename, const std::string& newFile
 __inline__
 void copyFile(const std::string& filename, const std::string& newFilename){
 #ifdef FILE_HELPERS_DEBUG       
-    std::cerr << "Copy " << filename << " to " << newFilename << "\n";
+    std::cout << "Copy " << filename << " to " << newFilename << "\n";
 #endif    
     std::ifstream src(filename, std::ios::binary);
     std::ofstream dst(newFilename, std::ios::binary);
@@ -60,7 +60,7 @@ void copyFile(const std::string& filename, const std::string& newFilename){
 __inline__
 void removeFile(const std::string& filename){
 #ifdef FILE_HELPERS_DEBUG   
-    std::cerr << "Remove " << filename << "\n";
+    std::cout << "Remove " << filename << "\n";
 #endif    
     std::ifstream src(filename);
     assert(bool(src));

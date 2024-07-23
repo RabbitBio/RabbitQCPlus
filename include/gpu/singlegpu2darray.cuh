@@ -202,9 +202,9 @@ public:
 
         for(size_t i = 0; i < numRows; i++){
             for(size_t k = 0; k < numColumns; k++){
-                std::cerr << tmp[i * numColumns + k] << " ";
+                std::cout << tmp[i * numColumns + k] << " ";
             }
-            std::cerr << "\n";
+            std::cout << "\n";
         }
 
         CUDACHECK(cudaFreeHost(tmp));
@@ -454,7 +454,7 @@ private:
         cudaError_t status = cudaMemcpyPeerAsync(dst, dstDevice, src, srcDevice, count, stream);
         if(status != cudaSuccess){
             cudaGetLastError();
-            std::cerr << "dst=" << dst << ", "
+            std::cout << "dst=" << dst << ", "
             << "dstDevice=" << dstDevice << ", "
             << "src=" << src << ", "
             << "srcDevice=" << srcDevice << ", "

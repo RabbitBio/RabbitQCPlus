@@ -85,7 +85,7 @@ namespace care{
         void rehash(std::size_t newsize){
             newsize = std::max(newsize, std::size_t(1));
 
-            std::cerr << "rehash(" << newsize << ")\n";
+            std::cout << "rehash(" << newsize << ")\n";
             AoSCpuSingleValueHashTable newtable(newsize, load);
 
             forEachKeyValuePair([&](const auto& key, const auto& value){
@@ -352,7 +352,7 @@ namespace care{
 
         void insert(const Key& key, const Value& value){
             if(key == emptyKey){
-                std::cerr << "1\n";
+                std::cout << "1\n";
             }
             using hasher = hashers::MurmurHash<std::uint64_t>;
 
@@ -515,7 +515,7 @@ namespace care{
         ){
             assert(keys.size() == vals.size());
 
-            //std::cerr << "init valuesOfSameKeyMustBeSorted = " << valuesOfSameKeyMustBeSorted << "\n";
+            //std::cout << "init valuesOfSameKeyMustBeSorted = " << valuesOfSameKeyMustBeSorted << "\n";
 
             if(isInit) return;
 
@@ -612,13 +612,13 @@ namespace care{
 
             result.device = lookup.getMemoryInfo().device;
 
-            //std::cerr << lookup.getMemoryInfo().host << " " << result.host << " bytes\n";
+            //std::cout << lookup.getMemoryInfo().host << " " << result.host << " bytes\n";
 
-            // std::cerr << "readonlytable. keys capacity: " << lookup.getCapacity() << ", values.size() " << values.size() << "\n";
+            // std::cout << "readonlytable. keys capacity: " << lookup.getCapacity() << ", values.size() " << values.size() << "\n";
 
             // auto map = lookup.getCountDistribution();
             // for(auto pair : map){
-            //     std::cerr << pair.first << ": " << pair.second << "\n";
+            //     std::cout << pair.first << ": " << pair.second << "\n";
             // }
 
             return result;
@@ -754,9 +754,9 @@ namespace care{
                 }
             );
 
-            std::cerr << "unique keys: " << lookup.getNumKeys() << "\n";
-            std::cerr << "numKeysWithOkValues: " << numKeysWithOkValues << "\n";
-            std::cerr << "numValuesOfKeysWithOkValues: " << numValuesOfKeysWithOkValues << "\n";
+            std::cout << "unique keys: " << lookup.getNumKeys() << "\n";
+            std::cout << "numKeysWithOkValues: " << numKeysWithOkValues << "\n";
+            std::cout << "numValuesOfKeysWithOkValues: " << numValuesOfKeysWithOkValues << "\n";
 
             //try to create a new lookup which does not contain keys with not ok values
             try{
@@ -775,7 +775,7 @@ namespace care{
                 std::swap(lookup, newLookup);
                 timer2.print();
             }catch(...){
-                std::cerr << "Could not reduce memory usage of table\n";
+                std::cout << "Could not reduce memory usage of table\n";
             }
 
             valuestorage.resize(numValuesOfKeysWithOkValues, dummyValue());

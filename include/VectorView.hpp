@@ -2,7 +2,10 @@
 
 #include <array>
 #include <stdexcept>
+#include <type_traits>
 #include <vector>
+
+#include "FasterVector.hpp"
 
 
 /**
@@ -30,9 +33,19 @@ public:
     constexpr VectorView<T>&
     operator=( VectorView<T>&& ) noexcept = default;
 
+    template<typename Container,
+             std::enable_if_t<std::is_same_v<Container, std::vector<T> >
+                              || std::is_same_v<Container, FasterVector<T> >
+                              || ( ( std::is_same_v<T, uint8_t>
+                                     || std::is_same_v<T, char>
+                                     || std::is_same_v<T, std::byte> ) &&
+                                   ( std::is_same_v<typename Container::value_type, uint8_t>
+                                     || std::is_same_v<typename Container::value_type, char>
+                                     || std::is_same_v<typename Container::value_type, std::byte> ) )
+             >* = nullptr>
     constexpr
-    VectorView( const std::vector<T>& vector ) noexcept :
-        m_data( vector.data() ),
+    VectorView( const Container& vector ) noexcept :  // NOLINT
+        m_data( reinterpret_cast<const T*>( vector.data() ) ),
         m_size( vector.size() )
     {}
 
@@ -41,6 +54,13 @@ public:
                 size_t   size ) noexcept :
         m_data( data ),
         m_size( size )
+    {}
+
+    constexpr
+    VectorView( const T* data,
+                const T* dataEnd ) noexcept :
+        m_data( data ),
+        m_size( std::distance( data, dataEnd ) )
     {}
 
     [[nodiscard]] constexpr T
@@ -124,16 +144,16 @@ public:
     WeakVector( const WeakVector& ) = default;
 
     constexpr
-    WeakVector( WeakVector&& ) = default;
+    WeakVector( WeakVector&& ) noexcept = default;
 
     constexpr WeakVector&
     operator=( const WeakVector& ) = default;
 
     constexpr WeakVector&
-    operator=( WeakVector&& ) = default;
+    operator=( WeakVector&& ) noexcept = default;
 
     constexpr
-    WeakVector( std::vector<T>* vector ) noexcept :
+    WeakVector( std::vector<T>* vector ) noexcept :  // NOLINT
         m_data( vector->data() ),
         m_size( vector->size() )
     {}
@@ -327,14 +347,8 @@ public:
         return m_data + m_size;
     }
 
-    [[nodiscard]] constexpr const T*
-    data() const noexcept
-    {
-        return m_data;
-    }
-
     [[nodiscard]] constexpr T*
-    data() noexcept
+    data() const noexcept
     {
         return m_data;
     }
@@ -351,14 +365,8 @@ public:
         return m_size == 0;
     }
 
-    [[nodiscard]] constexpr const T&
-    operator[]( size_t i ) const noexcept
-    {
-        return m_data[i];
-    }
-
     [[nodiscard]] constexpr T&
-    operator[]( size_t i ) noexcept
+    operator[]( size_t i ) const noexcept
     {
         return m_data[i];
     }

@@ -120,7 +120,7 @@ namespace care{
                 capacity_ = newcapacity;
 
                 if(previousAllocStream.has_value() && stream != *previousAllocStream){
-                    //std::cerr << std::this_thread::get_id() << " reserveUninitialized streamchange " << *previousAllocStream << " -> " << stream << "\n";
+                    //std::cout << std::this_thread::get_id() << " reserveUninitialized streamchange " << *previousAllocStream << " -> " << stream << "\n";
                 } 
                 previousAllocStream = stream;
 
@@ -169,7 +169,7 @@ namespace care{
                 capacity_ = newcapacity;
 
                 if(previousAllocStream.has_value() && stream != *previousAllocStream){
-                    //std::cerr << "reserve streamchange\n";
+                    //std::cout << "reserve streamchange\n";
                 }
                 previousAllocStream = stream;
 
@@ -199,7 +199,7 @@ namespace care{
             assert(last <= end());
 
             if(previousAllocStream.has_value() && stream != *previousAllocStream){
-                //std::cerr << "erase not on previousAllocStream\n";
+                //std::cout << "erase not on previousAllocStream\n";
             }
 
             if(last < end()){
@@ -224,7 +224,7 @@ namespace care{
         bool append(const T* rangeBegin, const T* rangeEnd, cudaStream_t stream){
             cudaStream_t workstream = stream;
             if(previousAllocStream.has_value() && stream != *previousAllocStream){
-                //std::cerr << "append not on previousAllocStream\n";
+                //std::cout << "append not on previousAllocStream\n";
             }
 
             const std::size_t rangesize = std::distance(rangeBegin, rangeEnd);
@@ -282,7 +282,7 @@ namespace care{
             if(status != cudaSuccess){
                 
                 std::string msg = cudaGetErrorString(status);
-                std::cerr << "CUDA Error: " << msg << " " << info << "\n";
+                std::cout << "CUDA Error: " << msg << " " << info << "\n";
                 throw std::runtime_error(msg);
             }
         }

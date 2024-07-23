@@ -135,9 +135,9 @@ THRUST_INCDIR = ./dependencies/thrust-1.17.0
 
 
 ifeq ($(BIOCONDA),1)
-    CXXFLAGS := -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -fconstexpr-ops-limit=99000100 -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -I./src/include -msse4.2 -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
+    CXXFLAGS := -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -fconstexpr-ops-limit=99000100 -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -I./include/chunkdecoding -I./include/gzip -I./src/include -msse4.2 -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
 else
-    CXXFLAGS := $(InstructSet) -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -fconstexpr-ops-limit=99000100 -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -I./src/include -march=native -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
+    CXXFLAGS := $(InstructSet) -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -fconstexpr-ops-limit=99000100 -Wall -Wextra -Wno-terminate -Wno-class-memaccess -DNDUBUG -std=c++17 -I./ -I./common -I./include -I./include/huffman -I./include/chunkdecoding -I./include/gzip -I./src/include -march=native -I$(THRUST_INCDIR) -g -O3 -w -fopenmp
 endif
 
 

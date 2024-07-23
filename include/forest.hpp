@@ -131,7 +131,7 @@ class ForestClf {
             //std::swap(newtree, tree);
 
             // for(int i = 0; i < 32; i++){
-            //     std::cerr << indices[i] << "\n";
+            //     std::cout << indices[i] << "\n";
             // }
         }
     }
@@ -152,7 +152,7 @@ public:
 
         const auto n_trees = read_one<uint32_t>(is);
         max_trees = std::min(max_trees, n_trees);
-        // std::cerr << "Using " << max_trees << " of " << n_trees << "trees.\n";
+        // std::cout << "Using " << max_trees << " of " << n_trees << "trees.\n";
         forest_ = Forest(max_trees);
         for (Tree& tree: forest_) {
             tree.reserve(read_one<uint32_t>(is)); // reserve space for nodes
@@ -200,13 +200,13 @@ public:
 
     float prob_full_debug(const features_t& features) const {
         float sum = 0.f;
-        std::cerr << "# ";
+        std::cout << "# ";
         for (const Tree& tree: forest_) {
             auto tmp = prob(features, tree);
             sum += tmp;
-            std::cerr << tmp << " ";
+            std::cout << tmp << " ";
         }
-        std::cerr << "# ";
+        std::cout << "# ";
         return sum/forest_.size();
     }
 

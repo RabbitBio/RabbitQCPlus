@@ -46,7 +46,7 @@ public:
 
     KseqPP(const std::string& filename)
             : f(std::make_unique<Stream>(filename)){
-        // std::cerr << "KseqPP(" << filename << ")\n";
+        // std::cout << "KseqPP(" << filename << ")\n";
         header.reserve(256);
         seq.reserve(256);
         qual.reserve(256);
@@ -111,7 +111,7 @@ public:
         }
         last_char = 0;	/* we have not come to the next header line */
         if(seq.length() != qual.length()){
-            std::cerr << "got seq " << seq << "\n got qual " << qual << "\n";
+            std::cout << "got seq " << seq << "\n got qual " << qual << "\n";
             f->cancel();
             return -2;  /* error: qual string is of a different length */
         }
@@ -173,10 +173,10 @@ private:
         kstream_t(const std::string& filename) : begin(0), end(0), is_eof(0){
 
             if(hasGzipHeader(filename)){
-                //std::cerr << "assume gz file\n";
+                //std::cout << "assume gz file\n";
                 filereader.reset(new CompressedReader_t(filename));
             }else{
-                //std::cerr << "assume raw file\n";
+                //std::cout << "assume raw file\n";
                 filereader.reset(new RawReader_t(filename));
             }
 
@@ -324,10 +324,10 @@ private:
         asynckstream_t(const std::string& filename) : begin(0), end(0), is_eof(0){
 
             if(hasGzipHeader(filename)){
-                //std::cerr << "assume gz file\n";
+                //std::cout << "assume gz file\n";
                 filereader.reset(new CompressedReader_t(filename));
             }else{
-                //std::cerr << "assume raw file\n";
+                //std::cout << "assume raw file\n";
                 filereader.reset(new RawReader_t(filename));
             }
 
@@ -352,7 +352,7 @@ private:
         asynckstream_t& operator=(asynckstream_t&&) = delete;
 
         void fillerthreadfunc(){
-            //std::cerr << "launched thread\n";
+            //std::cout << "launched thread\n";
             std::vector<char> threadBuffer;
             threadBuffer.resize(bufsize);
 
@@ -365,7 +365,7 @@ private:
                     break;
                 }
                 if(tempBufferFilled){
-                    //std::cerr << "filereaderThread: temp buffer still filled\n";
+                    //std::cout << "filereaderThread: temp buffer still filled\n";
                     threadSyncData->cv_producer.wait(ul, [&](){return !tempBufferFilled || !canContinue;});
                 }
 
@@ -373,7 +373,7 @@ private:
                 if(canContinue){
                     std::swap(threadBuffer, tempbuf);                    
                     tempReadBytes = n;
-                    //std::cerr << "filereaderThread: temp buffer filled\n";                    
+                    //std::cout << "filereaderThread: temp buffer filled\n";                    
                 }else{
                     tempReadBytes = 0;
                 }
@@ -386,7 +386,7 @@ private:
             tempReadBytes = 0;
             threadSyncData->cv_consumer.notify_one();
 
-            //std::cerr << "finished thread\n";
+            //std::cout << "finished thread\n";
         }
 
         void cancel(){
@@ -412,14 +412,14 @@ private:
         int fillBuffer(){
             std::unique_lock<std::mutex> ul(threadSyncData->m);
             if(!tempBufferFilled){
-                //std::cerr << "main thread: temp buffer still not filled\n";
+                //std::cout << "main thread: temp buffer still not filled\n";
                 threadSyncData->cv_consumer.wait(ul, [&](){return tempBufferFilled;});
             }
 
             std::swap(buf, tempbuf);
             int numRead = tempReadBytes;
             tempBufferFilled = false;
-            //std::cerr << "main thread: temp buffer not filled\n";
+            //std::cout << "main thread: temp buffer not filled\n";
             threadSyncData->cv_producer.notify_one();
 
             return numRead;

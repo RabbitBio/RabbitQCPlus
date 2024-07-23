@@ -10,7 +10,7 @@
 #include "HuffmanCodingBase.hpp"
 
 
-namespace pragzip
+namespace rapidgzip
 {
 /**
  * This is an iterative improvement over HuffmanCodingLinearSearch.
@@ -26,12 +26,13 @@ namespace pragzip
 template<typename HuffmanCode,
          uint8_t  MAX_CODE_LENGTH,
          typename Symbol,
-         size_t   MAX_SYMBOL_COUNT>
+         size_t   MAX_SYMBOL_COUNT,
+         bool     CHECK_OPTIMALITY = true>
 class HuffmanCodingSymbolsPerLength :
-    public HuffmanCodingBase<HuffmanCode, MAX_CODE_LENGTH, Symbol, MAX_SYMBOL_COUNT>
+    public HuffmanCodingBase<HuffmanCode, MAX_CODE_LENGTH, Symbol, MAX_SYMBOL_COUNT, CHECK_OPTIMALITY>
 {
 public:
-    using BaseType = HuffmanCodingBase<HuffmanCode, MAX_CODE_LENGTH, Symbol, MAX_SYMBOL_COUNT>;
+    using BaseType = HuffmanCodingBase<HuffmanCode, MAX_CODE_LENGTH, Symbol, MAX_SYMBOL_COUNT, CHECK_OPTIMALITY>;
     using BitCount = typename BaseType::BitCount;
     using CodeLengthFrequencies = typename BaseType::CodeLengthFrequencies;
 
@@ -93,7 +94,8 @@ public:
         return Error::NONE;
     }
 
-    [[nodiscard]] forceinline std::optional<Symbol>
+    template<typename BitReader>
+    [[nodiscard]] forceinline constexpr std::optional<Symbol>
     decode( BitReader& bitReader ) const
     {
         HuffmanCode code = 0;
@@ -102,7 +104,7 @@ public:
          * would be inversed. @todo Reverse the Huffman codes and prepend bits instead of appending, so that this
          * first step can be conflated and still have the correct order for comparison! */
         for ( BitCount i = 0; i < this->m_minCodeLength; ++i ) {
-            code = ( code << 1U ) | ( bitReader.read<1>() );
+            code = static_cast<HuffmanCode>( HuffmanCode( code << 1U ) | bitReader.template read<1>() );
         }
 
         for ( BitCount k = 0; k <= this->m_maxCodeLength - this->m_minCodeLength; ++k ) {
@@ -115,7 +117,7 @@ public:
             }
 
             code <<= 1;
-            code |= bitReader.read<1>();
+            code |= bitReader.template read<1>();
         }
 
         return std::nullopt;
@@ -132,10 +134,10 @@ protected:
      * @endverbatim
      * The starting index for a given code length (CL) can be queried with m_offsets.
      */
-    std::array<Symbol, MAX_SYMBOL_COUNT> m_symbolsPerLength{};
+    alignas( 64 ) std::array<Symbol, MAX_SYMBOL_COUNT> m_symbolsPerLength{};
     /* +1 because it stores the size at the end as well as 0 in the first element, which might be redundant but fast. */
-    std::array<uint16_t, MAX_CODE_LENGTH + 1> m_offsets{};
+    alignas( 64 ) std::array<uint16_t, MAX_CODE_LENGTH + 1> m_offsets{};
     static_assert( MAX_SYMBOL_COUNT + MAX_CODE_LENGTH <= std::numeric_limits<uint16_t>::max(),
                    "Offset type must be able to point at all symbols!" );
 };
-}  // namespace pragzip
+}  // namespace rapidgzip

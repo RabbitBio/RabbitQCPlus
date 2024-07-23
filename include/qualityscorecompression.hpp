@@ -447,7 +447,7 @@ void callCompressQualityScoresKernel(
         case 2: callCompressQualityScoresKernel<2>(compressed, compressedPitchInInts, quality, qualityPitchInBytes, lengths, numSequences, stream); break;
         case 8: callCompressQualityScoresKernel<8>(compressed, compressedPitchInInts, quality, qualityPitchInBytes, lengths, numSequences, stream); break;
         default:
-            std::cerr << "callCompressQualityScoresKernel cannot be called with numBits = " << numBits << "\n";
+            std::cout << "callCompressQualityScoresKernel cannot be called with numBits = " << numBits << "\n";
             assert(false);
             break;
     }
@@ -544,7 +544,7 @@ void callDecompressQualityScoresKernel(
         case 2: callDecompressQualityScoresKernel<2>(quality, qualityPitchInBytes, compressed, compressedPitchInInts, lengths, numSequences, stream); break;
         case 8: callDecompressQualityScoresKernel<8>(quality, qualityPitchInBytes, compressed, compressedPitchInInts, lengths, numSequences, stream); break;
         default:
-            std::cerr << "callDecompressQualityScoresKernel cannot be called with numBits = " << numBits << "\n";
+            std::cout << "callDecompressQualityScoresKernel cannot be called with numBits = " << numBits << "\n";
             assert(false);
             break;
     }

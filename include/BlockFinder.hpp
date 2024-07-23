@@ -18,6 +18,10 @@
 #include <JoiningThread.hpp>
 #include <StreamedResults.hpp>
 
+#ifdef WITH_PYTHON_SUPPORT
+    #include <filereader/Python.hpp>
+#endif
+
 
 /**
  * This is a future-like wrapper around a given actual block finder, which is running asynchronously.
@@ -42,7 +46,7 @@ public:
         m_rawBlockFinder( std::move( rawBlockFinder ) )
     {}
 
-    ~BlockFinder()
+    ~BlockFinder() override
     {
         std::scoped_lock lock( m_mutex );
         m_cancelThread = true;
@@ -108,6 +112,10 @@ public:
     get( size_t blockNumber,
          double timeoutInSeconds ) override
     {
+#ifdef WITH_PYTHON_SUPPORT
+        const ScopedGILUnlock unlockedGIL;
+#endif
+
         if ( !m_blockOffsets.finalized() ) {
             startThreads();
         }
@@ -201,7 +209,7 @@ private:
      * in the time it takes to decode one block! In general, the higher this number, the higher the
      * longer will be the initial CPU utilization.
      */
-    const size_t m_prefetchCount = 3 * std::thread::hardware_concurrency();
+    const size_t m_prefetchCount = 3ULL * std::thread::hardware_concurrency();
 
     std::unique_ptr<RawBlockFinder> m_rawBlockFinder;
     std::atomic<bool> m_cancelThread{ false };

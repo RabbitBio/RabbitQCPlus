@@ -543,7 +543,7 @@ namespace gpu{
         //             nvtx::pop_range();
         //         }catch(...){
         //             cudaGetLastError();
-        //             std::cerr << "error replicating single gpu minhasher. Skipping.\n";
+        //             std::cout << "error replicating single gpu minhasher. Skipping.\n";
         //         }
         //         if(ok){                    
         //             sgpuMinhashers.insert(sgpuMinhashers.end(), std::make_move_iterator(replicas.begin()), std::make_move_iterator(replicas.end()));
@@ -948,28 +948,28 @@ namespace gpu{
             std::swap(sgpuMinhashers, sgpuMinhashersTmp);
             std::swap(hashFunctionIdsPerGpu, hashFunctionIdsPerGpuTmp);
 
-            // std::cerr << "hashTableLocations:\n";
+            // std::cout << "hashTableLocations:\n";
             // for(int i = 0; i < getNumberOfMaps(); i++){
-            //     std::cerr << hashTableLocations[i] << " ";
+            //     std::cout << hashTableLocations[i] << " ";
             // }
-            // std::cerr << "\n";
+            // std::cout << "\n";
 
             // for(int g = 0; g < int(deviceIds.size()); g++){
-            //     std::cerr << "hashFunctionIdsPerGpu " << g << " (id " << deviceIds[g] << ")" << "\n";
+            //     std::cout << "hashFunctionIdsPerGpu " << g << " (id " << deviceIds[g] << ")" << "\n";
             //     for(auto x : hashFunctionIdsPerGpu[g]){
-            //         std::cerr << x << " ";
+            //         std::cout << x << " ";
             //     }
-            //     std::cerr << "\n";
+            //     std::cout << "\n";
             // }
 
             // for(int g = 0; g < int(deviceIds.size()); g++){
-            //     std::cerr << "actual stored hashFunctionIdsPerGpu " << g << " (id " << deviceIds[g] << ")" << "\n";
+            //     std::cout << "actual stored hashFunctionIdsPerGpu " << g << " (id " << deviceIds[g] << ")" << "\n";
             //     const int num = sgpuMinhashers[g]->h_currentHashFunctionNumbers.size();
             //     for(int i = 0; i < num; i++){
             //         const int x = sgpuMinhashers[g]->h_currentHashFunctionNumbers[i];
-            //         std::cerr << x << " ";
+            //         std::cout << x << " ";
             //     }
-            //     std::cerr << "\n";
+            //     std::cout << "\n";
             // }
         }
 
@@ -1021,11 +1021,11 @@ namespace gpu{
         }
 
         void writeToStream(std::ostream& /*os*/) const override{
-            std::cerr << "MultiGpuMinhasher::writeToStream not supported\n";
+            std::cout << "MultiGpuMinhasher::writeToStream not supported\n";
         }
 
         int loadFromStream(std::ifstream& /*is*/, int /*numMapsUpperLimit*/) override{
-            std::cerr << "MultiGpuMinhasher::loadFromStream not supported\n";
+            std::cout << "MultiGpuMinhasher::loadFromStream not supported\n";
             return 0;
         } 
 

@@ -417,9 +417,9 @@ struct GpuSegmentedUnique{
         ));
         CUDACHECK(cudaStreamSynchronize(stream));
         // for(int i = 0; i < numPartitions; i++){
-        //     std::cerr << h_partitionSizes[i] << " ";
+        //     std::cout << h_partitionSizes[i] << " ";
         // }
-        // std::cerr << "\n";
+        // std::cout << "\n";
 
         cub::DoubleBuffer<T> d_items_dblbuf{d_items, d_unique_items};
 

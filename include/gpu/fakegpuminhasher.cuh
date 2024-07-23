@@ -443,7 +443,7 @@ namespace gpu{
                 auto m = tableptr->getMemoryInfo();
                 result.host += m.host;
 
-                //std::cerr << std::distance(minhashTables.data(), &tableptr) << ": " << m.host << "\n";
+                //std::cout << std::distance(minhashTables.data(), &tableptr) << ": " << m.host << "\n";
 
                 for(auto pair : m.device){
                     result.device[pair.first] += pair.second;

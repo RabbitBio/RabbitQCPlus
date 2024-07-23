@@ -14,9 +14,12 @@
 #include <string>
 #include <utility>
 
-#include <sys/stat.h>
 #include "../src/Globals.h"
 #define DEFAULT_PIPE_BUFFER_SIZE 65536
+
+#ifdef __APPLE_CC__
+    #include <AvailabilityMacros.h>
+#endif
 
 #ifdef _MSC_VER
     #define NOMINMAX
@@ -34,18 +37,29 @@
     #include <fcntl.h>
     #include <limits.h>         // IOV_MAX
     #include <sys/stat.h>
-    #include <sys/poll.h>
-    #include <sys/uio.h>
+    #if defined(__linux__) || defined(__APPLE__)
+        #include <sys/uio.h>
+    #endif
     #include <unistd.h>
 
-    #if not defined( HAVE_VMSPLICE ) and defined( __linux__ )
-        #define HAVE_VMSPLICE
-    #endif
+    //#if not defined( HAVE_VMSPLICE ) and defined( __linux__ ) and defined( F_GETPIPE_SZ )
+    //    #define HAVE_VMSPLICE
+    //#endif
 
     #if not defined( HAVE_IOVEC ) and defined( __linux__ )
         //#define HAVE_IOVEC
     #endif
 #endif
+
+/**
+ * Disable vmsplice because it STILL has bugs. In this case it seems to happen because rapidgzip quits
+ * before everything has been read. This seems to cause a free and possible reuse of the memory section
+ * during the shutdown process and causes invalid output. I guess the only real way to get this to work
+ * is as stated below with a custom mmap allocator + vmsplice gift.
+ * Too bad, because it gave quite some performance, but it's no use when the results are wrong.
+ * https://github.com/mxmlnkn/rapidgzip/issues/39
+ */
+#undef HAVE_VMSPLICE
 
 
 #if defined( HAVE_VMSPLICE )
@@ -60,10 +74,7 @@
 [[nodiscard]] inline bool
 stdinHasInput()
 {
-    const auto handle = GetStdHandle( STD_INPUT_HANDLE );
-    DWORD bytesAvailable{ 0 };
-    const auto success = PeekNamedPipe( handle, nullptr, 0, nullptr, &bytesAvailable, nullptr );
-    return ( success == 0 ) && ( bytesAvailable > 0 );
+    return _isatty( _fileno( stdin ) ) == 0;
 }
 
 
@@ -82,10 +93,7 @@ stdoutIsDevNull()
 [[nodiscard]] inline bool
 stdinHasInput()
 {
-    pollfd fds{};
-    fds.fd = STDIN_FILENO;
-    fds.events = POLLIN;
-    return poll( &fds, 1, /* timeout in ms */ 0 ) == 1;
+    return isatty( STDIN_FILENO ) == 0;
 }
 
 
@@ -180,6 +188,7 @@ struct unique_file_descriptor
     {
         if ( m_fd >= 0 ) {
             ::close( m_fd );
+            m_fd = -1;
         }
     }
 
@@ -200,11 +209,14 @@ using unique_file_ptr = std::unique_ptr<std::FILE, std::function<void ( std::FIL
 inline unique_file_ptr
 make_unique_file_ptr( std::FILE* file )
 {
-    return unique_file_ptr( file, [] ( auto* ownedFile ) {
-                                if ( ownedFile != nullptr ) {
-                                    std::fclose( ownedFile );
-                                }
-                            } );
+    return {
+        file,
+        [] ( auto* ownedFile ) {
+            if ( ownedFile != nullptr ) {
+                std::fclose( ownedFile );  // NOLINT
+            }
+        }
+    };
 }
 
 
@@ -212,7 +224,10 @@ inline unique_file_ptr
 make_unique_file_ptr( char const* const filePath,
                       char const* const mode )
 {
-    return make_unique_file_ptr( std::fopen( filePath, mode ) );
+    if ( ( filePath == nullptr ) || ( mode == nullptr ) || ( std::strlen( filePath ) == 0 ) ) {
+        return {};
+    }
+    return make_unique_file_ptr( std::fopen( filePath, mode ) );  // NOLINT
 }
 
 
@@ -272,7 +287,26 @@ fdFilePath( int fileDescriptor )
 }
 
 
-#ifndef __APPLE_CC__  // Missing std::filesytem::path support in wheels
+template<typename Container = std::vector<char> >
+[[nodiscard]] Container
+readFile( const std::string& fileName )
+{
+    Container contents( fileSize( fileName ) );
+    const auto file = throwingOpen( fileName, "rb" );
+    const auto nBytesRead = std::fread( contents.data(), sizeof( contents[0] ), contents.size(), file.get() );
+
+    if ( nBytesRead != contents.size() ) {
+        throw std::logic_error( "Did read less bytes than file is large!" );
+    }
+
+    return contents;
+}
+
+
+/* Missing std::filesytem::path support in wheels.
+ * https://opensource.apple.com/source/xnu/xnu-2050.7.9/EXTERNAL_HEADERS/AvailabilityMacros.h.auto.html */
+#if !defined(__APPLE_CC__ ) || ( defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
+    && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_15 )
 [[nodiscard]] inline std::string
 findParentFolderContaining( const std::string& folder,
                             const std::string& relativeFilePath )
@@ -292,6 +326,29 @@ findParentFolderContaining( const std::string& folder,
     }
 
     return {};
+}
+
+
+inline unique_file_ptr
+throwingOpen( const std::filesystem::path& filePath,
+              const char*                  mode )
+{
+    return throwingOpen( filePath.string(), mode );
+}
+
+
+inline size_t
+fileSize( const std::filesystem::path& filePath )
+{
+    return fileSize( filePath.string() );
+}
+
+
+template<typename Container = std::vector<char> >
+[[nodiscard]] Container
+readFile( const std::filesystem::path& filePath )
+{
+    return readFile<Container>( filePath.string() );
 }
 #endif
 
@@ -355,11 +412,10 @@ findParentFolderContaining( const std::string& folder,
  * Or maybe try setting the pipe buffer size to some forced value and
  * then only free the last data after pipe size more has been written.
  *
- * @note Throws if some splice calls were successful followed by an unsucessful one before finishing.
- * @return true if successful and false if it could not be spliced from the beginning, e.g., because the file
- *         descriptor is not a pipe.
+ * @return 0 if successful and errno if it could not be spliced from the beginning, e.g., because the file
+ *         descriptor is not a pipe or because the file descriptor triggered a SIGPIPE.
  */
-[[nodiscard]] inline bool
+[[nodiscard]] inline int
 writeAllSpliceUnsafe( [[maybe_unused]] const int         outputFileDescriptor,
                       [[maybe_unused]] const void* const dataToWrite,
                       [[maybe_unused]] const size_t      dataToWriteSize )
@@ -369,22 +425,21 @@ writeAllSpliceUnsafe( [[maybe_unused]] const int         outputFileDescriptor,
     dataToSplice.iov_base = const_cast<void*>( reinterpret_cast<const void*>( dataToWrite ) );
     dataToSplice.iov_len = dataToWriteSize;
     while ( dataToSplice.iov_len > 0 ) {
+        /* Note: On a broken pipe signal (EPIPE), the C++ CLI will directly exit and will not resume
+         * on the following line while with the Python wrapper, it will resume!
+         * @see https://stackoverflow.com/a/18963142/2191065 */
         const auto nBytesWritten = ::vmsplice( outputFileDescriptor, &dataToSplice, 1, /* flags */ 0 );
         if ( nBytesWritten < 0 ) {
-            if ( dataToSplice.iov_len == dataToWriteSize ) {
-                return false;
-            }
-            std::cerr << "error: " << errno << "\n";
-            throw std::runtime_error( "Failed to write to pipe" );
+            return errno;
         }
         dataToSplice.iov_base = reinterpret_cast<char*>( dataToSplice.iov_base ) + nBytesWritten;
         dataToSplice.iov_len -= nBytesWritten;
     }
-    return true;
+    return 0;
 }
 
 
-[[nodiscard]] inline bool
+[[nodiscard]] inline int
 writeAllSpliceUnsafe( [[maybe_unused]] const int                   outputFileDescriptor,
                       [[maybe_unused]] const std::vector<::iovec>& dataToWrite )
 {
@@ -394,12 +449,12 @@ writeAllSpliceUnsafe( [[maybe_unused]] const int                   outputFileDes
 
         if ( nBytesWritten < 0 ) {
             if ( i == 0 ) {
-                return false;
+                return errno;
             }
 
             std::stringstream message;
             message << "Failed to write all bytes because of: " << strerror( errno ) << " (" << errno << ")";
-            throw std::runtime_error( std::move( message.str() ) );
+            throw std::runtime_error( std::move( message ).str() );
         }
 
         /* Skip over buffers that were written fully. */
@@ -417,14 +472,15 @@ writeAllSpliceUnsafe( [[maybe_unused]] const int                   outputFileDes
             const auto size = iovBuffer.iov_len - nBytesWritten;
 
             const auto remainingData = reinterpret_cast<char*>( iovBuffer.iov_base ) + nBytesWritten;
-            if ( !writeAllSpliceUnsafe( outputFileDescriptor, remainingData, size ) ) {
-                throw std::runtime_error( "Failed to write to pipe subsequently." );
+            const auto errorCode = writeAllSpliceUnsafe( outputFileDescriptor, remainingData, size );
+            if ( errorCode != 0 ) {
+                return errorCode;
             }
             ++i;
         }
     }
 
-    return true;
+    return 0;
 }
 
 
@@ -462,31 +518,39 @@ public:
      *                    the pipe.
      */
     template<typename T>
-    [[nodiscard]] bool
+    [[nodiscard]] int
     splice( const void* const         dataToWrite,
             size_t const              dataToWriteSize,
             const std::shared_ptr<T>& splicedData )
     {
-        if ( ( m_pipeBufferSize < 0 )
-             || !writeAllSpliceUnsafe( m_fileDescriptor, dataToWrite, dataToWriteSize ) ) {
-            return false;
+        if ( m_pipeBufferSize < 0 ) {
+            return -1;
+        }
+
+        const auto errorCode = writeAllSpliceUnsafe( m_fileDescriptor, dataToWrite, dataToWriteSize );
+        if ( errorCode != 0 ) {
+            return errorCode;
         }
 
         account( splicedData, dataToWriteSize );
-        return true;
+        return 0;
     }
 
     /**
      * Overload that works for iovec structures directly.
      */
     template<typename T>
-    [[nodiscard]] bool
+    [[nodiscard]] int
     splice( const std::vector<::iovec>& buffersToWrite,
             const std::shared_ptr<T>&   splicedData )
     {
-        if ( ( m_pipeBufferSize < 0 )
-             || !writeAllSpliceUnsafe( m_fileDescriptor, buffersToWrite ) ) {
-            return false;
+        if ( m_pipeBufferSize < 0 ) {
+            return -1;
+        }
+
+        const auto errorCode = writeAllSpliceUnsafe( m_fileDescriptor, buffersToWrite );
+        if ( errorCode != 0 ) {
+            return errorCode;
         }
 
         const auto dataToWriteSize = std::accumulate(
@@ -494,7 +558,7 @@ public:
             [] ( size_t sum, const auto& buffer ) { return sum + buffer.iov_len; } );
 
         account( splicedData, dataToWriteSize );
-        return true;
+        return 0;
     }
 
 private:
@@ -524,13 +588,14 @@ private:
     explicit
     SpliceVault( int fileDescriptor ) :
         m_fileDescriptor( fileDescriptor ),
-        m_pipeBufferSize( 
-#ifdef F_GETPIPE_SZ
-                fcntl( fileDescriptor, F_GETPIPE_SZ ) 
-#else
-                DEFAULT_PIPE_BUFFER_SIZE
-#endif
-                )
+        //m_pipeBufferSize( fcntl( fileDescriptor, F_GETPIPE_SZ ) )
+		m_pipeBufferSize(
+  #ifdef F_GETPIPE_SZ
+                  fcntl( fileDescriptor, F_GETPIPE_SZ )
+  #else
+                  DEFAULT_PIPE_BUFFER_SIZE
+  #endif
+                  )
     {}
 
     [[nodiscard]] VaultLock
@@ -565,14 +630,13 @@ private:
  * Posix write is not guaranteed to write everything and in fact was encountered to not write more than
  * 0x7ffff000 (2'147'479'552) B. To avoid this, it has to be looped over.
  */
-inline void
+[[nodiscard]] inline int
 writeAllToFd( const int         outputFileDescriptor,
               const void* const dataToWrite,
               const uint64_t    dataToWriteSize )
 {
     for ( uint64_t nTotalWritten = 0; nTotalWritten < dataToWriteSize; ) {
-        const auto currentBufferPosition =
-            reinterpret_cast<const void*>( reinterpret_cast<uintptr_t>( dataToWrite ) + nTotalWritten );
+        const auto* const currentBufferPosition = reinterpret_cast<const uint8_t*>( dataToWrite ) + nTotalWritten;
 
         const auto nBytesToWritePerCall =
             static_cast<unsigned int>(
@@ -581,37 +645,38 @@ writeAllToFd( const int         outputFileDescriptor,
 
         const auto nBytesWritten = ::write( outputFileDescriptor, currentBufferPosition, nBytesToWritePerCall );
         if ( nBytesWritten <= 0 ) {
-            std::stringstream message;
-            message << "Unable to write all data to the given file descriptor. Wrote " << nTotalWritten << " out of "
-                    << dataToWriteSize << " (" << strerror( errno ) << ").";
-            throw std::runtime_error( std::move( message ).str() );
+            return errno;
         }
         nTotalWritten += static_cast<uint64_t>( nBytesWritten );
     }
+
+    return 0;
 }
+
 //new writeAllToFd func used in RQCP
-inline void
+[[nodiscard]] inline int
 writeAllToFd( const int         outputFileDescriptor,
               const void* const dataToWrite,
               const uint64_t    dataToWriteSize,
-              moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q, 
+              moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q,
               std::atomic_int *producerDone
               )
 {
     for ( uint64_t nTotalWritten = 0; nTotalWritten < dataToWriteSize; ) {
-        const auto currentBufferPosition =
-            reinterpret_cast<const void*>( reinterpret_cast<uintptr_t>( dataToWrite ) + nTotalWritten );
-        //const auto nBytesWritten = ::write( outputFileDescriptor,
-        //                                    currentBufferPosition,
-        //                                    dataToWriteSize - nTotalWritten );
-        //
-        const auto nBytesWritten = dataToWriteSize - nTotalWritten;
+        const auto* const currentBufferPosition = reinterpret_cast<const uint8_t*>( dataToWrite ) + nTotalWritten;
+
+        const auto nBytesToWritePerCall =
+            static_cast<unsigned int>(
+                std::min( static_cast<uint64_t>( std::numeric_limits<unsigned int>::max() ),
+                          dataToWriteSize - nTotalWritten ) );
+
+        //const auto nBytesWritten = ::write( outputFileDescriptor, currentBufferPosition, nBytesToWritePerCall );
         if (*producerDone == 1) {
-            return;
+            return 0;
         }
 		const unsigned int CHUNK_SIZE = 4 * 1024 * 1024; // 4MB chunk size
-        const char *currentChunkPosition = static_cast<const char*>(currentBufferPosition);
-		auto tmpSize = nBytesWritten;
+        const char *currentChunkPosition = reinterpret_cast<const char*>(currentBufferPosition);
+		auto tmpSize = nBytesToWritePerCall;
 		
 		while (tmpSize > 0) {
             size_t bytesToCopy = std::min(static_cast<size_t>(tmpSize), static_cast<size_t>(CHUNK_SIZE));
@@ -622,23 +687,22 @@ writeAllToFd( const int         outputFileDescriptor,
 		
 		    while (Q->try_enqueue({utmp, bytesToCopy}) == 0) {
 		        if (*producerDone == 1) {
-		            return;
+		            return 0;
 		        }
 		        usleep(1000);
 		    }
 		}
 
-        //std::cerr << "write to RQCP " << dataToWriteSize - nTotalWritten << std::endl;
-        if ( nBytesWritten <= 0 ) {
-            std::stringstream message;
-            message << "Unable to write all data to the given file descriptor. Wrote " << nTotalWritten << " out of "
-                    << dataToWriteSize << " (" << strerror( errno ) << ").";
-            throw std::runtime_error( std::move( message ).str() );
-        }
-        nTotalWritten += static_cast<uint64_t>( nBytesWritten );
-    }
-}
 
+
+        if ( nBytesToWritePerCall <= 0 ) {
+            return errno;
+        }
+        nTotalWritten += static_cast<uint64_t>( nBytesToWritePerCall );
+    }
+
+    return 0;
+}
 
 
 
@@ -651,12 +715,11 @@ pwriteAllToFd( const int         outputFileDescriptor,
                const uint64_t    fileOffset )
 {
     for ( uint64_t nTotalWritten = 0; nTotalWritten < dataToWriteSize; ) {
-        const auto currentBufferPosition =
-            reinterpret_cast<const void*>( reinterpret_cast<uintptr_t>( dataToWrite ) + nTotalWritten );
+        const auto* const currentBufferPosition = reinterpret_cast<const uint8_t*>( dataToWrite ) + nTotalWritten;
         const auto nBytesWritten = ::pwrite( outputFileDescriptor,
                                              currentBufferPosition,
                                              dataToWriteSize - nTotalWritten,
-                                             fileOffset + nTotalWritten );
+                                             fileOffset + nTotalWritten );  // NOLINT
         if ( nBytesWritten <= 0 ) {
             std::stringstream message;
             message << "Unable to write all data to the given file descriptor. Wrote " << nTotalWritten << " out of "
@@ -669,24 +732,22 @@ pwriteAllToFd( const int         outputFileDescriptor,
 }
 
 
-inline void
+[[nodiscard]] inline int
 writeAllToFdVector( const int                   outputFileDescriptor,
                     const std::vector<::iovec>& dataToWrite )
 {
     for ( size_t i = 0; i < dataToWrite.size(); ) {
         const auto segmentCount = std::min( static_cast<size_t>( IOV_MAX ), dataToWrite.size() - i );
-        auto nBytesWritten = ::writev( outputFileDescriptor, &dataToWrite[i], segmentCount );
+        auto nBytesWritten = ::writev( outputFileDescriptor, &dataToWrite[i], segmentCount );  // NOLINT
 
         if ( nBytesWritten < 0 ) {
-            std::stringstream message;
-            message << "Failed to write all bytes because of: " << strerror( errno ) << " (" << errno << ")";
-            throw std::runtime_error( std::move( message.str() ) );
+            return errno;
         }
 
         /* Skip over buffers that were written fully. */
         for ( ; ( i < dataToWrite.size() ) && ( dataToWrite[i].iov_len <= static_cast<size_t>( nBytesWritten ) );
               ++i ) {
-            nBytesWritten -= dataToWrite[i].iov_len;
+            nBytesWritten -= dataToWrite[i].iov_len;  // NOLINT
         }
 
         /* Write out last partially written buffer if necessary so that we can resume full vectorized writing
@@ -696,68 +757,33 @@ writeAllToFdVector( const int                   outputFileDescriptor,
 
             assert( iovBuffer.iov_len < static_cast<size_t>( nBytesWritten ) );
             const auto remainingSize = iovBuffer.iov_len - nBytesWritten;
-            const auto remainingData = reinterpret_cast<char*>( iovBuffer.iov_base ) + nBytesWritten;
-            writeAllToFd( outputFileDescriptor, remainingData, remainingSize );
+            auto* const remainingData = reinterpret_cast<char*>( iovBuffer.iov_base ) + nBytesWritten;
+            const auto errorCode = writeAllToFd( outputFileDescriptor, remainingData, remainingSize );
+            if ( errorCode != 0 ) {
+                return errorCode;
+            }
 
             ++i;
         }
     }
-}
 
-
-inline void
-pwriteAllToFdVector( const int                   outputFileDescriptor,
-                     const std::vector<::iovec>& dataToWrite,
-                     size_t                      fileOffset )
-{
-    for ( size_t i = 0; i < dataToWrite.size(); ) {
-        const auto segmentCount = std::min( static_cast<size_t>( IOV_MAX ), dataToWrite.size() - i );
-        auto nBytesWritten = ::pwritev( outputFileDescriptor, &dataToWrite[i], segmentCount, fileOffset );
-
-        if ( nBytesWritten < 0 ) {
-            std::stringstream message;
-            message << "Failed to write all bytes because of: " << strerror( errno ) << " (" << errno << ")";
-            throw std::runtime_error( std::move( message.str() ) );
-        }
-
-        fileOffset += nBytesWritten;
-
-        /* Skip over buffers that were written fully. */
-        for ( ; ( i < dataToWrite.size() ) && ( dataToWrite[i].iov_len <= static_cast<size_t>( nBytesWritten ) );
-              ++i ) {
-            nBytesWritten -= dataToWrite[i].iov_len;
-        }
-
-        /* Write out last partially written buffer if necessary so that we can resume full vectorized writing
-         * from the next iovec buffer. */
-        if ( ( i < dataToWrite.size() ) && ( nBytesWritten > 0 ) ) {
-            const auto& iovBuffer = dataToWrite[i];
-
-            assert( iovBuffer.iov_len < static_cast<size_t>( nBytesWritten ) );
-            const auto remainingSize = iovBuffer.iov_len - nBytesWritten;
-            const auto remainingData = reinterpret_cast<char*>( iovBuffer.iov_base ) + nBytesWritten;
-            pwriteAllToFd( outputFileDescriptor, remainingData, remainingSize, fileOffset );
-            fileOffset += remainingSize;
-
-            ++i;
-        }
-    }
+    return 0;
 }
 #endif  // HAVE_IOVEC
 
 
-inline void
+[[nodiscard]] inline int
 writeAll( const int         outputFileDescriptor,
           void* const       outputBuffer,
           const void* const dataToWrite,
           const uint64_t    dataToWriteSize )
 {
     if ( dataToWriteSize == 0 ) {
-        return;
+        return 0;
     }
 
     if ( outputFileDescriptor >= 0 ) {
-        writeAllToFd( outputFileDescriptor, dataToWrite, dataToWriteSize );
+        return writeAllToFd( outputFileDescriptor, dataToWrite, dataToWriteSize );
     }
 
     if ( outputBuffer != nullptr ) {
@@ -766,6 +792,8 @@ writeAll( const int         outputFileDescriptor,
         }
         std::memcpy( outputBuffer, dataToWrite, dataToWriteSize );
     }
+
+    return 0;
 }
 
 
@@ -793,7 +821,7 @@ public:
                 /* Opening an existing file and overwriting its data can be much slower because posix_fallocate
                  * can be relatively slow compared to the decoding speed and memory bandwidth! Note that std::fopen
                  * would open a file with O_TRUNC, deallocating all its contents before it has to be reallocated. */
-                m_fileDescriptor = ::open( filePath.c_str(), O_WRONLY );
+                m_fileDescriptor = ::open( filePath.c_str(), O_WRONLY );  // NOLINT
                 m_ownedFd = unique_file_descriptor( m_fileDescriptor );
             }
         #endif
@@ -801,7 +829,7 @@ public:
             if ( m_fileDescriptor == -1 ) {
                 m_outputFile = make_unique_file_ptr( filePath.c_str(), "wb" );
                 if ( !m_outputFile ) {
-                    std::cerr << "Could not open output file: " << filePath << " for writing!\n";
+                    std::cout << "Could not open output file: " << filePath << " for writing!\n";
                     throw std::runtime_error( "File could not be opened." );
                 }
                 m_fileDescriptor = ::fileno( m_outputFile.get() );
@@ -810,12 +838,12 @@ public:
     }
 
     void
-    truncate( size_t size )
+    truncate( size_t size )  // NOLINT
     {
     #ifndef _MSC_VER
         if ( ( m_fileDescriptor != -1 ) && ( size < m_oldOutputFileSize ) ) {
-            if ( ::ftruncate( m_fileDescriptor, size ) == -1 ) {
-                std::cerr << "[Error] Failed to truncate file because of: " << strerror( errno )
+            if ( ::ftruncate( m_fileDescriptor, size ) == -1 ) {  // NOLINT
+                std::cout << "[Error] Failed to truncate file because of: " << strerror( errno )
                           << " (" << errno << ")\n";
             }
         }
@@ -852,3 +880,41 @@ private:
     unique_file_descriptor m_ownedFd;  // This should not be used, it is only for automatic closing!
 #endif
 };
+
+
+[[nodiscard]] inline std::ios_base::seekdir
+toSeekdir( int origin )
+{
+    switch ( origin )
+    {
+    case SEEK_SET:
+        return std::ios_base::beg;
+    case SEEK_CUR:
+        return std::ios_base::cur;
+    case SEEK_END:
+        return std::ios_base::end;
+    default:
+        break;
+    }
+
+    throw std::invalid_argument( "Unknown origin" );
+}
+
+
+[[nodiscard]] inline const char*
+originToString( int origin )
+{
+    switch ( origin )
+    {
+    case SEEK_SET:
+        return "SEEK_SET";
+    case SEEK_CUR:
+        return "SEEK_CUR";
+    case SEEK_END:
+        return "SEEK_END";
+    default:
+        break;
+    }
+
+    throw std::invalid_argument( "Unknown origin" );
+}

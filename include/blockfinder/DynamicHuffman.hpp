@@ -12,7 +12,7 @@
 #include "precodecheck/WalkTreeLUT.hpp"
 
 
-namespace pragzip::blockfinder
+namespace rapidgzip::blockfinder
 {
 /**
  * Valid signature to look for deflate block:
@@ -23,6 +23,8 @@ namespace pragzip::blockfinder
  *   (filters out 2 /32 = 6.25%)
  *   Beware that the >highest< 4 bits may not be 1 but this that we requrie all 5-bits to
  *   determine validity because they are lower significant first!
+ * - (Anything but 0b1111) + 1 bit
+ *   Distance Code Count 1 + (5-bits) <= 30 <=> (5-bits) <= 29 -> filters out 6.25%
  * The returned position is only 0 if all of the above holds for a bitCount of 13
  * Next would be the 3-bit precode code lengths. One or two alone does not allow any filtering at all.
  * I think starting from three, it might become possible, e.g., if any two are 1, then all others must
@@ -60,6 +62,12 @@ isDeflateCandidate( uint32_t bits )
         bits >>= 5U;
         matches &= codeCount <= 29;
 
+        /* Bits 8-12: distance count */
+        if constexpr ( bitCount < 1U + 2U + 5U + 5U ) {
+            return matches;
+        }
+        const auto distanceCodeCount = bits & nLowestBitsSet<uint32_t, 5U>();
+        matches &= distanceCodeCount <= 29;
         return matches;
     }
 }
@@ -87,7 +95,7 @@ nextDeflateCandidate( uint32_t bits )
 template<uint8_t CACHED_BIT_COUNT,
          uint8_t MAX_CACHED_BIT_COUNT = CACHED_BIT_COUNT>
 constexpr void
-initializeMergedNextDeflateLUTs( std::array<uint8_t, ( 1U << MAX_CACHED_BIT_COUNT ) * 2U>& lut )
+initializeMergedNextDeflateLUTs( std::array<uint8_t, ( 1ULL << MAX_CACHED_BIT_COUNT ) * 2ULL>& lut )
 {
     constexpr auto size = 1U << CACHED_BIT_COUNT;
     constexpr auto offset = size;
@@ -113,7 +121,7 @@ initializeMergedNextDeflateLUTs( std::array<uint8_t, ( 1U << MAX_CACHED_BIT_COUN
 static constexpr auto NEXT_DEFLATE_CANDIDATE_LUTS_UP_TO_13_BITS =
     [] ()
     {
-        std::array<uint8_t, ( 1U << MAX_EVALUATED_BITS ) * 2U> result{};
+        std::array<uint8_t, ( 1ULL << MAX_EVALUATED_BITS ) * 2ULL> result{};
         initializeMergedNextDeflateLUTs<MAX_EVALUATED_BITS>( result );
         return result;
     }();
@@ -123,10 +131,10 @@ static constexpr auto NEXT_DEFLATE_CANDIDATE_LUTS_UP_TO_13_BITS =
  * @note Using larger result types has no measurable difference, e.g., explained by easier access on 64-bit systems.
  *       But, it increases cache usage, so keep using the 8-bit result type.
  * @verbatim
- * 8-bit   [findDeflateBlocksPragzipLUT] ( 8.63 <= 8.7 +- 0.04 <= 8.75 ) MB/s
- * 16-bit  [findDeflateBlocksPragzipLUT] ( 8.31 <= 8.42 +- 0.12 <= 8.59 ) MB/s
- * 32-bit  [findDeflateBlocksPragzipLUT] ( 8.39 <= 8.53 +- 0.09 <= 8.71 ) MB/s
- * 64-bit  [findDeflateBlocksPragzipLUT] ( 8.618 <= 8.65 +- 0.02 <= 8.691 ) MB/s
+ * 8-bit   [findDeflateBlocksRapidgzipLUT] ( 8.63 <= 8.7 +- 0.04 <= 8.75 ) MB/s
+ * 16-bit  [findDeflateBlocksRapidgzipLUT] ( 8.31 <= 8.42 +- 0.12 <= 8.59 ) MB/s
+ * 32-bit  [findDeflateBlocksRapidgzipLUT] ( 8.39 <= 8.53 +- 0.09 <= 8.71 ) MB/s
+ * 64-bit  [findDeflateBlocksRapidgzipLUT] ( 8.618 <= 8.65 +- 0.02 <= 8.691 ) MB/s
  * @endverbatim
  */
 template<uint8_t CACHED_BIT_COUNT>
@@ -192,7 +200,7 @@ static constexpr uint8_t OPTIMAL_NEXT_DEFLATE_LUT_SIZE = 14;
 
 
 /**
- * Same as findDeflateBlocksPragzip but prefilters calling pragzip using a lookup table and even skips multiple bits.
+ * Same as findDeflateBlocksRapidgzip but prefilters calling rapidgzip using a lookup table and even skips multiple bits.
  * Also, does not find uncompressed blocks nor fixed huffman blocks and as the others no final blocks!
  * The idea is that fixed huffman blocks should be very rare and uncompressed blocks can be found very fast in a
  * separate run over the data (to be implemented).
@@ -208,7 +216,7 @@ seekToNonFinalDynamicDeflateBlock( BitReader&   bitReader,
 
     try
     {
-        using namespace pragzip::deflate;  /* For the definitions of deflate-specific number of bits. */
+        using namespace rapidgzip::deflate;  /* For the definitions of deflate-specific number of bits. */
 
         /**
          * For LUT we need at CACHED_BIT_COUNT bits and for the precode check we would need in total
@@ -218,11 +226,11 @@ seekToNonFinalDynamicDeflateBlock( BitReader&   bitReader,
          * instructions but might not be worth it.
          */
         auto bitBufferForLUT = bitReader.peek<CACHED_BIT_COUNT>();
-        bitReader.seek( static_cast<long long int>( oldOffset ) + 13 );
+        bitReader.seekTo( oldOffset + 13 );
         constexpr auto ALL_PRECODE_BITS = PRECODE_COUNT_BITS + MAX_PRECODE_COUNT * PRECODE_BITS;
         static_assert( ( ALL_PRECODE_BITS == 61 ) && ( ALL_PRECODE_BITS >= CACHED_BIT_COUNT )
                        && ( ALL_PRECODE_BITS <= std::numeric_limits<uint64_t>::digits )
-                       && ( ALL_PRECODE_BITS <= pragzip::BitReader::MAX_BIT_BUFFER_SIZE ),
+                       && ( ALL_PRECODE_BITS <= rapidgzip::BitReader::MAX_BIT_BUFFER_SIZE ),
                        "It must fit into 64-bit and it also must fit the largest possible jump in the LUT." );
         auto bitBufferPrecodeBits = bitReader.read<ALL_PRECODE_BITS>();
 
@@ -240,7 +248,7 @@ seekToNonFinalDynamicDeflateBlock( BitReader&   bitReader,
                 const auto next57Bits = ( bitBufferPrecodeBits >> PRECODE_COUNT_BITS )
                                         & nLowestBitsSet<uint64_t, MAX_PRECODE_COUNT * PRECODE_BITS>();
 
-                using pragzip::PrecodeCheck::WalkTreeLUT::checkPrecode;
+                using rapidgzip::PrecodeCheck::WalkTreeLUT::checkPrecode;
                 const auto precodeError = checkPrecode( next4Bits, next57Bits );
 
                 if ( UNLIKELY( precodeError == Error::NONE ) ) [[unlikely]] {
@@ -268,13 +276,16 @@ seekToNonFinalDynamicDeflateBlock( BitReader&   bitReader,
                      * already returned successful! */
                     LiteralAndDistanceCLBuffer literalCL{};
                     if ( LIKELY( error == Error::NONE ) ) [[likely]] {
-                        bitReader.seek( static_cast<long long int>( offset )
-                                        + 13 + 4 + ( codeLengthCount * PRECODE_BITS ) );
+                        bitReader.seekTo( offset + 13 + 4 + codeLengthCount * PRECODE_BITS );
                         error = readDistanceAndLiteralCodeLengths(
                             literalCL, bitReader, precodeHC, literalCodeCount + distanceCodeCount );
                         /* Using this theoretically derivable position avoids a possibly costly call to tell()
                          * to save the old offset. */
-                        bitReader.seek( static_cast<long long int>( offset ) + 13 + ALL_PRECODE_BITS );
+                        bitReader.seekTo( offset + 13 + ALL_PRECODE_BITS );
+                    }
+
+                    if ( UNLIKELY( literalCL[deflate::END_OF_BLOCK_SYMBOL] == 0 ) ) [[unlikely]] {
+                        error = Error::INVALID_CODE_LENGTHS;
                     }
 
                     /* Check distance code lengths. */
@@ -303,7 +314,7 @@ seekToNonFinalDynamicDeflateBlock( BitReader&   bitReader,
 
                 #ifndef NDEBUG
                     if ( oldTell != bitReader.tell() ) {
-                        std::cerr << "Previous position: " << oldTell << " new position: " << bitReader.tell() << "\n";
+                        std::cout << "Previous position: " << oldTell << " new position: " << bitReader.tell() << "\n";
                         throw std::logic_error( "Did not seek back correctly!" );
                     }
                 #endif
@@ -337,4 +348,4 @@ seekToNonFinalDynamicDeflateBlock( BitReader&   bitReader,
 
     return std::numeric_limits<size_t>::max();
 }
-}  // pragzip::blockfinder
+}  // rapidgzip::blockfinder

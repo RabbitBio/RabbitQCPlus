@@ -1265,16 +1265,16 @@ private:
         cudaStream_t stream = 0
     ) const{
         if(dstDevice == srcDevice && dst == src){
-            //std::cerr << "copy into same buffer on device " << srcDevice << ". return\n";
+            //std::cout << "copy into same buffer on device " << srcDevice << ". return\n";
             return;
         }else{
-            //std::cerr << "copy from device " << srcDevice << " to device " << dstDevice << "\n";
+            //std::cout << "copy from device " << srcDevice << " to device " << dstDevice << "\n";
         }
 
         cudaError_t status = cudaMemcpyPeerAsync(dst, dstDevice, src, srcDevice, count, stream);
         if(status != cudaSuccess){
             cudaGetLastError();
-            std::cerr << "dst=" << dst << ", "
+            std::cout << "dst=" << dst << ", "
             << "dstDevice=" << dstDevice << ", "
             << "src=" << src << ", "
             << "srcDevice=" << srcDevice << ", "

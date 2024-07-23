@@ -296,11 +296,11 @@ namespace care{
                     executeWithIotaValues(keys, values, offsets);
                     success = true;
                 }catch(const thrust::system_error& ex){
-                    std::cerr << ex.what() << '\n';
+                    std::cout << ex.what() << '\n';
                     cudaGetLastError();
                     success = false;
                 }catch(const std::exception& ex){
-                    std::cerr << ex.what() << '\n';
+                    std::cout << ex.what() << '\n';
                     cudaGetLastError();
                     success = false;
                 }catch(...){

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdio>       // fread
+#include <filesystem>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -16,7 +17,9 @@
     #include <fcntl.h>
 #endif
 
-#include "common.hpp"   // unistd, S_ISFIFO, fstat, ...
+#include <common_rapidgzip.hpp>     // unistd, S_ISFIFO, fstat, ...
+#include <FileUtils.hpp>  // unique_file_ptr, throwingOpen
+
 #include "FileReader.hpp"
 
 
@@ -35,6 +38,14 @@ public:
         init();
     }
 
+#if !defined(__APPLE_CC__ ) || ( defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
+    && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_15 )
+    explicit
+    StandardFileReader( const std::filesystem::path& filePath ) :
+        StandardFileReader( filePath.string() )
+    {}
+#endif
+
     explicit
     StandardFileReader( int fileDescriptor ) :
         /* Use dup here so that the following fclose will not close the original file descriptor,
@@ -49,7 +60,7 @@ public:
         init();
     }
 
-    ~StandardFileReader()
+    ~StandardFileReader() override
     {
         StandardFileReader::close();
     }
@@ -87,13 +98,13 @@ public:
     [[nodiscard]] bool
     eof() const override
     {
-        return m_seekable ? tell() >= size() : !m_lastReadSuccessful;
+        return m_seekable ? m_currentPosition >= m_fileSizeBytes : !m_lastReadSuccessful;
     }
 
     [[nodiscard]] bool
     fail() const override
     {
-        return std::ferror( fp() );
+        return std::ferror( fp() ) != 0;
     }
 
     [[nodiscard]] int
@@ -131,16 +142,29 @@ public:
          * Because of this, it is not possible to simply use std::fseek. Because then, we would not be able to infer
          * whether we read past the end nor how many bytes we would have been able to read if the buffer was valid!
          */
-        const auto nBytesRead = buffer == nullptr
-                                ? std::min( nMaxBytesToRead, size() - tell() )
-                                : std::fread( buffer, /* element size */ 1, nMaxBytesToRead, m_file.get() );
+        size_t nBytesRead = 0;
         if ( buffer == nullptr ) {
-            std::fseek( m_file.get(), static_cast<long int>( nBytesRead ), SEEK_CUR );
+            if ( seekable() ) {
+                nBytesRead = std::min( nMaxBytesToRead, m_fileSizeBytes - m_currentPosition );
+                std::fseek( m_file.get(), static_cast<long int>( nBytesRead ), SEEK_CUR );
+            } else {
+                std::array<char, 16_Ki> tmpBuffer{};
+                while ( nBytesRead < nMaxBytesToRead ) {
+                    const auto nBytesReadPerCall =
+                        std::fread( tmpBuffer.data(), /* element size */ 1, tmpBuffer.size(), m_file.get() );
+                    if ( nBytesReadPerCall == 0 ) {
+                        break;
+                    }
+                    nBytesRead += nBytesReadPerCall;
+                }
+            }
+        } else {
+            nBytesRead = std::fread( buffer, /* element size */ 1, nMaxBytesToRead, m_file.get() );
         }
 
         if ( nBytesRead == 0 ) {
         #if 1
-            /* fread retuning 0 might traditionally be a valid case if the file position was after the last byte.
+            /* fread returning 0 might traditionally be a valid case if the file position was after the last byte.
              * EOF is only set after reading after the end not when the file position is at the end. */
             m_lastReadSuccessful = false;
             return 0;
@@ -188,7 +212,10 @@ public:
 
         const auto returnCode = std::fseek( m_file.get(), static_cast<long int>( offset ), origin );
         if ( returnCode != 0 ) {
-            throw std::runtime_error( "Seeking failed!" );
+            std::stringstream message;
+            message << "Seeking to " << offset << " from origin " << originToString( origin ) << " failed with code: "
+                    << returnCode << ", " << std::strerror( errno ) << "!";
+            throw std::runtime_error( std::move( message ).str() );
         }
 
         if ( origin == SEEK_SET ) {
@@ -201,7 +228,7 @@ public:
         return m_currentPosition;
     }
 
-    [[nodiscard]] size_t
+    [[nodiscard]] std::optional<size_t>
     size() const override
     {
         return m_fileSizeBytes;
@@ -238,7 +265,7 @@ private:
     [[nodiscard]] static size_t
     determineFileSize( int fileNumber )
     {
-        struct stat fileStats;
+        struct stat fileStats{};
         fstat( fileNumber, &fileStats );
         return fileStats.st_size;
     }
@@ -246,7 +273,7 @@ private:
     [[nodiscard]] static bool
     determineSeekable( int fileNumber )
     {
-        struct stat fileStats;
+        struct stat fileStats{};
         fstat( fileNumber, &fileStats );
         return !S_ISFIFO( fileStats.st_mode );
     }
@@ -265,7 +292,7 @@ protected:
     const int m_fileDescriptor;
     const std::string m_filePath;
 
-    std::fpos_t m_initialPosition;
+    std::fpos_t m_initialPosition{};
     const bool m_seekable;
     const size_t m_fileSizeBytes;
 

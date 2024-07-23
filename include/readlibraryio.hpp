@@ -298,7 +298,7 @@ void forEachReadInFile(const std::string& filename, Func f){
 
     auto getNextRead = [&](){
         const int status = reader.next();
-        //std::cerr << "parser status = 0 in file " << filenames[i] << '\n';
+        //std::cout << "parser status = 0 in file " << filenames[i] << '\n';
         if(status >= 0){
             #if 0
                 read.name = reader.getCurrentName();
@@ -311,7 +311,7 @@ void forEachReadInFile(const std::string& filename, Func f){
                 std::swap(read.quality, reader.getCurrentQuality());
             #endif
         }else if(status < -1){
-            std::cerr << "parser error status " << status << " in file " << filename << '\n';
+            std::cout << "parser error status " << status << " in file " << filename << '\n';
         }
 
         bool success = (status >= 0);
@@ -353,7 +353,7 @@ void forEachReadInPairedFiles(const std::string& file1, const std::string& file2
 
         auto& reader = *ptr;
         const int status = reader.next();
-        //std::cerr << "parser status = 0 in file " << filenames[i] << '\n';
+        //std::cout << "parser status = 0 in file " << filenames[i] << '\n';
         if(status >= 0){
             #if 0
                 read.name = reader.getCurrentName();
@@ -366,7 +366,7 @@ void forEachReadInPairedFiles(const std::string& file1, const std::string& file2
                 std::swap(read.quality, reader.getCurrentQuality());
             #endif
         }else if(status < -1){
-            std::cerr << "parser error status " << status << " in file " << (which == 0 ? file1 : file2) << '\n';
+            std::cout << "parser error status " << status << " in file " << (which == 0 ? file1 : file2) << '\n';
         }
 
         bool success = (status >= 0);

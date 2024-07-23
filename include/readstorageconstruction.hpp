@@ -107,7 +107,7 @@ void constructReadStorageFromFiles(
 
     auto showProgressFunc = [show = showProgress](auto totalCount, auto seconds){
         if(show){
-            std::cerr << "Processed " << totalCount << " reads in file. Elapsed time: " 
+            std::cout << "Processed " << totalCount << " reads in file. Elapsed time: " 
                             << seconds << " seconds." << std::endl;
         }
     };
@@ -123,7 +123,7 @@ void constructReadStorageFromFiles(
     );
 
     for(const auto& inputfile : inputfiles){
-        std::cerr << "Converting reads of file " << inputfile << ", storing them in memory\n";
+        std::cout << "Converting reads of file " << inputfile << ", storing them in memory\n";
 
         forEachReadInFile(inputfile,
                         [&](auto /*readnum*/, auto& read){
@@ -131,7 +131,7 @@ void constructReadStorageFromFiles(
                 if(!canBeUsed[bufferindex]){
                     std::unique_lock<std::mutex> ul(mutex[bufferindex]);
                     if(!canBeUsed[bufferindex]){
-                        //std::cerr << "waiting for other buffer\n";
+                        //std::cout << "waiting for other buffer\n";
                         //nvtx::push_range("wait for doublebuffer", 0);
                         cv[bufferindex].wait(ul, [&](){ return canBeUsed[bufferindex]; });
                         //nvtx::pop_range();
@@ -154,10 +154,10 @@ void constructReadStorageFromFiles(
                 if(buffersize >= maxbuffersize){
                     canBeUsed[bufferindex] = false;
 
-                    //std::cerr << "launch other thread\n";
+                    //std::cout << "launch other thread\n";
                     //nvtx::push_range("enqeue", 0);
                     threadPool.enqueue([&, indicesBufferPtr, readsBufferPtr, bufferindex](){
-                        //std::cerr << "buffer " << bufferindex << " running\n";
+                        //std::cout << "buffer " << bufferindex << " running\n";
                         const int buffersize = bufferSizes[bufferindex];
 
                         //nvtx::push_range("process read batch", 0);
@@ -190,7 +190,7 @@ void constructReadStorageFromFiles(
 
                         //nvtx::pop_range();
 
-                        //std::cerr << "buffer " << bufferindex << " finished\n";
+                        //std::cout << "buffer " << bufferindex << " finished\n";
                     });
 
                     bufferindex = (bufferindex + 1) % numBuffers; //swap buffers
@@ -209,7 +209,7 @@ void constructReadStorageFromFiles(
         if(!canBeUsed[bufferindex]){
             std::unique_lock<std::mutex> ul(mutex[bufferindex]);
             if(!canBeUsed[bufferindex]){
-                //std::cerr << "waiting for other buffer\n";
+                //std::cout << "waiting for other buffer\n";
                 cv[bufferindex].wait(ul, [&](){ return canBeUsed[bufferindex]; });
             }
         }
@@ -230,7 +230,7 @@ void constructReadStorageFromFiles(
     for(int i = 0; i < numBuffers; i++){
         std::unique_lock<std::mutex> ul(mutex[i]);
         if(!canBeUsed[i]){
-            //std::cerr << "Reading file completed. Waiting for buffer " << i << "\n";
+            //std::cout << "Reading file completed. Waiting for buffer " << i << "\n";
             cv[i].wait(ul, [&](){ return canBeUsed[i]; });
         }
     }
@@ -337,7 +337,7 @@ void constructReadStorageFromPairedEndFiles(
 
     auto showProgressFunc = [show = showProgress](auto totalCount, auto seconds){
         if(show){
-            std::cerr << "Processed " << totalCount << " reads in file. Elapsed time: " 
+            std::cout << "Processed " << totalCount << " reads in file. Elapsed time: " 
                             << seconds << " seconds." << std::endl;
         }
     };
@@ -357,7 +357,7 @@ void constructReadStorageFromPairedEndFiles(
         if(!canBeUsed[bufferindex]){
             std::unique_lock<std::mutex> ul(mutex[bufferindex]);
             if(!canBeUsed[bufferindex]){
-                //std::cerr << "waiting for other buffer\n";
+                //std::cout << "waiting for other buffer\n";
                 //nvtx::push_range("wait for doublebuffer", 0);
                 cv[bufferindex].wait(ul, [&](){ return canBeUsed[bufferindex]; });
                 //nvtx::pop_range();
@@ -380,10 +380,10 @@ void constructReadStorageFromPairedEndFiles(
         if(buffersize >= maxbuffersize){
             canBeUsed[bufferindex] = false;
 
-            //std::cerr << "launch other thread\n";
+            //std::cout << "launch other thread\n";
             //nvtx::push_range("enqeue", 0);
             threadPool.enqueue([&, indicesBufferPtr, readsBufferPtr, bufferindex](){
-                //std::cerr << "buffer " << bufferindex << " running\n";
+                //std::cout << "buffer " << bufferindex << " running\n";
                 const int buffersize = bufferSizes[bufferindex];
 
                 //nvtx::push_range("process read batch", 0);
@@ -416,7 +416,7 @@ void constructReadStorageFromPairedEndFiles(
 
                 //nvtx::pop_range();
 
-                //std::cerr << "buffer " << bufferindex << " finished\n";
+                //std::cout << "buffer " << bufferindex << " finished\n";
             });
 
             bufferindex = (bufferindex + 1) % numBuffers; //swap buffers
@@ -443,7 +443,7 @@ void constructReadStorageFromPairedEndFiles(
 
         const auto& filename1 = inputfiles[0];
 
-        std::cerr << "Converting paired reads of files " 
+        std::cout << "Converting paired reads of files " 
             << filename1  << ", storing them in memory\n";
 
         forEachReadInFile(filename1, work);
@@ -454,7 +454,7 @@ void constructReadStorageFromPairedEndFiles(
         const auto& filename1 = inputfiles[0];
         const auto& filename2 = inputfiles[1];
 
-        std::cerr << "Converting paired reads of files " 
+        std::cout << "Converting paired reads of files " 
             << filename1 << " and " << filename2 << ", storing them in memory\n";
 
         forEachReadInPairedFiles(filename1, filename2, work);
@@ -469,7 +469,7 @@ void constructReadStorageFromPairedEndFiles(
         if(!canBeUsed[bufferindex]){
             std::unique_lock<std::mutex> ul(mutex[bufferindex]);
             if(!canBeUsed[bufferindex]){
-                //std::cerr << "waiting for other buffer\n";
+                //std::cout << "waiting for other buffer\n";
                 cv[bufferindex].wait(ul, [&](){ return canBeUsed[bufferindex]; });
             }
         }
@@ -490,7 +490,7 @@ void constructReadStorageFromPairedEndFiles(
     for(int i = 0; i < numBuffers; i++){
         std::unique_lock<std::mutex> ul(mutex[i]);
         if(!canBeUsed[i]){
-            //std::cerr << "Reading file completed. Waiting for buffer " << i << "\n";
+            //std::cout << "Reading file completed. Waiting for buffer " << i << "\n";
             cv[i].wait(ul, [&](){ return canBeUsed[i]; });
         }
     }

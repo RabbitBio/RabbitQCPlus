@@ -37,7 +37,7 @@
             T* ptr{};
             cudaError_t err = cudaMallocHost(&ptr, elements * sizeof(T));
             if(err != cudaSuccess){
-                std::cerr << "SimpleAllocator: Failed to allocate " << (elements) << " * " << sizeof(T)
+                std::cout << "SimpleAllocator: Failed to allocate " << (elements) << " * " << sizeof(T)
                             << " = " << (elements * sizeof(T))
                             << " bytes using cudaMallocHost!\n";
 
@@ -60,7 +60,7 @@
             T* ptr;
             cudaError_t err = cudaMalloc(&ptr, elements * sizeof(T));
             if(err != cudaSuccess){
-                std::cerr << "SimpleAllocator: Failed to allocate " << (elements) << " * " << sizeof(T)
+                std::cout << "SimpleAllocator: Failed to allocate " << (elements) << " * " << sizeof(T)
                             << " = " << (elements * sizeof(T))
                             << " bytes using cudaMalloc!\n";
 

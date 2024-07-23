@@ -3,10 +3,11 @@
 #include <optional>
 #include <stdexcept>
 
-#include "HuffmanCodingBase.hpp"
+#include <definitions.hpp>
+#include <huffman/HuffmanCodingBase.hpp>
 
 
-namespace pragzip
+namespace rapidgzip
 {
 template<typename HuffmanCode,
          uint8_t  MAX_CODE_LENGTH,
@@ -39,9 +40,9 @@ public:
     }
 
     [[nodiscard]] forceinline std::optional<Symbol>
-    decode( BitReader& ) const
+    decode( [[maybe_unused]] BitReader& bitReader ) const
     {
         throw std::invalid_argument( "This class only checks the Huffman coding it does not decode!" );
     }
 };
-}  // namespace pragzip
+}  // namespace rapidgzip

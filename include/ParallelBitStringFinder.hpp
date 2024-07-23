@@ -19,7 +19,7 @@
 
 #include "AffinityHelpers.hpp"
 #include "BitStringFinder.hpp"
-#include "common.hpp"
+#include "common_rapidgzip.hpp"
 #include "ThreadPool.hpp"
 
 
@@ -61,8 +61,7 @@ public:
         this->m_buffer.assign( buffer, buffer + size );
     }
 
-    virtual
-    ~ParallelBitStringFinder() = default;
+    ~ParallelBitStringFinder() override = default;
 
     /**
      * @return the next match and the requested bytes or std::numeric_limits<size_t>::max() if at end of file.
@@ -160,6 +159,10 @@ template<uint8_t bitStringSize>
 size_t
 ParallelBitStringFinder<bitStringSize>::find()
 {
+#ifdef WITH_PYTHON_SUPPORT
+        const ScopedGILUnlock unlockedGIL;
+#endif
+
     while ( !BaseType::eof() || !m_threadResults.empty() )
     {
         /* Check whether there are results available and return those. Take care to return results in order! */
@@ -213,7 +216,7 @@ ParallelBitStringFinder<bitStringSize>::find()
         }
 
         /* For very sub chunk sizes, it is more sensible to not parallelize them using threads! */
-        const auto minSubChunkSizeInBytes = std::max<size_t>( 8 * bitStringSize, 4096 );
+        const auto minSubChunkSizeInBytes = std::max<size_t>( 8UL * bitStringSize, 4096 );
         const auto subChunkStrideInBytes =
             std::max<size_t>( minSubChunkSizeInBytes, ceilDiv( this->m_buffer.size(), m_threadPool.capacity() ) );
 
@@ -236,7 +239,7 @@ ParallelBitStringFinder<bitStringSize>::find()
             auto const subChunkSizeInBytes = std::min( ceilDiv( subChunkSizeInBits, CHAR_BIT ),
                                                        this->m_buffer.size() - bufferOffsetInBytes );
 
-            //std::cerr << "  Find from offset " << bufferOffsetInBytes << "B " << subChunkOffsetInBits << "b "
+            //std::cout << "  Find from offset " << bufferOffsetInBytes << "B " << subChunkOffsetInBits << "b "
             //          << "sub chunk size " << subChunkSizeInBytes << " B, "
             //          << "sub chunk stride: " << subChunkStrideInBytes << "B, "
             //          << "buffer size: " << this->m_buffer.size() << " B\n";

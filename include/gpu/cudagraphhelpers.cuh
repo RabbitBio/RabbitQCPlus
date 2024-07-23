@@ -64,13 +64,13 @@ struct CudaGraph{
         cudaError_t status = cudaGraphInstantiate(&execGraph, graph, &errorNode, logBuffer.get(), 1025);
         if(status != cudaSuccess){
             if(logBuffer[1024] != '\0'){
-                std::cerr << "cudaGraphInstantiate: truncated error message: ";
+                std::cout << "cudaGraphInstantiate: truncated error message: ";
                 std::copy_n(logBuffer.get(), 1025, std::ostream_iterator<char>(std::cerr, ""));
-                std::cerr << "\n";
+                std::cout << "\n";
             }else{
-                std::cerr << "cudaGraphInstantiate: error message: ";
-                std::cerr << logBuffer.get();
-                std::cerr << "\n";
+                std::cout << "cudaGraphInstantiate: error message: ";
+                std::cout << logBuffer.get();
+                std::cout << "\n";
             }            
         }
 

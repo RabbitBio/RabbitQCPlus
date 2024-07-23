@@ -34,7 +34,7 @@ void dump_binary(
     }
     else
     {
-        std::cerr << "Unable to open file." << std::endl;
+        std::cout << "Unable to open file." << std::endl;
     }
 
     ofile.close();
@@ -81,25 +81,25 @@ std::vector<T> load_binary(
                 }
                 else
                 {
-                    std::cerr << "Invalid file offsets." << std::endl;
+                    std::cout << "Invalid file offsets." << std::endl;
                     data.resize(0);
                 }
             }
             else
             {
-                std::cerr << "Type mismatch." << std::endl;
+                std::cout << "Type mismatch." << std::endl;
                 data.resize(0);
             }
         }
         else
         {
-            std::cerr << "Invalid file format." << std::endl;
+            std::cout << "Invalid file format." << std::endl;
             data.resize(0);
         }
     }
     else
     {
-        std::cerr << "Unable to open file." << std::endl;
+        std::cout << "Unable to open file." << std::endl;
         data.resize(0);
     }
 

@@ -7,8 +7,12 @@
 #include <sstream>
 #include <stdexcept>
 
+#ifdef WITH_ISAL
+    #include <crc.h>
+#endif
 
-namespace pragzip
+
+namespace rapidgzip
 {
 /* CRC32 according to RFC 1952 */
 
@@ -25,10 +29,10 @@ createCRC32LookupTable() noexcept
     for ( uint32_t n = 0; n < table.size(); ++n ) {
         auto c = static_cast<unsigned long int>( n );
         for ( int j = 0; j < 8; ++j ) {
-            if ( c & 1UL ) {
+            if ( ( c & 1UL ) != 0 ) {
                 c = CRC32_GENERATOR_POLYNOMIAL ^ ( c >> 1U );
             } else {
-                c >>= 1;
+                c >>= 1U;
             }
         }
         table[n] = c;
@@ -81,16 +85,16 @@ crc32SliceByN( uint32_t    crc,
     static_assert( SLICE_SIZE > 0, "Chunk size must not be 0." );
     static_assert( SLICE_SIZE <= MAX_CRC32_SLICE_SIZE, "Chunk size must not exceed the lookup table size." );
 
-    constexpr auto& LUT = CRC32_SLICE_BY_N_LUT;
+    constexpr const auto& LUT = CRC32_SLICE_BY_N_LUT;
     /* Unrolling by 8 increases speed from 4 GB/s to 4.5 GB/s (+12.5%).
      * Might be CPU-dependent (instruction cache size, ...). */
     #pragma GCC unroll 8
     for ( size_t i = 0; i + SLICE_SIZE <= size; i += SLICE_SIZE ) {
-        uint32_t firstDoubleWord;
+        uint32_t firstDoubleWord{ 0 };
         std::memcpy( &firstDoubleWord, data + i, sizeof( uint32_t ) );
         crc ^= firstDoubleWord;
 
-        alignas( 8 ) std::array<uint8_t, SLICE_SIZE> chunk;
+        alignas( 8 ) std::array<uint8_t, SLICE_SIZE> chunk{};
         std::memcpy( chunk.data(), &crc, sizeof( uint32_t ) );
         std::memcpy( chunk.data() + sizeof( uint32_t ),
                      data + i + sizeof( uint32_t ),
@@ -119,7 +123,11 @@ updateCRC32( const uint32_t    crc,
              const char* const buffer,
              const size_t      size )
 {
+#ifdef WITH_ISAL
+    return ~crc32_gzip_refl( ~crc, reinterpret_cast<const uint8_t*>( buffer ), size );
+#else
     return crc32SliceByN<SLICE_SIZE>( crc, buffer, size );
+#endif
 }
 
 
@@ -292,7 +300,10 @@ public:
         }
     }
 
-    bool
+    /**
+     * Throws on error.
+     */
+    bool  // NOLINT(modernize-use-nodiscard)
     verify( uint32_t crc32ToCompare ) const
     {
         if ( !enabled() || ( crc32() == crc32ToCompare ) ) {
@@ -330,4 +341,12 @@ protected:
     uint32_t m_crc32{ ~uint32_t( 0 ) };
     bool m_enabled{ true };
 };
-}  // namespace pragzip
+
+
+[[nodiscard]] inline uint32_t
+crc32( const void* const buffer,
+       const size_t      size )
+{
+    return ~updateCRC32<>( ~uint32_t( 0 ), reinterpret_cast<const char*>( buffer ), size );
+}
+}  // namespace rapidgzip

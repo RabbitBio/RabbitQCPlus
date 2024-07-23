@@ -200,7 +200,7 @@ public:
 
 
         if(canUseQualityScores() && loaded_hasQualityScores){
-            //std::cerr << "load qualities\n";
+            //std::cout << "load qualities\n";
 
             if(loaded_numQualityBits != numQualityBits){
                 throw std::runtime_error("preprocessed reads file uses " + std::to_string(loaded_numQualityBits) 
@@ -217,16 +217,16 @@ public:
             numQualityBits = loaded_numQualityBits;
 
         }else if(canUseQualityScores() && !loaded_hasQualityScores){
-                //std::cerr << "no q in bin file\n";
+                //std::cout << "no q in bin file\n";
                 throw std::runtime_error("Quality scores expected in preprocessed reads file to load, but none are present. Abort.");
         }else if(!canUseQualityScores() && loaded_hasQualityScores){
-                //std::cerr << "skip qualities\n";
+                //std::cout << "skip qualities\n";
                 stream.ignore(qualitiesBytes);
 
                 numQualityBits = loaded_numQualityBits;
         }else{
             //!canUseQualityScores() && !loaded_hasQualityScores
-            //std::cerr << "no q in file, and no q required. Ok\n";
+            //std::cout << "no q in file, and no q required. Ok\n";
             stream.ignore(qualitiesBytes);
 
             numQualityBits = loaded_numQualityBits;
@@ -860,7 +860,7 @@ public:
             deallocVector(sequenceStorage);
 
             hasShrinkedSequences = true;
-            //std::cerr << "shrinked sequences\n";
+            //std::cout << "shrinked sequences\n";
 
             return true;
         }else{
@@ -908,7 +908,7 @@ public:
             deallocVector(qualityStorage);
 
             hasShrinkedQualities = true;
-            //std::cerr << "shrinked qualities\n";
+            //std::cout << "shrinked qualities\n";
 
             return true;
         }else{
@@ -923,9 +923,9 @@ public:
         std::vector<read_number> vec(ambigReadIds.begin(), ambigReadIds.end());
         std::sort(vec.begin(), vec.end());
         for(auto x : vec){
-            std::cerr << x << " ";
+            std::cout << x << " ";
         }
-        std::cerr << "\n";
+        std::cout << "\n";
     }
 
     

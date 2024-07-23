@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include <common_pragzip.hpp>
+#include <common_rapidgzip.hpp>
 #include <filereader/Buffered.hpp>
 #include <filereader/FileReader.hpp>
 #include <gzip.hpp>
@@ -23,7 +23,7 @@
  * A parallel implementation of the naive pigz block finder reached 2.3 MB/s.
  * This pigz blockfinder makes use of std::string_view::find to reach 8 GB/s.
  */
-namespace pragzip::blockfinder
+namespace rapidgzip::blockfinder
 {
 class PigzStringView final :
     public Interface
@@ -81,7 +81,8 @@ private:
                  && ( ( static_cast<uint8_t>( stringView[position - 1] ) & 0b1110'0000 ) == 0 ) )
             {
                 const auto totalOffset = offset + position + EMPTY_DEFLATE_BLOCK.size();
-                if ( totalOffset < m_fileSize ) {
+                auto fileSize = m_fileSize ? m_fileSize : m_fileReader->size();
+                if ( !fileSize || ( totalOffset < *fileSize ) ) {
                     m_blockOffsets.push_back( totalOffset );
                 }
             }
@@ -133,21 +134,21 @@ private:
          * and file comment ...
          * @todo Make clone work here
          */
-        pragzip::BitReader bitReader( m_fileReader->clone() );
+        rapidgzip::BitReader bitReader( m_fileReader->clone() );
 
         #else
 
         BufferedFileReader::AlignedBuffer buffer( BUFFER_SIZE );
         buffer.resize( m_fileReader->read( buffer.data(), buffer.size() ) );
-        pragzip::BitReader bitReader( std::make_unique<BufferedFileReader>( std::move( buffer ) ) );
+        rapidgzip::BitReader bitReader( std::make_unique<BufferedFileReader>( std::move( buffer ) ) );
 
         #endif
 
-        if ( ( pragzip::gzip::checkHeader( bitReader ) == pragzip::Error::NONE )
+        if ( ( rapidgzip::gzip::checkHeader( bitReader ) == rapidgzip::Error::NONE )
              && ( bitReader.tell() % CHAR_BIT == 0 ) ) {
             m_blockOffsets.push_back( bitReader.tell() / CHAR_BIT );
             /* Do not seek directly to one byte after the found offset in order to keep I/O aligned. */
-            m_fileReader->seek( 0 );
+            m_fileReader->seekTo( 0 );
             m_bufferSize = 0;
             foundFirstBlock = true;
             return;
@@ -160,7 +161,7 @@ private:
 
 private:
     const UniqueFileReader m_fileReader;
-    const std::size_t m_fileSize;
+    const std::optional<std::size_t> m_fileSize;
 
     alignas( 64 ) std::array<char, BUFFER_SIZE> m_buffer;
     size_t m_bufferSize{ 0 };
@@ -173,4 +174,4 @@ private:
         "\0\0\xFF\xFF", 4  /* required or else strlen is used resulting in zero */
     };
 };
-}  // pragzip::blockfinder
+}  // rapidgzip::blockfinder

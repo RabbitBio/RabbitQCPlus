@@ -107,10 +107,10 @@
         std::size_t maxRssBytes = maxRssKB * 1024;
 
         if(maxRssBytes > memoryLimitBytes){
-            std::cerr << errorMessage << ": maxRssBytes = " << maxRssBytes << ", memoryLimitBytes = " << memoryLimitBytes << "\n";
+            std::cout << errorMessage << ": maxRssBytes = " << maxRssBytes << ", memoryLimitBytes = " << memoryLimitBytes << "\n";
         }
         else{
-            std::cerr << "memorylimit ok. maxRssBytes = " << maxRssBytes << ", memoryLimitBytes = " << memoryLimitBytes << "\n";
+            std::cout << "memorylimit ok. maxRssBytes = " << maxRssBytes << ", memoryLimitBytes = " << memoryLimitBytes << "\n";
         }
     }
 

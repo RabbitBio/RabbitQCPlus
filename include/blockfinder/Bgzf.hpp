@@ -14,7 +14,7 @@
 #include "Interface.hpp"
 
 
-namespace pragzip::blockfinder
+namespace rapidgzip::blockfinder
 {
 /**
  * @see https://www.ietf.org/rfc/rfc1952.txt
@@ -106,7 +106,8 @@ public:
 public:
     explicit
     Bgzf( UniqueFileReader fileReader ) :
-        m_fileReader( std::move( fileReader ) )
+        m_fileReader( std::move( fileReader ) ),
+        m_currentBlockOffset( m_fileReader->tell() )
     {
         HeaderBytes header;
         const auto nBytesRead = m_fileReader->read( reinterpret_cast<char*>( header.data() ), header.size() );
@@ -118,18 +119,21 @@ public:
             throw std::invalid_argument( "Given file does not start with a BGZF header!" );
         }
 
-        FooterBytes footer;
-        m_fileReader->seek( -static_cast<int>( footer.size() ), SEEK_END );
-        const auto nBytesReadFooter = m_fileReader->read( reinterpret_cast<char*>( footer.data() ), footer.size() );
-        if ( nBytesReadFooter != footer.size() ) {
-            throw std::invalid_argument( "Could not read enough data from given file for BGZF footer!" );
-        }
+        /* Check the footer, but only if it does not result in buffering the whole file as in SinglePassReader. */
+        if ( m_fileReader->seekable() && m_fileReader->size().has_value() ) {
+            FooterBytes footer;
+            m_fileReader->seek( -static_cast<long long int>( footer.size() ), SEEK_END );
+            const auto nBytesReadFooter = m_fileReader->read( reinterpret_cast<char*>( footer.data() ), footer.size() );
+            if ( nBytesReadFooter != footer.size() ) {
+                throw std::invalid_argument( "Could not read enough data from given file for BGZF footer!" );
+            }
 
-        if ( footer != BGZF_FOOTER ) {
-            throw std::invalid_argument( "Given file does not end with a BGZF footer!" );
-        }
+            if ( footer != BGZF_FOOTER ) {
+                throw std::invalid_argument( "Given file does not end with a BGZF footer!" );
+            }
 
-        m_fileReader->seek( 0 );
+            m_fileReader->seekTo( m_currentBlockOffset );
+        }
     }
 
     [[nodiscard]] static bool
@@ -140,19 +144,22 @@ public:
         HeaderBytes header;
         const auto nBytesRead = file->read( reinterpret_cast<char*>( header.data() ), header.size() );
         if ( ( nBytesRead != header.size() ) || !isBgzfHeader( header ) ) {
-            file->seek( oldPos );
+            file->seekTo( oldPos );
             return false;
         }
 
-        FooterBytes footer;
-        file->seek( -static_cast<int>( footer.size() ), SEEK_END );
-        const auto nBytesReadFooter = file->read( reinterpret_cast<char*>( footer.data() ), footer.size() );
-        if ( ( nBytesReadFooter != footer.size() ) || ( footer != BGZF_FOOTER ) ) {
-            file->seek( oldPos );
-            return false;
+        /* Check the footer, but only if it does not result in buffering the whole file as in SinglePassReader. */
+        if ( file->seekable() && file->size().has_value() ) {
+            FooterBytes footer;
+            file->seek( -static_cast<long long int>( footer.size() ), SEEK_END );
+            const auto nBytesReadFooter = file->read( reinterpret_cast<char*>( footer.data() ), footer.size() );
+            if ( ( nBytesReadFooter != footer.size() ) || ( footer != BGZF_FOOTER ) ) {
+                file->seekTo( oldPos );
+                return false;
+            }
         }
 
-        file->seek( oldPos );
+        file->seekTo( oldPos );
         return true;
     }
 
@@ -197,27 +204,28 @@ public:
 
         auto result = ( m_currentBlockOffset + HeaderBytes().size() ) * 8;
 
-        m_fileReader->seek( m_currentBlockOffset );
+        m_fileReader->seekTo( m_currentBlockOffset );
         HeaderBytes header;
         const auto nBytesRead = m_fileReader->read( reinterpret_cast<char*>( header.data() ), header.size() );
         if ( nBytesRead == header.size() ) {
             const auto blockSize = getBgzfCompressedSize( header );
             if ( blockSize ) {
                 m_currentBlockOffset += *blockSize + 1;
-                if ( m_currentBlockOffset >= m_fileReader->size() ) {
+                const auto fileSize = m_fileReader->size();
+                if ( fileSize && ( m_currentBlockOffset >= *fileSize ) ) {
                     m_currentBlockOffset = std::numeric_limits<size_t>::max();
                 }
             } else {
                 if ( !m_fileReader->eof() ) {
-                    std::cerr << "Ignoring all junk data after invalid block offset "
+                    std::cout << "Ignoring all junk data after invalid block offset "
                               << m_currentBlockOffset << " B!\n";
                 }
-                std::cerr << "Failed to get Bgzf metadata!\n";
+                std::cout << "Failed to get Bgzf metadata!\n";
                 m_currentBlockOffset = std::numeric_limits<size_t>::max();
             }
         } else {
             if ( nBytesRead > 0 ) {
-                std::cerr << "Got partial header!\n";
+                std::cout << "Got partial header!\n";
             }
             m_currentBlockOffset = std::numeric_limits<size_t>::max();
         }
@@ -229,4 +237,4 @@ private:
     const UniqueFileReader m_fileReader;
     size_t m_currentBlockOffset = 0;  /**< in bytes because these are gzip stream offsets */
 };
-}  // pragzip::blockfinder
+}  // rapidgzip::blockfinder

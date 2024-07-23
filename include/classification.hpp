@@ -126,8 +126,8 @@ struct clf_agent
         // #pragma omp critical
         // {
         //     for (const auto& f: feats)
-        //         std::cerr << f << ' ';
-        //     std::cerr << "=>  " << classifier_anchor->prob_debug(feats) << std::endl;
+        //         std::cout << f << ' ';
+        //     std::cout << "=>  " << classifier_anchor->prob_debug(feats) << std::endl;
         // }
         return classifier_anchor->decide(feats);
     }

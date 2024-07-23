@@ -8,10 +8,11 @@
 #include <stdexcept>
 #include <utility>
 
-#include "HuffmanCodingSymbolsPerLength.hpp"
+#include <definitions.hpp>
+#include <huffman/HuffmanCodingSymbolsPerLength.hpp>
 
 
-namespace pragzip
+namespace rapidgzip
 {
 /**
  * This version uses a large lookup table (LUT) to avoid loops over the BitReader to speed things up a lot.
@@ -81,7 +82,7 @@ public:
 
             const auto fillerBitCount = this->m_maxCodeLength - length;
             const auto maximumPaddedCode = static_cast<HuffmanCode>(
-                reversedCode | ( nLowestBitsSet<HuffmanCode>( fillerBitCount ) << length ) );
+                reversedCode | static_cast<HuffmanCode>( nLowestBitsSet<HuffmanCode>( fillerBitCount ) << length ) );
             assert( maximumPaddedCode < m_codeCache.size() );
             const auto increment = static_cast<HuffmanCode>( HuffmanCode( 1 ) << length );
             for ( auto paddedCode = reversedCode; paddedCode <= maximumPaddedCode; paddedCode += increment ) {
@@ -93,7 +94,7 @@ public:
         m_needsToBeZeroed = true;
 
         //const auto t1 = now();
-        //std::cerr << "Creating Huffman LUT took " << duration(t0,t1) << " s\n";
+        //std::cout << "Creating Huffman LUT took " << duration(t0,t1) << " s\n";
         // Some timings for small.gz: 2.3676e-05 s, 2.186e-05 s, 2.3607e-05 s, 2.1791e-05 s, 2.3606e-05 s, 3.6038e-05 s
 
         return Error::NONE;
@@ -123,8 +124,14 @@ public:
         }
     }
 
+    [[nodiscard]] constexpr auto const&
+    codeCache() const noexcept
+    {
+        return m_codeCache;
+    }
+
 private:
     alignas( 8 ) std::array<std::pair</* length */ uint8_t, Symbol>, ( 1UL << MAX_CODE_LENGTH )> m_codeCache{};
     bool m_needsToBeZeroed{ false };
 };
-}  // namespace pragzip
+}  // namespace rapidgzip

@@ -113,24 +113,24 @@ private:
             tempbuffer.begin = 0;
 
             std::unique_lock<std::mutex> ul(commMutex);
-            //std::cerr << "tfunc consumerNeedsNext " << consumerNeedsNext << "\n";
+            //std::cout << "tfunc consumerNeedsNext " << consumerNeedsNext << "\n";
             if(!consumerNeedsNext){
-                //std::cerr << "cv_producer.wait\n";
+                //std::cout << "cv_producer.wait\n";
                 cv_producer.wait(ul, [&](){return consumerNeedsNext || !canContinue;});
             }
             if(!consumerNeedsNext){
                 assert(!canContinue);
-                std::cerr << "!canContinue break\n";
+                std::cout << "!canContinue break\n";
                 break;
             }
             std::swap(tempbuffer, buffer);
             nextBufferIsReady = true;
             consumerNeedsNext = false;
-            //std::cerr << "cv_consumer.notify_one\n";
+            //std::cout << "cv_consumer.notify_one\n";
             cv_consumer.notify_one();
         }
 
-        //std::cerr << canContinue << " " << bool(inputstream) << "\n";
+        //std::cout << canContinue << " " << bool(inputstream) << "\n";
 
         std::unique_lock<std::mutex> ul(commMutex);
         isRunning = false;
@@ -144,16 +144,16 @@ private:
             if(buffer.numBytes == 0 && isRunning){
                 std::unique_lock<std::mutex> ul(commMutex);
                 consumerNeedsNext = true;
-                //std::cerr << "set consumerNeedsNext = true\n";
-                //std::cerr << "cv_producer.notify_one\n";
+                //std::cout << "set consumerNeedsNext = true\n";
+                //std::cout << "cv_producer.notify_one\n";
                 cv_producer.notify_one();
 
                 if(!nextBufferIsReady){                    
-                    //std::cerr << "cv_consumer.wait\n";
+                    //std::cout << "cv_consumer.wait\n";
                     cv_consumer.wait(ul, [&](){return nextBufferIsReady || !isRunning;});
                 }
                 if(!nextBufferIsReady){
-                    std::cerr << "!nextBufferIsReady\n";
+                    std::cout << "!nextBufferIsReady\n";
                     assert(!isRunning);
                     break;
                 }
@@ -233,7 +233,7 @@ public:
         zstream.next_in = Z_NULL;
         int initstatus = inflateInit2(&zstream, 16+MAX_WBITS);
         if (initstatus != Z_OK){
-            std::cerr << "Error, inflateInit2 returned " << initstatus << '\n';
+            std::cout << "Error, inflateInit2 returned " << initstatus << '\n';
         }
         assert(initstatus == Z_OK);
     }

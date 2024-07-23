@@ -53,7 +53,7 @@
                     const int dev2 = deviceIds[k];
                     cudaDeviceCanAccessPeer(&accessMatrix[dev1 * numGpus + dev2], dev1, dev2); CUERR;
                     if(debugmode == PeerAccessDebugMode::Enabled){
-                        std::cerr << "Peer access possible for " << dev1 << " -> " << dev2 << "\n";
+                        std::cout << "Peer access possible for " << dev1 << " -> " << dev2 << "\n";
                     }
                 }
             }
@@ -85,7 +85,7 @@
         void enablePeerAccess(int device, int peerDevice) const{
             if(!canAccessPeer(device, peerDevice)){
                 if(debugmode == PeerAccessDebugMode::Enabled){
-                    std::cerr << "Peer access from " << device << " to " << peerDevice << " is not available and cannot be enabled.\n";
+                    std::cout << "Peer access from " << device << " to " << peerDevice << " is not available and cannot be enabled.\n";
                 }
                 return;
             }
@@ -96,7 +96,7 @@
             if(status != cudaSuccess){
                 if(status == cudaErrorPeerAccessAlreadyEnabled){
                     if(debugmode == PeerAccessDebugMode::Enabled){
-                        std::cerr << "Peer access from " << device << " to " << peerDevice << " has already been enabled. This is not a program error\n";
+                        std::cout << "Peer access from " << device << " to " << peerDevice << " has already been enabled. This is not a program error\n";
                     }
                     cudaGetLastError(); //reset error state;
                 }else{
@@ -109,7 +109,7 @@
         void disablePeerAccess(int device, int peerDevice) const{
             if(!canAccessPeer(device, peerDevice)){
                 if(debugmode == PeerAccessDebugMode::Enabled){
-                    std::cerr << "Peer access from " << device << " to " << peerDevice << " is not available and cannot be disabled.\n";
+                    std::cout << "Peer access from " << device << " to " << peerDevice << " is not available and cannot be disabled.\n";
                 }
                 return;
             }
@@ -120,7 +120,7 @@
             if(status != cudaSuccess){
                 if(status == cudaErrorPeerAccessNotEnabled){
                     if(debugmode == PeerAccessDebugMode::Enabled){
-                        std::cerr << "Peer access from " << device << " to " << peerDevice << " has not yet been enabled. This is not a program error\n";
+                        std::cout << "Peer access from " << device << " to " << peerDevice << " has not yet been enabled. This is not a program error\n";
                     }
                     cudaGetLastError(); //reset error state;
                 }else{

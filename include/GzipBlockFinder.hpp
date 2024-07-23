@@ -11,13 +11,15 @@
 #include <vector>
 
 #include <BlockFinderInterface.hpp>
-#include <common_pragzip.hpp>
+#include <bzip2.hpp>
+#include <common_rapidgzip.hpp>
 
 #include "blockfinder/Bgzf.hpp"
 #include "deflate.hpp"
+#include "format.hpp"
 
 
-namespace pragzip
+namespace rapidgzip
 {
 /**
  * This is a much more lean version of core/BlockFinder. It does not do any actual work aside from finding the first
@@ -39,12 +41,11 @@ public:
     explicit
     GzipBlockFinder( UniqueFileReader fileReader,
                      size_t           spacing ) :
-        m_fileSizeInBits( fileReader->size() * CHAR_BIT ),
-        m_spacingInBits( spacing * CHAR_BIT ),
-        m_isBgzfFile( blockfinder::Bgzf::isBgzfFile( fileReader ) ),
-        m_bgzfBlockFinder( m_isBgzfFile
-                           ? std::make_unique<blockfinder::Bgzf>( fileReader->clone() )
-                           : std::unique_ptr<blockfinder::Bgzf>() )
+        m_file( std::move( fileReader ) ),
+        m_fileSizeInBits( m_file->size()
+                          ? std::make_optional( *m_file->size() * CHAR_BIT )
+                          : std::nullopt ),
+        m_spacingInBits( spacing * CHAR_BIT )
     {
         if ( m_spacingInBits < 32_Ki ) {
             /* Well, actually, it could make sense because this is about the spacing in the compressed data but
@@ -54,19 +55,17 @@ public:
             throw std::invalid_argument( "A spacing smaller than the window size makes no sense!" );
         }
 
-        /**
-         * @todo I'm not sure whether it should skip empty files and/or detect pigz files? Maybe both for stability.
-         *       Currently it fails for pigz!
-         */
-
-        /* The first deflate block offset is easily found by reading other the gzip header.
-         * The correctness and existence of this first block is a required initial condition for the algorithm. */
-        BitReader bitReader{ std::move( fileReader ) };
-        const auto [header, error] = gzip::readHeader( bitReader );
-        if ( error != Error::NONE ) {
-            throw std::invalid_argument( "Encountered error while reading gzip header: " + toString( error ) );
+        const auto detectedFormat = determineFileTypeAndOffset( m_file );
+        if ( !detectedFormat ) {
+            throw std::invalid_argument( "Failed to detect a valid file format." );
         }
-        m_blockOffsets.push_back( bitReader.tell() );
+
+        m_fileType = detectedFormat->first;
+        if ( m_fileType == FileType::BGZF ) {
+            m_bgzfBlockFinder = std::make_unique<blockfinder::Bgzf>( m_file->clone() );
+        }
+
+        m_blockOffsets.push_back( detectedFormat->second );
     }
 
     /**
@@ -93,10 +92,10 @@ public:
         return m_finalized;
     }
 
-    [[nodiscard]] bool
-    isBgzfFile() const noexcept
+    [[nodiscard]] FileType
+    fileType() const noexcept
     {
-        return m_isBgzfFile;
+        return m_fileType;
     }
 
     /**
@@ -122,9 +121,9 @@ public:
     get( size_t                  blockIndex,
          [[maybe_unused]] double timeoutInSeconds ) override
     {
-        std::scoped_lock lock( m_mutex );
+        const std::scoped_lock lock( m_mutex );
 
-        if ( m_isBgzfFile ) {
+        if ( m_fileType == FileType::BGZF ) {
             return getBgzfBlock( blockIndex );
         }
 
@@ -136,7 +135,13 @@ public:
         const auto blockIndexOutside = blockIndex - m_blockOffsets.size();  // >= 0
         const auto partitionIndex = firstPartitionIndex() + blockIndexOutside;
         const auto blockOffset = partitionIndex * m_spacingInBits;
-        if ( blockOffset < m_fileSizeInBits ) {
+
+        if ( !m_fileSizeInBits ) {
+            if ( const auto fileSize = m_file->size() ) {
+                m_fileSizeInBits = *fileSize * CHAR_BIT;
+            }
+        }
+        if ( !m_fileSizeInBits || ( blockOffset < *m_fileSizeInBits ) ) {
             return { blockOffset, GetReturnCode::SUCCESS };
         }
 
@@ -145,7 +150,7 @@ public:
          *  - the BlockFetcher waiting until this index becomes "available"
          *  - the previous index offset not being used because there is no untilOffset for it */
         if ( partitionIndex > 0 ) {
-            return { m_fileSizeInBits, GetReturnCode::FAILURE };
+            return { *m_fileSizeInBits, GetReturnCode::FAILURE };
         }
 
         /* This shouldn't happen. */
@@ -158,7 +163,7 @@ public:
     [[nodiscard]] size_t
     find( size_t encodedBlockOffsetInBits ) const override
     {
-        std::scoped_lock lock( m_mutex );
+        const std::scoped_lock lock( m_mutex );
 
         /* Find in sorted vector by bisection. */
         const auto match = std::lower_bound( m_blockOffsets.begin(), m_blockOffsets.end(), encodedBlockOffsetInBits );
@@ -167,7 +172,6 @@ public:
         }
 
         if ( ( encodedBlockOffsetInBits > m_blockOffsets.back() )
-             && ( encodedBlockOffsetInBits < m_fileSizeInBits )
              && ( encodedBlockOffsetInBits % m_spacingInBits == 0 ) )
         {
             const auto blockIndex = m_blockOffsets.size()
@@ -202,11 +206,28 @@ public:
     }
 
 private:
-    void
+    [[nodiscard]] std::optional<size_t>
+    fileSize()
+    {
+        if ( m_fileSizeInBits ) {
+            return *m_fileSizeInBits;
+        }
+
+        const auto fileSize = m_file->size();
+        if ( fileSize ) {
+            m_fileSizeInBits = *fileSize * CHAR_BIT;
+            return *m_fileSizeInBits;
+        }
+
+        return std::nullopt;
+    }
+
+    bool
     insertUnsafe( size_t blockOffset )
     {
-        if ( blockOffset >= m_fileSizeInBits ) {
-            return;
+        const auto size = fileSize();
+        if ( size.has_value() && ( blockOffset >= *size ) ) {
+            return false;
         }
 
         const auto match = std::lower_bound( m_blockOffsets.begin(), m_blockOffsets.end(), blockOffset );
@@ -217,6 +238,8 @@ private:
             m_blockOffsets.insert( match, blockOffset );
             assert( std::is_sorted( m_blockOffsets.begin(), m_blockOffsets.end() ) );
         }
+
+        return true;
     }
 
     void
@@ -227,10 +250,9 @@ private:
             if ( nextOffset < m_blockOffsets.back() + m_spacingInBits ) {
                 continue;
             }
-            if ( nextOffset >= m_fileSizeInBits ) {
+            if ( !insertUnsafe( nextOffset ) ) {
                 break;
             }
-            insertUnsafe( nextOffset );
         }
     }
 
@@ -245,7 +267,9 @@ private:
             return { m_blockOffsets[blockIndex], GetReturnCode::SUCCESS };
         }
 
-        return { m_fileSizeInBits, GetReturnCode::FAILURE };
+        /* Size should be available at this point because EOF should be the only cause
+         * for gatherMoreBgzfBlocks not gathering up to the specified index. */
+        return { fileSize().value_or( std::numeric_limits<size_t>::max() ), GetReturnCode::FAILURE };
     }
 
     /**
@@ -265,9 +289,10 @@ private:
 private:
     mutable std::mutex m_mutex;
 
-    size_t const m_fileSizeInBits;
+    const UniqueFileReader m_file;
+    std::optional<size_t> m_fileSizeInBits;
     bool m_finalized{ false };
-    size_t const m_spacingInBits;
+    const size_t m_spacingInBits;
 
     /**
      * These should only contain confirmed block offsets in order. Use a deque to avoid having to move all
@@ -276,8 +301,8 @@ private:
     std::deque<size_t> m_blockOffsets;
 
     /** Only used for Bgzf files in which case it will gather offsets in chunks of this. */
-    const bool m_isBgzfFile;
-    const std::unique_ptr<blockfinder::Bgzf> m_bgzfBlockFinder;
-    const size_t m_batchFetchCount = std::max<size_t>( 16, 3U * std::thread::hardware_concurrency() );
+    FileType m_fileType{ FileType::NONE };
+    std::unique_ptr<blockfinder::Bgzf> m_bgzfBlockFinder;
+    const size_t m_batchFetchCount = std::max<size_t>( 16, 3ULL * std::thread::hardware_concurrency() );
 };
-}  // namespace pragzip
+}  // namespace rapidgzip

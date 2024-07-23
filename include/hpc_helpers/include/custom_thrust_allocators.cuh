@@ -35,12 +35,12 @@ struct ThrustFallbackDeviceAllocator<T, true> : thrust::device_malloc_allocator<
     using const_reference = typename super_t::const_reference;
 
     pointer allocate(size_type n){
-        //std::cerr << "alloc" << std::endl;
+        //std::cout << "alloc" << std::endl;
 
         T* ptr = nullptr;
 		cudaError_t status = cudaMalloc(&ptr, n * sizeof(T));
 		if(status == cudaSuccess){
-			//std::cerr << "cudaMalloc\n";
+			//std::cout << "cudaMalloc\n";
 		}else{
 			cudaGetLastError(); //reset the error of failed allocation
 
@@ -57,13 +57,13 @@ struct ThrustFallbackDeviceAllocator<T, true> : thrust::device_malloc_allocator<
     		if(status != cudaSuccess){
     			throw std::bad_alloc();
     		}
-			//std::cerr << "cudaMallocManaged\n";
+			//std::cout << "cudaMallocManaged\n";
 		}
 		return thrust::device_pointer_cast(ptr);
 	}
 
     void deallocate(pointer ptr, size_type /*n*/){
-    	//std::cerr << "dealloc" << std::endl;
+    	//std::cout << "dealloc" << std::endl;
 
     	cudaError_t status = cudaFree(ptr.get());
     	if(status != cudaSuccess){
@@ -84,12 +84,12 @@ struct ThrustFallbackDeviceAllocator<T, false> : thrust::device_malloc_allocator
 	using const_reference = typename super_t::const_reference;
 
 	pointer allocate(size_type n){
-		//std::cerr << "alloc" << std::endl;
+		//std::cout << "alloc" << std::endl;
 
 		T* ptr = nullptr;
 		cudaError_t status = cudaMalloc(&ptr, n * sizeof(T));
 		if(status == cudaSuccess){
-			//std::cerr << "cudaMalloc\n";
+			//std::cout << "cudaMalloc\n";
 		}else{
 			cudaGetLastError(); //reset the error of failed allocation
 
@@ -99,7 +99,7 @@ struct ThrustFallbackDeviceAllocator<T, false> : thrust::device_malloc_allocator
 	}
 
     void deallocate(pointer ptr, size_type /*n*/){
-    	//std::cerr << "dealloc" << std::endl;
+    	//std::cout << "dealloc" << std::endl;
 
     	cudaError_t status = cudaFree(ptr.get());
     	if(status != cudaSuccess){

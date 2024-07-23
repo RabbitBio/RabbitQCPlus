@@ -11,7 +11,7 @@
 
 //     if (status != cudaSuccess){
 //         std::string msg = "CUDA Error: "s + cudaGetErrorString(status) + " "s + file + " "s + std::to_string(line);
-//         std::cerr << msg << "\n";
+//         std::cout << msg << "\n";
 //         if(abort){
 //             throw std::runtime_error(msg);
 //         }
@@ -31,7 +31,7 @@
     if (MY_CUDA_CHECK_status != cudaSuccess){              \
         cudaGetLastError();                 \
         std::string msg = "CUDA Error: "s + cudaGetErrorString(MY_CUDA_CHECK_status) + " "s + __FILE__ + " "s + std::to_string(__LINE__); \
-        std::cerr << msg << "\n"; \
+        std::cout << msg << "\n"; \
         if(abort){ \
             throw std::runtime_error(msg); \
         } \
@@ -46,7 +46,7 @@
     if (MY_CUDA_CHECK_status != cudaSuccess){              \
         cudaGetLastError();                 \
         std::string msg = (async ? "Asynchronous "s : "Synchronous "s) + "CUDA Error: "s + cudaGetErrorString(MY_CUDA_CHECK_status) + " "s + __FILE__ + " "s + std::to_string(__LINE__); \
-        std::cerr << msg << "\n"; \
+        std::cout << msg << "\n"; \
         if(abort){ \
             throw std::runtime_error(msg); \
         } \

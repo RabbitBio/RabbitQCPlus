@@ -114,7 +114,7 @@ struct CPUSequenceHasher{
                         hashvalues[i] = std::min(hashvalues[i], hashvalue);
 
                         // if(i == 0){
-                        //     std::cerr << pos << ", " << kmer << ", " << (hashvalue & kmer_mask) << "\n";
+                        //     std::cout << pos << ", " << kmer << ", " << (hashvalue & kmer_mask) << "\n";
                         // }
                     }
                 }
@@ -182,7 +182,7 @@ struct CPUSequenceHasher{
                         hashvalues[i] = std::min(hashvalues[i], hashvalue);
 
                         // if(i == 0){
-                        //     std::cerr << pos << ", " << kmer << ", " << (hashvalue & kmer_mask) << "\n";
+                        //     std::cout << pos << ", " << kmer << ", " << (hashvalue & kmer_mask) << "\n";
                         // }
                     }
                 }

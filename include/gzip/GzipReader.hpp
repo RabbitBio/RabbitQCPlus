@@ -13,6 +13,7 @@
 
 #include <crc32.hpp>
 #include <DecodedDataView.hpp>
+#include <definitions.hpp>
 #include <deflate.hpp>
 #include <FileUtils.hpp>
 #include <filereader/FileReader.hpp>
@@ -24,19 +25,8 @@
 #endif
 
 
-namespace pragzip
+namespace rapidgzip
 {
-enum StoppingPoint : uint32_t
-{
-    NONE                 = 0U,
-    END_OF_STREAM_HEADER = 1U << 0U,
-    END_OF_STREAM        = 1U << 1U,  // after gzip footer has been read
-    END_OF_BLOCK_HEADER  = 1U << 2U,
-    END_OF_BLOCK         = 1U << 3U,
-    ALL                  = 0xFFFF'FFFFU,
-};
-
-
 /**
  * A strictly sequential gzip interface that can iterate over multiple gzip streams and of course deflate blocks.
  * It cannot seek back nor is it parallelized but it can be used to implement a parallelization scheme.
@@ -118,13 +108,10 @@ public:
     [[nodiscard]] size_t
     tell() const final
     {
-        if ( m_atEndOfFile ) {
-            return size();
-        }
         return m_currentPosition;
     }
 
-    [[nodiscard]] size_t
+    [[nodiscard]] std::optional<size_t>
     size() const final
     {
         if ( m_atEndOfFile ) {
@@ -149,7 +136,7 @@ public:
         throw std::invalid_argument( "Not fully tested!" );
     }
 
-    [[nodiscard]] size_t
+    size_t
     read( char*  outputBuffer,
           size_t nBytesToRead ) final
     {
@@ -188,7 +175,7 @@ public:
     read( const int     outputFileDescriptor = -1,
           char* const   outputBuffer         = nullptr,
           const size_t  nBytesToRead         = std::numeric_limits<size_t>::max(),
-          StoppingPoint stoppingPoint        = StoppingPoint::NONE )
+          StoppingPoint stoppingPoints       = StoppingPoint::NONE )
     {
         const auto writeFunctor =
             [nBytesDecoded = uint64_t( 0 ), outputFileDescriptor, outputBuffer]
@@ -202,17 +189,24 @@ public:
                  *       important as for the multi-threaded version because decoding is the bottlneck for the
                  *       sequential version.
                  */
-                ::writeAll( outputFileDescriptor, currentBufferPosition, buffer, size );
+                const auto errorCode = ::writeAll( outputFileDescriptor, currentBufferPosition, buffer, size );
+                if ( errorCode != 0 ) {
+                    std::stringstream message;
+                    message << "Failed to write all bytes because of: " << strerror( errorCode )
+                            << " (" << errorCode << ")";
+                    throw std::runtime_error( std::move( message ).str() );
+                }
+
                 nBytesDecoded += size;
             };
 
-        return read( writeFunctor, nBytesToRead, stoppingPoint );
+        return read( writeFunctor, nBytesToRead, stoppingPoints );
     }
 
     size_t
     read( const WriteFunctor& writeFunctor,
           const size_t        nBytesToRead = std::numeric_limits<size_t>::max(),
-          const StoppingPoint stoppingPoint = StoppingPoint::NONE )
+          const StoppingPoint stoppingPoints = StoppingPoint::NONE )
     {
         size_t nBytesDecoded = 0;
 
@@ -260,6 +254,7 @@ public:
                     }
                     break;
 
+                // NOLINTBEGIN(bugprone-branch-clone)
                 case StoppingPoint::END_OF_BLOCK_HEADER:
                     assert( false && "Should have been handled before the switch!" );
                     break;
@@ -267,6 +262,7 @@ public:
                 case StoppingPoint::ALL:
                     assert( false && "Should only be specified by the user not appear internally!" );
                     break;
+                // NOLINTEND(bugprone-branch-clone)
                 }
             }
 
@@ -274,7 +270,7 @@ public:
             checkPythonSignalHandlers();
         #endif
 
-            if ( m_currentPoint.has_value() && testFlags( *m_currentPoint, stoppingPoint ) ) {
+            if ( m_currentPoint.has_value() && testFlags( *m_currentPoint, stoppingPoints ) ) {
                 break;
             }
         }
@@ -306,9 +302,9 @@ private:
             throw std::logic_error( "Call readGzipHeader before calling readBlockHeader!" );
         }
         const auto error = m_currentDeflateBlock->readHeader( m_bitReader );
-        if ( error != pragzip::Error::NONE ) {
+        if ( error != rapidgzip::Error::NONE ) {
             std::stringstream message;
-            message << "Encountered error: " << pragzip::toString( error ) << " while trying to read deflate header!";
+            message << "Encountered error: " << rapidgzip::toString( error ) << " while trying to read deflate header!";
             throw std::domain_error( std::move( message ).str() );
         }
         m_currentPoint = StoppingPoint::END_OF_BLOCK_HEADER;
@@ -325,10 +321,10 @@ private:
     void
     readGzipHeader()
     {
-        const auto [header, error] = pragzip::gzip::readHeader( m_bitReader );
-        if ( error != pragzip::Error::NONE ) {
+        auto [header, error] = rapidgzip::gzip::readHeader( m_bitReader );
+        if ( error != rapidgzip::Error::NONE ) {
             std::stringstream message;
-            message << "Encountered error: " << pragzip::toString( error ) << " while trying to read gzip header!";
+            message << "Encountered error: " << rapidgzip::toString( error ) << " while trying to read gzip header!";
             throw std::domain_error( std::move( message ).str() );
         }
 
@@ -357,12 +353,12 @@ private:
     }
 
 private:
-    pragzip::BitReader m_bitReader;
+    rapidgzip::BitReader m_bitReader;
 
     size_t m_currentPosition{ 0 };  /** the current position as can only be modified with read or seek calls. */
     bool m_atEndOfFile{ false };
 
-    pragzip::gzip::Header m_lastGzipHeader;
+    rapidgzip::gzip::Header m_lastGzipHeader;
     /**
      * The deflate block will be reused during a gzip stream because each block depends on the last output
      * of the previous block. But after the gzip stream end, this optional will be cleared and in case of
@@ -463,9 +459,9 @@ GzipReader::readBlock( const WriteFunctor& writeFunctor,
             auto error = Error::NONE;
             std::tie( m_lastBlockData, error ) =
                 m_currentDeflateBlock->read( m_bitReader, std::numeric_limits<size_t>::max() );
-            if ( error != pragzip::Error::NONE ) {
+            if ( error != rapidgzip::Error::NONE ) {
                 std::stringstream message;
-                message << "Encountered error: " << pragzip::toString( error ) << " while decompressing deflate block.";
+                message << "Encountered error: " << rapidgzip::toString( error ) << " while decompressing deflate block.";
                 throw std::domain_error( std::move( message ).str() );
             }
 
@@ -497,7 +493,7 @@ GzipReader::readBlock( const WriteFunctor& writeFunctor,
 inline void
 GzipReader::readGzipFooter()
 {
-    const auto footer = pragzip::gzip::readFooter( m_bitReader );
+    const auto footer = rapidgzip::gzip::readFooter( m_bitReader );
 
     if ( static_cast<uint32_t>( m_streamBytesCount ) != footer.uncompressedSize ) {
         std::stringstream message;
@@ -519,22 +515,4 @@ GzipReader::readGzipFooter()
 
     m_currentPoint = StoppingPoint::END_OF_STREAM;
 }
-
-
-[[nodiscard]] inline std::string
-toString( StoppingPoint stoppingPoint )
-{
-    // *INDENT-OFF*
-    switch ( stoppingPoint )
-    {
-    case StoppingPoint::NONE                 : return "None";
-    case StoppingPoint::END_OF_STREAM_HEADER : return "End of Stream Header";
-    case StoppingPoint::END_OF_STREAM        : return "End of Stream";
-    case StoppingPoint::END_OF_BLOCK_HEADER  : return "End of Block Header";
-    case StoppingPoint::END_OF_BLOCK         : return "End of Block";
-    case StoppingPoint::ALL                  : return "All";
-    };
-    return "Unknown";
-    // *INDENT-ON*
-}
-}  // namespace pragzip
+}  // namespace rapidgzip

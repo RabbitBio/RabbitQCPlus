@@ -7,16 +7,17 @@
 #include <stdexcept>
 #include <type_traits>
 
-#include <definitions.hpp>
 #include <Error.hpp>
+#include <VectorView.hpp>
 
 
-namespace pragzip
+namespace rapidgzip
 {
 template<typename T_HuffmanCode,
          uint8_t  T_MAX_CODE_LENGTH,
          typename T_Symbol,
-         size_t   T_MAX_SYMBOL_COUNT>
+         size_t   T_MAX_SYMBOL_COUNT,
+         bool     CHECK_OPTIMALITY = true>
 class HuffmanCodingBase
 {
 public:
@@ -56,7 +57,7 @@ protected:
         }
 
         /* A maximum code length of 0 is valid! It happens when encoding this with pigz:
-         * python3 -c 'import sys; sys.stdout.buffer.write(bytes(range(256)))' | pigz > 0CL.pgz */
+         * python3 -c 'import sys; sys.stdout.buffer.write(bytes(range(256)))' | pigz > 0CL.pigz */
         m_maxCodeLength = getMax( codeLengths );
 
         m_minCodeLength = getMinPositive( codeLengths );
@@ -100,9 +101,11 @@ protected:
             unusedSymbolCount *= 2;  /* Because we go down one more level for all unused tree nodes! */
         }
 
-        if ( ( ( nonZeroCount == 1 ) && ( unusedSymbolCount != ( 1U << m_maxCodeLength ) ) ) ||
-             ( ( nonZeroCount >  1 ) && ( unusedSymbolCount != 0 ) ) ) {
-            return Error::BLOATING_HUFFMAN_CODING;
+        if constexpr ( CHECK_OPTIMALITY ) {
+            if ( ( ( nonZeroCount == 1 ) && ( unusedSymbolCount != ( 1U << m_maxCodeLength ) ) ) ||
+                 ( ( nonZeroCount >  1 ) && ( unusedSymbolCount != 0 ) ) ) {
+                return Error::BLOATING_HUFFMAN_CODING;
+            }
         }
 
         return Error::NONE;
@@ -140,7 +143,7 @@ protected:
         HuffmanCode minCode = 0;
         /* minCodeLength might be zero for empty deflate blocks as can happen when compressing an empty file! */
         for ( size_t bits = std::max<size_t>( 1U, m_minCodeLength ); bits <= m_maxCodeLength; ++bits ) {
-            minCode = ( minCode + bitLengthFrequencies[bits - 1U] ) << 1U;
+            minCode = static_cast<HuffmanCode>( HuffmanCode( minCode + bitLengthFrequencies[bits - 1U] ) << 1U );
             m_minimumCodeValuesPerLevel[bits - m_minCodeLength] = minCode;
         }
     }
@@ -183,6 +186,24 @@ public:
         return Error::NONE;
     }
 
+    [[nodiscard]] constexpr BitCount
+    minCodeLength() const noexcept
+    {
+        return m_minCodeLength;
+    }
+
+    [[nodiscard]] constexpr BitCount
+    maxCodeLength() const noexcept
+    {
+        return m_maxCodeLength;
+    }
+
+    [[nodiscard]] constexpr auto const&
+    minimumCodeValuesPerLevel() const noexcept
+    {
+        return m_minimumCodeValuesPerLevel;
+    }
+
 protected:
     BitCount m_minCodeLength{ std::numeric_limits<BitCount>::max() };
     BitCount m_maxCodeLength{ std::numeric_limits<BitCount>::min() };
@@ -190,4 +211,4 @@ protected:
     /** Only indexes [0, m_maxCodeLength - m_minCodeLength) contain valid data! */
     std::array<HuffmanCode, MAX_CODE_LENGTH + 1> m_minimumCodeValuesPerLevel{};
 };
-}  // namespace pragzip
+}  // namespace rapidgzip

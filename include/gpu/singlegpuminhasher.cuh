@@ -360,7 +360,7 @@ namespace gpu{
                 CUDACHECK(cudaStreamSynchronize(stream));
                 if(status.has_any_errors()){
                     if(!status.has_out_of_memory()){
-                        std::cerr << "observed error when initializing hash function " << (gpuHashTables.size() + 1) << " : " << i << ", " << status << "\n";
+                        std::cout << "observed error when initializing hash function " << (gpuHashTables.size() + 1) << " : " << i << ", " << status << "\n";
                     }
                     break;
                 }else{
@@ -541,7 +541,7 @@ namespace gpu{
 
                 if(status.has_any_errors()){
                     count++;
-                    std::cerr << "Error table " << (firstHashfunction + i) << " after insertion: " << status << "\n";
+                    std::cout << "Error table " << (firstHashfunction + i) << " after insertion: " << status << "\n";
                 }
             }
             return count;
@@ -1045,11 +1045,11 @@ namespace gpu{
         }
 
         void writeToStream(std::ostream& /*os*/) const override{
-            std::cerr << "SingleGpuMinhasher::writeToStream not supported\n";
+            std::cout << "SingleGpuMinhasher::writeToStream not supported\n";
         }
 
         int loadFromStream(std::ifstream& /*is*/, int /*numMapsUpperLimit*/) override{
-            std::cerr << "SingleGpuMinhasher::loadFromStream not supported\n";
+            std::cout << "SingleGpuMinhasher::loadFromStream not supported\n";
             return 0;
         } 
 

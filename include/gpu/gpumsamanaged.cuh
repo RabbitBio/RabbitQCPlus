@@ -228,7 +228,7 @@ namespace gpu{
             int numIterations,
             cudaStream_t stream
         ){
-            //std::cerr << "thread " << std::this_thread::get_id() << " msa refine, stream " << stream << "\n";
+            //std::cout << "thread " << std::this_thread::get_id() << " msa refine, stream " << stream << "\n";
 
             rmm::device_uvector<bool> d_temp(maxNumCandidates, stream, mr);
 

@@ -37,7 +37,7 @@ std::unique_ptr<ChunkedReadStorage> constructChunkedReadStorageFromFiles(
         std::unique_ptr<ChunkedReadStorage> readStorage = std::make_unique<ChunkedReadStorage>(pairedEnd, useQualityScores, numQualityBits);
 
         readStorage->loadFromFile(programOptions.load_binary_reads_from);
-        std::cerr << "Loaded readstorage from file " << programOptions.load_binary_reads_from << "\n";
+        std::cout << "Loaded readstorage from file " << programOptions.load_binary_reads_from << "\n";
 
         return readStorage;
     }else{
@@ -48,7 +48,7 @@ std::unique_ptr<ChunkedReadStorage> constructChunkedReadStorageFromFiles(
 
         auto showProgressFunc = [showProgress](auto totalCount, auto seconds){
             if(showProgress){
-                std::cerr << "Processed " << totalCount << " reads in file. Elapsed time: " 
+                std::cout << "Processed " << totalCount << " reads in file. Elapsed time: " 
                                 << seconds << " seconds." << std::endl;
             }
         };
@@ -408,7 +408,7 @@ std::unique_ptr<ChunkedReadStorage> constructChunkedReadStorageFromFiles(
 
                 std::string inputfile = programOptions.inputfiles[0];
 
-                std::cerr << "Converting paired reads of file " 
+                std::cout << "Converting paired reads of file " 
                     << inputfile  << "\n";
 
                 std::future<std::size_t> future = std::async(
@@ -426,7 +426,7 @@ std::unique_ptr<ChunkedReadStorage> constructChunkedReadStorageFromFiles(
                 std::string filename1 = programOptions.inputfiles[0];
                 std::string filename2 = programOptions.inputfiles[1];
 
-                std::cerr << "Converting paired reads of files " 
+                std::cout << "Converting paired reads of files " 
                     << filename1 << " and " << filename2 << ", storing them in memory\n";
 
                 std::future<std::size_t> future = std::async(
@@ -463,7 +463,7 @@ std::unique_ptr<ChunkedReadStorage> constructChunkedReadStorageFromFiles(
         
         progressThread.finished();
         if(showProgress){
-            std::cerr << "\n";
+            std::cout << "\n";
         }
 
         helpers::CpuTimer footimer("init readstorage after construction");

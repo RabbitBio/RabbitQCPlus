@@ -10,66 +10,63 @@
 #include <utility>
 #include <vector>
 
-#include "cxxopts.hpp"
+#include <cxxopts.hpp>
 
 #include <AffinityHelpers.hpp>
-#include <common_pragzip.hpp>
+#include <common_rapidgzip.hpp>
 #include <filereader/Standard.hpp>
+#include <FileRanges.hpp>
 #include <FileUtils.hpp>
 #include <GzipAnalyzer.hpp>
-#include <pragzip.hpp>
+#include <rapidgzip.hpp>
 #include <Statistics.hpp>
 
-#include "licenses.cpp"
+#include "CLIHelper.hpp"
+#include "thirdparty.hpp"
 #include "pragzip.h"
+
+
+class BrokenPipeException :
+    public std::exception
+{};
 
 
 struct Arguments
 {
     unsigned int decoderParallelism{ 0 };
-    unsigned int chunkSize{ 4_Mi };
+    size_t chunkSize{ 4_Mi };
     std::string indexLoadPath;
     std::string indexSavePath;
     bool verbose{ false };
     bool crc32Enabled{ true };
+    bool keepIndex{ false };
+    bool windowSparsity{ true };
+    bool gatherLineOffsets{ false };
+    IndexFormat indexFormat{ IndexFormat::INDEXED_GZIP };
 };
 
 
 void
-printHelp( const cxxopts::Options& options )
+printRapidgzipHelp( const cxxopts::Options& options )
 {
     std::cout
     << options.help()
     << "\n"
-    << "If no file names are given, pragzip decompresses from standard input to standard output.\n"
+    << "If no file names are given, rapidgzip decompresses from standard input to standard output.\n"
     << "If the output is discarded by piping to /dev/null, then the actual decoding step might\n"
     << "be omitted if neither -l nor -L nor --force are given.\n"
     << "\n"
     << "Examples:\n"
     << "\n"
     << "Decompress a file:\n"
-    << "  pragzip -d file.gz\n"
+    << "  rapidgzip -d file.gz\n"
     << "\n"
     << "Decompress a file in parallel:\n"
-    << "  pragzip -d -P 0 file.gz\n"
+    << "  rapidgzip -d -P 0 file.gz\n"
     << "\n"
     << "List information about all gzip streams and deflate blocks:\n"
-    << "  pragzip --analyze file.gz\n"
+    << "  rapidgzip --analyze file.gz\n"
     << std::endl;
-}
-
-
-std::string
-getFilePath( cxxopts::ParseResult const& parsedArgs,
-             std::string          const& argument )
-{
-    if ( parsedArgs.count( argument ) > 0 ) {
-        auto path = parsedArgs[argument].as<std::string>();
-        if ( path != "-" ) {
-            return path;
-        }
-    }
-    return {};
 }
 
 
@@ -81,6 +78,8 @@ printIndexAnalytics( const Reader& reader )
     if ( offsets.size() <= 1 ) {
         return;
     }
+
+    /* Analyze the offsets. */
 
     Statistics<double> encodedOffsetSpacings;
     Statistics<double> decodedOffsetSpacings;
@@ -101,31 +100,75 @@ printIndexAnalytics( const Reader& reader )
         << "    Decoded offset spacings: ( min: " << decodedOffsetSpacings.min << ", "
         << decodedOffsetSpacings.formatAverageWithUncertainty()
         << ", max: " << decodedOffsetSpacings.max << " ) MB\n";
+
+    /* Analyze the windows. */
+    const auto gzipIndex = reader->gzipIndex();
+    if ( gzipIndex.windows ) {
+        const auto [lock, windows] = gzipIndex.windows->data();
+        const auto compressedWindowSize =
+            std::accumulate( windows->begin(), windows->end(), size_t( 0 ), [] ( size_t sum, const auto& kv ) {
+                return sum + ( kv.second ? kv.second->compressedSize() : 0 );
+            } );
+        const auto decompressedWindowSize =
+            std::accumulate( windows->begin(), windows->end(), size_t( 0 ), [] ( size_t sum, const auto& kv ) {
+                return sum + ( kv.second ? kv.second->decompressedSize() : 0 );
+            } );
+        std::cerr << "    Windows Count: " << windows->size() << "\n"
+                  << "    Total Compressed Window Size: " << formatBytes( compressedWindowSize ) << "\n"
+                  << "    Total Decompressed Window Size: " << formatBytes( decompressedWindowSize ) << "\n";
+    }
 }
 
 
-template<typename Reader,
-         typename WriteFunctor>
-size_t
-decompressParallel( const Reader&       reader,
-                    const std::string&  indexLoadPath,
-                    const std::string&  indexSavePath,
-                    const WriteFunctor& writeFunctor,
-                    const bool          verbose )
+enum class DecompressErrorCode
 {
-    if ( !indexLoadPath.empty() ) {
-        reader->setBlockOffsets( readGzipIndex( std::make_unique<StandardFileReader>( indexLoadPath ) ) );
+    SUCCESS = 0,
+    BROKEN_PIPE = 1,
+};
 
-        if ( verbose && ( !indexSavePath.empty() || !indexLoadPath.empty() ) ) {
+
+template<typename ChunkData,
+         typename ReadFunctor = std::function<size_t( std::unique_ptr<rapidgzip::ParallelGzipReader<ChunkData> >& )> >
+[[nodiscard]] DecompressErrorCode
+decompressParallel( const Arguments&   args,
+                    UniqueFileReader   inputFile,
+                    const ReadFunctor& readFunctor )
+{
+    using Reader = rapidgzip::ParallelGzipReader<ChunkData>;
+    auto reader = std::make_unique<Reader>( std::move( inputFile ), args.decoderParallelism, args.chunkSize );
+
+    reader->setStatisticsEnabled( args.verbose );
+    reader->setShowProfileOnDestruction( args.verbose );
+    reader->setCRC32Enabled( args.crc32Enabled );
+    reader->setKeepIndex( !args.indexSavePath.empty() || !args.indexLoadPath.empty() || args.keepIndex );
+    reader->setWindowSparsity( args.windowSparsity );
+    if ( ( args.indexFormat == IndexFormat::GZTOOL ) || ( args.indexFormat == IndexFormat::GZTOOL_WITH_LINES ) ) {
+        /* Compress with zlib instead of gzip to avoid recompressions when exporting the index. */
+        reader->setWindowCompressionType( CompressionType::ZLIB );
+    }
+
+    if ( !args.indexLoadPath.empty() ) {
+        reader->importIndex( std::make_unique<StandardFileReader>( args.indexLoadPath ) );
+
+        if ( args.verbose && ( !args.indexSavePath.empty() || !args.indexLoadPath.empty() ) ) {
             printIndexAnalytics( reader );
         }
     }
 
-    const auto totalBytesRead = reader->read( writeFunctor );
+    if ( args.gatherLineOffsets
+         || ( !args.indexSavePath.empty() && ( args.indexFormat == IndexFormat::GZTOOL_WITH_LINES ) ) )
+    {
+        reader->gatherLineOffsets();
+    }
 
-    if ( !indexSavePath.empty() ) {
-        const auto file = throwingOpen( indexSavePath, "wb" );
+    try {
+        readFunctor( reader );
+    } catch ( const BrokenPipeException& ) {
+        return DecompressErrorCode::BROKEN_PIPE;
+    }
 
+    if ( !args.indexSavePath.empty() ) {
+        const auto file = throwingOpen( args.indexSavePath, "wb" );
         const auto checkedWrite =
             [&file] ( const void* buffer, size_t size )
             {
@@ -134,55 +177,72 @@ decompressParallel( const Reader&       reader,
                 }
             };
 
-        writeGzipIndex( reader->gzipIndex(), checkedWrite );
+        reader->exportIndex( checkedWrite, args.indexFormat );
     }
 
-    if ( verbose && indexLoadPath.empty() && !indexSavePath.empty() ) {
+    if ( args.verbose && args.indexLoadPath.empty() && !args.indexSavePath.empty() ) {
         printIndexAnalytics( reader );
     }
 
-    return totalBytesRead;
+    return DecompressErrorCode::SUCCESS;
 }
 
 
-/**
- * Dispatch to the appropriate ParallelGzipReader template arguments based on @p verbose.
- */
-template<typename ChunkData,
-         typename WriteFunctor = std::function<void ( const std::shared_ptr<ChunkData>&, size_t, size_t )> >
-size_t
-decompressParallel( const Arguments&    args,
-                    UniqueFileReader    inputFile,
-                    const WriteFunctor& writeFunctor )
+[[nodiscard]] std::pair<std::string, UniqueFileReader>
+parseInputFileSpecification( const cxxopts::ParseResult& parsedArgs )
 {
-    if ( args.verbose ) {
-        using Reader = pragzip::ParallelGzipReader<ChunkData, /* enable statistics */ true, /* show profile */ true>;
-        auto reader = std::make_unique<Reader>( std::move( inputFile ), args.decoderParallelism, args.chunkSize );
-        reader->setCRC32Enabled( args.crc32Enabled );
-        return decompressParallel( std::move( reader ), args.indexLoadPath, args.indexSavePath, writeFunctor,
-                                   args.verbose );
-    } else {
-        using Reader = pragzip::ParallelGzipReader<ChunkData, /* enable statistics */ false, /* show profile */ false>;
-        auto reader = std::make_unique<Reader>( std::move( inputFile ), args.decoderParallelism, args.chunkSize );
-        reader->setCRC32Enabled( args.crc32Enabled );
-        return decompressParallel( std::move( reader ), args.indexLoadPath, args.indexSavePath, writeFunctor,
-                                   args.verbose );
+    if ( parsedArgs.count( "input" ) > 1 ) {
+        std::cerr << "One or none gzip filename to decompress must be specified!\n";
+        return {};
     }
+
+    std::string inputFilePath;  /* Can be empty. Then, read from STDIN. */
+    if ( parsedArgs.count( "input" ) == 1 ) {
+        inputFilePath = parsedArgs["input"].as<std::string>();
+        if ( !inputFilePath.empty() && !fileExists( inputFilePath ) ) {
+            std::cerr << "Input file could not be found! Specified path: " << inputFilePath << "\n";
+            return {};
+        }
+    }
+
+    if ( inputFilePath.empty() && !stdinHasInput() ) {
+        std::cerr << "Either stdin must have input, e.g., by piping to it, or an input file must be specified!\n";
+        return {};
+    }
+
+    auto inputFile = openFileOrStdin( inputFilePath );
+    const auto ioReadMethod = parsedArgs["io-read-method"].as<std::string>();
+    if ( ioReadMethod == "sequential" ) {
+        inputFile = std::make_unique<SinglePassFileReader>( std::move( inputFile ) );
+    } else if ( ( ioReadMethod == "locked-read" ) || ( ioReadMethod == "pread" ) ) {
+        auto sharedFile = ensureSharedFileReader( std::move( inputFile ) );
+        sharedFile->setUsePread( ioReadMethod == "pread" );
+        inputFile = std::move( sharedFile );
+    }
+
+    return { inputFilePath, std::move( inputFile ) };
 }
 
 
 int
-pragzipCLI( int argc, char** argv, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q, std::atomic_int *producerDone )
+rapidgzipCLI( int                  argc,
+              //char const * const * argv,
+              char ** argv,
+              moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q, 
+              std::atomic_int *producerDone
+              )
 {
+    /* Cleaned, checked, and typed arguments. */
+    Arguments args;
+
     /**
      * @note For some reason implicit values do not mix very well with positional parameters!
      *       Parameters given to arguments with implicit values will be matched by the positional argument instead!
      */
-    cxxopts::Options options( "pragzip",
-                              "A gzip decompressor tool based on the pragzip backend from ratarmount" );
+    cxxopts::Options options( "rapidgzip",
+                              "A gzip decompressor tool based on the rapidgzip backend from ratarmount" );
     options.add_options( "Decompression" )
         ( "c,stdout"     , "Output to standard output. This is the default, when reading from standard input." )
-        ( "d,decompress" , "Force decompression. Only for compatibility. No compression supported anyways." )
         ( "f,force"      , "Force overwriting existing output files. "
                            "Also forces decompression even when piped to /dev/null." )
         ( "i,input"      , "Input file. If none is given, data is read from standard input.",
@@ -193,52 +253,72 @@ pragzipCLI( int argc, char** argv, moodycamel::ReaderWriterQueue<std::pair<char 
           cxxopts::value<std::string>() )
         ( "k,keep"       , "Keep (do not delete) input file. Only for compatibility. "
                            "This tool will not delete anything automatically!" )
-        ( "analyze"      , "Print output about the internal file format structure like the block types." )
-
-        ( "chunk-size"   , "The chunk size decoded by the parallel workers in KiB.",
-          cxxopts::value<unsigned int>()->default_value( "4096" ) )
-
         ( "P,decoder-parallelism",
           "Use the parallel decoder. "
           "If an optional integer >= 1 is given, then that is the number of decoder threads to use. "
           "Note that there might be further threads being started with non-decoding work. "
-          "If 0 is given, then the parallelism will be determiend automatically.",
+          "If 0 is given, then the parallelism will be determined automatically.",
           cxxopts::value<unsigned int>()->default_value( "0" ) )
+        ( "ranges", "Decompress only the specified byte ranges. Example: 10@0,1KiB@15KiB,5L@20L to decompress the "
+                    "first 10 bytes, 1024 bytes at offset 15 KiB, as well as the 5 lines after skipping the first "
+                    "20 lines.",
+          cxxopts::value<std::string>() );
 
+    options.add_options( "Advanced" )
+        ( "chunk-size", "The chunk size decoded by the parallel workers in KiB.",
+          cxxopts::value<unsigned int>()->default_value( "4096" ) )
         ( "verify", "Verify CRC32 checksum. Will slow down decompression and there are already some implicit "
                     "and explicit checks like whether the end of the file could be reached and whether the stream "
-                    "size is correct. ")
-
-        ( "import-index", "Uses an existing gzip index.", cxxopts::value<std::string>() )
-        ( "export-index", "Write out a gzip index file.", cxxopts::value<std::string>() );
+                    "size is correct. ",
+          cxxopts::value( args.crc32Enabled )->implicit_value( "true" ) )
+        ( "no-verify", "Do not verify CRC32 checksum. Might speed up decompression and there are already some implicit "
+                       "and explicit checks like whether the end of the file could be reached and whether the stream "
+                       "size is correct.",
+          cxxopts::value( args.crc32Enabled )->implicit_value( "false" ) )
+        ( "io-read-method", "Option to force a certain I/O method for reading. By default, pread will be used "
+                            "when possible. Possible values: pread, sequential, locked-read",
+          cxxopts::value<std::string>()->default_value( "pread" ) )
+        ( "index-format", "Option to select an output index format. Possible values: gztool, gztool-with-lines, "
+                          "indexed_gzip.",
+          cxxopts::value<std::string>()->default_value( "indexed_gzip" ) )
+        ( "sparse-windows", "On by default. Reduce index compressibility by zeroing out window data that is not "
+                            "referenced in the subsequent stream.",
+          cxxopts::value( args.windowSparsity )->implicit_value( "true" ) )
+        ( "no-sparse-windows", "Do not zero out unreferenced data in index windows. This may very slightly improve "
+                               "first-time decompression speed, but may also lead to higher memory usage. It can also "
+                               "be useful to create exported index that are binary identical to other those created "
+                               "by other tools such as gztool to debug indexes. In normal usage the sparsity is an "
+                               "index modification that is fully compatible with the original tools.",
+          cxxopts::value( args.windowSparsity )->implicit_value( "false" ) );
 
     options.add_options( "Output" )
-        ( "h,help"   , "Print this help mesage." )
-        ( "q,quiet"  , "Suppress noncritical error messages." )
+        ( "h,help"   , "Print this help message." )
+        ( "q,quiet"  , "Suppress non-critical error messages." )
         ( "v,verbose", "Print debug output and profiling statistics." )
         ( "V,version", "Display software version." )
-        ( "oss-attributions", "Display open-source software licenses." );
+        ( "oss-attributions", "Display open-source software licenses." )
+        ( "oss-attributions-yaml", "Display open-source software licenses in YAML format for use with Conda." );
 
     /* These options are offered because just piping to other tools can already bottleneck everything! */
-    options.add_options( "Processing" )
-        ( "count"      , "Prints the decompressed size." )
-        ( "l,count-lines", "Prints the number of newline characters in the decompressed data." );
+    options.add_options( "Actions" )
+        ( "d,decompress" , "Force decompression. Only for compatibility. No compression supported anyways." )
+        ( "import-index" , "Uses an existing gzip index.", cxxopts::value<std::string>() )
+        ( "export-index" , "Write out a gzip index file.", cxxopts::value<std::string>() )
+        ( "count"        , "Prints the decompressed size." )
+        ( "l,count-lines", "Prints the number of newline characters in the decompressed data." )
+        ( "analyze"      , "Print output about the internal file format structure like the block types." );
 
     options.parse_positional( { "input" } );
 
-    /* cxxopts allows to specifiy arguments multiple times. But if the argument type is not a vector, then only
+    /* cxxopts allows to specify arguments multiple times. But if the argument type is not a vector, then only
      * the last value will be kept! Therefore, do not check against this usage and simply use that value.
      * Arguments may only be queried with as if they have (default) values. */
 
     const auto parsedArgs = options.parse( argc, argv );
 
-    /* Cleaned, checked, and typed arguments. */
-    Arguments args;
-
     const auto force = parsedArgs["force"].as<bool>();
     const auto quiet = parsedArgs["quiet"].as<bool>();
     args.verbose = parsedArgs["verbose"].as<bool>();
-    args.crc32Enabled = parsedArgs["verify"].as<bool>();
 
     const auto getParallelism = [] ( const auto p ) { return p > 0 ? p : availableCores(); };
     args.decoderParallelism = getParallelism( parsedArgs["decoder-parallelism"].as<unsigned int>() );
@@ -256,52 +336,117 @@ pragzipCLI( int argc, char** argv, moodycamel::ReaderWriterQueue<std::pair<char 
     /* Check against simple commands like help and version. */
 
     if ( parsedArgs.count( "help" ) > 0 ) {
-        printHelp( options );
+        printRapidgzipHelp( options );
         return 0;
     }
 
     if ( parsedArgs.count( "version" ) > 0 ) {
-        std::cout << "pragzip, CLI to the parallelized, indexed, and seekable gzip decoding library pragzip "
-                  << "version 0.6.0.\n";
+        std::cout
+            << "rapidgzip, CLI to the parallelized, indexed, and seekable gzip decoding library rapidgzip version "
+            << static_cast<uint32_t>( rapidgzip::VERSION[0] ) << "."
+            << static_cast<uint32_t>( rapidgzip::VERSION[1] ) << "."
+            << static_cast<uint32_t>( rapidgzip::VERSION[2] ) << "\n";
         return 0;
     }
 
     if ( parsedArgs.count( "oss-attributions" ) > 0 ) {
-        std::cout << licenses::CXXOPTS << "\n"
-        #ifdef WITH_RPMALLOC
-                  << licenses::RPMALLOC << "\n"
+        std::cout
+            << "# " << thirdparty::cxxopts::name << "\n\n"
+            << thirdparty::cxxopts::url << "\n\n"
+            << thirdparty::cxxopts::license << "\n\n"
+        #ifdef WITH_ISAL
+            << "# " << thirdparty::isal::name << "\n\n"
+            << thirdparty::isal::url << "\n\n"
+            << thirdparty::isal::license << "\n\n"
         #endif
-                  << licenses::ZLIB;
+        #ifdef WITH_RPMALLOC
+            << "# " << thirdparty::rpmalloc::name << "\n\n"
+            << thirdparty::rpmalloc::url << "\n\n"
+            << thirdparty::rpmalloc::fullLicense << "\n\n"
+        #endif
+            << "# " << thirdparty::zlib::name << "\n\n"
+            << thirdparty::zlib::url << "\n\n"
+            << thirdparty::zlib::license;
         return 0;
+    }
+
+    if ( parsedArgs.count( "oss-attributions-yaml" ) > 0 ) {
+        std::cout
+            << "root_name: rapidgzip\n"
+            << "third_party_libraries:\n"
+            << "  - package_name: " << thirdparty::cxxopts::name << "\n"
+            << "    package_version: "
+            << static_cast<uint32_t>( cxxopts::version.major ) << "."
+            << static_cast<uint32_t>( cxxopts::version.minor ) << "."
+            << static_cast<uint32_t>( cxxopts::version.patch ) << "\n"
+            << "    license: Unlicense\n"
+            << "    licenses:\n"
+            << "      - license: Unlicense\n"
+            << "        text: " << toYamlString( thirdparty::cxxopts::license ) << "\n"
+        #ifdef WITH_ISAL
+            << "  - package_name: " << thirdparty::isal::name << "\n"
+            << "    package_version: 2.30.0\n"
+            << "    license: BSD-3\n"
+            << "    licenses:\n"
+            << "      - license: BSD-3\n"
+            << "        text: " << toYamlString( thirdparty::isal::license ) << "\n"
+        #endif
+        #ifdef WITH_RPMALLOC
+            << "  - package_name: " << thirdparty::rpmalloc::name << "\n"
+            << "    package_version: 1.4.4\n"
+            << "    license: Unlicense/MIT\n"
+            << "    licenses:\n"
+            << "      - license: Unlicense\n"
+            << "        text: " << toYamlString( thirdparty::rpmalloc::unlicense ) << "\n"
+            << "      - license: MIT\n"
+            << "        text: " << toYamlString( thirdparty::rpmalloc::mit ) << "\n"
+        #endif
+            << "  - package_name: " << thirdparty::zlib::name << "\n"
+            << "    package_version: " << ZLIB_VER_MAJOR << "." << ZLIB_VER_MINOR << "." << ZLIB_VER_REVISION << "\n"
+            << "    license: Zlib\n"
+            << "    licenses:\n"
+            << "      - license: Zlib\n"
+            << "        text: " << toYamlString( thirdparty::zlib::license ) << "\n";
+        return 0;
+    }
+
+    /* Parse action arguments. */
+
+    const auto countBytes = parsedArgs.count( "count" ) > 0;
+    const auto countLines = parsedArgs.count( "count-lines" ) > 0;
+    const auto decompress = ( parsedArgs.count( "decompress" ) > 0 ) || ( parsedArgs.count( "ranges" ) > 0 );
+
+    std::optional<std::vector<FileRange> > fileRanges;
+    if ( parsedArgs.count( "ranges" ) > 0 ) {
+        fileRanges = parseFileRanges( parsedArgs["ranges"].as<std::string>() );
+
+        /* Check whether the index needs to be kept because the ranges do not traverse the file in order. */
+        if ( fileRanges->size() > 1 ) {
+            for ( size_t i = 0; i + 1 < fileRanges->size(); ++i ) {
+                if ( fileRanges->at( i ).offset + fileRanges->at( i ).size > fileRanges->at( i + 1 ).offset ) {
+                    args.keepIndex = true;
+                    break;
+                }
+            }
+        }
+
+        /* Check whether some ranges are lines and enable line offset gathering in that case. */
+        for ( const auto& range : *fileRanges ) {
+            if ( ( range.size > 0 ) && ( range.offsetIsLine || range.sizeIsLine ) ) {
+                /* Because we cannot arbitrarly convert lines to offsets, we cannot easily determine whether
+                 * backward seeking is necessary. Therefore keep the index if line offsets are used. */
+                args.keepIndex = true;
+                args.gatherLineOffsets = true;
+                break;
+            }
+        }
     }
 
     /* Parse input file specifications. */
 
-    if ( parsedArgs.count( "input" ) > 1 ) {
-        std::cerr << "One or none gzip filename to decompress must be specified!\n";
+    auto [inputFilePath, inputFile] = parseInputFileSpecification( parsedArgs );
+    if ( !inputFile ) {
         return 1;
-    }
-
-    if ( !stdinHasInput() && ( parsedArgs.count( "input" ) != 1 ) ) {
-        std::cerr << "Either stdin must have input, e.g., by piping to it, or an input file must be specified!\n";
-        return 1;
-    }
-
-    std::string inputFilePath;  /* Can be empty. Then, read from STDIN. */
-    if ( parsedArgs.count( "input" ) == 1 ) {
-        inputFilePath = parsedArgs["input"].as<std::string>();
-        if ( !inputFilePath.empty() && !fileExists( inputFilePath ) ) {
-            std::cerr << "Input file could not be found! Specified path: " << inputFilePath << "\n";
-            return 1;
-        }
-    }
-
-    auto inputFile = openFileOrStdin( inputFilePath );
-
-    /* Check if analysis is requested. */
-
-    if ( parsedArgs.count( "analyze" ) > 0 ) {
-        return pragzip::deflate::analyze( std::move( inputFile ) ) == pragzip::Error::NONE ? 0 : 1;
     }
 
     /* Parse output file specifications. */
@@ -316,22 +461,18 @@ pragzipCLI( int argc, char** argv, moodycamel::ReaderWriterQueue<std::pair<char 
                                           - static_cast<std::string::difference_type>( suffix.size() ) );
         } else {
             outputFilePath = inputFilePath + ".out";
-            if ( !quiet ) {
+            if ( !quiet && decompress ) {
                 std::cerr << "[Warning] Could not deduce output file name. Will write to '" << outputFilePath << "'\n";
             }
         }
     }
 
-    /* Parse other arguments. */
-
-    const auto countBytes = parsedArgs.count( "count" ) > 0;
-    const auto countLines = parsedArgs.count( "count-lines" ) > 0;
-    const auto decompress = parsedArgs.count( "decompress" ) > 0;
-
     if ( decompress && ( outputFilePath != "/dev/null" ) && fileExists( outputFilePath ) && !force ) {
         std::cerr << "Output file '" << outputFilePath << "' already exists! Use --force to overwrite.\n";
         return 1;
     }
+
+    /* Parse index arguments. */
 
     args.indexLoadPath = parsedArgs.count( "import-index" ) > 0
                          ? parsedArgs["import-index"].as<std::string>()
@@ -342,131 +483,293 @@ pragzipCLI( int argc, char** argv, moodycamel::ReaderWriterQueue<std::pair<char 
     if ( !args.indexLoadPath.empty() && !args.indexSavePath.empty() ) {
         std::cerr << "[Warning] Importing and exporting an index makes limited sense.\n";
     }
-    if ( ( !args.indexLoadPath.empty() || !args.indexSavePath.empty() ) && ( args.decoderParallelism == 1 ) ) {
-        std::cerr << "[Warning] The index only has an effect for parallel decoding.\n";
+    if ( !args.indexLoadPath.empty() && args.indexSavePath.empty() && ( args.decoderParallelism == 1 ) ) {
+        std::cerr << "[Warning] The index only has an effect for parallel decoding and index exporting.\n";
     }
     if ( !args.indexLoadPath.empty() && !fileExists( args.indexLoadPath ) ) {
         std::cerr << "The index to import was not found!\n";
         return 1;
     }
 
+    if ( parsedArgs.count( "index-format" ) > 0 ) {
+        const auto indexFormat = parsedArgs["index-format"].as<std::string>();
+        if ( indexFormat == "indexed_gzip" ) {
+            args.indexFormat = IndexFormat::INDEXED_GZIP;
+        } else if ( indexFormat == "gztool" ) {
+            args.indexFormat = IndexFormat::GZTOOL;
+        } else if ( indexFormat == "gztool-with-lines" ) {
+            args.indexFormat = IndexFormat::GZTOOL_WITH_LINES;
+        } else {
+            throw std::invalid_argument( "Invalid index format string: " + indexFormat );
+        }
+
+        if ( args.indexSavePath.empty() ) {
+            std::cerr << "[Warning] The index format has no effect without --export-index!\n";
+        }
+    }
+
+    /* Check if analysis is requested. */
+
+    if ( parsedArgs.count( "analyze" ) > 0 ) {
+        return rapidgzip::deflate::analyze( std::move( inputFile ), args.verbose ) == rapidgzip::Error::NONE ? 0 : 1;
+    }
+
+    /* Check that there is at least one actionable request. */
+
+    if ( !decompress && !countBytes && !countLines && args.indexSavePath.empty() ) {
+        std::cerr << "No suitable arguments were given. Please refer to the help!\n\n";
+        printRapidgzipHelp( options );
+        return 1;
+    }
+
     /* Actually do things as requested. */
 
-    if ( decompress || countBytes || countLines || !args.indexSavePath.empty() ) {
-        if ( decompress && args.verbose ) {
-            std::cerr << "Decompress " << ( inputFilePath.empty() ? "<stdin>" : inputFilePath.c_str() )
-                      << " -> " << ( outputFilePath.empty() ? "<stdout>" : outputFilePath.c_str() ) << "\n";
-        }
+    if ( decompress && args.verbose ) {
+        std::cerr << "Decompress " << ( inputFilePath.empty() ? "<stdin>" : inputFilePath.c_str() )
+                  << " -> " << ( outputFilePath.empty() ? "<stdout>" : outputFilePath.c_str() ) << "\n";
+    }
 
-        if ( !inputFile ) {
-            std::cerr << "Could not open input file: " << inputFilePath << "!\n";
-            return 1;
-        }
+    if ( !inputFile ) {
+        std::cerr << "Could not open input file: " << inputFilePath << "!\n";
+        return 1;
+    }
 
-        std::unique_ptr<OutputFile> outputFile;
-        if ( decompress ) {
-            outputFile = std::make_unique<OutputFile>( outputFilePath );
-        }
-        const auto outputFileDescriptor = outputFile ? outputFile->fd() : -1;
+    std::unique_ptr<OutputFile> outputFile;
+    if ( decompress ) {
+        outputFile = std::make_unique<OutputFile>( outputFilePath );
+    }
+    const auto outputFileDescriptor = outputFile ? outputFile->fd() : -1;
 
-        uint64_t newlineCount{ 0 };
+    uint64_t newlineCount{ 0 };
 
-        const auto t0 = now();
+    const auto t0 = now();
 
-        size_t totalBytesRead{ 0 };
-        if ( args.decoderParallelism == 1 ) {
-            const auto writeAndCount =
-                [outputFileDescriptor, countLines, &newlineCount]
-                ( const void* const buffer,
-                  uint64_t const    size )
+    size_t totalBytesRead{ 0 };
+    const auto writeAndCount =
+        [outputFileDescriptor, countLines, &newlineCount, &totalBytesRead, Q, producerDone]
+        ( const std::shared_ptr<rapidgzip::ChunkData>& chunkData,
+          size_t const                                 offsetInChunk,
+          size_t const                                 dataToWriteSize )
+        {
+            const auto errorCode = writeAll( chunkData, outputFileDescriptor, offsetInChunk, dataToWriteSize, Q, producerDone );
+            if ( errorCode == EPIPE ) {
+                throw BrokenPipeException();
+            }
+
+            if ( errorCode != 0 ) {
+                std::stringstream message;
+                message << "Failed to write all bytes because of: " << strerror( errorCode )
+                        << " (" << errorCode << ")";
+                throw std::runtime_error( std::move( message ).str() );
+            }
+
+            totalBytesRead += dataToWriteSize;
+
+            if ( countLines ) {
+                using rapidgzip::deflate::DecodedData;
+                for ( auto it = DecodedData::Iterator( *chunkData, offsetInChunk, dataToWriteSize );
+                      static_cast<bool>( it ); ++it )
                 {
-                    if ( outputFileDescriptor >= 0 ) {
-                        writeAllToFd( outputFileDescriptor, buffer, size );
-                    }
-                    if ( countLines ) {
-                        newlineCount += countNewlines( { reinterpret_cast<const char*>( buffer ),
-                                                         static_cast<size_t>( size ) } );
-                    }
-                };
+                    const auto& [buffer, size] = *it;
+                    newlineCount += countNewlines( { reinterpret_cast<const char*>( buffer ), size } );
+                }
+            }
+        };
 
-            pragzip::GzipReader gzipReader{ std::move( inputFile ) };
-            gzipReader.setCRC32Enabled( args.crc32Enabled );
-            totalBytesRead = gzipReader.read( writeAndCount );
-        } else {
-            const auto writeAndCount =
-                [outputFileDescriptor, countLines, &newlineCount, Q, producerDone]
-                ( const std::shared_ptr<pragzip::ChunkData>& chunkData,
-                  size_t const                               offsetInBlock,
-                  size_t const                               dataToWriteSize )
-                {
-                    writeAll( chunkData, outputFileDescriptor, offsetInBlock, dataToWriteSize, Q, producerDone );
-                    if ( countLines ) {
-                        using pragzip::deflate::DecodedData;
-                        for ( auto it = DecodedData::Iterator( *chunkData, offsetInBlock, dataToWriteSize );
+    args.chunkSize = parsedArgs["chunk-size"].as<unsigned int>() * 1_Ki;
+
+    auto errorCode = DecompressErrorCode::SUCCESS;
+    if ( ( outputFileDescriptor == -1 ) && args.indexSavePath.empty() && countBytes && !countLines
+         && !args.crc32Enabled && !fileRanges )
+    {
+        /* Need to do nothing with the chunks because decompressParallel returns the decompressed size.
+         * Note that we use rapidgzip::ChunkDataCounter to speed up decompression. Therefore an index
+         * will not be created and there also will be no checksum verification! */
+        errorCode = decompressParallel<rapidgzip::ChunkDataCounter>(
+            args, std::move( inputFile ), [&totalBytesRead] ( const auto& reader ) {
+                totalBytesRead = reader->read( /* do nothing */ nullptr, std::numeric_limits<size_t>::max() );
+            } );
+    } else {
+        const auto readRange =
+            [&totalBytesRead, outputFileDescriptor, countLines, &writeAndCount]
+            ( const auto&  reader,
+              const size_t size )
+            {
+                /* An empty functor will lead to decompression to be skipped if the index is finalized! */
+                if ( ( outputFileDescriptor != -1 ) || countLines ) {
+                    reader->read( writeAndCount, size );
+                } else {
+                    totalBytesRead += reader->read( /* do nothing */ nullptr, size );
+                }
+            };
+
+        const auto readLines =
+            [&] ( const auto&  reader,
+                  const size_t lineCount,
+                  const auto&  writeFunctor )
+            {
+                size_t lastLineOffset = reader->tell();
+                const auto newlineCharacter = reader->newlineFormat() == NewlineFormat::LINE_FEED ? '\n' : '\r';
+                auto remainingLineCount = lineCount;
+
+                const auto forwardLineWrites =
+                    [&lastLineOffset, &remainingLineCount, newlineCharacter, &writeFunctor]
+                    ( const std::shared_ptr<rapidgzip::ChunkData>& chunkData,
+                      const size_t                                 offsetInChunk,
+                      const size_t                                 dataToWriteSize )
+                    {
+                        if ( remainingLineCount == 0 ) {
+                            return;
+                        }
+
+                        using rapidgzip::deflate::DecodedData;
+                        size_t nBytesRead{ 0 };
+                        for ( auto it = DecodedData::Iterator( *chunkData, offsetInChunk, dataToWriteSize );
                               static_cast<bool>( it ); ++it )
                         {
                             const auto& [buffer, size] = *it;
-                            newlineCount += countNewlines( { reinterpret_cast<const char*>( buffer ), size } );
+                            const auto result = findNthNewline( { reinterpret_cast<const char*>( buffer ), size },
+                                                                remainingLineCount, newlineCharacter );
+                            remainingLineCount = result.remainingLineCount;
+                            if ( remainingLineCount == 0 ) {
+                                if ( result.position == std::string_view::npos ) {
+                                    throw std::logic_error( "Find n-th line should return a valid position when "
+                                                            "the input line count was not 0 but is 0 thereafter." );
+                                }
+
+                                /* Skip over last newline character with +1. */
+                                nBytesRead += result.position + 1U;
+                                lastLineOffset += result.position + 1U;
+                                break;
+                            }
+                            nBytesRead += size;
+                            lastLineOffset += size;
                         }
+
+                        if ( nBytesRead > dataToWriteSize ) {
+                            throw std::logic_error( "Shouldn't have read more bytes than specified in the chunk." );
+                        }
+
+                        writeFunctor( chunkData, offsetInChunk, nBytesRead );
+                    };
+
+                while ( remainingLineCount > 0 ) {
+                    const auto currentBytesRead = reader->read( forwardLineWrites, 4_Mi );
+                    if ( currentBytesRead == 0 ) {
+                        break;
                     }
-                };
+                }
 
-            args.chunkSize = parsedArgs["chunk-size"].as<unsigned int>() * 1_Ki;
+                reader->seekTo( lastLineOffset );
+            };
 
-            if ( ( outputFileDescriptor == -1 ) && args.indexSavePath.empty() && countBytes ) {
-                /* Need to do nothing with the chunks because decompressParallel returns the decompressed size. */
-                const auto doNothing = [] ( const auto&, size_t, size_t ) {};
+        errorCode = decompressParallel<rapidgzip::ChunkData>(
+            args, std::move( inputFile ), [&] ( const auto& reader ) {
+                if ( !fileRanges ) {
+                    readRange( reader, std::numeric_limits<size_t>::max() );
+                    return;
+                }
 
-                totalBytesRead = decompressParallel<pragzip::ChunkDataCounter>(
-                    args, std::move( inputFile ), doNothing );
-            } else {
-                totalBytesRead = decompressParallel<pragzip::ChunkData>( args, std::move( inputFile ), writeAndCount );
-            }
-        }
+                for ( const auto& range : *fileRanges ) {
+                    if ( range.size == 0 ) {
+                        continue;
+                    }
 
-        const auto writeToStdErr = outputFile && outputFile->writingToStdout();
-        if ( outputFile ) {
-            outputFile->truncate( totalBytesRead );
-            outputFile.reset();  // Close the file here to include it in the time measurement.
-        }
+                    if ( ( ( range.offsetIsLine && ( range.offset > 0 ) ) || range.sizeIsLine )
+                         && !reader->newlineFormat() )
+                    {
+                        throw std::invalid_argument( "Currently, seeking and reading lines only works when "
+                                                     "importing gztool indexes created with -x or -X!" );
+                    }
 
-        const auto t1 = now();
-#ifdef Verbose
-        std::cerr << "Decompressed in total " << totalBytesRead << " B in " << duration( t0, t1 ) << " s -> "
-                  << static_cast<double>( totalBytesRead ) / 1e6 / duration( t0, t1 ) << " MB/s\n";
-#endif
+                    /* Seek to line or byte offset. Note that line 0 starts at byte 0 by definition. */
+                    if ( range.offsetIsLine && ( range.offset > 0 ) ) {
+                        const auto& newlineOffsets = reader->newlineOffsets();
+                        const auto lessLineOffset = [] ( const auto& a, const auto lineOffset ) {
+                            return a.lineOffset < lineOffset;
+                        };
+                        auto newlineOffset = std::lower_bound( newlineOffsets.begin(), newlineOffsets.end(),
+                                                               range.offset, lessLineOffset );
+                        if ( newlineOffset == newlineOffsets.end() ) {
+                            continue;
+                        }
 
-        auto& out = writeToStdErr ? std::cerr : std::cout;
-        if ( countBytes != countLines ) {
-            out << ( countBytes ? totalBytesRead : newlineCount );
-        } else if ( countBytes && countLines ) {
-            out << "Size: " << totalBytesRead << "\n";
-            out << "Lines: " << newlineCount << "\n";
-        }
+                        if ( newlineOffset == newlineOffsets.begin() ) {
+                            throw std::logic_error( "Bisection may never point to the first element because "
+                                                    "line offset 0 is always smaller than any line offset handled "
+                                                    "in this branch!" );
+                        }
+                        --newlineOffset;
 
-        return 0;
+                        reader->seekTo( newlineOffset->uncompressedOffsetInBytes );
+
+                        if ( newlineOffset->lineOffset >= range.offset ) {
+                            throw std::logic_error( "Bisection should have returned a line offset prior to the "
+                                                    "one we need to seek to." );
+                        }
+
+                        readLines( reader, range.offset - newlineOffset->lineOffset,
+                                   [] ( const auto&, size_t, size_t ) {} );
+                    } else {
+                        reader->seekTo( range.offset );
+                    }
+
+                    if ( range.sizeIsLine ) {
+                        readLines( reader, range.size, writeAndCount );
+                    } else {
+                        readRange( reader, range.size );
+                    }
+                }
+            } );
     }
 
-    std::cerr << "No suitable arguments were given. Please refer to the help!\n\n";
+    const auto writeToStdErr = outputFile && outputFile->writingToStdout();
+    if ( outputFile ) {
+        outputFile->truncate( totalBytesRead );
+        outputFile.reset();  // Close the file here to include it in the time measurement.
+    }
 
-    printHelp( options );
+    const auto t1 = now();
+    if ( args.verbose ) {
+        std::cerr << "Decompressed in total " << totalBytesRead << " B in " << duration( t0, t1 ) << " s -> "
+                  << static_cast<double>( totalBytesRead ) / 1e6 / duration( t0, t1 ) << " MB/s\n";
+    }
 
-    return 1;
+    auto& out = writeToStdErr ? std::cerr : std::cout;
+    if ( countBytes != countLines ) {
+        out << ( countBytes ? totalBytesRead : newlineCount ) << "\n";
+    } else if ( countBytes && countLines ) {
+        out << "Size: " << totalBytesRead << "\n";
+        out << "Lines: " << newlineCount << "\n";
+    }
+
+    switch ( errorCode )
+    {
+    case DecompressErrorCode::BROKEN_PIPE:
+        return 128 + /* SIGPIPE */ 13;
+    case DecompressErrorCode::SUCCESS:
+        return 0;
+    }
+    return 2;
 }
 
 
+//#if !defined( WITH_PYTHON_SUPPORT ) && !defined( WITHOUT_MAIN )
 int
 main_pragzip( int argc, char** argv, moodycamel::ReaderWriterQueue<std::pair<char *, int>> *Q, std::atomic_int *producerDone )
 {
-    //for(int i = 0; i < argc; i++) printf("%s ", argv[i]);
-    //printf("\n");
     try
     {
-        return pragzipCLI( argc, argv, Q, producerDone );
+        return rapidgzipCLI( argc, argv, Q, producerDone );
     }
-    catch ( const pragzip::BitReader::EndOfFileReached& exception )
+    catch ( const rapidgzip::BitReader::EndOfFileReached& exception )
     {
         std::cerr << "Unexpected end of file. Truncated or invalid gzip?\n";
+        return 1;
+    }
+    catch ( const bzip2::BitReader::EndOfFileReached& exception )
+    {
+        std::cerr << "Unexpected end of file. Truncated or invalid bzip2?\n";
         return 1;
     }
     catch ( const std::exception& exception )
@@ -482,3 +785,4 @@ main_pragzip( int argc, char** argv, moodycamel::ReaderWriterQueue<std::pair<cha
 
     return 1;
 }
+//#endif

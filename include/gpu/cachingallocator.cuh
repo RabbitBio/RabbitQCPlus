@@ -25,7 +25,7 @@ struct ThrustCachingAllocator : thrust::device_malloc_allocator<T> {
     }
 
     pointer allocate(size_type n){
-        //std::cerr << "alloc" << std::endl;
+        //std::cout << "alloc" << std::endl;
 
         T* ptr = nullptr;
         cudaError_t status = cudaSuccess;
@@ -35,14 +35,14 @@ struct ThrustCachingAllocator : thrust::device_malloc_allocator<T> {
             status = cudaMalloc(&ptr, n * sizeof(T));
         }
         if(status != cudaSuccess){
-            std::cerr << "ThrustCachingAllocator cuda error when allocating " << (n * sizeof(T)) << " bytes: " << cudaGetErrorString(status) << "\n";
+            std::cout << "ThrustCachingAllocator cuda error when allocating " << (n * sizeof(T)) << " bytes: " << cudaGetErrorString(status) << "\n";
             throw std::bad_alloc();
         }
         return thrust::device_pointer_cast(ptr);
     }
 
     void deallocate(pointer ptr, size_type /*n*/){
-    	//std::cerr << "dealloc" << std::endl;
+    	//std::cout << "dealloc" << std::endl;
         cudaError_t status = cudaSuccess;
         if(cubAllocator){
             status = cubAllocator->DeviceFree(deviceId, ptr.get());

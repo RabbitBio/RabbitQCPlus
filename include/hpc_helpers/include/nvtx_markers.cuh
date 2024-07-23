@@ -36,13 +36,13 @@ namespace nvtx {
     inline
     void pop_range(const std::string& /*name*/){
         nvtxRangePop();
-        //std::cerr << "pop " << name << std::endl;
+        //std::cout << "pop " << name << std::endl;
     }
 
     inline
     void pop_range(){
         nvtxRangePop();
-        //std::cerr << "pop " << std::endl;
+        //std::cout << "pop " << std::endl;
     }
 
     struct ScopedRange{

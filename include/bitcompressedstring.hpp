@@ -252,7 +252,7 @@ private:
         const std::uint64_t firstuintindex = firstBit / dataTBits();
         const int begin = firstBit - firstuintindex * dataTBits();
         const int endExcl = lastBitExcl - firstuintindex * dataTBits();
-        //std::cerr << index << ": Set [" << begin << ", " << endExcl << ") of index " << firstuintindex << "\n";
+        //std::cout << index << ": Set [" << begin << ", " << endExcl << ") of index " << firstuintindex << "\n";
 
         auto& first = data[firstuintindex];
         //prevent oob access

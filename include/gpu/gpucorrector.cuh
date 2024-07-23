@@ -278,13 +278,13 @@ namespace gpu{
         }
 
         ~GpuAnchorHasher(){
-            // std::cerr << "GpuAnchorHasher::~GpuAnchorHasher(). Memory of minhash handle: ";
+            // std::cout << "GpuAnchorHasher::~GpuAnchorHasher(). Memory of minhash handle: ";
             // auto memoryUsage = gpuMinhasher->getMemoryInfo(minhashHandle);
-            // std::cerr << memoryUsage.host;
+            // std::cout << memoryUsage.host;
             // for(auto pair : memoryUsage.device){
-            //     std::cerr << ", [" << pair.first << "] " << pair.second;
+            //     std::cout << ", [" << pair.first << "] " << pair.second;
             // }
-            // std::cerr << "\n";
+            // std::cout << "\n";
 
             gpuReadStorage->destroyHandle(readstorageHandle);
             gpuMinhasher->destroyHandle(minhashHandle);
@@ -474,15 +474,15 @@ namespace gpu{
             );
 
             if(d_items.Current() != ecinput.d_candidate_read_ids.data()){
-                //std::cerr << "swap d_candidate_read_ids\n";
+                //std::cout << "swap d_candidate_read_ids\n";
                 std::swap(ecinput.d_candidate_read_ids, d_candidate_read_ids2);
             }
             if(d_numItemsPerSegment.Current() != ecinput.d_candidates_per_anchor.data()){
-                //std::cerr << "swap d_candidates_per_anchor\n";
+                //std::cout << "swap d_candidates_per_anchor\n";
                 std::swap(ecinput.d_candidates_per_anchor, d_candidates_per_anchor2);
             }
             if(d_numItemsPerSegmentPrefixSum.Current() != ecinput.d_candidates_per_anchor_prefixsum.data()){
-                //std::cerr << "swap d_candidates_per_anchor_prefixsum\n";
+                //std::cout << "swap d_candidates_per_anchor_prefixsum\n";
                 std::swap(ecinput.d_candidates_per_anchor_prefixsum, d_candidates_per_anchor_prefixsum2);
             }
 
@@ -607,7 +607,7 @@ namespace gpu{
             const int numCorrectedAnchors = anchorIndicesToProcess.size();
             const int numCorrectedCandidates = candidateIndicesToProcess.size();
 
-            // std::cerr << "numCorrectedAnchors: " << numCorrectedAnchors << 
+            // std::cout << "numCorrectedAnchors: " << numCorrectedAnchors << 
             //     ", numCorrectedCandidates: " << numCorrectedCandidates << "\n";
 
             CorrectionOutput correctionOutput;
@@ -653,7 +653,7 @@ namespace gpu{
                     }
 
                     // if(tmp.readId == 9273463){
-                    //     std::cerr << tmp << "\n";
+                    //     std::cout << tmp << "\n";
                     // }
                 }
 
@@ -685,7 +685,7 @@ namespace gpu{
                     const int candidate_shift = currentOutput.h_alignment_shifts[offsetForCorrectedCandidateData + candidateIndex];
 
                     if(programOptions->new_columns_to_correct < candidate_shift){
-                        std::cerr << "readid " << anchorReadId << " candidate readid " << candidate_read_id << " : "
+                        std::cout << "readid " << anchorReadId << " candidate readid " << candidate_read_id << " : "
                         << candidate_shift << " " << programOptions->new_columns_to_correct <<"\n";
 
                         assert(programOptions->new_columns_to_correct >= candidate_shift);
@@ -713,7 +713,7 @@ namespace gpu{
                     }
 
                     // if(tmp.readId == 9273463){
-                    //     std::cerr << tmp << " with anchorid " << anchorReadId << "\n";
+                    //     std::cout << tmp << " with anchorid " << anchorReadId << "\n";
                     // }
                 }
 
@@ -766,7 +766,7 @@ namespace gpu{
             const int numCorrectedAnchors = anchorIndicesToProcess.size();
             const int numCorrectedCandidates = candidateIndicesToProcess.size();
 
-            // std::cerr << "numCorrectedAnchors: " << numCorrectedAnchors << 
+            // std::cout << "numCorrectedAnchors: " << numCorrectedAnchors << 
             //     ", numCorrectedCandidates: " << numCorrectedCandidates << "\n";
 
             EncodedCorrectionOutput encodedCorrectionOutput;
@@ -849,7 +849,7 @@ namespace gpu{
                     const int candidate_shift = currentOutput.h_alignment_shifts[offsetForCorrectedCandidateData + candidateIndex];
 
                     if(programOptions->new_columns_to_correct < candidate_shift){
-                        std::cerr << "readid " << anchorReadId << " candidate readid " << candidate_read_id << " : "
+                        std::cout << "readid " << anchorReadId << " candidate readid " << candidate_read_id << " : "
                         << candidate_shift << " " << programOptions->new_columns_to_correct <<"\n";
 
                         assert(programOptions->new_columns_to_correct >= candidate_shift);

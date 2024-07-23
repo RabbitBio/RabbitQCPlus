@@ -10,12 +10,12 @@
 #include <utility>
 #include <vector>
 
-#include <common_pragzip.hpp>
-#include <definitions.hpp>
+#include <common.hpp>
 #include <Error.hpp>
+#include <VectorView.hpp>
 
 
-namespace pragzip
+namespace rapidgzip
 {
 /**
  * This was the first and is the most straight-forward implementation.
@@ -180,7 +180,8 @@ public:
         return Error::NONE;
     }
 
-    [[nodiscard]] forceinline std::optional<Symbol>
+    template<typename BitReader>
+    [[nodiscard]] forceinline constexpr std::optional<Symbol>
     decode( BitReader& bitReader ) const
     {
         HuffmanCode code = 0;
@@ -189,7 +190,7 @@ public:
          * would be inversed. @todo Reverse the Huffman codes and prepend bits instead of appending, so that this
          * first step can be conflated and still have the correct order for comparison! */
         for ( BitCount i = 0; i < m_minCodeLength; ++i ) {
-            code = ( code << 1U ) | ( bitReader.read<1>() );
+            code = ( code << 1U ) | ( bitReader.template read<1>() );
         }
 
         for ( BitCount bitLength = m_minCodeLength; bitLength <= m_maxCodeLength; ++bitLength ) {
@@ -204,7 +205,7 @@ public:
             }
 
             code <<= 1;
-            code |= bitReader.read<1>();
+            code |= bitReader.template read<1>();
         }
 
         return std::nullopt;
@@ -216,4 +217,4 @@ private:
     BitCount m_minCodeLength{ 0 };
     BitCount m_maxCodeLength{ 0 };
 };
-}  // namespace pragzip
+}  // namespace rapidgzip

@@ -205,7 +205,7 @@ public:
     StreamCheckResourceAdapter()                            = default;
     ~StreamCheckResourceAdapter() override{
         if(!allocations.empty()){
-            std::cerr << "~StreamCheckResourceAdapter: " << allocations.size() << "outstanding allocations\n";
+            std::cout << "~StreamCheckResourceAdapter: " << allocations.size() << "outstanding allocations\n";
         }
     }
     StreamCheckResourceAdapter(StreamCheckResourceAdapter const&) = default;

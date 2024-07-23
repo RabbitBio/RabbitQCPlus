@@ -163,7 +163,7 @@ public:
 
         ~TempData(){
             // auto info = getMemoryInfo();
-            // std::cerr << "MultiGpuReadStorage::TempData: host: " << info.host 
+            // std::cout << "MultiGpuReadStorage::TempData: host: " << info.host 
             //     << ", device[" << deviceId << "]: " << info.device[deviceId] << "\n";
         }
 
@@ -349,7 +349,7 @@ public:
             )
         );
 
-        //std::cerr << "getNumberOfReads(): " << getNumberOfReads() << ", sequencesGpu.getNumRows(): " << sequencesGpu.getNumRows() << "\n";
+        //std::cout << "getNumberOfReads(): " << getNumberOfReads() << ", sequencesGpu.getNumRows(): " << sequencesGpu.getNumRows() << "\n";
 
         {
             constexpr std::size_t batchsize = 65000;
@@ -524,7 +524,7 @@ public:
                 }
             }
 
-            //std::cerr << "getNumberOfReads(): " << getNumberOfReads() << ", qualitiesGpu.getNumRows(): " << qualitiesGpu.getNumRows() << "\n";
+            //std::cout << "getNumberOfReads(): " << getNumberOfReads() << ", qualitiesGpu.getNumRows(): " << qualitiesGpu.getNumRows() << "\n";
         }
 
         
@@ -584,13 +584,13 @@ public:
                 }
 
                 cpuReadStorage = nullptr;
-                //std::cerr << "GpuReadstorage is standalone\n";
+                //std::cout << "GpuReadstorage is standalone\n";
             }else{
-                //std::cerr << "GpuReadstorage cannot be standalone. MemoryLimit: " << memoryLimitHost << ", required: " <<  (memoryOfHostSequences + memoryOfHostQualities) << "\n";
+                //std::cout << "GpuReadstorage cannot be standalone. MemoryLimit: " << memoryLimitHost << ", required: " <<  (memoryOfHostSequences + memoryOfHostQualities) << "\n";
             }
         }else{
             cpuReadStorage = nullptr;
-            //std::cerr << "GpuReadstorage is standalone\n";
+            //std::cout << "GpuReadstorage is standalone\n";
         }
     }
 
@@ -696,7 +696,7 @@ public: //inherited GPUReadStorage interface
             if(!hasSynchronized && currentCapacity < newbytes){
                 tempData->event.synchronize();
                 hasSynchronized = true;
-                //std::cerr << "SYNC" << "\n";
+                //std::cout << "SYNC" << "\n";
             }
             data.resize(size);
         };
@@ -946,7 +946,7 @@ public: //inherited GPUReadStorage interface
             if(!hasSynchronized && currentCapacity < newbytes){
                 tempData->event.synchronize();
                 hasSynchronized = true;
-                //std::cerr << "SYNC" << "\n";
+                //std::cout << "SYNC" << "\n";
             }
             data.resize(size);
         };
@@ -1066,7 +1066,7 @@ public: //inherited GPUReadStorage interface
             if(!hasSynchronized && currentCapacity < newbytes){
                 tempData->event.synchronize();
                 hasSynchronized = true;
-                //std::cerr << "SYNC" << "\n";
+                //std::cout << "SYNC" << "\n";
             }
             data.resize(size);
         };
@@ -1366,7 +1366,7 @@ public: //inherited GPUReadStorage interface
             if(!hasSynchronized && currentCapacity < newbytes){
                 tempData->event.synchronize();
                 hasSynchronized = true;
-                //std::cerr << "SYNC" << "\n";
+                //std::cout << "SYNC" << "\n";
             }
             data.resize(size);
         };

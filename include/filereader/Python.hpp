@@ -15,6 +15,19 @@
 #include "FileReader.hpp"
 
 
+[[nodiscard]] bool
+pythonIsFinalizing()
+{
+    #if ( PY_MAJOR_VERSION != 3 ) || ( PY_MINOR_VERSION < 8 )
+        return false;
+    #elif PY_MINOR_VERSION < 13
+        return _Py_IsFinalizing();
+    #else
+        return Py_IsFinalizing();
+    #endif
+}
+
+
 class PythonExceptionThrownBySignal :
     public std::runtime_error
 {
@@ -25,9 +38,134 @@ public:
 };
 
 
+class ScopedGIL
+{
+public:
+    struct ReferenceCounter
+    {
+        bool isLocked;
+        size_t counter{ 0 };
+    };
+
+public:
+    explicit
+    ScopedGIL( bool doLock )
+    {
+        m_referenceCounters.emplace_back( lock( doLock ) );
+    }
+
+    ~ScopedGIL() noexcept
+    {
+        if ( m_referenceCounters.empty() ) {
+            std::cout << "Logic error: It seems there were more unlocks than locks!\n";
+            std::terminate();
+        }
+
+        lock( m_referenceCounters.back() );
+        m_referenceCounters.pop_back();
+    }
+
+    ScopedGIL( const ScopedGIL& ) = delete;
+    ScopedGIL( ScopedGIL&& ) = delete;
+    ScopedGIL& operator=( const ScopedGIL& ) = delete;
+    ScopedGIL& operator=( ScopedGIL&& ) = delete;
+
+private:
+    /**
+     * @return the old lock state.
+     */
+    bool
+    lock( bool doLock = true ) noexcept
+    {
+        if ( ( doLock == false ) && pythonIsFinalizing() ) {
+            /* No need to unlock the GIL if it doesn't exist anymore. */
+            return false;
+        }
+
+        /**
+         * I would have liked a GILMutex class that can be declared as a static thread_local member but
+         * on Windows, these members are initialized too soon, i.e., at static initialization time instead of
+         * on first usage, which leads to bugs because PyGILState_Check will return 0 at this point.
+         * Therefore, use block-scoped thread_local variables, which are initialized on first pass as per the standard.
+         * @see https://stackoverflow.com/a/49821006/2191065
+         */
+        static thread_local bool isLocked{ PyGILState_Check() == 1 };
+        static thread_local bool const isPythonThread{ isLocked };
+
+        /** Used for locking non-Python threads. */
+        static thread_local PyGILState_STATE lockState{};
+        /** Used for unlocking and relocking the Python main thread. */
+        static thread_local PyThreadState* unlockState{ nullptr };
+
+        /* When Python is finalizing, we might get our acquired GIL rugpulled from us, meaning isLocked=true but
+         * PyGILState_Check() is 0 / unlocked!
+         * Python 3.10 has _Py_IsFinalizing, 3.13 has Py_IsFinalizing, however on Python 3.6, these are missing. */
+        if ( pythonIsFinalizing() || ( isLocked && ( PyGILState_Check() == 0 ) ) ) {
+            if ( ( PyGILState_Check() == 1 ) && !isPythonThread ) {
+                PyGILState_Release( lockState );
+                lockState = {};
+            }
+            std::cout << "Detected Python finalization from running rapidgzip thread.\n"
+                         "To avoid this exception you should close all RapidgzipFile objects correctly,\n"
+                         "or better, use the with-statement if possible to automatically close it.\n";
+            std::terminate();
+        }
+
+        const auto wasLocked = isLocked;
+        if ( isLocked == doLock ) {
+            return wasLocked;
+        }
+
+        if ( doLock ) {
+            if ( isPythonThread ) {
+                PyEval_RestoreThread( unlockState );
+                unlockState = nullptr;
+            } else {
+                lockState = PyGILState_Ensure();
+            }
+        } else {
+            if ( isPythonThread ) {
+                unlockState = PyEval_SaveThread();
+            } else {
+                PyGILState_Release( lockState );
+                lockState = {};
+            }
+        }
+
+        isLocked = doLock;
+        return wasLocked;
+    }
+
+private:
+    inline static thread_local std::vector<bool> m_referenceCounters;
+};
+
+
+class ScopedGILLock :
+    public ScopedGIL
+{
+public:
+    ScopedGILLock() :
+        ScopedGIL( true )
+    {}
+};
+
+
+class ScopedGILUnlock :
+    public ScopedGIL
+{
+public:
+    ScopedGILUnlock() :
+        ScopedGIL( false )
+    {}
+};
+
+
 void
 checkPythonSignalHandlers()
 {
+    const ScopedGILLock gilLock;
+
     /**
      * @see https://docs.python.org/3/c-api/exceptions.html#signal-handling
      * > The function attempts to handle all pending signals, and then returns 0.
@@ -48,7 +186,11 @@ template<typename Value,
 [[nodiscard]] PyObject*
 toPyObject( Value value )
 {
-    return PyLong_FromLongLong( value );
+    auto* const result = PyLong_FromLongLong( value );
+    if ( result == nullptr ) {
+        throw std::runtime_error( "PyLong_FromLongLong returned null for: " + std::to_string( value ) + "!" );
+    }
+    return result;
 }
 
 
@@ -57,13 +199,20 @@ template<typename Value,
 [[nodiscard]] PyObject*
 toPyObject( Value value )
 {
-    return PyLong_FromUnsignedLongLong( value );
+    auto* const result = PyLong_FromUnsignedLongLong( value );
+    if ( result == nullptr ) {
+        throw std::runtime_error( "PyLong_FromUnsignedLongLong returned null for: " + std::to_string( value ) + "!" );
+    }
+    return result;
 }
 
 
 [[nodiscard]] PyObject*
 toPyObject( PyObject* value )
 {
+    if ( value == nullptr ) {
+        throw std::runtime_error( "Got null PyObject as argument to toPyObject!" );
+    }
     return value;
 }
 
@@ -116,12 +265,24 @@ callPyObject( PyObject* pythonObject,
 {
     constexpr auto nArgs = sizeof...( Args );
 
+    if ( pythonObject == nullptr ) {
+        throw std::invalid_argument( "[callPyObject] Got null PyObject!" );
+    }
+
+    const ScopedGILLock gilLock;
+
     if constexpr ( std::is_same_v<Result, void> ) {
         PyObject_Call( pythonObject, PyTuple_Pack( nArgs, toPyObject( args )... ), nullptr );
     } else {
         const auto result = PyObject_Call( pythonObject, PyTuple_Pack( nArgs, toPyObject( args )... ), nullptr );
         if ( result == nullptr ) {
-            throw std::invalid_argument( "Can't convert nullptr Python object!" );
+            std::stringstream message;
+            message << "Cannot convert nullptr Python object to the requested result type ("
+                    << typeid( Result ).name() << ")!";
+            if ( ( pythonObject != nullptr ) && ( pythonObject->ob_type != nullptr ) ) {
+                message << " Got no result when calling: " << pythonObject->ob_type->tp_name;
+            }
+            throw std::invalid_argument( std::move( message ).str() );
         }
         return fromPyObject<Result>( result );
     }
@@ -146,15 +307,8 @@ public:
         m_initialPosition( callPyObject<long long int>( mpo_tell ) ),
         m_seekable( callPyObject<bool>( mpo_seekable ) )
     {
-        if ( !m_seekable ) {
-            throw std::invalid_argument( "Currently need seekable files to get size and detect EOF!" );
-        }
-
-        m_fileSizeBytes = seek( 0, SEEK_END );
-
-        /* On macOS opening special files like /dev/fd/3 might result in the file position
-         * not being 0 in the case it has been seeked or read from somewhere else! */
         if ( m_seekable ) {
+            m_fileSizeBytes = seek( 0, SEEK_END );
             seek( 0, SEEK_SET );
         }
 
@@ -189,6 +343,7 @@ public:
             seek( m_initialPosition );
         }
 
+        const ScopedGILLock gilLock;
         if ( Py_REFCNT( m_pythonObject ) == 1 ) {
             callPyObject<void>( mpo_close );
         }
@@ -238,6 +393,8 @@ public:
             return 0;
         }
 
+        const ScopedGILLock gilLock;
+
         /** @todo better to use readinto because read might return less than requested even before the EOF! */
         auto* const bytes = callPyObject<PyObject*>( mpo_read, nMaxBytesToRead );
         if ( !PyBytes_Check( bytes ) ) {
@@ -262,7 +419,7 @@ public:
                 << "  m_currentPosition: " << m_currentPosition << "\n"
                 << "  tell: " << tell() << "\n"
                 << "\n";
-            std::cerr << message.str();
+            std::cout << message.str();
             throw std::domain_error( std::move( message ).str() );
         }
 
@@ -287,6 +444,8 @@ public:
             return 0;
         }
 
+        const ScopedGILLock gilLock;
+
         auto* const bytes = PyBytes_FromStringAndSize( buffer, nBytesToWrite );
         const auto nBytesWritten = callPyObject<long long int>( mpo_write, bytes );
 
@@ -297,7 +456,7 @@ public:
                 << "  Buffer: " << (void*)buffer << "\n"
                 << "  tell: " << tell() << "\n"
                 << "\n";
-            std::cerr << message.str();
+            std::cout << message.str();
             throw std::domain_error( std::move( message ).str() );
         }
 
@@ -328,12 +487,11 @@ public:
         }
 
         m_currentPosition = callPyObject<size_t>( mpo_seek, offset, pythonWhence );
-        //m_currentPosition = fromPyObject<size_t>( PyObject_Call( mpo_seek, PyTuple_Pack( 2, PyLong_FromLongLong( offset ), PyLong_FromLongLong( (long long)pythonWhence ) ), nullptr ) );
 
         return m_currentPosition;
     }
 
-    [[nodiscard]] virtual size_t
+    [[nodiscard]] std::optional<size_t>
     size() const override
     {
         return m_fileSizeBytes;

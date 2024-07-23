@@ -18,7 +18,7 @@
 #include "MarkerReplacement.hpp"
 
 
-namespace pragzip::deflate
+namespace rapidgzip::deflate
 {
 using MarkerVector = FasterVector<uint16_t>;
 using DecodedVector = FasterVector<uint8_t>;
@@ -32,14 +32,22 @@ public:
     class Iterator
     {
     public:
+        /**
+         * This iterator provides a view of the decoded data as requested via an offset and a length.
+         * If no relative offset or length is specified it will create a view of all of the data.
+         * The interface will return subviews as pointer-length pairs because the data might not be
+         * in one contiguous chunk internally.
+         */
         explicit
         Iterator( const DecodedData& decodedData,
-                  const size_t       offset = 0,
+                  const size_t       offsetInChunk = 0,
                   const size_t       size = std::numeric_limits<size_t>::max() ) :
             m_data( decodedData ),
-            m_size( size )
+            m_size( size ),
+            m_offsetInChunk( offsetInChunk )
         {
-            m_offsetInChunk = offset;
+            /* Iterate over the chunks and decrease m_offsetInChunk by each chunk size until it validly points
+             * into m_currentChunk, i.e., is smaller than its size. */
             for ( m_currentChunk = 0; m_currentChunk < m_data.data.size(); ++m_currentChunk ) {
                 const auto& chunk = m_data.data[m_currentChunk];
                 if ( ( m_offsetInChunk < chunk.size() ) && !chunk.empty() ) {
@@ -102,8 +110,9 @@ public:
     append( DecodedVector&& toAppend )
     {
         if ( !toAppend.empty() ) {
-            data.emplace_back( std::move( toAppend ) );
-            data.back().shrink_to_fit();
+            dataBuffers.emplace_back( std::move( toAppend ) );
+            dataBuffers.back().shrink_to_fit();
+            data.emplace_back( VectorView<uint8_t>( dataBuffers.back().data(), dataBuffers.back().size() ) );
         }
     }
 
@@ -148,6 +157,9 @@ public:
         return !dataWithMarkers.empty();
     }
 
+    [[nodiscard]] size_t
+    countMarkerSymbols() const;
+
     /**
      * Replaces all 16-bit wide marker symbols by looking up the referenced 8-bit symbols in @p window.
      * @note Probably should not be called internally because it is allowed to be shadowed by a child class method.
@@ -178,7 +190,7 @@ public:
     void
     shrinkToFit()
     {
-        for ( auto& container : data ) {
+        for ( auto& container : dataBuffers ) {
             container.shrink_to_fit();
         }
         for ( auto& container : dataWithMarkers ) {
@@ -193,10 +205,21 @@ public:
     void
     cleanUnmarkedData();
 
-public:
-    size_t encodedOffsetInBits{ std::numeric_limits<size_t>::max() };
-    size_t encodedSizeInBits{ 0 };
+#ifdef TEST_DECODED_DATA
+    [[nodiscard]] const std::vector<MarkerVector>&
+    getDataWithMarkers() const noexcept
+    {
+        return dataWithMarkers;
+    }
 
+    [[nodiscard]] const std::vector<VectorView<uint8_t> >&
+    getData() const noexcept
+    {
+        return data;
+    }
+#endif
+
+private:
     /**
      * Use vectors of vectors to avoid reallocations. The order of this data is:
      * - @ref dataWithMarkers (front to back)
@@ -206,33 +229,76 @@ public:
      * @ref cleanUnmarkedData.
      */
     std::vector<MarkerVector> dataWithMarkers;
-    std::vector<DecodedVector> data;
+    std::vector<MarkerVector> reusedDataBuffers;
+    std::vector<DecodedVector> dataBuffers;
+    std::vector<VectorView<uint8_t> > data;
 };
 
 
 inline void
 DecodedData::append( DecodedDataView const& buffers )
 {
+    static constexpr auto ALLOCATION_CHUNK_SIZE = 128_Ki;
+
+    const auto& appendToEquallySizedChunks =
+        [] ( auto&       targetChunks,
+             const auto& buffer )
+        {
+            constexpr auto ALLOCATION_ELEMENT_COUNT = ALLOCATION_CHUNK_SIZE / sizeof( targetChunks[0][0] );
+
+            if ( targetChunks.empty() ) {
+                targetChunks.emplace_back().reserve( ALLOCATION_ELEMENT_COUNT );
+            }
+
+            for ( size_t nCopied = 0; nCopied < buffer.size(); ) {
+                auto& copyTarget = targetChunks.back();
+                const auto nFreeElements = copyTarget.capacity() - copyTarget.size();
+                if ( nFreeElements == 0 ) {
+                    targetChunks.emplace_back().reserve( ALLOCATION_ELEMENT_COUNT );
+                    continue;
+                }
+
+                const auto nToCopy = std::min( nFreeElements, buffer.size() - nCopied );
+                copyTarget.insert( copyTarget.end(), buffer.begin() + nCopied, buffer.begin() + nCopied + nToCopy );
+                nCopied += nToCopy;
+            }
+        };
+
     if ( buffers.dataWithMarkersSize() > 0 ) {
         if ( !data.empty() ) {
             throw std::invalid_argument( "It is not allowed to append data with markers when fully decoded data "
                                          "has already been appended because the ordering will be wrong!" );
         }
 
-        auto& copied = dataWithMarkers.emplace_back();
-        copied.reserve( buffers.dataWithMarkersSize() );
         for ( const auto& buffer : buffers.dataWithMarkers ) {
-            copied.insert( copied.end(), buffer.begin(), buffer.end() );
+            appendToEquallySizedChunks( dataWithMarkers, buffer );
         }
     }
 
+    /* Add complexity to the already complex dataBuffers + data (views) structure by trying to force the
+     * dataBuffer chunks to 128 KiB makes no sense because this method for appending views is only called
+     * when decompressing with rapidgzip and as soon as we have 32 KiB of symbols, the decompression should
+     * delegate to ISA-L except in pathological edge cases such as very large deflate blocks. */
     if ( buffers.dataSize() > 0 ) {
-        auto& copied = data.emplace_back();
+        auto& copied = dataBuffers.emplace_back();
         copied.reserve( buffers.dataSize() );
         for ( const auto& buffer : buffers.data ) {
             copied.insert( copied.end(), buffer.begin(), buffer.end() );
         }
+        data.emplace_back( VectorView<uint8_t>( copied.data(), copied.size() ) );
     }
+}
+
+
+[[nodiscard]] inline size_t
+DecodedData::countMarkerSymbols() const
+{
+    size_t result{ 0 };
+    for ( const auto& chunk : dataWithMarkers ) {
+        result += std::count_if( chunk.begin(), chunk.end(),
+                                 [] ( const uint16_t symbol ) { return ( symbol & 0xFF00U ) != 0; } );
+    }
+    return result;
 }
 
 
@@ -256,40 +322,71 @@ DecodedData::applyWindow( WindowView const& window )
                 return result;
             }();
 
-        DecodedVector downcasted( markerCount );
-        size_t offset{ 0 };
         for ( auto& chunk : dataWithMarkers ) {
-            std::transform( chunk.begin(), chunk.end(), downcasted.begin() + offset,
-                            [&fullWindow] ( const auto value ) constexpr noexcept { return fullWindow[value]; } );
-            offset += chunk.size();
-        }
-
-        data.insert( data.begin(), std::move( downcasted ) );
-        dataWithMarkers.clear();
-        return;
-    }
-
-    DecodedVector downcasted( markerCount );
-    size_t offset{ 0 };
-
-    /* For maximum size windows, we can skip one check because even UINT16_MAX is valid. */
-    static_assert( std::numeric_limits<uint16_t>::max() - MAX_WINDOW_SIZE + 1U == MAX_WINDOW_SIZE );
-    if ( window.size() >= MAX_WINDOW_SIZE ) {
-        const MapMarkers<true> mapMarkers( window );
-        for ( auto& chunk : dataWithMarkers ) {
-            std::transform( chunk.begin(), chunk.end(), downcasted.begin() + offset, mapMarkers );
-            offset += chunk.size();
+            auto* const target = reinterpret_cast<uint8_t*>( chunk.data() );
+            /* Do not use std::transform because it allows out-of-order execution!
+             * std::transform might be ~3% faster for FASTQ files btu it is hard to measure as timings seem
+             * to vary a lot. Still, we need to be correct before being fast, but maybe something can be
+             * done with inline Assembler or the intermediary "compressed" marker format might also help.
+             * Note that these 3% shouldn't matter because we already are quite faster than before:
+             *     rapidgzip-v0.9.0 : 2706.3 <= 2862.5 +- 2.3 <= 2979.9
+             *     rapidgzip-v0.8.1 : 1988.2 <= 2067.8 +- 1.4 <= 2139.8
+             */
+            for ( size_t i = 0; i < chunk.size(); ++i ) {
+                target[i] = fullWindow[chunk[i]];
+            }
         }
     } else {
-        const MapMarkers<false> mapMarkers( window );
-        for ( auto& chunk : dataWithMarkers ) {
-            std::transform( chunk.begin(), chunk.end(), chunk.begin(), mapMarkers );
-            std::copy( chunk.begin(), chunk.end(), reinterpret_cast<std::uint8_t*>( downcasted.data() + offset ) );
-            offset += chunk.size();
+        /* For maximum size windows, we can skip one check because even UINT16_MAX is valid. */
+        static_assert( std::numeric_limits<uint16_t>::max() - MAX_WINDOW_SIZE + 1U == MAX_WINDOW_SIZE );
+        if ( window.size() >= MAX_WINDOW_SIZE ) {
+            const MapMarkers<true> mapMarkers( window );
+            for ( auto& chunk : dataWithMarkers ) {
+                /* Do not use std::transform because it allows out-of-order execution and if a later i
+                 * is computed first, it might overwrite values that are need for earlier i's because
+                 * we are transforming in-place into a vector with smaller element size! */
+                auto* const target = reinterpret_cast<uint8_t*>( chunk.data() );
+                for ( size_t i = 0; i < chunk.size(); ++i ) {
+                    target[i] = mapMarkers( chunk[i] );
+                }
+            }
+        } else {
+            const MapMarkers<false> mapMarkers( window );
+            for ( auto& chunk : dataWithMarkers ) {
+                auto* const target = reinterpret_cast<uint8_t*>( chunk.data() );
+                /* Do not use std::transform because it allows out-of-order execution! */
+                for ( size_t i = 0; i < chunk.size(); ++i ) {
+                    target[i] = mapMarkers( chunk[i] );
+                }
+            }
         }
     }
 
-    data.insert( data.begin(), std::move( downcasted ) );
+    if ( !reusedDataBuffers.empty() ) {
+        throw std::logic_error( "It seems like data already was replaced but we still got markers!" );
+    }
+    std::swap( reusedDataBuffers, dataWithMarkers );
+
+    /* Prepend a VectorView to @ref data for each reused chunk buffer. */
+    std::vector<VectorView<uint8_t> > dataViews;
+    dataViews.reserve( reusedDataBuffers.size() + data.size() );
+    for ( auto& chunk : reusedDataBuffers ) {
+        /**
+         * @todo Note that this leaves half of the chunk space unused because the number of elements stays
+         *       the same while the element type size is halved. I assume that shrink_to_fit would be
+         *       expensive. Therefore, it would be nice to simple join neihgboring chunks to fill all available
+         *       space and free the rest of the chunks. But, depending on the individual chunk sizes,
+         *       this can become complex.
+         * @note It is kind of an exception that this works! Because reinterpret_cast with target types
+         *       (unsigned) char* are excepted from the strict aliasing rules. For other types,
+         *       it would be undefined behavior, e.g., trying to reuse a vector of uint32_t as uint16_t!
+         * @see https://en.cppreference.com/w/cpp/language/reinterpret_cast#Type_aliasing
+         */
+        dataViews.emplace_back( VectorView<uint8_t>( reinterpret_cast<uint8_t*>( chunk.data() ), chunk.size() ) );
+    }
+    std::move( data.begin(), data.end(), std::back_inserter( dataViews ) );
+    std::swap( data, dataViews );
+
     dataWithMarkers.clear();
 }
 
@@ -297,49 +394,7 @@ DecodedData::applyWindow( WindowView const& window )
 [[nodiscard]] inline DecodedVector
 DecodedData::getLastWindow( WindowView const& previousWindow ) const
 {
-    DecodedVector window( MAX_WINDOW_SIZE, 0 );
-    size_t nBytesWritten{ 0 };
-
-    /* Fill the result from the back with data from our buffer. */
-    for ( auto chunk = data.rbegin(); ( chunk != data.rend() ) && ( nBytesWritten < window.size() ); ++chunk ) {
-        for ( auto symbol = chunk->rbegin(); ( symbol != chunk->rend() ) && ( nBytesWritten < window.size() );
-              ++symbol, ++nBytesWritten )
-        {
-            window[window.size() - 1 - nBytesWritten] = *symbol;
-        }
-    }
-
-    /* Fill the result from the back with data from our unresolved buffers. */
-    const auto copyFromDataWithMarkers =
-        [this, &window, &nBytesWritten] ( const auto& mapMarker )
-        {
-            for ( auto chunk = dataWithMarkers.rbegin();
-                  ( chunk != dataWithMarkers.rend() ) && ( nBytesWritten < window.size() ); ++chunk )
-            {
-                for ( auto symbol = chunk->rbegin(); ( symbol != chunk->rend() ) && ( nBytesWritten < window.size() );
-                      ++symbol, ++nBytesWritten )
-                {
-                    window[window.size() - 1 - nBytesWritten] = mapMarker( *symbol );
-                }
-            }
-        };
-
-    if ( previousWindow.size() >= MAX_WINDOW_SIZE ) {
-        copyFromDataWithMarkers( MapMarkers</* full window */ true>( previousWindow ) );
-    } else {
-        copyFromDataWithMarkers( MapMarkers</* full window */ false>( previousWindow ) );
-    }
-
-    /* Fill the remaining part with the given window. This should only happen for very small DecodedData sizes. */
-    if ( nBytesWritten < MAX_WINDOW_SIZE ) {
-        const auto remainingBytes = MAX_WINDOW_SIZE - nBytesWritten;
-        std::copy( std::reverse_iterator( previousWindow.end() ),
-                   std::reverse_iterator( previousWindow.end() )
-                   + std::min( remainingBytes, previousWindow.size() ),
-                   window.rbegin() + nBytesWritten );
-    }
-
-    return window;
+    return getWindowAt( previousWindow, size() );
 }
 
 
@@ -390,7 +445,7 @@ DecodedData::getWindowAt( WindowView const& previousWindow,
     const auto copyFromDataWithMarkers =
         [this, &offset, &prefilled, &window] ( const auto& mapMarker )
         {
-            for ( auto& chunk : dataWithMarkers ) {
+            for ( const auto& chunk : dataWithMarkers ) {
                 if ( prefilled >= window.size() ) {
                     break;
                 }
@@ -413,7 +468,7 @@ DecodedData::getWindowAt( WindowView const& previousWindow,
         copyFromDataWithMarkers( MapMarkers</* full window */ false>( previousWindow ) );
     }
 
-    for ( auto& chunk : data ) {
+    for ( const auto& chunk : data ) {
         if ( prefilled >= window.size() ) {
             break;
         }
@@ -444,7 +499,8 @@ DecodedData::cleanUnmarkedData()
             [] ( auto value ) { return value > std::numeric_limits<uint8_t>::max(); } );
 
         const auto sizeWithoutMarkers = static_cast<size_t>( std::distance( toDowncast.rbegin(), marker ) );
-        auto downcasted = data.emplace( data.begin(), sizeWithoutMarkers );
+        auto downcasted = dataBuffers.emplace( dataBuffers.begin(), sizeWithoutMarkers );
+        data.insert( data.begin(), VectorView<uint8_t>( downcasted->data(), downcasted->size() ) );
         std::transform( marker.base(), toDowncast.end(), downcasted->begin(),
                         [] ( auto symbol ) { return static_cast<uint8_t>( symbol ); } );
 
@@ -461,7 +517,7 @@ DecodedData::cleanUnmarkedData()
 
 
 /**
- * m pragzip && src/tools/pragzip -v -d -c -P 0 4GiB-base64.gz | wc -c
+ * m rapidgzip && src/tools/rapidgzip -v -d -c -P 0 4GiB-base64.gz | wc -c
  * Non-polymorphic: Decompressed in total 4294967296 B in 1.49444 s -> 2873.96 MB/s
  * With virtual ~DecodedData() = default: Decompressed in total 4294967296 B in 3.58325 s -> 1198.62 MB/s
  * I don't know why it happens. Maybe it affects inline of function calls or moves of instances.
@@ -476,11 +532,11 @@ toIoVec( const DecodedData& decodedData,
          const size_t       dataToWriteSize )
 {
     std::vector<::iovec> buffersToWrite;
-    for ( auto it = pragzip::deflate::DecodedData::Iterator( decodedData, offsetInBlock, dataToWriteSize );
+    for ( auto it = rapidgzip::deflate::DecodedData::Iterator( decodedData, offsetInBlock, dataToWriteSize );
           static_cast<bool>( it ); ++it )
     {
         const auto& [data, size] = *it;
-        ::iovec buffer;
+        ::iovec buffer{};
         /* The const_cast should be safe because vmsplice and writev should not modify the input data. */
         buffer.iov_base = const_cast<void*>( reinterpret_cast<const void*>( data ) );;
         buffer.iov_len = size;
@@ -489,4 +545,4 @@ toIoVec( const DecodedData& decodedData,
     return buffersToWrite;
 }
 #endif  // HAVE_IOVEC
-}  // namespace pragzip::deflate
+}  // namespace rapidgzip::deflate

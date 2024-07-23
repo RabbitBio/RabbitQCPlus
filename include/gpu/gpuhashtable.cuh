@@ -1017,7 +1017,7 @@ namespace gpu{
             ); CUDACHECKASYNC;
 
             if(numUniqueKeys != numUniqueKeys2){
-                std::cerr << numUniqueKeys << " " << numUniqueKeys2 << "\n";
+                std::cout << numUniqueKeys << " " << numUniqueKeys2 << "\n";
             }
             assert(numUniqueKeys == numUniqueKeys2);
 
@@ -1128,7 +1128,7 @@ namespace gpu{
             CUDACHECK(cudaStreamSynchronize(cudaStreamPerThread));
 
             if(status.has_any_errors()){
-                std::cerr << "Error creating copy of GpuHashtable. " << status << "\n";
+                std::cout << "Error creating copy of GpuHashtable. " << status << "\n";
                 return nullptr;
             }
 
@@ -1164,7 +1164,7 @@ namespace gpu{
             CUDACHECK(cudaStreamSynchronize(cudaStreamPerThread));
 
             if(status.has_any_errors()){
-                std::cerr << "Error creating copy of GpuHashtable. " << status << "\n";
+                std::cout << "Error creating copy of GpuHashtable. " << status << "\n";
                 return nullptr;
             }
 

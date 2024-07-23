@@ -8,10 +8,11 @@
 #include <stdexcept>
 #include <utility>
 
-#include "HuffmanCodingReversedCodesPerLength.hpp"
+#include <definitions.hpp>
+#include <huffman/HuffmanCodingReversedCodesPerLength.hpp>
 
 
-namespace pragzip
+namespace rapidgzip
 {
 template<typename HuffmanCode,
          uint8_t  MAX_CODE_LENGTH,
@@ -259,20 +260,20 @@ public:
 #endif
 
         //const auto t1 = now();
-        //std::cerr << "Creating Huffman LUT took " << duration(t0,t1) << " s\n";
+        //std::cout << "Creating Huffman LUT took " << duration(t0,t1) << " s\n";
 
     #if 0
         std::array<uint16_t, 2 * MAX_CODE_LENGTH> mergedCodeLengthFrequencies = {};
         for ( size_t i = 0; i < m_doubleCodeCache.size(); i += 2 ) {
             mergedCodeLengthFrequencies[m_doubleCodeCache[i] >> LENGTH_SHIFT]++;
         }
-        std::cerr << "Merged code length frequencies (out of " << (int)CACHED_BIT_COUNT << " cache key size):\n";
+        std::cout << "Merged code length frequencies (out of " << (int)CACHED_BIT_COUNT << " cache key size):\n";
         for ( size_t i = 0; i < mergedCodeLengthFrequencies.size(); ++i ) {
             if ( mergedCodeLengthFrequencies[i] != 0 ) {
-                std::cerr << " " << i << ":" << mergedCodeLengthFrequencies[i];
+                std::cout << " " << i << ":" << mergedCodeLengthFrequencies[i];
             }
         }
-        std::cerr << "\n";
+        std::cout << "\n";
     #endif
 
         return Error::NONE;
@@ -319,4 +320,4 @@ private:
      * with the same size reduces speed for base64.gz by 10%! */
     alignas( 8 ) std::array<Symbol, 2 * ( 1UL << MAX_CODE_LENGTH )> m_doubleCodeCache{};
 };
-}  // namespace pragzip
+}  // namespace rapidgzip

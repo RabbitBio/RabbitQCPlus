@@ -125,7 +125,7 @@ namespace care{
                 throw std::runtime_error("Not enough memory available for hash tables. Abort!");
             }
             std::size_t maxMemoryForTables = getAvailableMemoryInKB() * 1024;
-            // std::cerr << "available: " << maxMemoryForTables 
+            // std::cout << "available: " << maxMemoryForTables 
             //         << ",memoryForHashtables: " << programOptions.memoryForHashtables
             //         << ", memoryTotalLimit: " << programOptions.memoryTotalLimit
             //         << ", rsHostUsage: " << memoryUsageOfReadStorage.host << "\n";
@@ -133,7 +133,7 @@ namespace care{
             maxMemoryForTables = std::min(maxMemoryForTables, 
                                     std::min(programOptions.memoryForHashtables, totalLimit));
 
-            std::cerr << "maxMemoryForTables = " << maxMemoryForTables << " bytes\n";
+            std::cout << "maxMemoryForTables = " << maxMemoryForTables << " bytes\n";
 
             setMemoryLimitForConstruction(maxMemoryForTables);
 

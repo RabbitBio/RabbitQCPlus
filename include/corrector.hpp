@@ -344,7 +344,7 @@ public:
         MultiCandidateIds multiIds = determineCandidateReadIds(input);
 
         // if(omp_get_thread_num() == 0){
-        //     std::cerr << "get candidates: " << (std::chrono::system_clock::now() - tpa).count() << ", num candidates: " << multiIds.candidateReadIds.size() << "\n";
+        //     std::cout << "get candidates: " << (std::chrono::system_clock::now() - tpa).count() << ", num candidates: " << multiIds.candidateReadIds.size() << "\n";
         // }
 
         computePairFlags(multiIds);
@@ -1544,7 +1544,7 @@ private:
 
         // auto it = std::find(task.candidateReadIds.begin(), task.candidateReadIds.end(), 37);
         // if(it != task.candidateReadIds.end()){
-        //     std::cerr << "found 37 at local position " << std::distance(task.candidateReadIds.begin(), it) << "\n";
+        //     std::cout << "found 37 at local position " << std::distance(task.candidateReadIds.begin(), it) << "\n";
         // }
 
         const int anchor_begin = msa.anchorColumnsBegin_incl;
@@ -1563,12 +1563,12 @@ private:
             const int offset = cand * decodedSequencePitchInBytes;
 
             // if(task.candidateReadIds[cand] == 37){
-            //     std::cerr <<  "candidateIndex " << cand << "\n";
-            //     std::cerr <<  "cand_begin " << cand_begin << "\n";
-            //     std::cerr <<  "cand_end " << cand_end << "\n";
-            //     std::cerr <<  "cand_length " << cand_length << "\n";
-            //     std::cerr <<  "candidateReadId " << task.candidateReadIds[cand] << "\n";
-            //     std::cerr <<  "anchorReadId " << task.input.anchorReadId << "\n";
+            //     std::cout <<  "candidateIndex " << cand << "\n";
+            //     std::cout <<  "cand_begin " << cand_begin << "\n";
+            //     std::cout <<  "cand_end " << cand_end << "\n";
+            //     std::cout <<  "cand_length " << cand_length << "\n";
+            //     std::cout <<  "candidateReadId " << task.candidateReadIds[cand] << "\n";
+            //     std::cout <<  "anchorReadId " << task.input.anchorReadId << "\n";
             // }
 
             
@@ -1580,24 +1580,24 @@ private:
                     std::string(&msa.consensus[cand_begin], cand_length));
 
                 // if(task.candidateReadIds[cand] == 37){
-                //     std::cerr << "in range\n";
-                //     std::cerr <<  "candidateIndex " << cand << "\n";
-                //     std::cerr <<  "cand_begin " << cand_begin << "\n";
-                //     std::cerr <<  "cand_end " << cand_end << "\n";
-                //     std::cerr <<  "cand_length " << cand_length << "\n";
-                //     std::cerr <<  "candidateReadId " << task.candidateReadIds[cand] << "\n";
+                //     std::cout << "in range\n";
+                //     std::cout <<  "candidateIndex " << cand << "\n";
+                //     std::cout <<  "cand_begin " << cand_begin << "\n";
+                //     std::cout <<  "cand_end " << cand_end << "\n";
+                //     std::cout <<  "cand_length " << cand_length << "\n";
+                //     std::cout <<  "candidateReadId " << task.candidateReadIds[cand] << "\n";
 
-                //     std::cerr << "decodedCandidate:\n";
+                //     std::cout << "decodedCandidate:\n";
                 //     for(int k = 0; k < cand_length; k++){
-                //         std::cerr << task.decodedCandidateSequences[offset+k];
+                //         std::cout << task.decodedCandidateSequences[offset+k];
                 //     }
-                //     std::cerr << "\n";
+                //     std::cout << "\n";
 
-                //     std::cerr << "consensusCandidate:\n";
+                //     std::cout << "consensusCandidate:\n";
                 //     for(int k = 0; k < cand_length; k++){
-                //         std::cerr << task.candidateCorrections.back().sequence[k];
+                //         std::cout << task.candidateCorrections.back().sequence[k];
                 //     }
-                //     std::cerr << "\n";
+                //     std::cout << "\n";
 
                 // }
 
@@ -1607,16 +1607,16 @@ private:
                         && !clfAgent->decide_cand(task, i, *programOptions, cand, offset))
                     {
                         task.candidateCorrections.back().sequence[i] = task.decodedCandidateSequences[offset+i];
-                        //if(task.input.anchorReadId == 5 && task.candidateReadIds[cand] == 633) std::cerr << "checking position " << i << ". revert consensus\n";
+                        //if(task.input.anchorReadId == 5 && task.candidateReadIds[cand] == 633) std::cout << "checking position " << i << ". revert consensus\n";
                     }else{
                         // if (task.decodedCandidateSequences[offset+i] != msa.consensus[cand_begin+i]){
-                        //     if(task.input.anchorReadId == 5 && task.candidateReadIds[cand] == 633) std::cerr << "checking position " << i << ". keep consensus\n";
+                        //     if(task.input.anchorReadId == 5 && task.candidateReadIds[cand] == 633) std::cout << "checking position " << i << ". keep consensus\n";
                         // }
                     }
                 }
             }else{
                 // if(task.candidateReadIds[cand] == 37){
-                //     std::cerr << "not in range with shift " << task.alignmentShifts[cand] << "\n";
+                //     std::cout << "not in range with shift " << task.alignmentShifts[cand] << "\n";
                 // }
             }
         }
@@ -1705,8 +1705,8 @@ private:
                 }
 
                 // if(candidateId == 1180257){
-                //     std::cerr << "processing 1180257\n";
-                //     std::cerr << "tmp.sequence = " << tmp.sequence << "\n";
+                //     std::cout << "processing 1180257\n";
+                //     std::cout << "tmp.sequence = " << tmp.sequence << "\n";
                 // }
                 
                 bool originalCandidateReadContainsN = false;

@@ -16,6 +16,13 @@ class BufferViewFileReader :
 {
 public:
     explicit
+    BufferViewFileReader( const void* const buffer,
+                          const size_t      size ) :
+        m_buffer( reinterpret_cast<const std::byte*>( buffer ) ),
+        m_size( size )
+    {}
+
+    explicit
     BufferViewFileReader( const std::vector<char>& buffer ) :
         m_buffer( reinterpret_cast<const std::byte*>( buffer.data() ) ),
         m_size( buffer.size() )
@@ -104,20 +111,10 @@ public:
             throw std::invalid_argument( "Cannot seek closed file!" );
         }
 
-        /* Translate offset. */
-        const auto newBufferPosition =
-            [this, offset, origin] () {
-                switch ( origin )
-                {
-                case SEEK_SET: return offset;
-                case SEEK_CUR: return static_cast<long long int>( m_bufferPosition ) + offset;
-                case SEEK_END: return static_cast<long long int>( size() ) + offset;
-                }
-                throw std::invalid_argument( "Invalid origin value!" );
-            }();
+        const auto newBufferPosition = effectiveOffset( offset, origin );
 
         /* Check if we can simply seek inside the buffer. */
-        if ( ( newBufferPosition >= 0 ) && ( static_cast<size_t>( newBufferPosition ) <= m_size ) ) {
+        if ( newBufferPosition <= m_size ) {
             m_bufferPosition = newBufferPosition;
             return tell();
         }
@@ -125,7 +122,7 @@ public:
         throw std::invalid_argument( "Cannot seek outside of in-memory file range!" );
     }
 
-    [[nodiscard]] size_t
+    [[nodiscard]] std::optional<size_t>
     size() const override
     {
         return m_size;

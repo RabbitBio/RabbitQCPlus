@@ -152,7 +152,7 @@ struct LengthStore{
         const std::uint64_t firstuintindex = firstBit / DataTBits;
         const int begin = firstBit - firstuintindex * DataTBits;
         const int endExcl = lastBitExcl - firstuintindex * DataTBits;
-        //std::cerr << index << ": Set [" << begin << ", " << endExcl << ") of index " << firstuintindex << "\n";
+        //std::cout << index << ": Set [" << begin << ", " << endExcl << ") of index " << firstuintindex << "\n";
 
         auto& first = data[firstuintindex];
         //prevent oob access

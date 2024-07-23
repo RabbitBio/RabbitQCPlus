@@ -93,7 +93,7 @@ bool sortValuesByGeneratedKeysViaIndicesHost(
 ){
     using KeyType = decltype(keyGenerator(IndexType{0}));
 
-    std::cerr << "sortValuesByGeneratedKeysViaIndicesHost \n";
+    std::cout << "sortValuesByGeneratedKeysViaIndicesHost \n";
 
     std::size_t sizeOfKeys = SDIV(sizeof(KeyType) * numValues, sizeof(std::size_t)) * sizeof(std::size_t);
     std::size_t sizeOfIndices = SDIV(sizeof(IndexType) * numValues, sizeof(std::size_t)) * sizeof(std::size_t);
@@ -102,7 +102,7 @@ bool sortValuesByGeneratedKeysViaIndicesHost(
     std::size_t requiredBytes = std::max(sizeOfValues, sizeOfKeys) + std::size_t(sizeOfIndices) + sizeof(std::size_t);
 
     if(requiredBytes >= memoryLimitBytes){
-        std::cerr << sizeOfValues << " " <<  sizeOfKeys << " " <<  sizeOfIndices << " " << memoryLimitBytes << "\n";
+        std::cout << sizeOfValues << " " <<  sizeOfKeys << " " <<  sizeOfIndices << " " << memoryLimitBytes << "\n";
         return false;
     }
 
@@ -180,17 +180,17 @@ bool sortValuesByGeneratedKeysViaSortByKeyHost(
 ){
     using KeyType = decltype(keyGenerator(IndexType{0}));
 
-    std::cerr << "sortValuesByGeneratedKeysViaSortByKeyHost \n";
+    std::cout << "sortValuesByGeneratedKeysViaSortByKeyHost \n";
 
     std::size_t sizeOfKeys = SDIV(sizeof(KeyType) * numValues, sizeof(std::size_t)) * sizeof(std::size_t);
     std::size_t sizeOfValues = SDIV(sizeof(ValueType) * numValues, sizeof(std::size_t)) * sizeof(std::size_t);
 
     std::size_t requiredBytes = 2 * sizeOfKeys + sizeOfValues;
 
-    std::cerr << "requiredBytes: " << requiredBytes << ", memoryLimitBytes: " << memoryLimitBytes << '\n';
+    std::cout << "requiredBytes: " << requiredBytes << ", memoryLimitBytes: " << memoryLimitBytes << '\n';
 
     if(requiredBytes >= memoryLimitBytes){
-        std::cerr << sizeOfValues << " " <<  sizeOfKeys << " " << memoryLimitBytes << "\n";
+        std::cout << sizeOfValues << " " <<  sizeOfKeys << " " << memoryLimitBytes << "\n";
         return false;
     }
 
@@ -248,10 +248,10 @@ bool sortValuesByGeneratedKeysViaSortByKeyDevice(
     using KeyType = decltype(keyGenerator(IndexType{0}));
     constexpr std::size_t pinnedTransferBufferSize = 512ull * 1024ull;
 
-    std::cerr << "sortValuesByGeneratedKeysViaSortByKeyDevice \n";
+    std::cout << "sortValuesByGeneratedKeysViaSortByKeyDevice \n";
 
     if(std::size_t(std::numeric_limits<int>::max()) < std::size_t(numValues)){
-        std::cerr << numValues << " > " << std::numeric_limits<int>::max() << "\n";
+        std::cout << numValues << " > " << std::numeric_limits<int>::max() << "\n";
         return false;
     }
     
@@ -326,7 +326,7 @@ bool sortValuesByGeneratedKeysViaSortByKeyDevice(
     std::size_t freeGpuMem, totalGpuMem;
     CUDACHECK(cudaMemGetInfo(&freeGpuMem, &totalGpuMem));
 
-    //std::cerr << "free gpu mem: " << freeGpuMem << ", memoryLimitBytes: " << memoryLimitBytes << ", sizeOfKeys: " << sizeOfKeys << ", temp_storage_bytes: " << temp_storage_bytes << "\n";
+    //std::cout << "free gpu mem: " << freeGpuMem << ", memoryLimitBytes: " << memoryLimitBytes << ", sizeOfKeys: " << sizeOfKeys << ", temp_storage_bytes: " << temp_storage_bytes << "\n";
 
     void* temp_storage = nullptr;
     if(freeGpuMem > temp_storage_bytes){
@@ -381,7 +381,7 @@ bool sortValuesByGeneratedKeysViaSortByKeyDevice(
     CUDACHECK(cudaDeviceSynchronize());
 
     if(cubstatus != cudaSuccess){
-        std::cerr << "cub::DeviceRadixSort::SortPairs error: " << cudaGetErrorString(cubstatus) << "\n";
+        std::cout << "cub::DeviceRadixSort::SortPairs error: " << cudaGetErrorString(cubstatus) << "\n";
         cudaGetLastError();
         cudaFree(temp_storage);
         return false;
@@ -440,14 +440,14 @@ bool sortValuesByGeneratedKeys(
     IndexType numValues,
     KeyGenerator keyGenerator
 ){
-    std::cerr << "sortValuesByGeneratedKeys: memoryLimitBytes = " << memoryLimitBytes << ",numValues: " << numValues << ", sizeof(ValueType): " << sizeof(ValueType) << ", sizeof(IndexType): " << sizeof(IndexType) << "\n";
+    std::cout << "sortValuesByGeneratedKeys: memoryLimitBytes = " << memoryLimitBytes << ",numValues: " << numValues << ", sizeof(ValueType): " << sizeof(ValueType) << ", sizeof(IndexType): " << sizeof(IndexType) << "\n";
     bool success = false;
 
     #ifdef __CUDACC__
         try{
             success = sortValuesByGeneratedKeysViaSortByKeyDevice<IndexType>(memoryLimitBytes, values, numValues, keyGenerator);
         } catch (...){
-            std::cerr << "Fallback\n";
+            std::cout << "Fallback\n";
         }
 
         if(success) return true;        
@@ -456,7 +456,7 @@ bool sortValuesByGeneratedKeys(
     try{
         success = sortValuesByGeneratedKeysViaSortByKeyHost<IndexType>(memoryLimitBytes, values, numValues, keyGenerator);
     } catch (...){
-        std::cerr << "Fallback\n";
+        std::cout << "Fallback\n";
     }
 
     if(success) return true;
@@ -464,7 +464,7 @@ bool sortValuesByGeneratedKeys(
     try{
         success = sortValuesByGeneratedKeysViaIndicesHost<IndexType>(memoryLimitBytes, values, numValues, keyGenerator);
     } catch (...){
-        std::cerr << "Fallback\n";
+        std::cout << "Fallback\n";
     }
 
     return success;
