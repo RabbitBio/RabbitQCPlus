@@ -785,19 +785,12 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
 
 
     // Quality Scores cross all bases
-
     outhtml.append(insertChart(PositionQuality1));
     //option
     outhtml.append(insertOptionBegin(PositionQuality1));
-    outhtml.append(insertTitle("Quality scores of head bases"));
-    outhtml.append(insertTooltip());
-    outhtml.append(insertDataZoom());
-    outhtml.append(insertxAxisRange("Position in read from start (bp)", 1, mx_len));
-    outhtml.append(insertyAxis("value", "Quality score", std::to_string(0), std::to_string(42)));
-    outhtml.append(insertSeriesBegin());
-
     auto tot_cnt4 = tgs_stats->GetHeadSeqPosCount();
     auto tot_qul = tgs_stats->GetHeadQualSum();
+    int max_y_val = 0;
     for (int i = 0; i < mx_len; i++) {
         int64_t sum_qul = tot_qul[i];
         int64_t sum_cnt = 0;
@@ -805,7 +798,14 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
             sum_cnt += tot_cnt4[j][i];
         }
         tmp_double[i] = 1.0 * sum_qul / sum_cnt;
+        max_y_val = std::max(max_y_val, int(tmp_double[i] + 1));
     }
+    outhtml.append(insertTitle("Quality scores of head bases"));
+    outhtml.append(insertTooltip());
+    outhtml.append(insertDataZoom());
+    outhtml.append(insertxAxisRange("Position in read from start (bp)", 1, mx_len));
+    outhtml.append(insertyAxis("value", "Quality score", std::to_string(0), std::to_string(std::max(42, max_y_val))));
+    outhtml.append(insertSeriesBegin());
     outhtml.append(insertSeriesData("line", tmp_double, mx_len));
     outhtml.append(insertSeriesEnd());
     outhtml.append(insertOptionEnd());
@@ -815,15 +815,9 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
     outhtml.append(insertChart(PositionQuality2));
     //option
     outhtml.append(insertOptionBegin(PositionQuality2));
-    outhtml.append(insertTitle("Quality scores of tail bases"));
-    outhtml.append(insertTooltip());
-    outhtml.append(insertDataZoom());
-    outhtml.append(insertxAxisRange("Position in read from end (bp)", 1, mx_len));
-    outhtml.append(insertyAxis("value", "Quality score", std::to_string(0), std::to_string(42)));
-    outhtml.append(insertSeriesBegin());
-
     tot_cnt4 = tgs_stats->GetTailSeqPosCount();
     tot_qul = tgs_stats->GetTailQualSum();
+    max_y_val = 0;
     for (int i = 0; i < mx_len; i++) {
         int64_t sum_qul = tot_qul[mx_len - i - 1];
         int64_t sum_cnt = 0;
@@ -831,7 +825,14 @@ void Repoter::ReportHtmlTGS(std::string html_name, std::string command, TGSStats
             sum_cnt += tot_cnt4[j][mx_len - i - 1];
         }
         tmp_double[mx_len - i - 1] = 1.0 * sum_qul / sum_cnt;
+        max_y_val = std::max(max_y_val, int(tmp_double[mx_len - i - 1] + 1));
     }
+    outhtml.append(insertTitle("Quality scores of tail bases"));
+    outhtml.append(insertTooltip());
+    outhtml.append(insertDataZoom());
+    outhtml.append(insertxAxisRange("Position in read from end (bp)", 1, mx_len));
+    outhtml.append(insertyAxis("value", "Quality score", std::to_string(0), std::to_string(std::max(42, max_y_val))));
+    outhtml.append(insertSeriesBegin());
     outhtml.append(insertSeriesData("line", tmp_double, mx_len));
     outhtml.append(insertSeriesEnd());
     outhtml.append(insertOptionEnd());
