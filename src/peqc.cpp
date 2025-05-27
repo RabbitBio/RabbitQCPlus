@@ -1645,6 +1645,9 @@ void PeQc::ProcessPeFastq() {
         Repoter::ReportHtmlPe(srr_name1 + "_" + srr_name2 + "_RabbitQCPlus.html", pre_state1, pre_state2, aft_state1,
                 aft_state2, cmd_info_->in_file_name1_,
                 cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
+
+        JsonReporter::ReportPe(srr_name1 + "_" + srr_name2 + "_RabbitQCPlus.json", pre_state1, pre_state2, aft_state1,
+                               aft_state2, cmd_info_->in_file_name1_, cmd_info_->in_file_name2_, dupRate * 100.0, merge_insert_size);
 #ifdef Verbose
         fprintf(stderr, "report done\n");
 #endif

@@ -19,6 +19,7 @@
 #include "Reference.h"
 #include "nucleotidetree.h"
 #include "repoter.h"
+#include "jsonrepoter.h"
 
 struct OverlapRes {
     bool overlapped;

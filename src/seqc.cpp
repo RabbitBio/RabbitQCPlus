@@ -823,9 +823,9 @@ void SeQc::ProcessSeFastq() {
     }
     string srr_name = cmd_info_->in_file_name1_;
     srr_name = PaseFileName(srr_name);
-    Repoter::ReportHtmlSe(srr_name + "_RabbitQCPlus.html", pre_state, aft_state, cmd_info_->in_file_name1_,
-                          dupRate * 100.0);
+    Repoter::ReportHtmlSe(srr_name + "_RabbitQCPlus.html", pre_state, aft_state, cmd_info_->in_file_name1_, dupRate * 100.0);
 
+    JsonReporter::ReportSe(srr_name + "_RabbitQCPlus.json", pre_state, aft_state, cmd_info_->in_file_name1_, dupRate * 100.0);
 
     delete pre_state;
     delete aft_state;
